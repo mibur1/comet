@@ -33,7 +33,7 @@ class InfoButton(QPushButton):
 class App(QMainWindow):
     def __init__(self, init_data=None):
         super().__init__()
-        self.title = 'Voyager Dynamic Functional Connectivity Toolbox'
+        self.title = 'COMET Dynamic Functional Connectivity Toolbox'
         self.ts_data = None
         self.dfc_data = None
         self.dfc_data_dict = {}
@@ -773,7 +773,6 @@ class App(QMainWindow):
             self.canvas.draw()
             self.updateDistribution()
 
-            print(self.dfc_data.shape)
             total_length = self.dfc_data.shape[2]
             position_text = f"t = {value} / {total_length-1}"
             self.positionLabel.setText(position_text)
