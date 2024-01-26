@@ -16,7 +16,7 @@ def load_example():
     """
     Simulated time series for testing purposes
     """
-    with pkg_resources.path("voyager.example_data", "simulation.txt") as file_path:
+    with pkg_resources.path("comet.example_data", "simulation.txt") as file_path:
         data = np.loadtxt(file_path)
     return data
 
@@ -24,9 +24,7 @@ def clean(time_series, runs=None, detrend=False, confounds=None, standardize=Fal
     """
     Standard nilearn cleaning of the time series
     """
-    return signal.clean(time_series, detrend=detrend, confounds=confounds, standardize=standardize, standardize_confounds=standardize_confounds, filter=filter, low_pass=low_pass, high_pass=high_pass, t_r=t_r, ensure_finite=ensure_finite)
-
-        
+    return signal.clean(time_series, detrend=detrend, confounds=confounds, standardize=standardize, standardize_confounds=standardize_confounds, filter=filter, low_pass=low_pass, high_pass=high_pass, t_r=t_r, ensure_finite=ensure_finite) 
 
 class Hcp():
     def __init__(self, path, task="WM", TR=0.72, ts_length=405):

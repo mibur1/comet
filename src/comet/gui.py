@@ -29,13 +29,13 @@ class InfoButton(QPushButton):
         QToolTip.showText(tooltip_pos, self.info_text)
         super().enterEvent(event)
 
-
 class App(QMainWindow):
-    def __init__(self, init_data=None):
+    def __init__(self, init_data=None, init_method=None):
         super().__init__()
         self.title = 'COMET Dynamic Functional Connectivity Toolbox'
         self.ts_data = None
         self.dfc_data = None
+        self.init_method = init_method
         self.dfc_data_dict = {}
         self.selected_class_name = None
         self.currentSliderValue = 0
@@ -70,11 +70,10 @@ class App(QMainWindow):
         self.reverse_param_names = {v: k for k, v in self.param_names.items()}
 
         self.initUI()
-
+        
         self.dfc_data = init_data
         if self.dfc_data is not None:
-            self.plot_dfc()
-            self.updateDistribution()
+            self.init_from_calculated_data()
 
     def initUI(self):
         self.setWindowTitle(self.title)
@@ -116,7 +115,6 @@ class App(QMainWindow):
             if inspect.isclass(obj) and obj.__module__ == methods.__name__ and name != "ConnectivityMethod"
         }
 
-        #print(self.class_info)
         self.methodComboBox.addItems(self.class_info.keys())
         self.methodComboBox.setCurrentText("Sliding Window")
         self.methodComboBox.currentTextChanged.connect(self.onMethodChanged)
@@ -280,6 +278,23 @@ class App(QMainWindow):
         centralWidget.setLayout(mainLayout)
         self.setCentralWidget(centralWidget)
 
+    def init_from_calculated_data(self):
+        # Make sure both the dFC data and the method object are provided
+        assert self.init_method is not None, "Please provide the method object corresponding to your dFC data as the second argument to the GUI."
+
+        # Set labels
+        self.fileNameLabel.setText(f"Loaded dFC from script")
+        self.calculatingLabel.setText(f"Loaded dFC from script")
+
+        self.methodComboBox.setCurrentText(self.init_method.name)
+
+        # Set plots
+        self.plot_dfc()
+        self.updateDistribution()
+
+        self.rowSelector.setMaximum(1)
+        self.rowSelector.setValue(1)
+        self.plotTimeSeries()
 
     def onMethodChanged(self, methodName):
         # Clear old variables and data
@@ -289,6 +304,11 @@ class App(QMainWindow):
         # Get selected connectivity method
         self.selected_class_name = self.class_info.get(methodName)
         selected_class = getattr(methods, self.selected_class_name, None)
+        
+        if self.init_method is not None:
+           selected_class = getattr(self.init_method)
+           print("HUU")
+           
         print(f"Selected {self.selected_class_name}")
         
         # If connectivity for this method already exists we load and plot ot
@@ -317,6 +337,14 @@ class App(QMainWindow):
             self.positionLabel.setText(position_text)
             self.slider.setValue(self.slider.value())
 
+        print("Hi", selected_class)
+        # This dynamically creates the parameter labels and input boxes
+        self.setup_class_parameters(selected_class)
+
+        self.parameterLayout.addStretch(1) # Stretch to fill empty space
+        self.update() # Update UI
+
+    def setup_class_parameters(self, selected_class):
         # Now the parameter labels and boxes are set up    
         labels = []
 
@@ -409,11 +437,6 @@ class App(QMainWindow):
                 # Add the layout to the main parameter layout
                 self.parameterLayout.addLayout(param_layout)
 
-        
-        self.parameterLayout.addStretch(1) # Stretch to fill empty space
-        self.update() # Update UI
-
-
     def onTabChanged(self, index):
         if index == 0 or index == 1:
             self.slider.setValue(self.currentSliderValue)
@@ -438,7 +461,6 @@ class App(QMainWindow):
 
             position_text = f"Use the slider to zoom in and scroll through the time series"
             self.positionLabel.setText(position_text)
-
 
     def getInfoText(self, param, dfc_method):
         if param == "windowsize":
@@ -484,7 +506,6 @@ class App(QMainWindow):
         info_text = f"Information about {param_name}"  # Replace with actual information
         QMessageBox.information(self, "Parameter Information", info_text)
 
-
     def clearLayout(self, layout):
         while layout.count():
             item = layout.takeAt(0)
@@ -528,7 +549,6 @@ class App(QMainWindow):
             print(f"Error loading data: {e}")
             self.fileNameLabel.setText(f"Error. No time series data has been loaded.")
 
-
     def saveFile(self):
         if not hasattr(self, 'dfc_data'):
             print("No DFC data available to save.")
@@ -562,7 +582,6 @@ class App(QMainWindow):
         # Update the shape label
         self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.ts_data.shape}")
 
-    
     def onCalculateConnectivity(self):
         
         # Check if ts_data is available
@@ -630,7 +649,6 @@ class App(QMainWindow):
         self.updateDistribution()
         self.plotTimeSeries()
 
-    
     def manageMemory(self, parameters):
         keep_in_memory = self.keepInMemoryCheckbox.isChecked()
         
@@ -670,8 +688,7 @@ class App(QMainWindow):
         if state == 2 and self.dfc_data is not None:
             print(f"Saved {self.selected_class_name} data to memory")
             self.dfc_data_dict[self.selected_class_name] = self.dfc_data
-            
-        
+                
     def onClearMemory(self):
         self.dfc_data_dict = {}
         
@@ -730,13 +747,12 @@ class App(QMainWindow):
             self.timeSeriesFigure.clear()
             ax = self.timeSeriesFigure.add_subplot(111)
             ax.plot(time_series)
-            #ax.set_title(f"Time Series for Element ({row}, {col})")
+            ax.set_title(f"dFC time course between region {row} and {col}.")
             self.timeSeriesCanvas.draw()
         else:
             # Clear the plot if the data is not available
             self.timeSeriesFigure.clear()
             self.timeSeriesCanvas.draw()
-
 
     def updateDistribution(self):
         if self.dfc_data is None or not hasattr(self, 'distributionFigure'):
@@ -751,7 +767,6 @@ class App(QMainWindow):
         ax.hist(current_slice.flatten(), bins=60)  # Adjust the number of bins as needed
 
         self.distributionCanvas.draw()
-
 
     def onSliderValueChanged(self, value):
         # Ensure there is data to work with
@@ -828,11 +843,10 @@ class App(QMainWindow):
         self.timeSeriesFigure.clear()
         ax = self.timeSeriesFigure.add_subplot(111)
         ax.plot(range(start, end), time_series_slice)
-        ax.set_title(f"dFC time series ({row}, {col})")
+        #ax.set_title(f"dFC time series ({row}, {col})")
         self.timeSeriesCanvas.draw()
 
-
-def run(dfc_data=None):
+def run(dfc_data=None, method=None):
     app = QApplication(sys.argv)
 
     # Set global stylesheet for tooltips
@@ -842,7 +856,7 @@ def run(dfc_data=None):
             border: 1px solid black;
         }
     """)
-    ex = App(init_data=dfc_data)
+    ex = App(init_data=dfc_data, init_method=method)
     ex.setStyleSheet(qdarkstyle.load_stylesheet_pyqt6())
     ex.show()
     sys.exit(app.exec())
