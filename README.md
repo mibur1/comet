@@ -33,7 +33,7 @@ from comet import methods
 ```
 
 #### Multiverse Analysis
-Multiverse analysis needs urgent bugfixes and is not currently usable. It will be available soon.
+Demo scripts for multiverse analysis will be shared soon.
 
 
 ![GUI](docs/gui.png)
