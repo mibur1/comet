@@ -44,4 +44,4 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/comet"]
-data-files = ["src/comet/example_data"]
+data-files = ["src/comet/resources", "src/comet/resources/img"]

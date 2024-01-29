@@ -2,6 +2,8 @@ import sys
 import inspect
 import numpy as np
 from scipy.io import loadmat, savemat
+import importlib.resources as pkg_resources
+from matplotlib.image import imread
 
 from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import QEnterEvent, QFontMetrics
@@ -32,7 +34,7 @@ class InfoButton(QPushButton):
 class App(QMainWindow):
     def __init__(self, init_data=None, init_method=None):
         super().__init__()
-        self.title = 'COMET Dynamic Functional Connectivity Toolbox'
+        self.title = 'Comet Dynamic Functional Connectivity Toolbox'
         self.ts_data = None
         self.dfc_data = None
         self.init_method = init_method
@@ -282,12 +284,18 @@ class App(QMainWindow):
         # Make sure both the dFC data and the method object are provided
         assert self.init_method is not None, "Please provide the method object corresponding to your dFC data as the second argument to the GUI."
 
+        # Disable the GUI elements
+        self.methodComboBox.setEnabled(False)
+        self.calculateButton.setEnabled(False)
+        self.clearMemoryButton.setEnabled(False)
+        self.keepInMemoryCheckbox.setEnabled(False)
+
         # Set labels
         self.fileNameLabel.setText(f"Loaded dFC from script")
         self.calculatingLabel.setText(f"Loaded dFC from script")
 
         self.methodComboBox.setCurrentText(self.init_method.name)
-
+        
         # Set plots
         self.plot_dfc()
         self.updateDistribution()
@@ -299,17 +307,14 @@ class App(QMainWindow):
     def onMethodChanged(self, methodName):
         # Clear old variables and data
         self.clearLayout(self.parameterLayout)
-        self.dfc_data = None
+        #self.dfc_data = None
         
         # Get selected connectivity method
         self.selected_class_name = self.class_info.get(methodName)
         selected_class = getattr(methods, self.selected_class_name, None)
         
         if self.init_method is not None:
-           selected_class = getattr(self.init_method)
-           print("HUU")
-           
-        print(f"Selected {self.selected_class_name}")
+            selected_class = self.init_method
         
         # If connectivity for this method already exists we load and plot ot
         if self.selected_class_name in self.dfc_data_dict:
@@ -329,6 +334,7 @@ class App(QMainWindow):
         # This also indicates to the user that this data was not yet calculated/saved
         else:
             self.figure.clear()
+            self.plot_logo()
             self.canvas.draw()
             self.distributionFigure.clear()
             self.distributionCanvas.draw()
@@ -337,7 +343,6 @@ class App(QMainWindow):
             self.positionLabel.setText(position_text)
             self.slider.setValue(self.slider.value())
 
-        print("Hi", selected_class)
         # This dynamically creates the parameter labels and input boxes
         self.setup_class_parameters(selected_class)
 
@@ -367,7 +372,13 @@ class App(QMainWindow):
         # Add parameter textbox for time_series
         self.time_series_textbox = QLineEdit()
         self.time_series_textbox.setReadOnly(True) # read only as based on the loaded file
-        self.time_series_textbox.setText(self.file_name)
+        
+        if self.init_method is None:
+            self.time_series_textbox.setText(self.file_name)
+            self.time_series_textbox.setEnabled(True)
+        else:
+            self.time_series_textbox.setText("from script")
+            self.time_series_textbox.setEnabled(False)
 
         # Create info button for time_series
         time_series_info_text = "2D time series loaded from file. Time has to be the first dimension."
@@ -380,8 +391,10 @@ class App(QMainWindow):
         self.parameterLayout.addLayout(time_series_layout)
 
         # Adjust max width for aesthetics
-        max_label_width += 10
+        max_label_width += 20
         time_series_label.setFixedWidth(max_label_width)
+
+        existing_params = vars(selected_class)
 
         for param in init_signature.parameters.values():
             if param.name not in ['self', 'time_series', 'tril', 'standardize']:
@@ -393,36 +406,63 @@ class App(QMainWindow):
                 labels.append(param_label)
 
                 # Determine the widget type based on the parameter
+                # Dropdown for boolean parameters
                 if type(param.default) == bool:
-                    # Dropdown for boolean parameters
                     param_input_widget = QComboBox()
                     param_input_widget.addItems(["True", "False"])
-                    default_index = param_input_widget.findText(str(param.default))
-                    param_input_widget.setCurrentIndex(default_index)
+                    
+                    if self.init_method is None:
+                        default_index = param_input_widget.findText(str(param.default))
+                        param_input_widget.setCurrentIndex(default_index)
+                        param_input_widget.setEnabled(True)
+                    else:
+                        default_index = param_input_widget.findText(str(existing_params[param.name]))
+                        param_input_widget.setCurrentIndex(default_index)
+                        param_input_widget.setEnabled(False)
+                # Dropdown for parameters with predefined options
                 elif param.name in selected_class.options:
-                    # Dropdown for parameters with predefined options
                     param_input_widget = QComboBox()
                     param_input_widget.addItems(selected_class.options[param.name])
                     if param.default in selected_class.options[param.name]:
-                        default_index = param_input_widget.findText(param.default)
-                        param_input_widget.setCurrentIndex(default_index)
+                        if self.init_method is None:
+                            default_index = param_input_widget.findText(param.default)
+                            param_input_widget.setCurrentIndex(default_index)
+                            param_input_widget.setEnabled(True)
+                        else:
+                            param_input_widget.setCurrentIndex(str(existing_params[param.name]))
+                            param_input_widget.setEnabled(False)    
+                # Spinbox for integer parameterss
                 elif type(param.default) == int:
-                    # Spinbox for integer parameters
                     param_input_widget = QSpinBox()
                     param_input_widget.setMaximum(10000)
                     param_input_widget.setMinimum(-10000)
                     param_input_widget.setSingleStep(1)
-                    param_input_widget.setValue(int(param.default) if param.default != inspect.Parameter.empty else 0)
+                    if self.init_method is None:
+                        param_input_widget.setValue(int(param.default) if param.default != inspect.Parameter.empty else 0)
+                        param_input_widget.setEnabled(True)
+                    else:
+                        param_input_widget.setValue(int(existing_params[param.name]))
+                        param_input_widget.setEnabled(False)
+                # Spinbox for float parameters
                 elif type(param.default) == float:
-                    # Spinbox for float parameters
                     param_input_widget = QDoubleSpinBox()
                     param_input_widget.setMaximum(10000.0)
                     param_input_widget.setMinimum(-10000.0)
                     param_input_widget.setSingleStep(0.1)
-                    param_input_widget.setValue(float(param.default) if param.default != inspect.Parameter.empty else 0.0)
+                    if self.init_method is None:
+                        param_input_widget.setValue(float(param.default) if param.default != inspect.Parameter.empty else 0.0)
+                        param_input_widget.setEnabled(True)
+                    else: 
+                        param_input_widget.setValue(float(existing_params[param.name]))
+                        param_input_widget.setEnabled(False)
+                # Text field for other types of parameters
                 else:
-                    # Text field for other types of parameters
-                    param_input_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
+                    if self.init_method is None:
+                        param_input_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
+                        param_input_widget.setEnabled(True)
+                    else:
+                        param_input_widget.setValue(str(existing_params[param.name]))
+                        param_input_widget.setEnabled(False)
 
                 # Create info button with tooltip
                 info_text = self.getInfoText(param.name, self.selected_class_name)
@@ -432,7 +472,7 @@ class App(QMainWindow):
                 param_layout = QHBoxLayout()
                 param_layout.addWidget(param_label)
                 param_layout.addWidget(param_input_widget)
-                param_layout.addWidget(info_button)
+                param_layout.addWidget(info_button) 
 
                 # Add the layout to the main parameter layout
                 self.parameterLayout.addLayout(param_layout)
@@ -545,6 +585,17 @@ class App(QMainWindow):
             # Show transpose textbox
             self.reshapeCheckbox.show()
 
+            # Reset and enable the GUI elements
+            self.methodComboBox.setEnabled(True)
+            self.methodComboBox.setCurrentText("Sliding Window")
+            self.init_method = None
+            self.onMethodChanged("Sliding Window")
+
+            self.methodComboBox.setEnabled(True)
+            self.calculateButton.setEnabled(True)
+            self.clearMemoryButton.setEnabled(True)
+            self.keepInMemoryCheckbox.setEnabled(True)
+
         except Exception as e:
             print(f"Error loading data: {e}")
             self.fileNameLabel.setText(f"Error. No time series data has been loaded.")
@@ -588,7 +639,7 @@ class App(QMainWindow):
         if self.ts_data is None:
             self.calculatingLabel.setText(f"Error. No time series data has been loaded.")
             return
-        
+    
         # Check if method is available
         selected_class = getattr(methods, self.selected_class_name, None)
         if not selected_class:
@@ -596,7 +647,6 @@ class App(QMainWindow):
             return
         
         # Perform main calculations
-        print(f"Calculate {self.methodComboBox.currentText()}")
         self.calculatingLabel.setText(f"Calculating {self.methodComboBox.currentText()}, please wait...")
         QApplication.processEvents()
 
@@ -675,7 +725,7 @@ class App(QMainWindow):
                 
                 # Store in memory if checkbox is checked
                 if keep_in_memory:
-                    self.dfc_data_dict[self.selected_class_name] = dfc_data
+                    self.dfc_data_dict[self.selected_class_name] = self.dfc_data
                     print(f"Saved {self.selected_class_name} to memory")
 
                 return self.dfc_data
@@ -727,7 +777,7 @@ class App(QMainWindow):
             cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
 
             self.slider.setMaximum(self.dfc_data.shape[2] - 1)
-
+        
         self.figure.set_facecolor('#E0E0E0')
         self.figure.tight_layout()
         self.canvas.draw()
@@ -753,6 +803,19 @@ class App(QMainWindow):
             # Clear the plot if the data is not available
             self.timeSeriesFigure.clear()
             self.timeSeriesCanvas.draw()
+
+    def plot_logo(self):
+        with pkg_resources.path("comet.resources.img", "logo.png") as file_path:
+            logo = imread(file_path)
+
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        ax.set_axis_off()
+        self.im = ax.imshow(logo)
+
+        self.figure.set_facecolor('#e8f0e6')
+        self.figure.tight_layout()
+        self.canvas.draw()
 
     def updateDistribution(self):
         if self.dfc_data is None or not hasattr(self, 'distributionFigure'):
@@ -859,7 +922,11 @@ def run(dfc_data=None, method=None):
     ex = App(init_data=dfc_data, init_method=method)
     ex.setStyleSheet(qdarkstyle.load_stylesheet_pyqt6())
     ex.show()
-    sys.exit(app.exec())
+
+    try:
+        sys.exit(app.exec())
+    except SystemExit as e:
+        print(f"GUI closed with status {e}")
 
 if __name__ == '__main__':
     run()

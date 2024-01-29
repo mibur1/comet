@@ -1,16 +1,28 @@
 import os
+import sys
 import csv
 import inspect
 import itertools
 import subprocess
+import pandas as pd
 from tqdm import tqdm
 from jinja2 import Template
+from joblib import Parallel, delayed
+
+import glob
+import pickle
+import numpy as np
+import seaborn as sns
+import scipy.stats as stats
+import matplotlib.lines as mlines
+from matplotlib import pyplot as plt
+import matplotlib.patches as mpatches
 
 # This function creates all the universe scripts
 def create(analysis_template, forking_paths):
     # Get the directory of the calling script
-    calling_script_file = inspect.stack()[1].filename
-    calling_script_dir = os.path.dirname(os.path.abspath(calling_script_file))
+    calling_script_dir = os.getcwd() if in_notebook else os.path.dirname(sys.path[0])
+
     save_script_dir = os.path.join(calling_script_dir, "universes")
     if not os.path.exists(save_script_dir):
         os.mkdir(save_script_dir)
@@ -34,7 +46,7 @@ def create(analysis_template, forking_paths):
 
     # Generate CSV file with the parameters of all universes
     csv_path = os.path.join(calling_script_dir, "universes")
-    with open(f"{csv_path}/all_universes.csv", "w", newline='') as csvfile:
+    with open(f"{csv_path}/multiverse_summary.csv", "w", newline='') as csvfile:
         fieldnames = ['Universe'] + list(keys)  # 'Universe' as the first column
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
@@ -61,23 +73,33 @@ def create(analysis_template, forking_paths):
             file.write(rendered_content)
 
 # This function can run all (or individual) universes
-def run(path=None, universe_number=None, parallel=3):
+def run(path=None, universe_number=None, parallel=1):
     if path is None:
-        calling_script_file = inspect.stack()[1].filename
-        calling_script_dir = os.path.dirname(os.path.abspath(calling_script_file))
+        calling_script_dir = os.getcwd() if in_notebook else os.path.dirname(sys.path[0])
         universe_dir = os.path.join(calling_script_dir, "universes")
         path = universe_dir
 
     sorted_files = sorted(os.listdir(path))
 
+    # Function for parallel processing, called by joblib.delayed
+    def execute_script(file):
+        print(f"Starting {file}")
+        subprocess.run(["python", os.path.join(path, file)], check=True)
+
     if universe_number is None:
-        print("Performing multiverse analysis for all universes, please wait...")
-        for file in tqdm(sorted_files):
-            if file.endswith(".py"):
-                subprocess.run(["python", os.path.join(path, file)], check=True)
+        print("Starting multiverse analysis for all universes...")
+        Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in sorted_files if file.endswith(".py"))
     else:
-        print(f"Performing analysis for universe {universe_number}, please wait...")
+        print(f"Starting analysis for universe {universe_number}...")
         subprocess.run(["python", os.path.join(path, f"universe_{universe_number}.py")], check=True)
+
+# Prints a summary of all universes
+def summary(type=None):
+    calling_script_dir = os.getcwd() if in_notebook else os.path.dirname(sys.path[0])
+    csv_path = os.path.join(calling_script_dir, "universes/multiverse_summary.csv")
+    multiverse_summary = pd.read_csv(csv_path)
+    print(multiverse_summary.head()) if type == "head" else print(multiverse_summary)
+    print("")
 
 # This handles the types of the decision points to generate a working template script
 def format_type(value):
@@ -131,3 +153,12 @@ def handle_dict(value):
             function_call = f"{graph_function}({input_data})"
 
     return function_call
+
+def in_notebook():
+    try:
+        from IPython import get_ipython
+        if 'IPKernelApp' not in get_ipython().config:
+            return False
+    except Exception:
+        return False
+    return True

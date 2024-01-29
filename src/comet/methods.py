@@ -1,3 +1,4 @@
+import os
 import random
 import numpy as np
 from tqdm import tqdm
@@ -11,7 +12,6 @@ from statsmodels.stats.weightstats import DescrStatsW
 from pycwt import cwt, Morlet
 
 from joblib import Parallel, delayed
-import os
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["OMP_NUM_THREADS"] = "1"
 
@@ -102,7 +102,8 @@ class SlidingWindow(ConnectivityMethod):
     def connectivity(self):
         '''
         Calculate sliding window correlation
-        '''     
+        '''
+        print("Calculating Sliding Window Correlation, please wait...")
         weights = self._weights()
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan) 
 
@@ -144,7 +145,8 @@ class Jackknife(ConnectivityMethod):
     def connectivity(self):
         '''
         Calculate jackknife correlation
-        '''  
+        '''
+        print("Calculating Jackknife Correlation, please wait...")
         weights = self._weights()
 
         for estimate in range(self.N_estimates):
@@ -192,7 +194,8 @@ class SpatialDistance(ConnectivityMethod):
     def connectivity(self):
         '''
         Calculate spatial distance correlation
-        '''  
+        '''
+        print("Calculating Spatial Distance, please wait...")
         weights = self._weights() # in this case this is the distance matrix
 
         for estimate in range(self.N_estimates):
@@ -224,6 +227,7 @@ class TemporalDerivatives(ConnectivityMethod):
         '''
         Calculate multiplication of temproral derivatives
         '''
+        print("Calculating Multiplication of Temporal Derivatives, please wait...")
         derivatives = self.time_series[1:, :] - self.time_series[:-1, :]
         derivatives = derivatives / np.std(derivatives, axis=0)
         coupling = np.array([derivatives[:, i] * derivatives[:, j] for i in range(self.P) for j in range(self.P)]) # multiplicative coupling
@@ -294,6 +298,7 @@ class FlexibleLeastSquares(ConnectivityMethod):
 
     # Flexible least squares algorithm as implemented in the DynamicBC toolbox
     def connectivity(self):
+        print("Calculating Flexible Least Squares, please wait...")
         # Standardize time series
         if self.standardizeData:
             self.time_series = (self.time_series - np.mean(self.time_series, axis=0)) / np.std(self.time_series, axis=0)
@@ -335,6 +340,7 @@ class PhaseSynchrony(ConnectivityMethod):
         Calculate instantaneous phase synchrony
         CARE: Hilbert transform needs narrowband signal to produce meaningful results
         '''
+        print("Calculating Phase Synchronization, please wait...")
         analytic_signal = hilbert(self.time_series.transpose())
         instantaneous_phase = np.angle(analytic_signal)
         
@@ -378,6 +384,7 @@ class LeiDA(ConnectivityMethod):
         self.res = []
 
     def connectivity(self):
+        print("Calculating LeiDA, please wait...")
         # Compute BOLD phases using Hilbert Transform
         instantaneous_phase = np.angle(hilbert(self.time_series.transpose())).transpose()
 
@@ -426,6 +433,7 @@ class WaveletCoherence(ConnectivityMethod):
         self.drop_timepoints = drop_timepoints
 
     def connectivity(self):
+        print("Calculating Wavelet Coherence, please wait...")
         # Time series dimensions
         P = self.time_series.shape[1]
         T = self.time_series.shape[0]
@@ -655,6 +663,7 @@ class DCC(ConnectivityMethod):
         X : 1*N vector
             DCC parameters
         """
+        print("Calculating Dynamic Conditional Correlation, please wait...")
         T, N = self.time_series.shape # T timepoints x N parcels
         ts = self.time_series - np.mean(self.time_series, axis=0) # Demean
 

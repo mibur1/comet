@@ -86,7 +86,7 @@ def efficiency_bin(G, local=True):
     neighborhood of the node, and is related to the clustering coefficient.
     """
 
-    def binarize(W, copy=True):
+    def binarise(W, copy=True):
         if copy:
             W = W.copy()
         W[W != 0] = 1
@@ -114,7 +114,7 @@ def efficiency_bin(G, local=True):
         np.fill_diagonal(D, 0)
         return D
 
-    G = binarize(G)
+    G = binarise(G)
     n = len(G)  # number of nodes
     if local:
         E = np.zeros((n,))  # local efficiency
@@ -138,26 +138,21 @@ def efficiency_bin(G, local=True):
     
     return E
 
-def efficiency(W, binarize=False):
-    return efficiency_bin(W, local=True) if binarize else efficiency_wei(W, local=True)
+def efficiency(W, binarise=False):
+    return efficiency_bin(W, local=True) if binarise else efficiency_wei(W, local=True)
 
 def participation(W):
     ci, q = bct.community_louvain(W)
     return bct.participation_coef(W, ci, degree="undirected")
 
-def clustering(W, binarize=False):
-    return  bct.clustering_coef_bu(W) if binarize else bct.clustering_coef_wu(W)
+def clustering(W, binarise=False):
+    return  bct.clustering_coef_bu(W) if binarise else bct.clustering_coef_wu(W)
 
-def compute_graph_measures(t, features, index, density, negative_values, binarize):
+def compute_graph_measures(t, features, index, density, binarise):
     W = np.asarray(features[t, :, :]).copy()  # Create a copy of the data
     np.fill_diagonal(W, 0)
-
-    # Make matrices absolute values
-    if negative_values == "absolute":
-        W = np.abs(W) 
-    else:
-        raise ValueError("Currently only absolute values are supported.")
-
+    W = np.abs(W) # only absolute values
+    
     # Density based thresholding
     sorted_weights = np.sort(W[np.triu_indices_from(W, k=1)])[::-1] # sort in descending order (excluding the diagonal)
     threshold_idx = int(len(sorted_weights) * density) # find index for resulting density
@@ -167,7 +162,7 @@ def compute_graph_measures(t, features, index, density, negative_values, binariz
     # Calculate and return graph measures
     return {
         "participation": participation(W),
-        "clustering": clustering(W, binarize),
-        "efficiency": efficiency(W, binarize),
+        "clustering": clustering(W, binarise),
+        "efficiency": efficiency(W, binarise),
         "index": index[t]
     }
