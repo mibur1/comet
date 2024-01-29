@@ -9,15 +9,6 @@ from tqdm import tqdm
 from jinja2 import Template
 from joblib import Parallel, delayed
 
-import glob
-import pickle
-import numpy as np
-import seaborn as sns
-import scipy.stats as stats
-import matplotlib.lines as mlines
-from matplotlib import pyplot as plt
-import matplotlib.patches as mpatches
-
 # This function creates all the universe scripts
 def create(analysis_template, forking_paths):
     # Get the directory of the calling script

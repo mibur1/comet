@@ -13,7 +13,7 @@ pip install comet-toolbox
 We further recommend using a dedicated [Anaconda](https://www.anaconda.com/download) or [Miniconda](https://conda.io/projects/conda/en/latest/index.html) environment to mitigate the risk of potential version conflicts.
 
 
-Installation from the source code of this repository is also possible
+Installation from the source code of this repository is also possible:
 
 1. Download/clone the repository
 2. Open a terminal in the folder which contains the pyproject.toml file
@@ -41,7 +41,6 @@ If you want to explore the toolbox with example data, you can load the ```src/co
 If you intend to use the toolbox in a standard python script, [demo scripts](https://github.com/mibur1/dfc-multiverse/tree/main/tutorials) are provided as a starting point:
 * Demo script for calculating dFC: [click here](tutorials/example_dfc.ipynb)
 * Demo script for performing multiverse analysis: [click here](tutorials/example_multiverse.ipynb)
-* Simulation analysis from the preprint: [click here](tutorials/example_analysis.ipynb) (computationally expensive, 8 cores per universe + running universes in parallel is recommended)
 
 
 ### Outlook
