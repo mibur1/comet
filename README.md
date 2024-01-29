@@ -35,11 +35,14 @@ comet-gui
 
 If you want to explore the toolbox with example data, you can load the ```src/comet/resources/simulation.txt``` file which should result in two changing connectivity patterns.
 
-**Scripting**
-If you intend to use the toolbox in a standard python script, [demo scripts](https://github.com/mibur1/dfc-multiverse/tree/main/tutorials) are provided as a starting point:
-* Demo script for calculating dFC: [click here](tutorials/example_dfc.ipynb)
-* Demo script for performing multiverse analysis: [click here](tutorials/example_multiverse.ipynb)
-* Simulation analysis from the preprint: [click here](tutorials/example_analysis.ipynb) (computationally expensive, 8 cores per universe + running universes in parallel is recommended)
+If you intend to use the toolbox in a standard python script, you can use the dynamic functional connectivity functions as shown in the preprint by importing the methods module:
+
+```
+from comet import methods
+```
+
+#### Multiverse Analysis
+Demo scripts for multiverse analysis will be shared soon.
 
 
 #### Outlook
