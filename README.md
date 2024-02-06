@@ -41,6 +41,7 @@ If you want to explore the toolbox with example data, you can load the ```src/co
 If you intend to use the toolbox in a standard python script, [demo scripts](https://github.com/mibur1/dfc-multiverse/tree/main/tutorials) are provided as a starting point:
 * Demo script for calculating dFC: [click here](tutorials/example_dfc.ipynb)
 * Demo script for performing multiverse analysis: [click here](tutorials/example_multiverse.ipynb)
+* Demo script for the multiverse analysis as presented preprint (+ additional visualizations): [click here](tutorials/example_analysis.ipynb)
 
 
 ### Outlook
