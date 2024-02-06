@@ -1,13 +1,13 @@
 import os
 import re
 import sys
-import shutil
 import pickle
 import numpy as np
 from nilearn import signal
+import importlib.resources as pkg_resources
+
 from .methods import *
 from .multiverse import in_notebook
-import importlib.resources as pkg_resources
 
 def load_example(type=None):
     """
@@ -41,12 +41,6 @@ def save_results(data=None, universe=None):
     filepath = savedir + f"/universe_{universe_number}.pkl"
     with open(filepath, 'wb') as f:
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
-
-    # Copy multiverse summary to results folder for convenience
-    source_file = os.path.join(calling_script_dir, "universes/multiverse_summary.csv")
-    destination_file = os.path.join(savedir, "multiverse_summary.csv")
-    shutil.copy(source_file, destination_file)
-
 
 def clean(time_series, runs=None, detrend=False, confounds=None, standardize=False, standardize_confounds=True, filter='butterworth', low_pass=None, high_pass=None, t_r=0.72, ensure_finite=False):
     """

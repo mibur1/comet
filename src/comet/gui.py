@@ -813,7 +813,7 @@ class App(QMainWindow):
         ax.set_axis_off()
         self.im = ax.imshow(logo)
 
-        self.figure.set_facecolor('#e8f0e6')
+        self.figure.set_facecolor('#f4f1f6')
         self.figure.tight_layout()
         self.canvas.draw()
 
