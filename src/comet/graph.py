@@ -239,7 +239,7 @@ def efficiency_wei(Gw, local=False):
     Parameters
     ----------
     Gw : PxP np.ndarray
-        unidireted weighted adjacency/connectivity matrix
+        undireted weighted adjacency/connectivity matrix
 
     local : bool, optional
         if True, local efficiency is computed. Default is False (global efficiency)
@@ -274,43 +274,6 @@ def efficiency_wei(Gw, local=False):
     -----
     Algorithm: Modified Dijkstra's algorithm
     '''
-    @jit(nopython=True)
-    def distance_inv_wei(G):
-        n = len(G)
-        D = np.full((n, n), np.inf)
-        np.fill_diagonal(D, 0)
-
-        for u in range(n):
-            # distance permanence (true is temporary)
-            S = np.ones((n,), dtype=np.bool_)
-            G1 = G.copy()
-            V = np.array([u], dtype=np.int64)
-            while True:
-                S[V] = 0  # distance u->V is now permanent
-                G1[:, V] = 0  # no in-edges as already shortest
-                
-                for v in V:
-                    W = np.where(G1[v, :])[0]  # neighbors of smallest nodes
-                    max_len = n
-                    td = np.empty((2, max_len))
-                    len_W = len(W)
-                    td[0, :len_W] = D[u, W]
-                    td[1, :len_W] = D[u, v] + G1[v, W]
-                    for idx in range(len_W):
-                        D[u, W[idx]] = min(td[0, idx], td[1, idx])
-
-                if D[u, S].size == 0:  # all nodes reached
-                    break
-                minD = np.min(D[u, S])
-                if np.isinf(minD):  # some nodes cannot be reached
-                    break
-                V = np.where(D[u, :] == minD)[0]
-
-        np.fill_diagonal(D, 1)
-        D = 1 / D
-        np.fill_diagonal(D, 0)
-        return D
-
     n = len(Gw)
     Gl = invert(Gw, copy=True)  # connection length matrix
     A = np.array((Gw != 0), dtype=int)
@@ -321,7 +284,7 @@ def efficiency_wei(Gw, local=False):
         for u in range(n):
             V, = np.where(np.logical_or(Gw[u, :], Gw[:, u].T))
             sw = np.cbrt(Gw[u, V]) + np.cbrt(Gw[V, u].T)
-            e = distance_inv_wei(np.cbrt(Gl)[np.ix_(V, V)])
+            e = distance_wei(np.cbrt(Gl)[np.ix_(V, V)], inv=True)
             se = e+e.T
             
             numer = np.sum(np.outer(sw.T, sw) * se) / 2
@@ -332,7 +295,7 @@ def efficiency_wei(Gw, local=False):
                 # print numer,denom
                 E[u] = numer / denom  # local efficiency
     else:
-        e = distance_inv_wei(Gl)
+        e = distance_wei(Gl, inv=True)
         E = np.sum(e) / (n * n - n)
 
     return E
@@ -347,7 +310,7 @@ def efficiency_bin(G, local=False):
     Parameters
     ----------
     G : PxP np.ndarray
-        unidireted binary adjacency/connectivity matrix
+        undireted binary adjacency/connectivity matrix
 
     local : bool, optional
         if True, local efficiency is computed. Default is False (global efficiency)
@@ -371,33 +334,7 @@ def efficiency_bin(G, local=False):
 
     Rubinov, M., & Sporns, O. (2010). Complex network measures of brain connectivity: uses and interpretations. 
     Neuroimage, 52(3), 1059-1069. DOI: https://doi.org/10.1016/j.neuroimage.2009.10.003
-
-    Notes
-    -----
-    Algorithm: Matrix multiplication to find paths, faster than original Dijkstra's algorithm
     '''
-    @jit(nopython=True)
-    def distance_inv(g):
-        D = np.eye(len(g))
-        n = 1
-        nPATH = g.copy()
-        L = (nPATH != 0)
-
-        while np.any(L):
-            D += n * L
-            n += 1
-            nPATH = np.dot(nPATH, g)
-            L = (nPATH != 0) * (D == 0)
-        
-        for i in range(D.shape[0]):
-            for j in range(D.shape[1]):
-                if not D[i, j]:
-                    D[i, j] = np.inf
-
-        D = 1 / D
-        np.fill_diagonal(D, 0)
-        return D
-
     G = binarise(G)
     n = len(G)  # number of nodes
     if local:
@@ -407,7 +344,7 @@ def efficiency_bin(G, local=False):
             # find pairs of neighbors
             V, = np.where(np.logical_or(G[u, :], G[u, :].T))
             # inverse distance matrix
-            e = distance_inv(G[np.ix_(V, V)])
+            e = distance_bin(G[np.ix_(V, V)], inv=True)
             # symmetrized inverse distance matrix
             se = e + e.T
 
@@ -418,10 +355,97 @@ def efficiency_bin(G, local=False):
                 denom = np.sum(sa)**2 - np.sum(sa * sa)
                 E[u] = numer / denom  # local efficiency
     else:
-        e = distance_inv(G)
+        e = distance_bin(G, inv=True)
         E = np.sum(e) / (n * n - n)
     
     return E
+
+def small_worldness_bu(G, nrand=10):
+    '''Small-worldness sigma for binary networks
+        
+    Small worldness sigma is calculated as the ratio of the clustering coefficient and the characteristic path length 
+    of the real network to the average clustering coefficient and characteristic path length of the random networks.
+
+    Parameters
+    ----------
+    G : PxP np.ndarray
+        undireted weighted adjacency/connectivity matrix
+    
+    nrand : int, optional
+        number of random networks to generate (and average over). Default is 10.
+
+    Returns
+    -------
+    sigms : float
+        small-worldness sigma
+
+    Notes
+    -----
+    This implementation of small worldness relies on matrix operations and is *drastically* faster than the Networkx implementation.
+    However, it uses a different approch for rewiring edges, so the results will differ.
+    '''
+    def avg_shortest_path(G, include_diagonal=False, include_infinite=True):
+        '''Average shortest path length for binary networks.
+        Uses the distance matrix returned by distance_bin to calculate the average shortest path length.
+        '''
+        D = distance_bin(G, inv=False)
+
+        if not include_diagonal:
+            np.fill_diagonal(D, np.nan)
+        if not include_infinite:
+            D[np.isinf(D)] = np.nan
+
+        Dv = D[~np.isnan(D)]
+        l = np.mean(Dv)
+        return l
+
+    def transitivity_bu(A):
+        '''Transitivity is the ratio of triangles to triplets in the network (classical version of the clustering coefficient).
+        For binary undirected matrices. Taken from the bytpy implementation: https://github.com/aestrivex/bctpy
+        '''
+        tri3 = np.trace(np.dot(A, np.dot(A, A)))
+        tri2 = np.sum(np.dot(A, A)) - np.trace(np.dot(A, A))
+        return tri3 / tri2
+
+    def randomize_matrix(G):
+        '''
+        Randomly rewire edges of a adjacency/connectivity matrix.
+        Based on the small_world_propensity implementation: https://github.com/rkdan/small_world_propensity
+        '''
+        num_nodes = G.shape[0]
+        G_rand = np.zeros((num_nodes, num_nodes))
+        mask = np.triu(np.ones((num_nodes, num_nodes)), 1)
+
+        # Find the indices where mask > 0 in column-major order
+        grab_indices = np.column_stack(np.nonzero(mask.T))
+
+        # Access G with the indices
+        orig_edges = G[grab_indices[:, 0], grab_indices[:, 1]]
+        num_edges = len(orig_edges)
+        rand_index = np.random.choice(num_edges, num_edges, replace=False)
+        randomized_edges = orig_edges[rand_index]
+        edge = 0
+        for i in range(num_nodes - 1):
+            for j in range(i + 1, num_nodes):
+                G_rand[i, j] = randomized_edges[edge]
+                G_rand[j, i] = randomized_edges[edge]
+                edge += 1
+        return G_rand
+
+    randMetrics = {"C": [], "L": []}
+    for _ in range(nrand):
+        Gr = randomize_matrix(G)
+        randMetrics["C"].append(transitivity_bu(Gr))
+        randMetrics["L"].append(avg_shortest_path(Gr))
+
+    C = transitivity_bu(G)
+    L = avg_shortest_path(G)
+    Cr = np.mean(randMetrics["C"])
+    Lr = np.mean(randMetrics["L"])
+
+    sigma = (C / Cr) / (L / Lr)
+
+    return sigma
 
 @jit(nopython=True)
 def matching_ind_und(G):
@@ -433,7 +457,7 @@ def matching_ind_und(G):
     Parameters
     ----------
     W : PxP np.ndarray
-        unidireted adjacency/connectivity matrix
+        undireted adjacency/connectivity matrix
 
     Returns
     -------
@@ -464,10 +488,111 @@ def matching_ind_und(G):
         M[i, i] = 0.0
     return M
 
-def small_worldness(G):
-    pass
+@jit(nopython=True)
+def distance_wei(G, inv=False):
+    '''(Inverse) distance matrix for weighted networks
+    
+    Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy
+    Significantly improved performance due to numba JIT compilation
+    
+    Parameters
+    ----------
+    G : PxP np.ndarray
+        undireted weighted adjacency/connectivity matrix
 
+    inv : bool, optional
+        if True, the element wise inverse of the distance matrux is returned. Default is False
+    
+    Returns
+    -------
+    D : PxP np.ndarray
+        (inverse) distance matrix
+    
+    Notes
+    -----
+    Algorithm: Modified Dijkstra's algorithm
+    '''
+    n = len(G)
+    D = np.full((n, n), np.inf)
+    np.fill_diagonal(D, 0)
 
+    for u in range(n):
+        # distance permanence (true is temporary)
+        S = np.ones((n,), dtype=np.bool_)
+        G1 = G.copy()
+        V = np.array([u], dtype=np.int64)
+        while True:
+            S[V] = 0  # distance u->V is now permanent
+            G1[:, V] = 0  # no in-edges as already shortest
+            
+            for v in V:
+                W = np.where(G1[v, :])[0]  # neighbors of smallest nodes
+                max_len = n
+                td = np.empty((2, max_len))
+                len_W = len(W)
+                td[0, :len_W] = D[u, W]
+                td[1, :len_W] = D[u, v] + G1[v, W]
+                for idx in range(len_W):
+                    D[u, W[idx]] = min(td[0, idx], td[1, idx])
 
+            if D[u, S].size == 0:  # all nodes reached
+                break
+            minD = np.min(D[u, S])
+            if np.isinf(minD):  # some nodes cannot be reached
+                break
+            V = np.where(D[u, :] == minD)[0]
 
+    np.fill_diagonal(D, 1)
+    
+    if inv:
+        D = 1 / D
+        np.fill_diagonal(D, 0)
+    
+    return D
 
+@jit(nopython=True)
+def distance_bin(G, inv=False):
+    '''(Inverse) distance matrix for binary networks
+    
+    Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy
+    Significantly improved performance due to numba JIT compilation
+    
+    Parameters
+    ----------
+    G : PxP np.ndarray
+        undireted weighted adjacency/connectivity matrix
+
+    inv : bool, optional
+        if True, the element wise inverse of the distance matrux is returned. Default is False
+    
+    Returns
+    -------
+    D : PxP np.ndarray
+        (inverse) distance matrix
+    
+    Notes
+    -----
+    Algorithm: Matrix multiplication to find paths, faster than original Dijkstra's algorithm
+    '''
+    D = np.eye(len(G))
+    n = 1
+    nPATH = G.copy()
+    L = (nPATH != 0)
+
+    while np.any(L):
+        D += n * L
+        n += 1
+        nPATH = np.dot(nPATH, G)
+        L = (nPATH != 0) * (D == 0)
+    
+    for i in range(D.shape[0]):
+        for j in range(D.shape[1]):
+            if not D[i, j]:
+                D[i, j] = np.inf
+
+    np.fill_diagonal(D, 1)
+    if inv:
+        D = 1 / D
+        np.fill_diagonal(D, 0)
+    
+    return D
