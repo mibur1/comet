@@ -529,7 +529,7 @@ def matching_ind_und(G):
     nei = np.dot(G, G)
     deg = np.sum(G, axis=1)
     degsum = deg[:, np.newaxis] + deg
-    denominator = np.where((degsum <= 2) & (nei != 1), 1.0, degsum - 2 * A)
+    denominator = np.where((degsum <= 2) & (nei != 1), 1.0, degsum - 2 * G)
     M = np.where(denominator != 0, (nei * 2) / denominator, 0.0)
     for i in range(n):
         M[i, i] = 0.0
