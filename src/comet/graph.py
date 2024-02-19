@@ -419,9 +419,8 @@ def small_worldness(G, nrand=10):
     '''
     def avg_shortest_path(G, include_diagonal=False, include_infinite=True):
         '''Average shortest path length for binary networks.
-        Uses the distance matrix returned by distance_bin to calculate the average shortest path length.
+        Uses the distance matrix to calculate the average shortest path length.
         '''
-        
         is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
         if is_binary:
             D = distance_bin(G, inv=False)
@@ -455,8 +454,8 @@ def small_worldness(G, nrand=10):
 
     def randomize_matrix(G):
         '''
-        Randomly rewire edges of a adjacency/connectivity matrix.
-        Based on the small_world_propensity implementation: https://github.com/rkdan/small_world_propensity
+        Randomly rewire edges of a adjacency/connectivity matrix. Based on the small_world_propensity implementation
+        which just randomizes the matrix: https://github.com/rkdan/small_world_propensity
         '''
         num_nodes = G.shape[0]
         G_rand = np.zeros((num_nodes, num_nodes))
