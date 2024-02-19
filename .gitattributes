@@ -1,0 +1,2 @@
+# Get rid of ipynb files being displayed as the main part of the repo due to their larger size
+*.ipynb linguist-detectable=false
