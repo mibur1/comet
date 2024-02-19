@@ -197,6 +197,38 @@ def logtransform(W, epsilon=1e-10, copy=True):
     W = -np.log(W_safe)
     return W
 
+def symmetrise(W, copy=True):
+    '''Symmetrise connectivity/adjacency matrix
+
+    Symmetrise W such that each value W[i,j] will be W[j,i]
+
+    Parameters
+    ----------
+    W : PxP np.ndarray
+        adjacency/connectivity matrix
+
+    copy : bool, optional
+        if True, a copy of W is returned, otherwise W is modified in place
+        default is True
+    
+    Returns
+    -------
+    W : PxP np.ndarray
+        symmetrised adjacency/connectivity matrix
+    '''
+    if copy:
+        W = W.copy()
+
+    is_binary = np.all(np.logical_or(np.isclose(W, 0), np.isclose(W, 1)))
+
+    if is_binary:
+        W = np.logical_or(W, W.T).astype(float)
+    else:
+        W_mean = (np.triu(W, k=1) + np.tril(W, k=-1)) / 2
+        W = W_mean + W_mean.T + np.diag(np.diag(W))
+    
+    return W
+
 def postproc(W, diag=0, copy=True):
     '''Postprocessing of connectivity/adjacency matrix
     
@@ -360,8 +392,8 @@ def efficiency_bin(G, local=False):
     
     return E
 
-def small_worldness_bu(G, nrand=10):
-    '''Small-worldness sigma for binary networks
+def small_worldness(G, nrand=10):
+    '''Small-worldness sigma for undirected networks (binary or weighted)
         
     Small worldness sigma is calculated as the ratio of the clustering coefficient and the characteristic path length 
     of the real network to the average clustering coefficient and characteristic path length of the random networks.
@@ -369,7 +401,7 @@ def small_worldness_bu(G, nrand=10):
     Parameters
     ----------
     G : PxP np.ndarray
-        undireted weighted adjacency/connectivity matrix
+        undireted adjacency/connectivity matrix
     
     nrand : int, optional
         number of random networks to generate (and average over). Default is 10.
@@ -382,13 +414,19 @@ def small_worldness_bu(G, nrand=10):
     Notes
     -----
     This implementation of small worldness relies on matrix operations and is *drastically* faster than the Networkx implementation.
-    However, it uses a different approch for rewiring edges, so the results will differ.
+    However, it uses a different approch for rewiring edges, so the results will differ. It automatically detects if the input 
+    matrix is binary or weighted.
     '''
     def avg_shortest_path(G, include_diagonal=False, include_infinite=True):
         '''Average shortest path length for binary networks.
         Uses the distance matrix returned by distance_bin to calculate the average shortest path length.
         '''
-        D = distance_bin(G, inv=False)
+        
+        is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
+        if is_binary:
+            D = distance_bin(G, inv=False)
+        else:
+            D = distance_wei(G, inv=False)
 
         if not include_diagonal:
             np.fill_diagonal(D, np.nan)
@@ -399,13 +437,21 @@ def small_worldness_bu(G, nrand=10):
         l = np.mean(Dv)
         return l
 
-    def transitivity_bu(A):
+    def transitivity(A):
         '''Transitivity is the ratio of triangles to triplets in the network (classical version of the clustering coefficient).
-        For binary undirected matrices. Taken from the bytpy implementation: https://github.com/aestrivex/bctpy
+        Only for undirected matrices (binary/weighted). Adapted from the bytpy implementation: https://github.com/aestrivex/bctpy
         '''
-        tri3 = np.trace(np.dot(A, np.dot(A, A)))
-        tri2 = np.sum(np.dot(A, A)) - np.trace(np.dot(A, A))
-        return tri3 / tri2
+        is_binary = np.all(np.logical_or(np.isclose(A, 0), np.isclose(A, 1)))
+        
+        if is_binary:
+            tri3 = np.trace(np.dot(A, np.dot(A, A)))
+            tri2 = np.sum(np.dot(A, A)) - np.trace(np.dot(A, A))
+            return tri3 / tri2
+        else:
+            K = np.sum(np.logical_not(A == 0), axis=1)
+            ws = np.cbrt(A)
+            cyc3 = np.diag(np.dot(ws, np.dot(ws, ws)))
+            return np.sum(cyc3, axis=0) / np.sum(K * (K - 1), axis=0)
 
     def randomize_matrix(G):
         '''
@@ -435,10 +481,10 @@ def small_worldness_bu(G, nrand=10):
     randMetrics = {"C": [], "L": []}
     for _ in range(nrand):
         Gr = randomize_matrix(G)
-        randMetrics["C"].append(transitivity_bu(Gr))
+        randMetrics["C"].append(transitivity(Gr))
         randMetrics["L"].append(avg_shortest_path(Gr))
 
-    C = transitivity_bu(G)
+    C = transitivity(G)
     L = avg_shortest_path(G)
     Cr = np.mean(randMetrics["C"])
     Lr = np.mean(randMetrics["L"])
