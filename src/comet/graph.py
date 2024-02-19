@@ -417,7 +417,7 @@ def small_worldness(G, nrand=10):
     However, it uses a different approch for rewiring edges, so the results will differ. It automatically detects if the input 
     matrix is binary or weighted.
     '''
-    def avg_shortest_path(G, include_diagonal=False, include_infinite=True):
+    def avg_shortest_path(G, include_diagonal=False, include_infinite=False):
         '''Average shortest path length for binary networks.
         Uses the distance matrix to calculate the average shortest path length.
         '''
@@ -427,6 +427,9 @@ def small_worldness(G, nrand=10):
         else:
             D = distance_wei(G, inv=False)
 
+        if np.isinf(D).any():
+            import warnings
+            warnings.warn("Warning: The graph is not fully connected. Small worldness estimates might be inaccurate.")
         if not include_diagonal:
             np.fill_diagonal(D, np.nan)
         if not include_infinite:
@@ -489,7 +492,6 @@ def small_worldness(G, nrand=10):
     Lr = np.mean(randMetrics["L"])
 
     sigma = (C / Cr) / (L / Lr)
-
     return sigma
 
 @jit(nopython=True)
@@ -588,7 +590,6 @@ def distance_wei(G, inv=False):
             V = np.where(D[u, :] == minD)[0]
 
     np.fill_diagonal(D, 1)
-    
     if inv:
         D = 1 / D
         np.fill_diagonal(D, 0)
