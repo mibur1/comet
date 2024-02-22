@@ -429,7 +429,8 @@ def small_worldness(G, nrand=10):
 
         if np.isinf(D).any():
             import warnings
-            warnings.warn("Warning: The graph is not fully connected. Small worldness estimates might be inaccurate.")
+            issue = "The graph is not fully connected and infinite path lenghts were set to NaN. Small worldness estimates might be inaccurate."
+            warnings.warn(issue)
         if not include_diagonal:
             np.fill_diagonal(D, np.nan)
         if not include_infinite:
