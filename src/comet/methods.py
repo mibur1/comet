@@ -6,8 +6,9 @@ from abc import ABCMeta, abstractmethod
 from scipy.stats import zscore
 from scipy.spatial import distance
 from scipy.signal import windows, hilbert
-from scipy.linalg import eigh, solve
+from scipy.linalg import eigh, solve, inv
 from scipy.optimize import minimize
+from sklearn.metrics import mutual_info_score
 from statsmodels.stats.weightstats import DescrStatsW
 from pycwt import cwt, Morlet
 
@@ -986,4 +987,44 @@ class Windowless(BaseDFCMethod):
         measure.estimate_FCS(time_series=self.time_series)
         dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=subj_id))
         return dFC
+
+
+class StaticFC(ConnectivityMethod):
+    name = "Statid functional connectivity"
+    options = {"method": ["pearson", "mutual_inf"]}
+
+    '''
+    Methods of estimating static functional connectivity
+    '''
+    def __init__(self, time_series, diagonal=0, standardize=False, fisher_z=True, tril=False):
+        super().__init__(time_series, diagonal, standardize, fisher_z, tril)
     
+    def connectivity(self, method="pearson", num_bins=None):
+        if method == "pearson":
+            fc = np.corrcoef(self.time_series.T)
+        
+        elif method == "partial":
+            corr = np.corrcoef(self.time_series.T)
+            precision = inv(corr)
+            fc = -precision / np.sqrt(np.outer(np.diag(precision), np.diag(precision)))
+            np.fill_diagonal(fc, 1.0)
+    
+        elif method == "mutual_info":
+            assert num_bins is not None, "Number of bins must be specified for mutual information method"
+            
+            binned_data = np.zeros_like(self.time_series)
+            for i in range(self.P):
+                binned_data[i, :] = np.digitize(self.time_series[i, :], np.histogram(self.time_series[i, :], bins=num_bins)[1][:-1])
+
+            fc = np.zeros((self.P, self.P))
+
+            for i in range(self.P):
+                for j in range(i + 1, self.P):
+                    mi = mutual_info_score(binned_data[i, :], binned_data[j, :])
+                    fc[i, j] = mi
+                    fc[j, i] = mi  # Symmetrize
+
+        else:
+            raise ValueError("Method must be any of 'pearson', 'partial', or 'mutual_info'")
+
+        return fc
