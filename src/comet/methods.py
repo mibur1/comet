@@ -1011,18 +1011,21 @@ class StaticFC(ConnectivityMethod):
     
         elif method == "mutual_info":
             assert num_bins is not None, "Number of bins must be specified for mutual information method"
-            
-            binned_data = np.zeros_like(self.time_series)
+
+            binned_data = np.zeros_like(self.time_series, dtype=int)
+
+            # Determine the bin edges and bin the data for each time series
             for i in range(self.P):
-                binned_data[i, :] = np.digitize(self.time_series[i, :], np.histogram(self.time_series[i, :], bins=num_bins)[1][:-1])
+                bin_edges = np.histogram_bin_edges(self.time_series[:, i], bins=num_bins)
+                binned_data[:, i] = np.digitize(self.time_series[:, i], bins=bin_edges, right=False)
 
             fc = np.zeros((self.P, self.P))
 
             for i in range(self.P):
                 for j in range(i + 1, self.P):
-                    mi = mutual_info_score(binned_data[i, :], binned_data[j, :])
+                    mi = mutual_info_score(binned_data[:, i], binned_data[:, j])
                     fc[i, j] = mi
-                    fc[j, i] = mi  # Symmetrize
+                    fc[j, i] = mi
 
         else:
             raise ValueError("Method must be any of 'pearson', 'partial', or 'mutual_info'")
