@@ -11,7 +11,7 @@ from .multiverse import in_notebook
 
 def load_example(type=None):
     """
-    Load simulated time series data
+    Load simulated time series data with two randomly changing connectivity states
     """
     if type == "pkl":
         with pkg_resources.path("comet.resources", "simulation.pkl") as file_path:
@@ -20,6 +20,15 @@ def load_example(type=None):
     else:
         with pkg_resources.path("comet.resources", "simulation.txt") as file_path:
             data = np.loadtxt(file_path)
+    
+    return data
+
+def load_single_state():
+    """
+    Load simulated time series data with a single connectivity state
+    """
+    with pkg_resources.path("comet.resources", "single_state.txt") as file_path:
+        data = np.loadtxt(file_path)
     
     return data
 
