@@ -11,6 +11,7 @@ from scipy.optimize import minimize
 from sklearn.metrics import mutual_info_score
 from statsmodels.stats.weightstats import DescrStatsW
 from pycwt import cwt, Morlet
+from pydfc.dfc_methods import *
 
 from joblib import Parallel, delayed
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
@@ -724,9 +725,7 @@ class DCC(ConnectivityMethod):
         
         #return H, R, Theta, X
         return R
-    
 
-from pydfc.dfc_methods import *
 '''
 These classes bring the state based method from https://github.com/neurodatascience/dFC/ into the Comet framework
 '''
@@ -997,7 +996,6 @@ class Windowless(BaseDFCMethod):
         dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=subj_id))
         return dFC
 
-
 class Static_Pearson(ConnectivityMethod):
     name = "STATIC Pearson Correlation"
     options = {}
@@ -1008,8 +1006,7 @@ class Static_Pearson(ConnectivityMethod):
     def connectivity(self):
         fc = np.corrcoef(self.time_series.T) 
         fc = self.postproc(fc)
-        return fc
-    
+        return fc  
 
 class Static_Partial(ConnectivityMethod):
     name = "STATIC Partial Correlation"
