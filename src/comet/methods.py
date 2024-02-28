@@ -21,7 +21,7 @@ Abstract class template for all dynamic functional connectivity methods
 Abstract methods need to be overriden in the child classes
 '''
 class ConnectivityMethod(metaclass=ABCMeta):
-    def __init__(self, time_series, diagonal=1, standardize=False, fisher_z=False, tril=False):
+    def __init__(self, time_series, diagonal=0, standardize=False, fisher_z=False, tril=False):
         self.time_series = time_series.astype("float32")
         self.T = time_series.shape[0] # T timepoints
         self.P = time_series.shape[1] # P parcels
@@ -39,16 +39,26 @@ class ConnectivityMethod(metaclass=ABCMeta):
         if self.fisher_z:
             R_mat = np.clip(R_mat, -1 + np.finfo(float).eps, 1 - np.finfo(float).eps)
             R_mat = np.arctanh(R_mat)
+        
         # z-standardize
-        if self.standardize:
+        if self.standardize and len(R_mat.shape) == 3:
             R_mat = zscore(R_mat, axis=2)
+        
         # Set main diagonal
-        for estimate in range(R_mat.shape[2]):
-            np.fill_diagonal(R_mat[:,:, estimate], self.diagonal)
+        if len(R_mat.shape) == 3:
+            for estimate in range(R_mat.shape[2]):
+                np.fill_diagonal(R_mat[:,:, estimate], self.diagonal)
+        else:
+            np.fill_diagonal(R_mat, self.diagonal)
+        
         # Get lower triangle to save space
         if self.tril:
-            mask = np.tril(R_mat[:, :, 0], k=-1) != 0
-            R_mat = np.array([matrix_2d[mask] for matrix_2d in R_mat.transpose(2, 0, 1)])
+            if len(R_mat.shape) == 3:
+                mask = np.tril(R_mat[:, :, 0], k=-1) != 0
+                R_mat = np.array([matrix_2d[mask] for matrix_2d in R_mat.transpose(2, 0, 1)])
+            else:
+                mask = np.tril(R_mat, k=-1) != 0
+                R_mat = R_mat[mask]
 
         return R_mat
 
@@ -56,7 +66,7 @@ class ConnectivityMethod(metaclass=ABCMeta):
 Implementation of all DFC methods
 '''
 class SlidingWindow(ConnectivityMethod):
-    name = "Sliding Window"
+    name = "CONT Sliding Window"
     options = {"shape": ["rectangular", "gaussian", "hamming"]}
 
     '''
@@ -64,7 +74,7 @@ class SlidingWindow(ConnectivityMethod):
         Most widely used method, which involves sliding a window over the data.
         Cavariance is estimated for each windowed section.
     '''
-    def __init__(self, time_series, windowsize=29, shape="rectangular", std=10, diagonal=0, standardize=False, fisher_z=True, tril=False):
+    def __init__(self, time_series, windowsize=29, shape="rectangular", std=10, diagonal=0, standardize=False, fisher_z=False, tril=False):
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.windowsize = windowsize
         self.shape = shape
@@ -116,7 +126,7 @@ class SlidingWindow(ConnectivityMethod):
         return self.R_mat
 
 class Jackknife(ConnectivityMethod):
-    name = "Jackknife Correlation"
+    name = "CONT Jackknife Correlation"
     options = {}
     '''
     Jackknife correlation:
@@ -124,7 +134,7 @@ class Jackknife(ConnectivityMethod):
         correlation between covariance-based metrics undefined on a single-trial basis.
         https://doi.org/10.1016/j.neuroimage.2015.04.040
     '''
-    def __init__(self, time_series, windowsize=1, diagonal=0, standardize=False, fisher_z=True, tril=False):
+    def __init__(self, time_series, windowsize=1, diagonal=0, standardize=False, fisher_z=False, tril=False):
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.windowsize = windowsize
 
@@ -159,7 +169,7 @@ class Jackknife(ConnectivityMethod):
         return self.R_mat
 
 class SpatialDistance(ConnectivityMethod):
-    name = "Spatial Distance"
+    name = "CONT Spatial Distance"
     options = {"dist": ["euclidean"]}
     '''
     Spatial Distance:
@@ -207,7 +217,7 @@ class SpatialDistance(ConnectivityMethod):
         return self.R_mat
 
 class TemporalDerivatives(ConnectivityMethod):
-    name = "Multiplication Of Temporal Derivatives"
+    name = "CONT Multiplication of Temporal Derivatives"
     options = {}
     '''
     Multiplication of temporal derivatives:
@@ -246,7 +256,7 @@ class TemporalDerivatives(ConnectivityMethod):
         return self.R_mat
 
 class FlexibleLeastSquares(ConnectivityMethod):
-    name = "Flexible Least Squares"
+    name = "CONT Flexible Least Squares"
     options = {}
     '''
     Flexible Least Squares:
@@ -323,7 +333,7 @@ class FlexibleLeastSquares(ConnectivityMethod):
         return beta
 
 class PhaseSynchrony(ConnectivityMethod):
-    name = "Phase Synchronization"
+    name = "CONT Phase Synchronization"
     options = {"method": ["crp", "pcoh", "teneto"]}
     '''
     Instantaneous Phase Synchrony:
@@ -360,7 +370,7 @@ class PhaseSynchrony(ConnectivityMethod):
         return self.R_mat
 
 class LeiDA(ConnectivityMethod):
-    name = "Leading Eigenvector Dynamics"
+    name = "CONT Leading Eigenvector Dynamics"
     options = {}
     '''
     Leading Eigenvector Dynamics:
@@ -412,7 +422,7 @@ class LeiDA(ConnectivityMethod):
         return self.R_mat, V1
 
 class WaveletCoherence(ConnectivityMethod):
-    name = "Wavelet Coherence"
+    name = "CONT Wavelet Coherence"
     options = {"method": ["weighted"]}
     '''
     Instantaneous Wavelet Coherence:
@@ -500,7 +510,7 @@ class WaveletCoherence(ConnectivityMethod):
         return dfc
 
 class DCC(ConnectivityMethod):
-    name = "Dynamic Conditional Correlation"
+    name = "CONT Dynamic Conditional Correlation"
     options = {}
     '''
     Dynamic Conditional Correlation:
@@ -717,14 +727,12 @@ class DCC(ConnectivityMethod):
     
 
 from pydfc.dfc_methods import *
-
 '''
 These classes bring the state based method from https://github.com/neurodatascience/dFC/ into the Comet framework
 '''
 class Sliding_Window(BaseDFCMethod):
-    name = "Sliding Window (state-based)"
-    options = {"shape": ["rectangular", "gaussian", "hamming"]}
-
+    name = "CONT Sliding Window (pydfc)"
+    options = {}
     '''
     Sliding Window
     '''
@@ -759,13 +767,13 @@ class Sliding_Window(BaseDFCMethod):
         return dFC
     
 class Time_Freq(BaseDFCMethod):
-    name = "Time-frequency (state-based)"
-    options = {"shape": ["rectangular", "gaussian", "hamming"]}
+    name = "CONT Time-frequency (pydfc)"
+    options = {}
 
     '''
     Time-Frequency
     '''
-    def __init__(self, time_series, coi_correction=True, **params):
+    def __init__(self, time_series, num_cores=8, coi_correction=True, **params):
         self.time_series = time_series
         self.logs_ = ''
         self.TPM = []
@@ -787,6 +795,7 @@ class Time_Freq(BaseDFCMethod):
         self.params['measure_name'] = 'Time-Freq'
         self.params['is_state_based'] = False
         self.params['coi_correction'] = coi_correction
+        self.params['n_jobs'] = num_cores
 
     def connectivity(self):
         measure = TIME_FREQ(**self.params)
@@ -794,8 +803,8 @@ class Time_Freq(BaseDFCMethod):
         return dFC
     
 class Cap(BaseDFCMethod):
-    name = "Co-activation patterns (state-based)"
-    options = {"shape": ["rectangular", "gaussian", "hamming"]}
+    name = "STATE Co-activation patterns"
+    options = {}
 
     '''
     Co-activation patterns
@@ -828,8 +837,8 @@ class Cap(BaseDFCMethod):
         return dFC
     
 class Sliding_Window_Clustr(BaseDFCMethod):
-    name = "Sliding Window Clustering (state-based)"
-    options = {"shape": ["rectangular", "gaussian", "hamming"]}
+    name = "STATE Sliding Window Clustering"
+    options = {}
 
     '''
     Sliding Window Clustering
@@ -874,13 +883,13 @@ class Sliding_Window_Clustr(BaseDFCMethod):
         return dFC
     
 class Hmm_Cont(BaseDFCMethod):
-    name = "Continuous Hidden Markov Model (state-based)"
-    options = {"shape": ["rectangular", "gaussian", "hamming"]}
+    name = "STATE Continuous Hidden Markov Model"
+    options = {}
 
     '''
     Continuous Hidden Markov Model
     '''
-    def __init__(self, time_series, clstr_distance="euclidean", **params):
+    def __init__(self, time_series, **params):
         self.time_series = time_series
 
         self.logs_ = ''
@@ -910,13 +919,13 @@ class Hmm_Cont(BaseDFCMethod):
         return dFC
     
 class Hmm_Disc(BaseDFCMethod):
-    name = "Sliding Window Clustering (state-based)"
-    options = {"shape": ["rectangular", "gaussian", "hamming"]}
+    name = "STATE Discrete Hidden Markov Model"
+    options = {}
 
     '''
     Sliding Window Clustering
     '''
-    def __init__(self, time_series, clstr_distance="euclidean", **params):
+    def __init__(self, time_series, **params):
         self.time_series = time_series
 
         self.logs_ = ''
@@ -953,13 +962,13 @@ class Hmm_Disc(BaseDFCMethod):
         return dFC
     
 class Windowless(BaseDFCMethod):
-    name = "Windowless (state-based)"
-    options = {"shape": ["rectangular", "gaussian", "hamming"]}
+    name = "STATE Windowless"
+    options = {}
 
     '''
     Windowless
     '''
-    def __init__(self, time_series, clstr_distance="euclidean", **params):
+    def __init__(self, time_series, **params):
         self.time_series = time_series
 
         self.logs_ = ''
@@ -989,45 +998,58 @@ class Windowless(BaseDFCMethod):
         return dFC
 
 
-class StaticFC(ConnectivityMethod):
-    name = "Statid functional connectivity"
-    options = {"method": ["pearson", "mutual_inf"]}
+class Static_Pearson(ConnectivityMethod):
+    name = "STATIC Pearson Correlation"
+    options = {}
 
-    '''
-    Methods of estimating static functional connectivity
-    '''
-    def __init__(self, time_series, diagonal=0, standardize=False, fisher_z=True, tril=False):
+    def __init__(self, time_series, diagonal=0, standardize=False, fisher_z=False, tril=False):
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
+
+    def connectivity(self):
+        fc = np.corrcoef(self.time_series.T) 
+        fc = self.postproc(fc)
+        return fc
     
-    def connectivity(self, method="pearson", num_bins=None):
-        if method == "pearson":
-            fc = np.corrcoef(self.time_series.T)
-        
-        elif method == "partial":
-            corr = np.corrcoef(self.time_series.T)
-            precision = inv(corr)
-            fc = -precision / np.sqrt(np.outer(np.diag(precision), np.diag(precision)))
-            np.fill_diagonal(fc, 1.0)
+
+class Static_Partial(ConnectivityMethod):
+    name = "STATIC Partial Correlation"
+    options = {}
+
+    def __init__(self, time_series, diagonal=0, standardize=False, fisher_z=False, tril=False):
+        super().__init__(time_series, diagonal, standardize, fisher_z, tril)
+
+    def connectivity(self):
+        corr = np.corrcoef(self.time_series.T)
+        precision = inv(corr)
+        fc = -precision / np.sqrt(np.outer(np.diag(precision), np.diag(precision)))
+        fc = self.postproc(fc)
+        return fc
     
-        elif method == "mutual_info":
-            assert num_bins is not None, "Number of bins must be specified for mutual information method"
+class Static_Mutual_Info(ConnectivityMethod):
+    name = "STATIC Mutual Information"
+    options = {}
 
-            binned_data = np.zeros_like(self.time_series, dtype=int)
+    def __init__(self, time_series, num_bins=10, diagonal=0, standardize=False, fisher_z=False, tril=False):
+        super().__init__(time_series, diagonal, standardize, fisher_z, tril)
+        self.num_bins = num_bins
 
-            # Determine the bin edges and bin the data for each time series
-            for i in range(self.P):
-                bin_edges = np.histogram_bin_edges(self.time_series[:, i], bins=num_bins)
-                binned_data[:, i] = np.digitize(self.time_series[:, i], bins=bin_edges, right=False)
+    def connectivity(self):
+        assert self.num_bins is not None, "Number of bins must be specified for mutual information method"
 
-            fc = np.zeros((self.P, self.P))
+        binned_data = np.zeros_like(self.time_series, dtype=int)
 
-            for i in range(self.P):
-                for j in range(i + 1, self.P):
-                    mi = mutual_info_score(binned_data[:, i], binned_data[:, j])
-                    fc[i, j] = mi
-                    fc[j, i] = mi
+        # Determine the bin edges and bin the data for each time series
+        for i in range(self.P):
+            bin_edges = np.histogram_bin_edges(self.time_series[:, i], bins=self.num_bins)
+            binned_data[:, i] = np.digitize(self.time_series[:, i], bins=bin_edges, right=False)
 
-        else:
-            raise ValueError("Method must be any of 'pearson', 'partial', or 'mutual_info'")
+        fc = np.zeros((self.P, self.P))
 
+        for i in range(self.P):
+            for j in range(i + 1, self.P):
+                mi = mutual_info_score(binned_data[:, i], binned_data[:, j])
+                fc[i, j] = mi
+                fc[j, i] = mi
+
+        fc = self.postproc(fc)
         return fc

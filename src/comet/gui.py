@@ -66,8 +66,14 @@ class App(QMainWindow):
             "drop_scales":       "Drop n scales",
             "drop_timepoints":   "Drop n timepoints",
             "standardize":       "Z-score connectivity",
-            "tril":              "Extract triangle",
-            "method":            "Method"
+            "tril":              "Extract lower triangle",
+            "method":            "Specific method",
+            
+            "params":            "Various parameters",
+            "coi_correction":    "COI correction",
+            "clstr_distance":    "Distance metric",    
+            "num_bins":          "Number of bins",
+
         }
         self.reverse_param_names = {v: k for k, v in self.param_names.items()}
 
@@ -84,31 +90,50 @@ class App(QMainWindow):
         ###############################
         #  Left section for settings  #
         ###############################
-        leftLayout = QVBoxLayout()
+        self.leftLayout = QVBoxLayout()
 
         # Create button and label for file loading
         self.fileButton = QPushButton('Load File')
         self.fileNameLabel = QLabel('No file loaded')
-        leftLayout.addWidget(self.fileButton)
-        leftLayout.addWidget(self.fileNameLabel)
+        self.leftLayout.addWidget(self.fileButton)
+        self.leftLayout.addWidget(self.fileNameLabel)
         self.fileButton.clicked.connect(self.loadFile)
 
         # Create a checkbox for reshaping the data
         self.reshapeCheckbox = QCheckBox("Transpose")
-        leftLayout.addWidget(self.reshapeCheckbox)
+        self.leftLayout.addWidget(self.reshapeCheckbox)
         self.reshapeCheckbox.hide()
 
         # Connect the checkbox to a method
         self.reshapeCheckbox.stateChanged.connect(self.onReshapeCheckboxChanged)
 
         # Add spacer for an empty line
-        leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        self.leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
         # Method label and combobox
         self.methodLabel = QLabel("Dynamic functional connectivity method:")
+        
+        # Checkboxes for method types
+        self.continuousCheckBox = QCheckBox("Continuous")
+        self.stateBasedCheckBox = QCheckBox("State-based")
+        self.staticCheckBox = QCheckBox("Static")
+
+        checkboxLayout = QHBoxLayout()
+        checkboxLayout.addWidget(self.continuousCheckBox)
+        checkboxLayout.addWidget(self.stateBasedCheckBox)
+        checkboxLayout.addWidget(self.staticCheckBox)
+        checkboxLayout.setSpacing(10)
+        checkboxLayout.addStretch()
+
+        # Connect the stateChanged signal of checkboxes to the slot
+        self.continuousCheckBox.stateChanged.connect(self.updateMethodComboBox)
+        self.stateBasedCheckBox.stateChanged.connect(self.updateMethodComboBox)
+        self.staticCheckBox.stateChanged.connect(self.updateMethodComboBox)
+        
         self.methodComboBox = QComboBox()
-        leftLayout.addWidget(self.methodLabel)
-        leftLayout.addWidget(self.methodComboBox)
+        self.leftLayout.addWidget(self.methodLabel)
+        self.leftLayout.addLayout(checkboxLayout)
+        self.leftLayout.addWidget(self.methodComboBox)
 
         # Retrieve class names and their human-readable names
         self.class_info = {
@@ -117,23 +142,26 @@ class App(QMainWindow):
             if inspect.isclass(obj) and obj.__module__ == methods.__name__ and name != "ConnectivityMethod"
         }
 
-        self.methodComboBox.addItems(self.class_info.keys())
-        self.methodComboBox.setCurrentText("Sliding Window")
-        self.methodComboBox.currentTextChanged.connect(self.onMethodChanged)
-
         # Create a layout for dynamic textboxes
         self.parameterLayout = QVBoxLayout()
 
         # Create a container widget for the parameter layout
-        parameterContainer = QWidget()
-        parameterContainer.setLayout(self.parameterLayout)
-        parameterContainer.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        self.parameterContainer = QWidget()  # Use an instance attribute to access it later
+        self.parameterContainer.setLayout(self.parameterLayout)
+        self.parameterContainer.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
         # Add the container widget to the left layout directly below the combobox
-        leftLayout.addWidget(parameterContainer)
+        self.leftLayout.addWidget(self.parameterContainer)
+        
+        # Initial population of the combobox
+        self.updateMethodComboBox()
+
+        # Add parameter textbox for time_series
+        self.time_series_textbox = QLineEdit()
+        self.time_series_textbox.setReadOnly(True) # read only as based on the loaded file
 
         # Add a stretch after the parameter layout container
-        leftLayout.addStretch()
+        self.leftLayout.addStretch()
 
         # Calculate connectivity and save button
         buttonsLayout = QHBoxLayout()
@@ -151,7 +179,7 @@ class App(QMainWindow):
         self.saveButton.clicked.connect(self.saveFile)
 
         # Add the buttons layout to the left layout
-        leftLayout.addLayout(buttonsLayout)
+        self.leftLayout.addLayout(buttonsLayout)
 
         # Memory buttons
         self.keepInMemoryCheckbox = QCheckBox("Keep in memory")
@@ -164,12 +192,11 @@ class App(QMainWindow):
         buttonLayout.addWidget(self.clearMemoryButton)
 
         # Assuming you have a QVBoxLayout named 'leftLayout'
-        leftLayout.addLayout(buttonLayout)
+        self.leftLayout.addLayout(buttonLayout)
 
         # Calculation info textbox
         self.calculatingLabel = QLabel('No data calculated yet')
-        leftLayout.addWidget(self.calculatingLabel)
-
+        self.leftLayout.addWidget(self.calculatingLabel)
         
         ################################
         #  Right section for plotting  #
@@ -250,7 +277,7 @@ class App(QMainWindow):
         rightLayout.addLayout(navButtonLayout)
 
         # Initialize parameters for the default method (from left layout but has to be done after figure creation)
-        self.onMethodChanged("Sliding Window")
+        self.onMethodChanged()
 
         # UI elements for dFC time series plotting
         self.rowSelector = QSpinBox()
@@ -272,13 +299,16 @@ class App(QMainWindow):
         #####################
         #  Combine layouts  #
         #####################
-        mainLayout.addLayout(leftLayout, 1)
+        mainLayout.addLayout(self.leftLayout, 1)
         mainLayout.addLayout(rightLayout, 2)
 
         # Set main window layout
         centralWidget = QWidget()
         centralWidget.setLayout(mainLayout)
         self.setCentralWidget(centralWidget)
+
+        # Set checkboxes to default values
+        self.continuousCheckBox.setChecked(True)
 
     def init_from_calculated_data(self):
         # Make sure both the dFC data and the method object are provided
@@ -304,15 +334,17 @@ class App(QMainWindow):
         self.rowSelector.setValue(1)
         self.plotTimeSeries()
 
-    def onMethodChanged(self, methodName):
+    def onMethodChanged(self, methodName=None):
         # Clear old variables and data
         self.clearLayout(self.parameterLayout)
         #self.dfc_data = None
+
+        if methodName == None or methodName == "Use checkboxes to get available methods":
+            return
         
         # Get selected connectivity method
         self.selected_class_name = self.class_info.get(methodName)
         selected_class = getattr(methods, self.selected_class_name, None)
-        
         if self.init_method is not None:
             selected_class = self.init_method
         
@@ -325,7 +357,7 @@ class App(QMainWindow):
             print(f"Loaded {self.selected_class_name} from memory")
 
             # Update the slider
-            total_length = self.dfc_data.shape[2]
+            total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 1
             position_text = f"t = {self.currentSliderValue} / {total_length-1}"
             self.positionLabel.setText(position_text)
             self.slider.setValue(self.slider.value())
@@ -368,10 +400,6 @@ class App(QMainWindow):
         time_series_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         time_series_label.setMinimumSize(time_series_label.sizeHint())
         labels.append(time_series_label)
-
-        # Add parameter textbox for time_series
-        self.time_series_textbox = QLineEdit()
-        self.time_series_textbox.setReadOnly(True) # read only as based on the loaded file
         
         if self.init_method is None:
             self.time_series_textbox.setText(self.file_name)
@@ -391,13 +419,13 @@ class App(QMainWindow):
         self.parameterLayout.addLayout(time_series_layout)
 
         # Adjust max width for aesthetics
-        max_label_width += 20
+        max_label_width += 10
         time_series_label.setFixedWidth(max_label_width)
 
         existing_params = vars(selected_class)
 
         for param in init_signature.parameters.values():
-            if param.name not in ['self', 'time_series', 'tril', 'standardize']:
+            if param.name not in ['self', 'time_series', 'tril', 'standardize', 'params']:
                 # Create label for parameter
                 param_label = QLabel(f"{self.param_names[param.name]}:")
                 param_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
@@ -477,6 +505,72 @@ class App(QMainWindow):
                 # Add the layout to the main parameter layout
                 self.parameterLayout.addLayout(param_layout)
 
+    def updateMethodComboBox(self):
+        # Ordered lists as per 'shouldIncludeClass'
+        continuous_classes = [
+            'CONT Sliding Window', 'CONT Jackknife Correlation', 'CONT Dynamic Conditional Correlation', 
+            'CONT Flexible Least Squares', 'CONT Spatial Distance', 'CONT Multiplication of Temporal Derivatives', 
+            'CONT Phase Synchronization', 'CONT Leading Eigenvector Dynamics', 'CONT Wavelet Coherence', 
+            'CONT Sliding Window (pydfc)', 'CONT Time-frequency (pydfc)'
+        ]
+
+        state_based_classes = [
+            'STATE Sliding Window Clustering', 'STATE Co-activation patterns', 'STATE Discrete Hidden Markov Model', 
+            'STATE Continuous Hidden Markov Model', 'STATE Windowless'
+        ]
+
+        static_classes = [
+            'STATIC Pearson Correlation', 'STATIC Partial Correlation', 'STATIC Mutual Information'
+        ]
+
+        # Concatenate the lists in the desired order
+        ordered_classes = continuous_classes + state_based_classes + static_classes
+
+        # Filter and order the class names based on the checkboxes
+        filtered_and_ordered_classes = [
+            class_name for class_name in ordered_classes if self.shouldIncludeClass(class_name) and class_name in self.class_info
+        ]
+
+        # Disconnect existing connections to avoid multiple calls
+        try:
+            self.methodComboBox.currentTextChanged.disconnect(self.onMethodChanged)
+        except TypeError:
+            pass
+
+        # Update the combobox
+        self.methodComboBox.clear()
+        self.methodComboBox.addItems(filtered_and_ordered_classes)
+
+        # Adjust combobox width to fit the longest option
+        self.adjustComboBoxWidth()
+
+        # Reconnect the signal
+        self.methodComboBox.currentTextChanged.connect(self.onMethodChanged)
+
+        # Optionally, trigger the onMethodChanged for the initial setup
+        if filtered_and_ordered_classes:
+            self.onMethodChanged(filtered_and_ordered_classes[0])
+
+    def adjustComboBoxWidth(self):
+        if self.methodComboBox.count() > 0:  # Check if the combobox has at least one item
+            #font_metrics = QFontMetrics(self.methodComboBox.font())
+            #longest_text_width = max(font_metrics.boundingRect(self.methodComboBox.itemText(i)).width() for i in range(self.methodComboBox.count()))
+            #width = longest_text_width + 50
+            width = 320
+            self.methodComboBox.setFixedWidth(width)
+        else:
+            default_width = 320
+            self.methodComboBox.setFixedWidth(default_width)
+
+    def shouldIncludeClass(self, className):
+        if self.continuousCheckBox.isChecked() and className.startswith("CONT"):
+                return True
+        if self.stateBasedCheckBox.isChecked() and className.startswith("STATE"):
+                return True 
+        if self.staticCheckBox.isChecked() and className.startswith("STATIC"):
+                return True
+        return False
+
     def onTabChanged(self, index):
         if index == 0 or index == 1:
             self.slider.setValue(self.currentSliderValue)
@@ -486,7 +580,7 @@ class App(QMainWindow):
             self.forwardLargeButton.show()
 
             if self.dfc_data is not None:
-                total_length = self.dfc_data.shape[2]  # Assuming dfc_data is 3D
+                total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 1
                 position_text = f"t = {self.currentSliderValue} / {total_length-1}"
             else:
                 position_text = "t = 0 / 0"
@@ -539,6 +633,16 @@ class App(QMainWindow):
             text = "Specific implementation of the method"
         elif param == "method" and dfc_method == "PhaseSynchrony":
             text = "Specific implementation of the method"
+        elif param == "params":
+            text = "Various parameters"
+        elif param == "coi_correction":
+            text = "Cone of influence correction"
+        elif param == "clstr_distance":
+            text = "Distance metric"
+        elif param == "num_bins":
+            text = "Number of bins for discretization"
+        elif param == "method":
+            text = "Specific type of method"
         
         return text
 
@@ -548,18 +652,25 @@ class App(QMainWindow):
 
     def clearLayout(self, layout):
         while layout.count():
-            item = layout.takeAt(0)
-            if item.widget():
+            item = layout.takeAt(0)  # Take the first item from the layout
+            if item.widget():  # If the item is a widget
                 widget = item.widget()
-                widget.setParent(None)  # Detach the widget from its parent
-                widget.deleteLater()    # Schedule the widget for deletion
-            elif item.layout():       # If the item is a layout, clear it recursively
-                self.clearLayout(item.layout())
+                if widget is not None and widget is not self.time_series_textbox:
+                    widget.deleteLater()  # Schedule the widget for deletion
+            elif item.layout():  # If the item is a layout
+                self.clearLayout(item.layout())  # Recursively clear the layout
+                item.layout().deleteLater()  # Delete the layout itself
+            elif item.spacerItem():  # If the item is a spacer
+                # No need to delete spacer items; they are automatically handled by Qt
+                pass
     
     def loadFile(self):
         fileFilter = "All Supported Files (*.mat *.txt *.npy);;MAT Files (*.mat);;Text Files (*.txt);;NumPy Files (*.npy)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
         self.file_name = file_path.split('/')[-1]
+
+        if not file_path:
+            return  # Early exit if no file is selected
 
         try:
             if file_path.endswith('.mat'):
@@ -587,9 +698,9 @@ class App(QMainWindow):
 
             # Reset and enable the GUI elements
             self.methodComboBox.setEnabled(True)
-            self.methodComboBox.setCurrentText("Sliding Window")
+            #self.methodComboBox.setCurrentText("Sliding Window")
             self.init_method = None
-            self.onMethodChanged("Sliding Window")
+            #self.onMethodChanged()
 
             self.methodComboBox.setEnabled(True)
             self.calculateButton.setEnabled(True)
@@ -630,8 +741,9 @@ class App(QMainWindow):
             # Transpose it back to original
             self.ts_data = self.ts_data.transpose()
 
-        # Update the shape label
+        # Update the labels
         self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.ts_data.shape}")
+        self.time_series_textbox.setText(self.file_name)
 
     def onCalculateConnectivity(self):
         
@@ -689,7 +801,7 @@ class App(QMainWindow):
             self.calculatingLabel.setText(f"Calculated {self.selected_class_name} with shape {self.dfc_data.shape}")
             
             # Update time label
-            total_length = self.dfc_data.shape[2]  # Assuming dfc_data is 3D
+            total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 1
             position_text = f"t = {self.currentSliderValue} / {total_length-1}"
             self.positionLabel.setText(position_text)
             self.slider.setValue(self.slider.value())
@@ -762,11 +874,11 @@ class App(QMainWindow):
 
         if self.dfc_data is not None:
             try:
-                current_slice = self.dfc_data[:, :, self.currentSliderValue]
+                current_slice = self.dfc_data[:, :, self.currentSliderValue] if len(self.dfc_data.shape) == 3 else self.dfc_data
                 vmax = np.max(np.abs(current_slice))
                 self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
             except:
-                current_slice = self.dfc_data[:, :, 0]
+                current_slice = self.dfc_data[:, :, 0] if len(self.dfc_data.shape) == 3 else self.dfc_data
                 vmax = np.max(np.abs(current_slice))
                 self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
 
@@ -776,7 +888,7 @@ class App(QMainWindow):
             cbar = self.figure.colorbar(self.im, cax=cax)
             cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
 
-            self.slider.setMaximum(self.dfc_data.shape[2] - 1)
+            self.slider.setMaximum(self.dfc_data.shape[2] - 1 if len(self.dfc_data.shape) == 3 else 1)
         
         self.figure.set_facecolor('#E0E0E0')
         self.figure.tight_layout()
@@ -792,7 +904,7 @@ class App(QMainWindow):
         col = self.colSelector.value()
 
         if self.dfc_data is not None and row < self.dfc_data.shape[0] and col < self.dfc_data.shape[1]:
-            time_series = self.dfc_data[row, col, :]
+            time_series = self.dfc_data[row, col, :] if len(self.dfc_data.shape) == 3 else self.dfc_data[row, col]
 
             self.timeSeriesFigure.clear()
             ax = self.timeSeriesFigure.add_subplot(111)
@@ -825,7 +937,7 @@ class App(QMainWindow):
         self.distributionFigure.clear()
 
         # Assuming you want to plot the distribution of values in the current slice
-        current_slice = self.dfc_data[:, :, self.slider.value()]
+        current_slice = self.dfc_data[:, :, self.slider.value()] if len(self.dfc_data.shape) == 3 else self.dfc_data
         ax = self.distributionFigure.add_subplot(111)
         ax.hist(current_slice.flatten(), bins=60)  # Adjust the number of bins as needed
 
@@ -851,7 +963,7 @@ class App(QMainWindow):
             self.canvas.draw()
             self.updateDistribution()
 
-            total_length = self.dfc_data.shape[2]
+            total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 1
             position_text = f"t = {value} / {total_length-1}"
             self.positionLabel.setText(position_text)
 
@@ -888,7 +1000,7 @@ class App(QMainWindow):
         if self.dfc_data is None:
             return
 
-        max_index = self.dfc_data.shape[2] - 1
+        max_index = self.dfc_data.shape[2] - 1 if len(self.dfc_data.shape) == 3 else 1
         width = 101
 
         # Determine if we should show the entire series or a window
@@ -897,7 +1009,7 @@ class App(QMainWindow):
             end = max_index
         else:
             start = max(0, center - width // 2)
-            end = min(self.dfc_data.shape[2], center + width // 2)
+            end = min(max_index, center + width // 2)
 
         row = self.rowSelector.value()
         col = self.colSelector.value()
