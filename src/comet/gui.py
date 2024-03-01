@@ -1,16 +1,18 @@
 import sys
+import pickle
 import inspect
 import numpy as np
 from scipy.io import loadmat, savemat
-import importlib.resources as pkg_resources
-from matplotlib.image import imread
+from importlib import resources as pkg_resources
 
+import qdarkstyle
 from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import QEnterEvent, QFontMetrics
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QSlider, QToolTip, QWidget, \
-     QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, QSpacerItem, QCheckBox, QTabWidget, QMessageBox, QSpinBox, QDoubleSpinBox
-import qdarkstyle
+from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
+    QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, \
+    QSpacerItem, QCheckBox, QTabWidget, QMessageBox, QSpinBox, QDoubleSpinBox
 
+from matplotlib.image import imread
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.figure import Figure
@@ -357,8 +359,8 @@ class App(QMainWindow):
             print(f"Loaded {self.selected_class_name} from memory")
 
             # Update the slider
-            total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 1
-            position_text = f"t = {self.currentSliderValue} / {total_length-1}"
+            total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 0
+            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data.shape) == 3 else " static "
             self.positionLabel.setText(position_text)
             self.slider.setValue(self.slider.value())
         
@@ -580,8 +582,8 @@ class App(QMainWindow):
             self.forwardLargeButton.show()
 
             if self.dfc_data is not None:
-                total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 1
-                position_text = f"t = {self.currentSliderValue} / {total_length-1}"
+                total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 0
+                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data.shape) == 3 else " static "
             else:
                 position_text = "t = 0 / 0"
             self.positionLabel.setText(position_text)
@@ -665,7 +667,7 @@ class App(QMainWindow):
                 pass
     
     def loadFile(self):
-        fileFilter = "All Supported Files (*.mat *.txt *.npy);;MAT Files (*.mat);;Text Files (*.txt);;NumPy Files (*.npy)"
+        fileFilter = "All Supported Files (*.mat *.txt *.npy *pkl);;MAT Files (*.mat);;Text Files (*.txt);;NumPy Files (*.npy);;Pickle Files (*.pkl)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
         self.file_name = file_path.split('/')[-1]
 
@@ -679,6 +681,9 @@ class App(QMainWindow):
                 self.ts_data = np.loadtxt(file_path)
             elif file_path.endswith('.npy'):
                 self.ts_data = np.load(file_path)
+            elif file_path.endswith('.pkl'):
+                with open(file_path, 'rb') as f:
+                    self.ts_data = pickle.load(f)
             else:
                 self.ts_data = None
                 self.time_series_textbox.setText("Unsupported file format")
@@ -801,8 +806,8 @@ class App(QMainWindow):
             self.calculatingLabel.setText(f"Calculated {self.selected_class_name} with shape {self.dfc_data.shape}")
             
             # Update time label
-            total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 1
-            position_text = f"t = {self.currentSliderValue} / {total_length-1}"
+            total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 0
+            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data.shape) == 3 else " static "
             self.positionLabel.setText(position_text)
             self.slider.setValue(self.slider.value())
             
@@ -888,7 +893,7 @@ class App(QMainWindow):
             cbar = self.figure.colorbar(self.im, cax=cax)
             cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
 
-            self.slider.setMaximum(self.dfc_data.shape[2] - 1 if len(self.dfc_data.shape) == 3 else 1)
+            self.slider.setMaximum(self.dfc_data.shape[2] - 1 if len(self.dfc_data.shape) == 3 else 0)
         
         self.figure.set_facecolor('#E0E0E0')
         self.figure.tight_layout()
@@ -939,7 +944,7 @@ class App(QMainWindow):
         # Assuming you want to plot the distribution of values in the current slice
         current_slice = self.dfc_data[:, :, self.slider.value()] if len(self.dfc_data.shape) == 3 else self.dfc_data
         ax = self.distributionFigure.add_subplot(111)
-        ax.hist(current_slice.flatten(), bins=60)  # Adjust the number of bins as needed
+        ax.hist(current_slice.flatten(), bins=50)  # number of bins
 
         self.distributionCanvas.draw()
 
@@ -954,17 +959,17 @@ class App(QMainWindow):
             # Get and update the data of the imshow object
             self.currentSliderValue = value
             data = self.dfc_data
-            self.im.set_data(data[:, :, value])
+            self.im.set_data(data[:, :, value]) if len(data.shape) == 3 else self.im.set_data(data)
 
-            vlim = np.max(np.abs(data[:, :, value]))
+            vlim = np.max(np.abs(data[:, :, value])) if len(data.shape) == 3 else np.max(np.abs(data))
             self.im.set_clim(-vlim, vlim)
 
             # Redraw the canvas
             self.canvas.draw()
             self.updateDistribution()
 
-            total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 1
-            position_text = f"t = {value} / {total_length-1}"
+            total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 0
+            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data.shape) == 3 else " static "
             self.positionLabel.setText(position_text)
 
             currentTabIndex = self.tabWidget.currentIndex()
@@ -1000,7 +1005,7 @@ class App(QMainWindow):
         if self.dfc_data is None:
             return
 
-        max_index = self.dfc_data.shape[2] - 1 if len(self.dfc_data.shape) == 3 else 1
+        max_index = self.dfc_data.shape[2] - 1 if len(self.dfc_data.shape) == 3 else 0
         width = 101
 
         # Determine if we should show the entire series or a window
