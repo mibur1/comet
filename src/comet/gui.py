@@ -19,6 +19,7 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
 
 from . import methods
+import pydfc
 
 class InfoButton(QPushButton):
     def __init__(self, info_text, parent=None):
@@ -75,6 +76,13 @@ class App(QMainWindow):
             "coi_correction":    "COI correction",
             "clstr_distance":    "Distance metric",    
             "num_bins":          "Number of bins",
+            "n_overlap":         "Window overlap",
+            "tapered_window":    "Tapered window",
+            "n_states":          "Number of states",
+            "n_subj_clusters":   "Number of subjects",
+            "normalization":     "Normalization",
+            "clstr_distance":    "Distance measure",
+            "subject":          "Subject",
 
         }
         self.reverse_param_names = {v: k for k, v in self.param_names.items()}
@@ -349,7 +357,7 @@ class App(QMainWindow):
         selected_class = getattr(methods, self.selected_class_name, None)
         if self.init_method is not None:
             selected_class = self.init_method
-        
+
         # If connectivity for this method already exists we load and plot ot
         if self.selected_class_name in self.dfc_data_dict:
             self.dfc_data = self.dfc_data_dict[self.selected_class_name]
@@ -434,6 +442,8 @@ class App(QMainWindow):
                 param_label.setMinimumSize(param_label.sizeHint())
                 param_label.setFixedWidth(max_label_width)
                 labels.append(param_label)
+
+                print(selected_class.options)
 
                 # Determine the widget type based on the parameter
                 # Dropdown for boolean parameters
@@ -645,6 +655,20 @@ class App(QMainWindow):
             text = "Number of bins for discretization"
         elif param == "method":
             text = "Specific type of method"
+        elif param == "n_overlap":
+            text = "Window overlap"
+        elif param == "tapered_window":
+            text = "Tapered window"
+        elif param == "n_states":
+            text = "Number of states"
+        elif param == "n_subj_clusters":
+            text = "Number of subjects"
+        elif param == "normalization":
+            text = "Normalization"
+        elif param == "clstr_distance":
+            text = "Distance measure"
+        elif param == "subject":
+            text = "Subject"
         
         return text
 
@@ -694,9 +718,24 @@ class App(QMainWindow):
             self.figure.clear()
             self.canvas.draw()
 
-            # Set the filename in the text box
-            self.fileNameLabel.setText(f"Loaded {self.file_name} with shape {self.ts_data.shape}")
-            self.time_series_textbox.setText(self.file_name)
+            # Set filenames depending on file type
+            if file_path.endswith('.pkl'):
+                self.fileNameLabel.setText(f"Loaded TIME_SERIES object")
+                self.time_series_textbox.setText(self.file_name)
+
+                self.continuousCheckBox.setEnabled(False)
+                self.continuousCheckBox.setChecked(False)
+                self.stateBasedCheckBox.setEnabled(True)
+                self.stateBasedCheckBox.setChecked(True)
+                self.staticCheckBox.setEnabled(False)
+                self.staticCheckBox.setChecked(False)
+            else: 
+                self.fileNameLabel.setText(f"Loaded {self.file_name} with shape {self.ts_data.shape}")
+                self.time_series_textbox.setText(self.file_name)
+
+                self.continuousCheckBox.setEnabled(True)
+                self.stateBasedCheckBox.setEnabled(True)
+                self.staticCheckBox.setEnabled(True)
 
             # Show transpose textbox
             self.reshapeCheckbox.show()
@@ -718,7 +757,7 @@ class App(QMainWindow):
 
     def saveFile(self):
         if not hasattr(self, 'dfc_data'):
-            print("No DFC data available to save.")
+            print("No dFC data available to save.")
             return
 
         # Open a file dialog to specify where to save the file
@@ -799,7 +838,7 @@ class App(QMainWindow):
                 else:
                     parameters[self.reverse_param_names[label]] = value
                     self.calculatingLabel.setText(f"Error: No value entered for parameter '{self.reverse_param_names[label]}'")
-
+    
         self.dfc_data = self.manageMemory(parameters)
 
         if self.dfc_data is not None:
@@ -832,13 +871,15 @@ class App(QMainWindow):
 
                 connectivity_calculator = selected_class(**parameters)
                 result = connectivity_calculator.connectivity() 
-                
                 # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
                 if isinstance(result, tuple):
                     self.dfc_data, _ = result
+                # Result is DFC object (pydfc methods)
+                elif isinstance(result, pydfc.dfc.DFC):
+                    self.dfc_data = np.transpose(result.get_dFC_mat(), (1, 2, 0))
+                # Only a single matrix is returned (most cases)
                 else:
                     self.dfc_data = result
-
                 
                 # Store in memory if checkbox is checked
                 if keep_in_memory:

@@ -64,7 +64,7 @@ class ConnectivityMethod(metaclass=ABCMeta):
         return R_mat
 
 '''
-Implementation of all DFC methods
+Continuous dFC methods
 '''
 class SlidingWindow(ConnectivityMethod):
     name = "CONT Sliding Window"
@@ -727,7 +727,7 @@ class DCC(ConnectivityMethod):
         return R
 
 '''
-These classes bring the state based method from https://github.com/neurodatascience/dFC/ into the Comet framework
+State based dFC methods. Basically wrapper functions to bring methods from https://github.com/neurodatascience/dFC/ into the Comet framework
 '''
 class Sliding_Window(BaseDFCMethod):
     name = "CONT Sliding Window (pydfc)"
@@ -837,14 +837,14 @@ class Cap(BaseDFCMethod):
     
 class Sliding_Window_Clustr(BaseDFCMethod):
     name = "STATE Sliding Window Clustering"
-    options = {}
+    options = {""}
 
     '''
     Sliding Window Clustering
     '''
-    def __init__(self, time_series, clstr_distance="euclidean", **params):
-        self.time_series = time_series
-
+    def __init__(self, time_series, subject=0, windowsize=44, n_overlap=0.5, tapered_window=True, n_states=12, n_subj_clusters=5, normalization=True, clstr_distance="euclidean"):
+        self.time_series = time_series   
+    
         assert clstr_distance=='euclidean' or clstr_distance=='manhattan', \
             "Clustering distance not recognized. It must be either \
                 euclidean or manhattan."
@@ -862,15 +862,26 @@ class Sliding_Window_Clustr(BaseDFCMethod):
             'num_subj', 'num_select_nodes', 'num_time_point', 'Fs_ratio',
             'noise_ratio', 'num_realization', 'session']
         self.params = {}
+        
         for params_name in self.params_name_lst:
-            if params_name in params:
-                self.params[params_name] = params[params_name]
-            else:
                 self.params[params_name] = None
         
         self.params['measure_name'] = 'Clustering'
         self.params['is_state_based'] = True
+        self.params['clstr_base_measure'] = 'SlidingWindow'
+        self.params["sw_method"] = 'pear_corr'
+        self.params['subject'] = subject
+        self.params["tapered_window"] = tapered_window
         self.params['clstr_distance'] = clstr_distance
+        self.params['n_subj_clstrs'] = n_subj_clusters
+        self.params['W'] = windowsize
+        self.params['n_overlap'] = n_overlap
+        self.params['n_states'] = n_states
+        self.params['normalization'] = normalization
+
+        self.params['subjects'] = list(time_series.data_dict.keys())
+        self.sub_id = self.params['subjects'][self.params['subject']]
+        print(self.sub_id)
 
         assert self.params['clstr_base_measure'] in self.base_methods_name_lst, \
             "Base method not recognized."
@@ -878,7 +889,7 @@ class Sliding_Window_Clustr(BaseDFCMethod):
     def connectivity(self, subj_id=None):
         measure = SLIDING_WINDOW_CLUSTR(**self.params)
         measure.estimate_FCS(time_series=self.time_series)
-        dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=subj_id))
+        dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
         return dFC
     
 class Hmm_Cont(BaseDFCMethod):
@@ -996,6 +1007,9 @@ class Windowless(BaseDFCMethod):
         dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=subj_id))
         return dFC
 
+'''
+Static FC methods
+'''
 class Static_Pearson(ConnectivityMethod):
     name = "STATIC Pearson Correlation"
     options = {}
