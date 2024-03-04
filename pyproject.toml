@@ -30,8 +30,7 @@ dependencies = [
   "PyQt6-tools >=6.4.2",
   "qdarkstyle >=3.2.3",
   "seaborn >=0.13.0",
-  "networkx >=3.2.1",
-  "git+https://github.com/neurodatascience/dFC"
+  "networkx >=3.2.1"
 ]
 
 [project.urls]
