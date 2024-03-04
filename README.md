@@ -5,6 +5,8 @@
 
 ### Installation
 
+**Temporary note**: Comet requires the pydfc package for its state-based methods. As pydfc is currently not available on PyPI, you need to install it first by following the steps [here](https://github.com/neurodatascience/dFC). Please use the same Conda environment as with the Comet toolbox.
+
 Installation is possible through the Python Package Index (PyPI) with the pip or pip3 command, depending on your system:
 
 ```
