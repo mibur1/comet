@@ -28,8 +28,8 @@ dependencies = [
   "tqdm >=4.66.1",
   "numba >=0.58.1",
   "PyQt6-tools >=6.4.2",
-  "qdarkstyle >=3.2.3"
-  "seaborn >=0.13.0"
+  "qdarkstyle >=3.2.3",
+  "seaborn >=0.13.0",
   "networkx >=3.2.1"
 ]
 
