@@ -443,8 +443,6 @@ class App(QMainWindow):
                 param_label.setFixedWidth(max_label_width)
                 labels.append(param_label)
 
-                print(selected_class.options)
-
                 # Determine the widget type based on the parameter
                 # Dropdown for boolean parameters
                 if type(param.default) == bool:
