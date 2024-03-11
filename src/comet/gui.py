@@ -6,7 +6,7 @@ from scipy.io import loadmat, savemat
 from importlib import resources as pkg_resources
 
 import qdarkstyle
-from PyQt6.QtCore import Qt, QPoint
+from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject
 from PyQt6.QtGui import QEnterEvent, QFontMetrics
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
     QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, \
@@ -20,6 +20,27 @@ from matplotlib.ticker import FuncFormatter
 
 from . import methods
 import pydfc
+
+class Worker(QObject):
+    finished = pyqtSignal()
+    error = pyqtSignal(str)
+    result = pyqtSignal(object)
+
+    def __init__(self, manageMemoryFunc, parameters):
+        super().__init__()
+        self.manageMemoryFunc = manageMemoryFunc
+        self.parameters = parameters
+
+    def run(self):
+        try:
+            print("Running worker...")
+            result = self.manageMemoryFunc(self.parameters)
+            self.result.emit(result)  # Emit the result
+        except Exception as e:
+            self.error.emit(str(e))  # Emit the error
+        finally:
+            self.finished.emit()  # Notify the completion
+
 
 class InfoButton(QPushButton):
     def __init__(self, info_text, parent=None):
@@ -40,6 +61,7 @@ class App(QMainWindow):
         self.title = 'Comet Dynamic Functional Connectivity Toolbox'
         self.ts_data = None
         self.dfc_data = None
+        self.state_tc = None
         self.init_method = init_method
         self.dfc_data_dict = {}
         self.selected_class_name = None
@@ -787,8 +809,30 @@ class App(QMainWindow):
         self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.ts_data.shape}")
         self.time_series_textbox.setText(self.file_name)
 
+    # Handles the result of the worker thread
+    def handleResult(self, result):
+        self.dfc_data = result
+
+        # Update the sliders and text
+        if self.dfc_data is not None:
+            self.calculatingLabel.setText(f"Calculated {self.selected_class_name} with shape {self.dfc_data.shape}")
+            
+            # Update time label
+            total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 0
+            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data.shape) == 3 else " static "
+            self.positionLabel.setText(position_text)
+            self.slider.setValue(self.slider.value())
+            
+        # Plot
+        self.plot_dfc()
+        self.updateDistribution()
+        self.plotTimeSeries()
+
+    # Handles errors in the worker thread
+    def handleError(self, error):
+        print(f"Error occurred: {error}")
+
     def onCalculateConnectivity(self):
-        
         # Check if ts_data is available
         if self.ts_data is None:
             self.calculatingLabel.setText(f"Error. No time series data has been loaded.")
@@ -836,22 +880,19 @@ class App(QMainWindow):
                 else:
                     parameters[self.reverse_param_names[label]] = value
                     self.calculatingLabel.setText(f"Error: No value entered for parameter '{self.reverse_param_names[label]}'")
-    
-        self.dfc_data = self.manageMemory(parameters)
 
-        if self.dfc_data is not None:
-            self.calculatingLabel.setText(f"Calculated {self.selected_class_name} with shape {self.dfc_data.shape}")
-            
-            # Update time label
-            total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 0
-            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data.shape) == 3 else " static "
-            self.positionLabel.setText(position_text)
-            self.slider.setValue(self.slider.value())
-            
-        # Plot
-        self.plot_dfc()
-        self.updateDistribution()
-        self.plotTimeSeries()
+        # Worker thread for dFC calculations
+        self.workerThread = QThread()
+        self.worker = Worker(self.manageMemory, parameters)
+        self.worker.moveToThread(self.workerThread)
+        
+        self.worker.finished.connect(self.workerThread.quit)
+        self.worker.result.connect(self.handleResult)
+        self.worker.error.connect(self.handleError)
+
+        self.workerThread.started.connect(self.worker.run)
+        self.workerThread.start()
+        self.calculatingLabel.setText(f"Calculating {self.methodComboBox.currentText()}, please wait...")
 
     def manageMemory(self, parameters):
         keep_in_memory = self.keepInMemoryCheckbox.isChecked()
@@ -872,12 +913,15 @@ class App(QMainWindow):
                 # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
                 if isinstance(result, tuple):
                     self.dfc_data, _ = result
+                    self.state_tc = None
                 # Result is DFC object (pydfc methods)
                 elif isinstance(result, pydfc.dfc.DFC):
                     self.dfc_data = np.transpose(result.get_dFC_mat(), (1, 2, 0))
+                    self.state_tc = result.state_TC()
                 # Only a single matrix is returned (most cases)
                 else:
                     self.dfc_data = result
+                    self.state_tc = None
                 
                 # Store in memory if checkbox is checked
                 if keep_in_memory:
@@ -885,6 +929,7 @@ class App(QMainWindow):
                     print(f"Saved {self.selected_class_name} to memory")
 
                 return self.dfc_data
+            
         except Exception as e:
             print(f"Hi, Exception: {e}")
             self.calculatingLabel.setText(f"Error calculating connectivity, check parameters.")
@@ -948,8 +993,14 @@ class App(QMainWindow):
         col = self.colSelector.value()
 
         if self.dfc_data is not None and row < self.dfc_data.shape[0] and col < self.dfc_data.shape[1]:
-            time_series = self.dfc_data[row, col, :] if len(self.dfc_data.shape) == 3 else self.dfc_data[row, col]
-
+            
+            if self.state_tc is not None:
+                time_series = self.state_tc
+                self.rowSelector.isEnabled = False
+                self.colSelector.isEnabled = False
+            else:
+                time_series = self.dfc_data[row, col, :] if len(self.dfc_data.shape) == 3 else self.dfc_data[row, col]
+            
             self.timeSeriesFigure.clear()
             ax = self.timeSeriesFigure.add_subplot(111)
             ax.plot(time_series)

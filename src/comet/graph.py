@@ -572,7 +572,7 @@ def small_world_propensity(G):
     alpha = np.arctan(delta_L / delta_C)
     delta = (4 * alpha / np.pi) - 1
 
-    print("Comet  :",
+    """print("Comet  :",
           "C", round(net_clus, 3), 
           "L", round(net_path, 3),
           "regC", round(reg_clus, 3),
@@ -583,7 +583,7 @@ def small_world_propensity(G):
           "ΔL", round(delta_L, 3),
           "α", round(alpha, 3),
           "δ", round(delta, 3),
-          "SWP", round(SWP, 3))
+          "SWP", round(SWP, 3))"""
 
     return SWP, delta_C, delta_L
 
