@@ -21,6 +21,7 @@ from matplotlib.ticker import FuncFormatter
 from . import methods
 import pydfc
 
+# Worker class for dFC calculations, which run in a separate thread
 class Worker(QObject):
     finished = pyqtSignal()
     error = pyqtSignal(str)
@@ -33,15 +34,14 @@ class Worker(QObject):
 
     def run(self):
         try:
-            print("Running worker...")
             result = self.manageMemoryFunc(self.parameters)
-            self.result.emit(result)  # Emit the result
+            self.result.emit(result)  # Emit results
         except Exception as e:
-            self.error.emit(str(e))  # Emit the error
+            self.error.emit(str(e))  # Emit errors
         finally:
-            self.finished.emit()  # Notify the completion
+            self.finished.emit()  # Notify completion
 
-
+# Info button class
 class InfoButton(QPushButton):
     def __init__(self, info_text, parent=None):
         super().__init__("i", parent)
@@ -50,8 +50,7 @@ class InfoButton(QPushButton):
         self.setFixedSize(20, 20)
 
     def enterEvent(self, event: QEnterEvent):
-        # Adjust the position to show the tooltip right next to the button
-        tooltip_pos = self.mapToGlobal(QPoint(self.width(), 0))
+        tooltip_pos = self.mapToGlobal(QPoint(self.width(), 0)) # Tooltip position can be adjusted here
         QToolTip.showText(tooltip_pos, self.info_text)
         super().enterEvent(event)
 
@@ -247,7 +246,20 @@ class App(QMainWindow):
         imshowLayout.addWidget(self.canvas)
         self.tabWidget.addTab(imshowTab, "Connectivity")
 
-        # Tab 2: Distribution plot
+        # Tab 2: Time series/course plot
+        timeSeriesTab = QWidget()
+        timeSeriesLayout = QVBoxLayout()
+        timeSeriesTab.setLayout(timeSeriesLayout)
+
+        self.timeSeriesFigure = Figure()
+        self.timeSeriesCanvas = FigureCanvas(self.timeSeriesFigure)
+        self.timeSeriesFigure.patch.set_facecolor('#E0E0E0')
+        timeSeriesLayout.addWidget(self.timeSeriesCanvas)
+        self.tabWidget.addTab(timeSeriesTab, "Time course")
+
+        rightLayout.addWidget(self.tabWidget)
+
+        # Tab 3: Distribution plot
         distributionTab = QWidget()
         distributionLayout = QVBoxLayout()
         distributionTab.setLayout(distributionLayout)
@@ -257,19 +269,6 @@ class App(QMainWindow):
         self.distributionFigure.patch.set_facecolor('#E0E0E0')
         distributionLayout.addWidget(self.distributionCanvas)
         self.tabWidget.addTab(distributionTab, "Distribution")
-
-        # Tab 3: Time Series plot
-        timeSeriesTab = QWidget()
-        timeSeriesLayout = QVBoxLayout()
-        timeSeriesTab.setLayout(timeSeriesLayout)
-
-        self.timeSeriesFigure = Figure()
-        self.timeSeriesCanvas = FigureCanvas(self.timeSeriesFigure)
-        self.timeSeriesFigure.patch.set_facecolor('#E0E0E0')
-        timeSeriesLayout.addWidget(self.timeSeriesCanvas)
-        self.tabWidget.addTab(timeSeriesTab, "Time series")
-
-        rightLayout.addWidget(self.tabWidget)
 
         # Method for doing things if the tab is changed
         self.tabWidget.currentChanged.connect(self.onTabChanged)
@@ -604,7 +603,7 @@ class App(QMainWindow):
         return False
 
     def onTabChanged(self, index):
-        if index == 0 or index == 1:
+        if index == 0 or index == 2:
             self.slider.setValue(self.currentSliderValue)
             self.backLargeButton.show()
             self.backButton.show()
@@ -618,7 +617,7 @@ class App(QMainWindow):
                 position_text = "t = 0 / 0"
             self.positionLabel.setText(position_text)
 
-        elif index == 2:
+        elif index == 1:
             self.backLargeButton.hide()
             self.backButton.hide()
             self.forwardButton.hide()
@@ -994,18 +993,23 @@ class App(QMainWindow):
 
         if self.dfc_data is not None and row < self.dfc_data.shape[0] and col < self.dfc_data.shape[1]:
             
-            if self.state_tc is not None:
-                time_series = self.state_tc
-                self.rowSelector.isEnabled = False
-                self.colSelector.isEnabled = False
-            else:
-                time_series = self.dfc_data[row, col, :] if len(self.dfc_data.shape) == 3 else self.dfc_data[row, col]
-            
             self.timeSeriesFigure.clear()
             ax = self.timeSeriesFigure.add_subplot(111)
+
+            if self.state_tc is not None:
+                time_series = self.state_tc
+                self.rowSelector.setValue(1)
+                self.colSelector.setValue(0)
+                self.rowSelector.setDisabled(True)
+                self.colSelector.setDisabled(True)
+                ax.set_title(f"State time course")
+            else:
+                time_series = self.dfc_data[row, col, :] if len(self.dfc_data.shape) == 3 else self.dfc_data[row, col]
+                ax.set_title(f"dFC time course between region {row} and {col}.")
+            
             ax.plot(time_series)
-            ax.set_title(f"dFC time course between region {row} and {col}.")
             self.timeSeriesCanvas.draw()
+        
         else:
             # Clear the plot if the data is not available
             self.timeSeriesFigure.clear()

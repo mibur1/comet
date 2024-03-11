@@ -842,7 +842,7 @@ class Sliding_Window_Clustr(BaseDFCMethod):
     '''
     Sliding Window Clustering
     '''
-    def __init__(self, time_series, subject=0, windowsize=44, n_overlap=0.5, tapered_window=True, n_states=12, n_subj_clusters=5, normalization=True, clstr_distance="euclidean"):
+    def __init__(self, time_series, subject=0, windowsize=44, n_overlap=0.5, tapered_window=True, n_states=5, n_subj_clusters=5, normalization=True, clstr_distance="euclidean"):
         self.time_series = time_series   
     
         assert clstr_distance=='euclidean' or clstr_distance=='manhattan', \
