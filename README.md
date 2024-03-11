@@ -1,11 +1,15 @@
 ## Comet - A dynamic functional connectivity toolbox for multiverse analysis
 [![DOI](src/comet/resources/img/badge.svg)](https://doi.org/10.1101/2024.01.21.576546)
 
-**Please note**: This package is at a very early stage of development, with frequent changes being made. If you intend to use this package at this stage, I kindly ask that you contact me via the email address in the [pyproject.toml](https://github.com/mibur1/dfc-multiverse/blob/main/pyproject.toml) file.
+**Important notes:**
+
+* This package is at a very early stage of development, with frequent changes being made. If you intend to use this package at this stage, I kindly ask that you contact me via the email address in the [pyproject.toml](https://github.com/mibur1/dfc-multiverse/blob/main/pyproject.toml) file.
+* Comet requires the pydfc package for its state-based methods. As pydfc is currently not available on PyPI, you need to install it first by following the steps [here](https://github.com/neurodatascience/dFC). Please use the same Conda environment as with the Comet toolbox.
+* Many features are not yet tested, so there will be bugs (the question is just how many). A comprehensive testing suite and documentation will be added in the near future
+* The GUI still has many bugs, so using the scripting API is recommended for now
+
 
 ### Installation
-
-**Temporary note**: Comet requires the pydfc package for its state-based methods. As pydfc is currently not available on PyPI, you need to install it first by following the steps [here](https://github.com/neurodatascience/dFC). Please use the same Conda environment as with the Comet toolbox.
 
 Installation is possible through the Python Package Index (PyPI) with the pip or pip3 command, depending on your system:
 
@@ -41,6 +45,7 @@ If you want to explore the toolbox with example data, you can load the ```src/co
 **Scripting**
 
 If you intend to use the toolbox in a standard python script, [demo scripts](https://github.com/mibur1/dfc-multiverse/tree/main/tutorials) are provided as a starting point:
+
 * Demo script for calculating dFC: [click here](tutorials/example_dfc.ipynb)
 * Demo script for performing multiverse analysis: [click here](tutorials/example_multiverse.ipynb)
 * Demo script for the multiverse analysis as presented preprint (+ additional visualizations): [click here](tutorials/example_analysis.ipynb)
