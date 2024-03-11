@@ -229,6 +229,106 @@ def symmetrise(W, copy=True):
     
     return W
 
+def randomise(G):
+    '''
+    Randomly rewire edges of a adjacency/connectivity matrix. Based on the small_world_propensity implementation
+    which just randomizes the matrix: https://github.com/rkdan/small_world_propensity
+    '''
+    num_nodes = G.shape[0]
+    G_rand = np.zeros((num_nodes, num_nodes))
+    mask = np.triu(np.ones((num_nodes, num_nodes)), 1)
+
+    # Find the indices where mask > 0 in column-major order
+    grab_indices = np.column_stack(np.nonzero(mask.T))
+
+    # Access G with the indices
+    orig_edges = G[grab_indices[:, 0], grab_indices[:, 1]]
+    num_edges = len(orig_edges)
+    rand_index = np.random.choice(num_edges, num_edges, replace=False)
+    randomized_edges = orig_edges[rand_index]
+    edge = 0
+    for i in range(num_nodes - 1):
+        for j in range(i + 1, num_nodes):
+            G_rand[i, j] = randomized_edges[edge]
+            G_rand[j, i] = randomized_edges[edge]
+            edge += 1
+    return G_rand
+
+def regular_matrix(G, r):
+    n = G.shape[0]
+    G_upper = np.triu(G)  # Keep only the upper triangular part
+    B = np.sort(G_upper.flatten(order="F"))[::-1]  # Flatten and sort including zeros
+
+    # Calculate padding and reshape B to match the second function
+    num_els = np.ceil(len(B) / (2 * n))
+    num_zeros = int(2 * n * num_els - n * n)
+    B_extended = np.concatenate((B, np.zeros(num_zeros)))
+    B_matrix = B_extended.reshape((n, -1), order="F")
+
+    M = np.zeros((n, n))
+    for i in range(n):
+        for z in range(r):
+            a = np.random.randint(0, n)
+            # Adjust the condition for selecting a non-zero weight
+            while (B_matrix[a, z] == 0 and z != r - 1) or \
+                  (B_matrix[a, z] == 0 and z == r - 1 and np.any(B_matrix[:, r - 1] != 0)):
+                a = np.random.randint(0, n)
+
+            y_coord = (i + z + 1) % n
+            M[i, y_coord] = B_matrix[a, z]
+            M[y_coord, i] = B_matrix[a, z]
+            B_matrix[a, z] = 0  # Remove the used weight
+
+    return M
+
+def avg_shortest_path(G, include_diagonal=False, include_infinite=False):
+    '''
+    Average shortest path length calculated from the distance matrix.
+    '''
+    is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
+    if is_binary:
+        D = distance_bin(G, inv=False)
+    else:
+        D = distance_wei(G, inv=False)
+
+    if np.isinf(D).any():
+        import warnings
+        issue = "The graph is not fully connected and infinite path lenghts were set to NaN. Small world estimates might be inaccurate."
+        warnings.warn(issue)
+    if not include_diagonal:
+        np.fill_diagonal(D, np.nan)
+    if not include_infinite:
+        D[np.isinf(D)] = np.nan
+
+    Dv = D[~np.isnan(D)]
+    l = np.mean(Dv)
+    return l
+
+def transitivity(A):
+    '''Transitivity is the ratio of triangles to triplets in the network (classical version of the clustering coefficient).
+    Only for undirected matrices (binary/weighted). Adapted from the bytpy implementation: https://github.com/aestrivex/bctpy
+    '''
+    is_binary = np.all(np.logical_or(np.isclose(A, 0), np.isclose(A, 1)))
+    
+    if is_binary:
+        tri3 = np.trace(np.dot(A, np.dot(A, A)))
+        tri2 = np.sum(np.dot(A, A)) - np.trace(np.dot(A, A))
+        return tri3 / tri2
+    else:
+        K = np.sum(np.logical_not(A == 0), axis=1)
+        ws = np.cbrt(A)
+        cyc3 = np.diag(np.dot(ws, np.dot(ws, ws)))
+        return np.sum(cyc3, axis=0) / np.sum(K * (K - 1), axis=0)
+
+def clustering_onella(W):
+    K = np.where(W > 0, 1, 0).sum(axis=1)
+    W2 = W / W.max()
+    cyc3 = np.diagonal(np.linalg.matrix_power(W2 ** (1/3), 3))
+    K = np.where(cyc3 == 0, np.inf, K)
+    C = cyc3 / (K * K-1)
+
+    return C.mean()
+
 def postproc(W, diag=0, copy=True):
     '''Postprocessing of connectivity/adjacency matrix
     
@@ -392,7 +492,7 @@ def efficiency_bin(G, local=False):
     
     return E
 
-def small_worldness(G, nrand=10):
+def small_world_sigma(G, nrand=10):
     '''Small-worldness sigma for undirected networks (binary or weighted)
         
     Small worldness sigma is calculated as the ratio of the clustering coefficient and the characteristic path length 
@@ -417,73 +517,9 @@ def small_worldness(G, nrand=10):
     However, it uses a different approch for rewiring edges, so the results will differ. It automatically detects if the input 
     matrix is binary or weighted.
     '''
-    def avg_shortest_path(G, include_diagonal=False, include_infinite=False):
-        '''Average shortest path length for binary networks.
-        Uses the distance matrix to calculate the average shortest path length.
-        '''
-        is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
-        if is_binary:
-            D = distance_bin(G, inv=False)
-        else:
-            D = distance_wei(G, inv=False)
-
-        if np.isinf(D).any():
-            import warnings
-            issue = "The graph is not fully connected and infinite path lenghts were set to NaN. Small worldness estimates might be inaccurate."
-            warnings.warn(issue)
-        if not include_diagonal:
-            np.fill_diagonal(D, np.nan)
-        if not include_infinite:
-            D[np.isinf(D)] = np.nan
-
-        Dv = D[~np.isnan(D)]
-        l = np.mean(Dv)
-        return l
-
-    def transitivity(A):
-        '''Transitivity is the ratio of triangles to triplets in the network (classical version of the clustering coefficient).
-        Only for undirected matrices (binary/weighted). Adapted from the bytpy implementation: https://github.com/aestrivex/bctpy
-        '''
-        is_binary = np.all(np.logical_or(np.isclose(A, 0), np.isclose(A, 1)))
-        
-        if is_binary:
-            tri3 = np.trace(np.dot(A, np.dot(A, A)))
-            tri2 = np.sum(np.dot(A, A)) - np.trace(np.dot(A, A))
-            return tri3 / tri2
-        else:
-            K = np.sum(np.logical_not(A == 0), axis=1)
-            ws = np.cbrt(A)
-            cyc3 = np.diag(np.dot(ws, np.dot(ws, ws)))
-            return np.sum(cyc3, axis=0) / np.sum(K * (K - 1), axis=0)
-
-    def randomize_matrix(G):
-        '''
-        Randomly rewire edges of a adjacency/connectivity matrix. Based on the small_world_propensity implementation
-        which just randomizes the matrix: https://github.com/rkdan/small_world_propensity
-        '''
-        num_nodes = G.shape[0]
-        G_rand = np.zeros((num_nodes, num_nodes))
-        mask = np.triu(np.ones((num_nodes, num_nodes)), 1)
-
-        # Find the indices where mask > 0 in column-major order
-        grab_indices = np.column_stack(np.nonzero(mask.T))
-
-        # Access G with the indices
-        orig_edges = G[grab_indices[:, 0], grab_indices[:, 1]]
-        num_edges = len(orig_edges)
-        rand_index = np.random.choice(num_edges, num_edges, replace=False)
-        randomized_edges = orig_edges[rand_index]
-        edge = 0
-        for i in range(num_nodes - 1):
-            for j in range(i + 1, num_nodes):
-                G_rand[i, j] = randomized_edges[edge]
-                G_rand[j, i] = randomized_edges[edge]
-                edge += 1
-        return G_rand
-
     randMetrics = {"C": [], "L": []}
     for _ in range(nrand):
-        Gr = randomize_matrix(G)
+        Gr = randomise(G)
         randMetrics["C"].append(transitivity(Gr))
         randMetrics["L"].append(avg_shortest_path(Gr))
 
@@ -494,6 +530,62 @@ def small_worldness(G, nrand=10):
 
     sigma = (C / Cr) / (L / Lr)
     return sigma
+
+def small_world_propensity(G):
+    assert np.allclose(G, G.T), "Error: Matrix is not symmetrical"
+    G = G / np.max(G)
+    n = G.shape[0]  # Number of nodes
+
+    # Compute the average degree of the unweighted network (approximate radius)
+    num_connections = np.count_nonzero(G)
+    avg_deg_unw = num_connections / n
+    avg_rad_unw = avg_deg_unw / 2
+    avg_rad_eff = np.ceil(avg_rad_unw).astype(int)
+    # Compute the regular and random matrix for the network
+    G_reg = regular_matrix(G, avg_rad_eff)
+    G_rand = randomise(G)
+
+    # Path length calculations for the network
+    reg_path = avg_shortest_path(G_reg)
+    rand_path = avg_shortest_path(G_rand)
+    net_path = avg_shortest_path(G)
+
+    # Compute the normalized difference in path lengths
+    A = max(net_path - rand_path, 0)  # Ensure A is non-negative
+    diff_path = A / (reg_path - rand_path) if (reg_path != float('inf') and rand_path != float('inf') and net_path != float('inf')) else 1
+    diff_path = min(diff_path, 1)  # Ensure diff_path does not exceed 1
+
+    # Compute all clustering calculations for the network
+    reg_clus = clustering_onella(G_reg)
+    rand_clus = clustering_onella(G_rand)
+    net_clus = clustering_onella(G)
+
+    B = max(reg_clus - net_clus, 0)
+    diff_clus = B / (reg_clus - rand_clus) if (not np.isnan(reg_clus) and not np.isnan(rand_clus) and not np.isnan(net_clus)) else 1
+    diff_clus = min(diff_clus, 1)
+
+    # Assuming diff_path is calculated elsewhere
+    SWP = 1 - (np.sqrt(diff_clus**2 + diff_path**2) / np.sqrt(2))
+    delta_C = diff_clus
+    delta_L = diff_path
+
+    alpha = np.arctan(delta_L / delta_C)
+    delta = (4 * alpha / np.pi) - 1
+
+    print("Comet  :",
+          "C", round(net_clus, 3), 
+          "L", round(net_path, 3),
+          "regC", round(reg_clus, 3),
+          "rngC", round(rand_clus, 3),
+          "regL", round(reg_path, 3),
+          "rngL", round(rand_path, 3),
+          "ΔC", round(delta_C, 3),
+          "ΔL", round(delta_L, 3),
+          "α", round(alpha, 3),
+          "δ", round(delta, 3),
+          "SWP", round(SWP, 3))
+
+    return SWP, delta_C, delta_L
 
 @jit(nopython=True)
 def matching_ind_und(G):
