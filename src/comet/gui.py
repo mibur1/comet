@@ -808,8 +808,8 @@ class App(QMainWindow):
         self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.ts_data.shape}")
         self.time_series_textbox.setText(self.file_name)
 
-    # Handles the result of the worker thread
     def handleResult(self, result):
+        # Handles the result of the worker thread
         self.dfc_data = result
 
         # Update the sliders and text
@@ -827,8 +827,8 @@ class App(QMainWindow):
         self.updateDistribution()
         self.plotTimeSeries()
 
-    # Handles errors in the worker thread
     def handleError(self, error):
+        # Handles errors in the worker thread
         print(f"Error occurred: {error}")
 
     def onCalculateConnectivity(self):
