@@ -542,7 +542,7 @@ class App(QMainWindow):
             'CONT Sliding Window', 'CONT Jackknife Correlation', 'CONT Dynamic Conditional Correlation', 
             'CONT Flexible Least Squares', 'CONT Spatial Distance', 'CONT Multiplication of Temporal Derivatives', 
             'CONT Phase Synchronization', 'CONT Leading Eigenvector Dynamics', 'CONT Wavelet Coherence', 
-            'CONT Sliding Window (pydfc)', 'CONT Time-frequency (pydfc)'
+            'CONT Sliding Window (pydfc)', 'CONT Time-frequency (pydfc)', 'CONT Edge-centric Connectivity'
         ]
 
         state_based_classes = [

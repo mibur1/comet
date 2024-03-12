@@ -726,6 +726,29 @@ class DCC(ConnectivityMethod):
         #return H, R, Theta, X
         return R
 
+class Edge_centric_connectivity(ConnectivityMethod):
+    name = "CONT Edge-centric Connectivity"
+    options = {}
+
+    def __init__(self, time_series, standardizeData=True, diagonal=0, standardize=False, fisher_z=False, tril=False):
+        super().__init__(time_series, diagonal, standardize, fisher_z, tril)
+        self.standardizeData = standardizeData
+    
+    def connectivity(self):
+        
+        z = zscore(self.time_series, axis=0, ddof=1) if self.standardizeData else self.time_series
+        u, v = np.triu_indices(self.time_series.shape[1], k=1)
+        a = np.multiply(z[:, u], z[:, v]) # edge time series
+ 
+        b = a.T @ a # inner product
+        c = np.sqrt(np.diag(b)) # Square root of the diagonal elements (variance) to normalize
+        d = np.outer(c, c) ## Create the normalization matrix
+        dfc = b / d # Element-wise division to get the correlation matrix
+        
+        dfc = self.postproc(dfc)
+
+        return dfc, (a, u, v)
+    
 '''
 State based dFC methods. Basically wrapper functions to bring methods from https://github.com/neurodatascience/dFC/ into the Comet framework
 '''
