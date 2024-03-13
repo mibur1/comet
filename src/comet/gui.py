@@ -17,6 +17,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
+import matplotlib.gridspec as gridspec
 
 from . import methods
 import pydfc
@@ -61,6 +62,7 @@ class App(QMainWindow):
         self.ts_data = None
         self.dfc_data = None
         self.state_tc = None
+        self.edge_ts = None
         self.init_method = init_method
         self.dfc_data_dict = {}
         self.selected_class_name = None
@@ -913,14 +915,20 @@ class App(QMainWindow):
                 if isinstance(result, tuple):
                     self.dfc_data, _ = result
                     self.state_tc = None
+                    self.edge_ts = result[1][0] if len(result[1]) > 0 else None
+                    print(self.edge_ts.shape)
+
                 # Result is DFC object (pydfc methods)
                 elif isinstance(result, pydfc.dfc.DFC):
                     self.dfc_data = np.transpose(result.get_dFC_mat(), (1, 2, 0))
                     self.state_tc = result.state_TC()
+                    self.edge_ts = None
+                
                 # Only a single matrix is returned (most cases)
                 else:
                     self.dfc_data = result
                     self.state_tc = None
+                    self.edge_ts = None
                 
                 # Store in memory if checkbox is checked
                 if keep_in_memory:
@@ -991,8 +999,7 @@ class App(QMainWindow):
         row = self.rowSelector.value()
         col = self.colSelector.value()
 
-        if self.dfc_data is not None and row < self.dfc_data.shape[0] and col < self.dfc_data.shape[1]:
-            
+        if self.dfc_data is not None and row < self.dfc_data.shape[0] and col < self.dfc_data.shape[1] and self.edge_ts is None:    
             self.timeSeriesFigure.clear()
             ax = self.timeSeriesFigure.add_subplot(111)
 
@@ -1009,6 +1016,28 @@ class App(QMainWindow):
             
             ax.plot(time_series)
             self.timeSeriesCanvas.draw()
+        
+        elif self.edge_ts is not None:
+            self.timeSeriesFigure.clear()
+            gs = gridspec.GridSpec(4, 1, self.timeSeriesFigure) # GridSpec with 4 rows and 1 column
+
+            # Add the first subplot for the edge time series to occupy the first 2 rows
+            ax1 = self.timeSeriesFigure.add_subplot(gs[:2, 0])
+            ax1.imshow(self.edge_ts.T, cmap='coolwarm', aspect=10)
+            ax1.set_title("Edge time series")
+            ax1.set_xlabel("Time (s)")
+            ax1.set_ylabel("Edges")
+
+            # The second subplot for the line plot of mean edge values occupies the 4th row
+            ax2 = self.timeSeriesFigure.add_subplot(gs[3, 0])
+            mean_edge_values = np.mean(self.edge_ts.T, axis=0)
+            ax2.plot(mean_edge_values)
+            ax2.set_xlim(0, len(mean_edge_values) - 1)
+            ax2.set_title("Mean Edge Value Over Time")
+            ax2.set_xlabel("Time (s)")
+            ax2.set_ylabel("Mean Edge Value")
+            
+            self.timeSeriesFigure.canvas.draw()
         
         else:
             # Clear the plot if the data is not available
