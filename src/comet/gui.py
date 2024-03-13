@@ -916,7 +916,6 @@ class App(QMainWindow):
                     self.dfc_data, _ = result
                     self.state_tc = None
                     self.edge_ts = result[1][0] if len(result[1]) > 0 else None
-                    print(self.edge_ts.shape)
 
                 # Result is DFC object (pydfc methods)
                 elif isinstance(result, pydfc.dfc.DFC):
@@ -1023,7 +1022,7 @@ class App(QMainWindow):
 
             # Add the first subplot for the edge time series to occupy the first 2 rows
             ax1 = self.timeSeriesFigure.add_subplot(gs[:2, 0])
-            ax1.imshow(self.edge_ts.T, cmap='coolwarm', aspect=10)
+            ax1.imshow(self.edge_ts.T, cmap='coolwarm')
             ax1.set_title("Edge time series")
             ax1.set_xlabel("Time (s)")
             ax1.set_ylabel("Edges")
