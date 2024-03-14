@@ -63,6 +63,7 @@ class App(QMainWindow):
         self.dfc_data = None
         self.state_tc = None
         self.edge_ts = None
+        self.abortFlag = False
         self.init_method = init_method
         self.dfc_data_dict = {}
         self.selected_class_name = None
@@ -342,6 +343,8 @@ class App(QMainWindow):
 
         # Set checkboxes to default values
         self.continuousCheckBox.setChecked(True)
+        self.stateBasedCheckBox.setChecked(True)
+        self.staticCheckBox.setChecked(True)
 
     def init_from_calculated_data(self):
         # Make sure both the dFC data and the method object are provided
@@ -639,6 +642,7 @@ class App(QMainWindow):
                     if widget is not None:
                         widget.setVisible(False)
             else:
+                self.slider.show()
                 position_text = f"Use the slider to zoom in and scroll through the time series"
                 
                 # Enable brain area selector widgets
@@ -648,7 +652,7 @@ class App(QMainWindow):
                         widget.setVisible(True)
 
             self.positionLabel.setText(position_text)
-
+            self.update()
 
     def getInfoText(self, param, dfc_method):
         if param == "windowsize":
@@ -765,19 +769,30 @@ class App(QMainWindow):
                 self.fileNameLabel.setText(f"Loaded TIME_SERIES object")
                 self.time_series_textbox.setText(self.file_name)
 
-                self.continuousCheckBox.setEnabled(False)
+                self.continuousCheckBox.setEnabled(True)
                 self.continuousCheckBox.setChecked(False)
+
                 self.stateBasedCheckBox.setEnabled(True)
                 self.stateBasedCheckBox.setChecked(True)
-                self.staticCheckBox.setEnabled(False)
+
+                self.staticCheckBox.setEnabled(True)
                 self.staticCheckBox.setChecked(False)
+
+                self.reshapeCheckbox.setEnabled(False)
             else: 
                 self.fileNameLabel.setText(f"Loaded {self.file_name} with shape {self.ts_data.shape}")
                 self.time_series_textbox.setText(self.file_name)
 
                 self.continuousCheckBox.setEnabled(True)
-                self.stateBasedCheckBox.setEnabled(True)
+                self.continuousCheckBox.setChecked(True)
+
+                self.stateBasedCheckBox.setEnabled(False)
+                self.stateBasedCheckBox.setChecked(False)
+
                 self.staticCheckBox.setEnabled(True)
+                self.staticCheckBox.setChecked(True)
+      
+                self.reshapeCheckbox.setEnabled(True)
 
             # Show transpose textbox
             self.reshapeCheckbox.show()
@@ -835,6 +850,11 @@ class App(QMainWindow):
         # Handles the result of the worker thread
         self.dfc_data = result
 
+        #if self.abortFlag:
+        #    print("Calculation was aborted, no results will be shown.")
+        #    self.abortFlag = False
+        #    return
+
         # Update the sliders and text
         if self.dfc_data is not None:
             self.calculatingLabel.setText(f"Calculated {self.selected_class_name} with shape {self.dfc_data.shape}")
@@ -849,6 +869,7 @@ class App(QMainWindow):
         self.plot_dfc()
         self.updateDistribution()
         self.plotTimeSeries()
+        self.calculateButton.setEnabled(True)
 
     def handleError(self, error):
         # Handles errors in the worker thread
@@ -915,6 +936,17 @@ class App(QMainWindow):
         self.workerThread.started.connect(self.worker.run)
         self.workerThread.start()
         self.calculatingLabel.setText(f"Calculating {self.methodComboBox.currentText()}, please wait...")
+        self.calculateButton.setEnabled(False)
+        #self.calculateButton.setText("Cancel Calculation")
+
+        #if self.calculateButton.text() == "Calculate Connectivity": 
+        #    ...
+        #else:
+        #    self.abortFlag = True
+        #    print("Calculation will be aborted at the next opportunity...")
+        #    self.calculateButton.setText("Calculate Connectivity")
+        #    self.calculatingLabel.setText(f"No data calculated yet.")
+        #    self.plot_logo()
 
     def manageMemory(self, parameters):
         keep_in_memory = self.keepInMemoryCheckbox.isChecked()
@@ -1030,6 +1062,7 @@ class App(QMainWindow):
                 self.rowSelector.setDisabled(True)
                 self.colSelector.setDisabled(True)
                 ax.set_title(f"State time course")
+                ax.set_xlabel("Time (TRs)")
             else:
                 time_series = self.dfc_data[row, col, :] if len(self.dfc_data.shape) == 3 else self.dfc_data[row, col]
                 ax.set_title(f"dFC time course between region {row} and {col}.")
@@ -1045,7 +1078,7 @@ class App(QMainWindow):
             ax1 = self.timeSeriesFigure.add_subplot(gs[:1, 0])
             ax1.imshow(self.edge_ts.T, cmap='coolwarm', aspect='auto')
             ax1.set_title("Edge time series")
-            ax1.set_xlabel("Time (s)")
+            ax1.set_xlabel("Time (TRs)")
             ax1.set_ylabel("Edges")
 
             # The second subplot occupies the 3rd row
@@ -1054,7 +1087,7 @@ class App(QMainWindow):
             ax2.plot(mean_edge_values)
             ax2.set_xlim(0, len(mean_edge_values) - 1)
             ax2.set_title("Mean time series")
-            ax2.set_xlabel("Time (s)")
+            ax2.set_xlabel("Time (TRs)")
             ax2.set_ylabel("Mean Edge Value")
             
             self.timeSeriesFigure.canvas.draw()
