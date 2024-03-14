@@ -50,12 +50,6 @@ If you intend to use the toolbox in a standard python script, [demo scripts](htt
 * Demo script for performing multiverse analysis: [click here](tutorials/example_multiverse.ipynb)
 * Demo script for the multiverse analysis as presented preprint (+ additional visualizations): [click here](tutorials/example_analysis.ipynb)
 
-
-### Outlook
-The toolbox is under active development, with various features being underway, e.g.:
-
-* Addition of state-based dFC methods
-* Multiverse analysis within the GUI
-* Visualization of results
+### Feedback and contribution
 
 If you have any wishes, suggestions, feedback, or encounter any bugs, please don't hesitate to contact me via email or create an issue [here](https://github.com/mibur1/dfc-multiverse/issues).
