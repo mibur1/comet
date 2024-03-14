@@ -8,6 +8,9 @@
 * Many features are not yet tested, so there will be bugs (the question is just how many). A comprehensive testing suite and documentation will be added in the near future
 * The GUI still has many bugs, so using the scripting API is recommended for now
 
+### Current Features
+
+![Features](src/comet/resources/img/content.png)
 
 ### Installation
 

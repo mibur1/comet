@@ -769,13 +769,13 @@ class App(QMainWindow):
                 self.fileNameLabel.setText(f"Loaded TIME_SERIES object")
                 self.time_series_textbox.setText(self.file_name)
 
-                self.continuousCheckBox.setEnabled(True)
+                self.continuousCheckBox.setEnabled(False)
                 self.continuousCheckBox.setChecked(False)
 
                 self.stateBasedCheckBox.setEnabled(True)
                 self.stateBasedCheckBox.setChecked(True)
 
-                self.staticCheckBox.setEnabled(True)
+                self.staticCheckBox.setEnabled(False)
                 self.staticCheckBox.setChecked(False)
 
                 self.reshapeCheckbox.setEnabled(False)
