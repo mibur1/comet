@@ -321,13 +321,13 @@ class App(QMainWindow):
         self.colSelector.setMaximum(0)
         self.colSelector.valueChanged.connect(self.plotTimeSeries)
 
-        timeSeriesSelectorLayout = QHBoxLayout()
-        timeSeriesSelectorLayout.addWidget(QLabel("Brain region 1 (row):"))
-        timeSeriesSelectorLayout.addWidget(self.rowSelector)
-        timeSeriesSelectorLayout.addWidget(QLabel("Brain region 2 (column):"))
-        timeSeriesSelectorLayout.addWidget(self.colSelector)
+        self.timeSeriesSelectorLayout = QHBoxLayout()
+        self.timeSeriesSelectorLayout.addWidget(QLabel("Brain region 1 (row):"))
+        self.timeSeriesSelectorLayout.addWidget(self.rowSelector)
+        self.timeSeriesSelectorLayout.addWidget(QLabel("Brain region 2 (column):"))
+        self.timeSeriesSelectorLayout.addWidget(self.colSelector)
 
-        timeSeriesLayout.addLayout(timeSeriesSelectorLayout)
+        timeSeriesLayout.addLayout(self.timeSeriesSelectorLayout)
 
         #####################
         #  Combine layouts  #
@@ -606,6 +606,7 @@ class App(QMainWindow):
 
     def onTabChanged(self, index):
         if index == 0 or index == 2:
+            self.slider.show()
             self.slider.setValue(self.currentSliderValue)
             self.backLargeButton.show()
             self.backButton.show()
@@ -617,6 +618,7 @@ class App(QMainWindow):
                 position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data.shape) == 3 else " static "
             else:
                 position_text = "t = 0 / 0"
+
             self.positionLabel.setText(position_text)
 
         elif index == 1:
@@ -625,9 +627,28 @@ class App(QMainWindow):
             self.forwardButton.hide()
             self.forwardLargeButton.hide()
             self.slider.setValue(0)
+            
+            # If we have nothing to scroll trhough, hide some GUI elements
+            if len(self.dfc_data.shape) == 2 or self.edge_ts is not None:
+                position_text = ""
+                self.slider.hide()
+                
+                # Disable brain area selector widgets
+                for i in range(self.timeSeriesSelectorLayout.count()):    
+                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
+                    if widget is not None:
+                        widget.setVisible(False)
+            else:
+                position_text = f"Use the slider to zoom in and scroll through the time series"
+                
+                # Enable brain area selector widgets
+                for i in range(self.timeSeriesSelectorLayout.count()):    
+                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
+                    if widget is not None:
+                        widget.setVisible(True)
 
-            position_text = f"Use the slider to zoom in and scroll through the time series"
             self.positionLabel.setText(position_text)
+
 
     def getInfoText(self, param, dfc_method):
         if param == "windowsize":
@@ -1018,21 +1039,21 @@ class App(QMainWindow):
         
         elif self.edge_ts is not None:
             self.timeSeriesFigure.clear()
-            gs = gridspec.GridSpec(4, 1, self.timeSeriesFigure) # GridSpec with 4 rows and 1 column
+            gs = gridspec.GridSpec(3, 1, self.timeSeriesFigure, height_ratios=[2, 0.5, 1]) # GridSpec with 3 rows and 1 column
 
-            # Add the first subplot for the edge time series to occupy the first 2 rows
-            ax1 = self.timeSeriesFigure.add_subplot(gs[:2, 0])
-            ax1.imshow(self.edge_ts.T, cmap='coolwarm')
+            # The first subplot occupies the 1st row
+            ax1 = self.timeSeriesFigure.add_subplot(gs[:1, 0])
+            ax1.imshow(self.edge_ts.T, cmap='coolwarm', aspect='auto')
             ax1.set_title("Edge time series")
             ax1.set_xlabel("Time (s)")
             ax1.set_ylabel("Edges")
 
-            # The second subplot for the line plot of mean edge values occupies the 4th row
-            ax2 = self.timeSeriesFigure.add_subplot(gs[3, 0])
+            # The second subplot occupies the 3rd row
+            ax2 = self.timeSeriesFigure.add_subplot(gs[2, 0])
             mean_edge_values = np.mean(self.edge_ts.T, axis=0)
             ax2.plot(mean_edge_values)
             ax2.set_xlim(0, len(mean_edge_values) - 1)
-            ax2.set_title("Mean Edge Value Over Time")
+            ax2.set_title("Mean time series")
             ax2.set_xlabel("Time (s)")
             ax2.set_ylabel("Mean Edge Value")
             
