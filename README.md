@@ -52,4 +52,4 @@ If you intend to use the toolbox in a standard python script, [demo scripts](htt
 
 ### Feedback and contribution
 
-If you have any wishes, suggestions, feedback, or encounter any bugs, please don't hesitate to contact me via email or create an issue [here](https://github.com/mibur1/dfc-multiverse/issues).
+If you have any wishes, suggestions, feedback, or encounter any bugs, please don't hesitate to contact me via email or create an issue [here](https://github.com/mibur1/dfc-multiverse/issues). Contributions or future collaboration are also welcome.
