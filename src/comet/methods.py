@@ -702,8 +702,7 @@ class DCC(ConnectivityMethod):
         x0 = (0.25, 0.25)
 
         for attempt in range(5):
-            try:
-                print(x0)   
+            try: 
                 res = minimize(lambda x: self._LcOriginal(epsilon, x), x0, constraints=constraints, bounds=bounds)
                 break
             except:
@@ -860,7 +859,6 @@ class Cap(BaseDFCMethod):
         self.sub_id = self.params['subjects'][self.params['subject']]
 
     def connectivity(self):
-        print("Subject:", self.sub_id)
         measure = CAP(**self.params)
         measure.estimate_FCS(time_series=self.time_series)
         dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
@@ -1018,7 +1016,6 @@ class Hmm_Disc(BaseDFCMethod):
 
     def connectivity(self):
         measure = HMM_DISC(**self.params)
-        print(self.params)
         measure.estimate_FCS(time_series=self.time_series)
         dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
         return dFC

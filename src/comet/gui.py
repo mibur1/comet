@@ -975,7 +975,6 @@ class App(QMainWindow):
                     print("Selected class not found in connectivity module")
                     return None
 
-                print(parameters)
                 connectivity_calculator = selected_class(**parameters)
                 result = connectivity_calculator.connectivity()
                 
