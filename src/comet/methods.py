@@ -831,7 +831,7 @@ class Cap(BaseDFCMethod):
     '''
     Co-activation patterns
     '''
-    def __init__(self, time_series, **params):
+    def __init__(self, time_series, subject=0, n_states=5, n_subj_clusters=5, normalization=True, **params):
         self.time_series = time_series
         self.logs_ = ''
         self.FCS_ = []
@@ -851,16 +851,24 @@ class Cap(BaseDFCMethod):
 
         self.params['measure_name'] = 'CAP'
         self.params['is_state_based'] = True
+        self.params['subject'] = subject
+        self.params['n_subj_clstrs'] = n_subj_clusters
+        self.params['n_states'] = n_states
+        self.params['normalization'] = normalization
 
-    def connectivity(self, subj_id=None):
+        self.params['subjects'] = list(self.time_series.data_dict.keys())
+        self.sub_id = self.params['subjects'][self.params['subject']]
+
+    def connectivity(self):
+        print("Subject:", self.sub_id)
         measure = CAP(**self.params)
         measure.estimate_FCS(time_series=self.time_series)
-        dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=subj_id))
+        dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
         return dFC
     
 class Sliding_Window_Clustr(BaseDFCMethod):
     name = "STATE Sliding Window Clustering"
-    options = {""}
+    options = {"clstr_distance": ["euclidean"]}
 
     '''
     Sliding Window Clustering
@@ -902,14 +910,13 @@ class Sliding_Window_Clustr(BaseDFCMethod):
         self.params['n_states'] = n_states
         self.params['normalization'] = normalization
 
-        self.params['subjects'] = list(time_series.data_dict.keys())
+        self.params['subjects'] = list(self.time_series.data_dict.keys())
         self.sub_id = self.params['subjects'][self.params['subject']]
-        print(self.sub_id)
 
         assert self.params['clstr_base_measure'] in self.base_methods_name_lst, \
             "Base method not recognized."
 
-    def connectivity(self, subj_id=None):
+    def connectivity(self):
         measure = SLIDING_WINDOW_CLUSTR(**self.params)
         measure.estimate_FCS(time_series=self.time_series)
         dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
@@ -922,7 +929,7 @@ class Hmm_Cont(BaseDFCMethod):
     '''
     Continuous Hidden Markov Model
     '''
-    def __init__(self, time_series, **params):
+    def __init__(self, time_series, subject=0, n_states=5, iterations=20, normalization=True, **params):
         self.time_series = time_series
 
         self.logs_ = ''
@@ -944,21 +951,28 @@ class Hmm_Cont(BaseDFCMethod):
 
         self.params['measure_name'] = 'ContinuousHMM'
         self.params['is_state_based'] = True
+        self.params['subject'] = subject
+        self.params['n_states'] = n_states
+        self.params['hmm_iter'] = iterations
+        self.params['normalization'] = normalization
 
-    def connectivity(self, subj_id=None):
+        self.params['subjects'] = list(self.time_series.data_dict.keys())
+        self.sub_id = self.params['subjects'][self.params['subject']]
+
+    def connectivity(self):
         measure = HMM_CONT(**self.params)
         measure.estimate_FCS(time_series=self.time_series)
-        dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=subj_id))
+        dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
         return dFC
     
 class Hmm_Disc(BaseDFCMethod):
     name = "STATE Discrete Hidden Markov Model"
-    options = {}
+    options = {"clstr_base_measure": ["SlidingWindow"], "sw_method": ["pear_corr"]}
 
     '''
-    Sliding Window Clustering
+    Discrete Hidden Markov Model
     '''
-    def __init__(self, time_series, **params):
+    def __init__(self, time_series, subject=0, windowsize=44, n_overlap=0.5, clstr_base_measure="SlidingWindow", sw_method="pear_corr", tapered_window=True, iterations= 20, dhmm_obs_state_ratio=16/24, n_states=5, n_subj_clusters=5, normalization=True, **params):
         self.time_series = time_series
 
         self.logs_ = ''
@@ -984,14 +998,29 @@ class Hmm_Disc(BaseDFCMethod):
         
         self.params['measure_name'] = 'DiscreteHMM'
         self.params['is_state_based'] = True
+        self.params['subject'] = subject
+        self.params['W'] = windowsize
+        self.params['n_overlap'] = n_overlap
+        self.params['clstr_base_measure'] = clstr_base_measure
+        self.params['sw_method'] = sw_method
+        self.params['tapered_window'] = tapered_window
+        self.params['hmm_iter'] = iterations
+        self.params['dhmm_obs_state_ratio'] = dhmm_obs_state_ratio
+        self.params['n_subj_clstrs'] = n_subj_clusters
+        self.params['n_states'] = n_states
+        self.params['normalization'] = normalization
+
+        self.params['subjects'] = list(self.time_series.data_dict.keys())
+        self.sub_id = self.params['subjects'][self.params['subject']]
 
         assert self.params['clstr_base_measure'] in self.base_methods_name_lst, \
             "Base measure not recognized."
 
-    def connectivity(self, subj_id=None):
+    def connectivity(self):
         measure = HMM_DISC(**self.params)
+        print(self.params)
         measure.estimate_FCS(time_series=self.time_series)
-        dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=subj_id))
+        dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
         return dFC
     
 class Windowless(BaseDFCMethod):
@@ -1001,7 +1030,7 @@ class Windowless(BaseDFCMethod):
     '''
     Windowless
     '''
-    def __init__(self, time_series, **params):
+    def __init__(self, time_series, subject=0, n_states=5, n_subj_clusters=5, normalization=True, **params):
         self.time_series = time_series
 
         self.logs_ = ''
@@ -1023,11 +1052,18 @@ class Windowless(BaseDFCMethod):
 
         self.params['measure_name'] = 'Windowless'
         self.params['is_state_based'] = True
+        self.params['subject'] = subject
+        self.params['n_subj_clstrs'] = n_subj_clusters
+        self.params['n_states'] = n_states
+        self.params['normalization'] = normalization
 
-    def connectivity(self, subj_id=None):
+        self.params['subjects'] = list(self.time_series.data_dict.keys())
+        self.sub_id = self.params['subjects'][self.params['subject']]
+
+    def connectivity(self):
         measure = WINDOWLESS(**self.params)
         measure.estimate_FCS(time_series=self.time_series)
-        dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=subj_id))
+        dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
         return dFC
 
 '''
@@ -1087,3 +1123,4 @@ class Static_Mutual_Info(ConnectivityMethod):
 
         fc = self.postproc(fc)
         return fc
+    

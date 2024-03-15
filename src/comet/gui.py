@@ -70,43 +70,47 @@ class App(QMainWindow):
         self.currentSliderValue = 0
         self.file_name = ""
         self.param_names = {
-            "self":              "self", 
-            "time_series":       "Time series",
-            "windowsize":        "Window size",
-            "shape":             "Window shape",
-            "std":               "Window sigma",
-            "diagonal":          "Main diagonal",
-            "fisher_z":          "Fisher z-transform",
-            "num_cores":         "Number of CPU cores",
-            "standardizeData":   "Z-score data",
-            "mu":                "Weighting parameter μ",
-            "flip_eigenvectors": "Flip eigenvectors",
-            "crp":               "Cosine of rel. phase",
-            "pcoh":              "Phase coherence",
-            "teneto":            "Teneto implementation",
-            "dist":              "Distance function",
-            "weighted":          "Weighted average",
-            "TR":                "Repetition Time",
-            "fmin":              "Minimum frequency",
-            "fmax":              "Maximum freqency",
-            "n_scales":          "Number of scales",
-            "drop_scales":       "Drop n scales",
-            "drop_timepoints":   "Drop n timepoints",
-            "standardize":       "Z-score connectivity",
-            "tril":              "Extract lower triangle",
-            "method":            "Specific method",
-            
-            "params":            "Various parameters",
-            "coi_correction":    "COI correction",
-            "clstr_distance":    "Distance metric",    
-            "num_bins":          "Number of bins",
-            "n_overlap":         "Window overlap",
-            "tapered_window":    "Tapered window",
-            "n_states":          "Number of states",
-            "n_subj_clusters":   "Number of subjects",
-            "normalization":     "Normalization",
-            "clstr_distance":    "Distance measure",
-            "subject":          "Subject",
+            "self":                 "self", 
+            "time_series":          "Time series",
+            "windowsize":           "Window size",
+            "shape":                "Window shape",
+            "std":                  "Window sigma",
+            "diagonal":             "Main diagonal",
+            "fisher_z":             "Fisher z-transform",
+            "num_cores":            "Number of CPU cores",
+            "standardizeData":      "Z-score data",
+            "mu":                   "Weighting parameter μ",
+            "flip_eigenvectors":    "Flip eigenvectors",
+            "crp":                  "Cosine of rel. phase",
+            "pcoh":                 "Phase coherence",
+            "teneto":               "Teneto implementation",
+            "dist":                 "Distance function",
+            "weighted":             "Weighted average",
+            "TR":                   "Repetition Time",
+            "fmin":                 "Minimum frequency",
+            "fmax":                 "Maximum freqency",
+            "n_scales":             "Number of scales",
+            "drop_scales":          "Drop n scales",
+            "drop_timepoints":      "Drop n timepoints",
+            "standardize":          "Z-score connectivity",
+            "tril":                 "Extract lower triangle",
+            "method":               "Specific method",
+               
+            "params":               "Various parameters",
+            "coi_correction":       "COI correction",
+            "clstr_distance":       "Distance metric",    
+            "num_bins":             "Number of bins",
+            "n_overlap":            "Window overlap",
+            "tapered_window":       "Tapered window",
+            "n_states":             "Number of states",
+            "n_subj_clusters":      "Number of subjects",
+            "normalization":        "Normalization",
+            "clstr_distance":       "Distance measure",
+            "subject":              "Subject",
+            "clstr_base_measure":   "Base measure",
+            "iterations":            "Iterations",
+            "sw_method":            "Sliding window",
+            "dhmm_obs_state_ratio": "State ratio",
 
         }
         self.reverse_param_names = {v: k for k, v in self.param_names.items()}
@@ -715,7 +719,16 @@ class App(QMainWindow):
             text = "Distance measure"
         elif param == "subject":
             text = "Subject"
-        
+        elif param == "Base measure":
+            text = "Base measure for the clustering"
+        elif param == "Iterations":
+            text = "Number of iterations"
+        elif param == "Sliding window":
+            text = "Sliding window method"
+        elif param == "State ratio":
+            text = "Observation/state ratio for the DHMM"
+        else:
+            text = f"TODO"
         return text
 
     def showInfoPopup(self, param_name):
@@ -962,8 +975,10 @@ class App(QMainWindow):
                     print("Selected class not found in connectivity module")
                     return None
 
+                print(parameters)
                 connectivity_calculator = selected_class(**parameters)
-                result = connectivity_calculator.connectivity() 
+                result = connectivity_calculator.connectivity()
+                
                 # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
                 if isinstance(result, tuple):
                     self.dfc_data, _ = result
