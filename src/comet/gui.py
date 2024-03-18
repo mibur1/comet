@@ -62,6 +62,7 @@ class App(QMainWindow):
         self.ts_data = None
         self.dfc_data = None
         self.state_tc = None
+        self.dfc_states = None
         self.edge_ts = None
         self.abortFlag = False
         self.init_method = init_method
@@ -276,6 +277,12 @@ class App(QMainWindow):
         self.distributionFigure.patch.set_facecolor('#E0E0E0')
         distributionLayout.addWidget(self.distributionCanvas)
         self.tabWidget.addTab(distributionTab, "Distribution")
+
+        # Tab 4: Graph analysis
+        graphTab = QWidget()
+        graphLayout = QVBoxLayout()
+        graphTab.setLayout(graphLayout)
+        self.tabWidget.addTab(graphTab, "Graph analysis")
 
         # Method for doing things if the tab is changed
         self.tabWidget.currentChanged.connect(self.onTabChanged)
@@ -987,6 +994,7 @@ class App(QMainWindow):
                 # Result is DFC object (pydfc methods)
                 elif isinstance(result, pydfc.dfc.DFC):
                     self.dfc_data = np.transpose(result.get_dFC_mat(), (1, 2, 0))
+                    self.dfc_states = result.FCSs
                     self.state_tc = result.state_TC()
                     self.edge_ts = None
                 
@@ -1064,26 +1072,47 @@ class App(QMainWindow):
 
         row = self.rowSelector.value()
         col = self.colSelector.value()
+        self.rowSelector.show()
+        self.colSelector.show()
 
-        if self.dfc_data is not None and row < self.dfc_data.shape[0] and col < self.dfc_data.shape[1] and self.edge_ts is None:    
+        if self.dfc_data is not None and row < self.dfc_data.shape[0] and col < self.dfc_data.shape[1] and self.edge_ts is None and self.state_tc is None:    
             self.timeSeriesFigure.clear()
             ax = self.timeSeriesFigure.add_subplot(111)
-
-            if self.state_tc is not None:
-                time_series = self.state_tc
-                self.rowSelector.setValue(1)
-                self.colSelector.setValue(0)
-                self.rowSelector.setDisabled(True)
-                self.colSelector.setDisabled(True)
-                ax.set_title(f"State time course")
-                ax.set_xlabel("Time (TRs)")
-            else:
-                time_series = self.dfc_data[row, col, :] if len(self.dfc_data.shape) == 3 else self.dfc_data[row, col]
-                ax.set_title(f"dFC time course between region {row} and {col}.")
+            time_series = self.dfc_data[row, col, :] if len(self.dfc_data.shape) == 3 else self.dfc_data[row, col]
+            ax.set_title(f"dFC time course between region {row} and {col}.")
             
             ax.plot(time_series)
             self.timeSeriesCanvas.draw()
-        
+
+        elif self.state_tc is not None:
+            self.timeSeriesFigure.clear()
+
+            time_series = self.state_tc
+            num_states = len(self.dfc_states)
+            # Setup the gridspec layout
+            gs = gridspec.GridSpec(3, num_states, self.timeSeriesFigure, height_ratios=[1, 0.5, 1])
+
+            # Hite selectors
+            self.rowSelector.hide()
+            self.colSelector.hide()
+
+            # Plotting the state time course across all columns
+            ax_time_series = self.timeSeriesFigure.add_subplot(gs[0, :])
+            ax_time_series.plot(time_series)
+            ax_time_series.set_ylabel("State")
+            ax_time_series.set_title("State time course")
+            ax_time_series.set_xlabel("Time (TRs)")
+
+            # Plot the individual states
+            for col, (state, matrix) in enumerate(self.dfc_states.items()):
+                ax_state = self.timeSeriesFigure.add_subplot(gs[2, col])
+                ax_state.imshow(matrix, cmap='coolwarm', aspect=1)
+                ax_state.set_title(f"State {col+1}")
+                ax_state.set_xticks([])
+                ax_state.set_yticks([]) 
+
+            self.timeSeriesFigure.canvas.draw()
+
         elif self.edge_ts is not None:
             self.timeSeriesFigure.clear()
             gs = gridspec.GridSpec(3, 1, self.timeSeriesFigure, height_ratios=[2, 0.5, 1]) # GridSpec with 3 rows and 1 column
