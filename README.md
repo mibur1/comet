@@ -10,7 +10,7 @@
 
 ### Current Features
 
-![Features](src/comet/resources/img/content.png)
+![Features_image](src/comet/resources/img/content.png)
 
 ### Installation
 
