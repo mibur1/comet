@@ -1,5 +1,6 @@
 import comet
 import os
+import bct
 import numpy as np
 from tqdm import tqdm
 from sklearn.svm import SVC
@@ -15,15 +16,13 @@ time = data_sim[1]   # time in seconds
 onsets = data_sim[2] # trial onsets in seconds
 labels = data_sim[3] # trial labels (connectivity state)
 
-
 ###############################################
-# 2. DFC CALCULATION (ECISION: DFC METHOD)
+# 2. DFC CALCULATION (DECISION: DFC METHOD)
 # Preprocessing. Phase-based methods require band-pass filtering, amplitude-based methods require high-pass filtering.
 ts_bp = comet.data.clean(ts_sim, confounds=None, t_r=0.72, detrend=True, standardize=False, high_pass=0.03, low_pass=0.07) # band pass (narrow-band signal for Hilbert transform)
 ts_hp = comet.data.clean(ts_sim, confounds=None, t_r=0.72, detrend=True, standardize=False, high_pass=0.01)                # high pass (for amplitude based methods)
 dfc_ts = comet.methods.PhaseSynchrony(ts_bp, **{'method': 'crp'}).connectivity() # estimate dFC
    
-
 #######################################
 # 3. SEGMENT DATA (DECISION: DELAY) 
 segments = []
@@ -59,10 +58,25 @@ index = np.asarray(index)
 features = np.asarray(features)
 behaviour = np.asarray(behaviour)
 
-
 ####################################################################
 # 4. CALCULATE GRAPH MEASURES (DECISIONS: DENSITY, BINARISATION)
-graph_results = Parallel(n_jobs=8)(delayed(comet.graph.compute_graph_measures)(t, features, index, 0.5, True) for t in tqdm(range(features.shape[0])))
+def compute_graph_measures(t, features, index, density, bin):
+    W = np.asarray(features[t, :, :]).copy()
+    W = comet.graph.handle_negative_weights(W, type="absolute")
+    W = comet.graph.threshold(W, type="density", density=density)
+    W = comet.graph.postproc(W)
+    
+    ci, q = bct.community_louvain(W)
+    participation = bct.participation_coef(W, ci, degree="undirected")
+    clustering = bct.clustering_coef_bu(W) if bin else bct.clustering_coef_wu(W)
+    efficiency = comet.graph.efficiency_bin(W, local=True) if bin else comet.graph.efficiency_wei(W, local=True)
+    return {
+        "participation": participation,
+        "clustering": clustering,
+        "efficiency": efficiency,
+        "index": index[t]
+    }
+graph_results = Parallel(n_jobs=8)(delayed(compute_graph_measures)(t, features, index, 0.5, True) for t in tqdm(range(features.shape[0])))
 
 # Unpack the results
 participation, clustering, efficiency = [], [], []
@@ -70,12 +84,6 @@ for result in graph_results:
     participation.append(result["participation"])
     clustering.append(result["clustering"])
     efficiency.append(result["efficiency"])
-
-# Save as array and make sure we have no NaNs or infs
-participation = np.nan_to_num(np.asarray(participation), nan=0.0, posinf=0.0, neginf=0.0)
-clustering = np.nan_to_num(np.asarray(clustering), nan=0.0, posinf=0.0, neginf=0.0)
-efficiency = np.nan_to_num(np.asarray(efficiency), nan=0.0, posinf=0.0, neginf=0.0)
-
 
 ##############################################
 # 5. CLASSIFICATION (DECISION: SVC KERNEL)
