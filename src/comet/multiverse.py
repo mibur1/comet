@@ -60,8 +60,11 @@ class Multiverse:
         all_universes = list(itertools.product(*values))
 
         # Remove universes that contain invalid paths
-        valid_universes = [combination for combination in all_universes if not self.check_paths(combination, invalid_paths)]
-        
+        if invalid_paths is not None:
+            valid_universes = [combination for combination in all_universes if not self.check_paths(combination, invalid_paths)]
+        else:
+            valid_universes = all_universes
+
         # Create Python scripts for each combination
         for i, combination in enumerate(valid_universes, start=1):
             context = {key: self.format_type(value) for key, value in zip(keys, combination)}
@@ -118,7 +121,6 @@ class Multiverse:
             # Check if standardized_invalid_path is a subsequence of standardized_universe_path
             iter_universe = iter(standardized_universe_path)
             if all(decision in iter_universe for decision in standardized_invalid_path):
-                print(f"Removed {standardized_universe_path} from the multiverse") 
                 return True  # Found an invalid path, return
         
         return False 
@@ -145,7 +147,7 @@ class Multiverse:
             print(multiverse_summary + "\n")
 
     # Visualize the multiverse as a network
-    def visualize(self, universe=None, cmap="Set2"):
+    def visualize(self, universe=None, cmap="Set2", node_size=1500, figsize=(8,5)):
         multiverse_summary = self.read_csv()
 
         # Function that recursively add nodes and edges excluding single-option parameters
@@ -205,7 +207,7 @@ class Multiverse:
                 edge_widths[i] = 1.0
 
         # Visualize the graph
-        plt.figure(figsize=(8, 5))
+        plt.figure(figsize=figsize)
         plt.title(f"Universe {universe}", size=14, fontweight='bold')
         pos = nx.multipartite_layout(G, subset_key="level")
         
@@ -218,12 +220,12 @@ class Multiverse:
         level_colors = {level: colors[i] for i, level in enumerate(sorted(levels))}
 
         # Draw edges first because of the node size
-        nx.draw(G, pos, with_labels=False, node_size=1490, node_color="white", arrows=True, edge_color=edge_colors, width=edge_widths)
+        nx.draw(G, pos, with_labels=False, node_size=node_size-10, node_color="white", arrows=True, edge_color=edge_colors, width=edge_widths)
 
         # Draw nodes with colors based on their level
         for level in levels:
             nodes_at_level = [node for node in G.nodes if G.nodes[node].get('level') == level]
-            nx.draw_networkx_nodes(G, pos, nodelist=nodes_at_level, node_size=1500, node_color=[level_colors[level] for _ in nodes_at_level])
+            nx.draw_networkx_nodes(G, pos, nodelist=nodes_at_level, node_size=node_size, node_color=[level_colors[level] for _ in nodes_at_level])
 
         # Draw labels
         node_labels = {node: G.nodes[node]['option'] if node != root_node else G.nodes[node]['label'] for node in G.nodes} # Use only the option as a node label
@@ -231,14 +233,24 @@ class Multiverse:
 
         # Identify and annotate the bottom-most node at each level with the decision label
         levels = set(nx.get_node_attributes(G, 'level').values())
+        
+        # Create an appropriate label offset based on the maximum level node count 
+        node_nums = []
         for level in levels:
             nodes_at_level = [node for node in G.nodes if G.nodes[node].get('level') == level]
+            node_nums.append(len(nodes_at_level))
+        label_offset = 0.04 * max(node_nums)
+        
+        # Draw the labels
+        for level in levels:
+            nodes_at_level = [node for node in G.nodes if G.nodes[node].get('level') == level]
+
             if nodes_at_level:
                 bottom_node = min(nodes_at_level, key=lambda node: pos[node][1])
                 if bottom_node != root_node and 'decision' in G.nodes[bottom_node]:
                     decision = G.nodes[bottom_node]['decision']
                     x, y = pos[bottom_node]
-                    plt.text(x, y - 0.25, decision, horizontalalignment='center', fontsize=12, fontweight='bold')
+                    plt.text(x, y-label_offset, decision, horizontalalignment='center', fontsize=12, fontweight='bold')
 
         plt.tight_layout()
         plt.show()
