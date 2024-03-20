@@ -60,7 +60,7 @@ class App(QMainWindow):
         super().__init__()
         self.title = 'Comet Dynamic Functional Connectivity Toolbox'
         self.ts_data = None
-        self.dfc_data = None
+        self.dfc_data = {}
         self.state_tc = None
         self.dfc_states = None
         self.edge_ts = None
@@ -69,6 +69,7 @@ class App(QMainWindow):
         self.dfc_data_dict = {}
         self.selected_class_name = None
         self.currentSliderValue = 0
+        self.currentTabIndex = 0
         self.file_name = ""
         self.param_names = {
             "self":                 "self", 
@@ -119,8 +120,10 @@ class App(QMainWindow):
 
         self.initUI()
         
-        self.dfc_data = init_data
-        if self.dfc_data is not None:
+        self.dfc_data['data'] = init_data
+        self.dfc_data['parameters'] = None # TODO pass parameters
+
+        if self.dfc_data['data'] is not None:
             self.init_from_calculated_data()
 
     def initUI(self):
@@ -302,7 +305,7 @@ class App(QMainWindow):
         # Creating navigation buttons
         self.backLargeButton = QPushButton("<<")
         self.backButton = QPushButton("<")
-        self.positionLabel = QLabel('t = 0 / 0')
+        self.positionLabel = QLabel('no data available')
         self.forwardButton = QPushButton(">")
         self.forwardLargeButton = QPushButton(">>")
 
@@ -385,7 +388,6 @@ class App(QMainWindow):
     def onMethodChanged(self, methodName=None):
         # Clear old variables and data
         self.clearLayout(self.parameterLayout)
-        #self.dfc_data = None
 
         if methodName == None or methodName == "Use checkboxes to get available methods":
             return
@@ -396,17 +398,19 @@ class App(QMainWindow):
         if self.init_method is not None:
             selected_class = self.init_method
 
-        # If connectivity for this method already exists we load and plot ot
+        # If connectivity for this method already exists we load and plot it
         if self.selected_class_name in self.dfc_data_dict:
             self.dfc_data = self.dfc_data_dict[self.selected_class_name]
             self.plot_dfc()
             self.updateDistribution()
-            self.calculatingLabel.setText(f"Loaded {self.selected_class_name} with shape {self.dfc_data.shape}")
+            self.plotTimeSeries()
+            self.calculatingLabel.setText(f"Loaded {self.selected_class_name} with shape {self.dfc_data['data'].shape}")
             print(f"Loaded {self.selected_class_name} from memory")
 
             # Update the slider
-            total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 0
-            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data.shape) == 3 else " static "
+            total_length = self.dfc_data['data'].shape[2] if len(self.dfc_data['data'].shape) == 3 else 0
+            #position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data['data'].shape) == 3 else " static "
+            position_text = ""
             self.positionLabel.setText(position_text)
             self.slider.setValue(self.slider.value())
         
@@ -419,7 +423,7 @@ class App(QMainWindow):
             self.distributionFigure.clear()
             self.distributionCanvas.draw()
 
-            position_text = f"t = 0 / 0"
+            position_text = f"no data available"
             self.positionLabel.setText(position_text)
             self.slider.setValue(self.slider.value())
 
@@ -620,6 +624,15 @@ class App(QMainWindow):
         return False
 
     def onTabChanged(self, index):
+        # index 0: Connectivity plot
+        # index 1: Time series plot
+        # index 2: Distribution plot
+        # index 3: Graph analysis
+
+        if self.dfc_data['data'] is None:
+            self.plot_logo()
+            return
+        
         if index == 0 or index == 2:
             self.slider.show()
             self.slider.setValue(self.currentSliderValue)
@@ -628,11 +641,11 @@ class App(QMainWindow):
             self.forwardButton.show()
             self.forwardLargeButton.show()
 
-            if self.dfc_data is not None:
-                total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 0
-                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data.shape) == 3 else " static "
+            if self.dfc_data['data'] is not None:
+                total_length = self.dfc_data['data'].shape[2] if len(self.dfc_data['data'].shape) == 3 else 0
+                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data['data'].shape) == 3 else " static "
             else:
-                position_text = "t = 0 / 0"
+                position_text = "no data available"
 
             self.positionLabel.setText(position_text)
 
@@ -641,10 +654,9 @@ class App(QMainWindow):
             self.backButton.hide()
             self.forwardButton.hide()
             self.forwardLargeButton.hide()
-            self.slider.setValue(0)
             
             # If we have nothing to scroll trhough, hide some GUI elements
-            if len(self.dfc_data.shape) == 2 or self.edge_ts is not None:
+            if len(self.dfc_data['data'].shape) == 2 or self.edge_ts is not None:
                 position_text = ""
                 self.slider.hide()
                 
@@ -654,8 +666,9 @@ class App(QMainWindow):
                     if widget is not None:
                         widget.setVisible(False)
             else:
-                self.slider.show()
-                position_text = f"Use the slider to zoom in and scroll through the time series"
+                self.slider.hide()
+                position_text = ""
+                #position_text = f"Use the slider to zoom in and scroll through the time series"
                 
                 # Enable brain area selector widgets
                 for i in range(self.timeSeriesSelectorLayout.count()):    
@@ -663,6 +676,14 @@ class App(QMainWindow):
                     if widget is not None:
                         widget.setVisible(True)
 
+            if index == 3:
+                self.backLargeButton.hide()
+                self.backButton.hide()
+                self.forwardButton.hide()
+                self.forwardLargeButton.hide()
+                self.slider.hide()
+                position_text = ""
+            
             self.positionLabel.setText(position_text)
             self.update()
 
@@ -850,7 +871,7 @@ class App(QMainWindow):
             
             # Save the data
             try:
-                savemat(filePath, {'dfc_data': self.dfc_data})
+                savemat(filePath, {'dfc_data': self.dfc_data['data']})
             except Exception as e:
                 print(f"Error saving data: {e}")
 
@@ -879,12 +900,17 @@ class App(QMainWindow):
         #    return
 
         # Update the sliders and text
-        if self.dfc_data is not None:
-            self.calculatingLabel.setText(f"Calculated {self.selected_class_name} with shape {self.dfc_data.shape}")
+        if self.dfc_data['data'] is not None:
+            self.calculatingLabel.setText(f"Calculated {self.selected_class_name} with shape {self.dfc_data['data'].shape}")
             
             # Update time label
-            total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 0
-            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data.shape) == 3 else " static "
+            total_length = self.dfc_data['data'].shape[2] if len(self.dfc_data['data'].shape) == 3 else 0
+            
+            if self.currentTabIndex == 0 or self.currentTabIndex == 2:
+                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data['data'].shape) == 3 else " static "
+            else:
+                position_text = ""
+
             self.positionLabel.setText(position_text)
             self.slider.setValue(self.slider.value())
             
@@ -898,21 +924,7 @@ class App(QMainWindow):
         # Handles errors in the worker thread
         print(f"Error occurred: {error}")
 
-    def onCalculateConnectivity(self):
-        # Check if ts_data is available
-        if self.ts_data is None:
-            self.calculatingLabel.setText(f"Error. No time series data has been loaded.")
-            return
-    
-        # Check if method is available
-        selected_class = getattr(methods, self.selected_class_name, None)
-        if not selected_class:
-            print("Selected class not found in connectivity module")
-            return
-        
-        # Process all pending events
-        QApplication.processEvents() 
-
+    def getParameters(self):
         # Get the time series and parameters (from the UI) for the selected connectivity method and store them in a dictionary
         self.parameters = {}
         self.parameters['time_series'] = self.ts_data
@@ -955,6 +967,24 @@ class App(QMainWindow):
                 else:
                     # Value could not be retrieved from the widget
                     self.calculatingLabel.setText(f"Error: No value entered for parameter '{label}'")
+
+    def onCalculateConnectivity(self):
+        # Check if ts_data is available
+        if self.ts_data is None:
+            self.calculatingLabel.setText(f"Error. No time series data has been loaded.")
+            return
+    
+        # Check if method is available
+        selected_class = getattr(methods, self.selected_class_name, None)
+        if not selected_class:
+            print("Selected class not found in connectivity module")
+            return
+        
+        # Process all pending events
+        QApplication.processEvents() 
+
+        # Gets the parameters and stores them in self.parameters
+        self.getParameters()
         
         # Start worker thread for dFC calculations and submit for calculation
         self.workerThread = QThread()
@@ -969,18 +999,41 @@ class App(QMainWindow):
         self.workerThread.start()
         self.calculatingLabel.setText(f"Calculating {self.methodComboBox.currentText()}, please wait...")
         self.calculateButton.setEnabled(False)
+    
+    def check_data_dict_equality(self, dict1, dict2):
+        if dict1.keys() != dict2.keys():
+            return False  # The dictionaries have different sets of keys
+        
+        for key in dict1:
+            val1, val2 = dict1[key], dict2[key]
+            
+            # If both values are numpy arrays, use numpy.array_equal
+            if isinstance(val1, np.ndarray) and isinstance(val2, np.ndarray):
+                if not np.array_equal(val1, val2):
+                    return False
+            # If values are dictionaries, recursively compare
+            elif isinstance(val1, dict) and isinstance(val2, dict):
+                if not self.check_data_dict_equality(val1, val2):
+                    return False
+            # For other types, use standard equality check
+            else:
+                if val1 != val2:
+                    return False
+
+        return True  # All keys and values are equal
 
     def calculateDFC(self, parameters):
         keep_in_memory = self.keepInMemoryCheckbox.isChecked()
         
+        # Try to calculate dFC, throw an exception if  it fails
         try:
             # Check if data for the selected class name exists with the same parameters
-            existing_data = self.dfc_data_dict.get(self.selected_class_name)
-            print(existing_data['parameters'], parameters)
-            if existing_data and existing_data['parameters'] == parameters:
+            existing_data = self.dfc_data_dict.get(self.selected_class_name) # returns None if key does not exist (avoid KeyError)
+            #if existing_data is not None and existing_data.get('data') is not None and existing_data.get('data').size > 0 and self.check_data_dict_equality(existing_data.get('parameters'), parameters):
+            if existing_data is not None and existing_data.get('data') is not None and self.check_data_dict_equality(existing_data.get('parameters'), parameters):
                 print(f"Using stored data for {self.selected_class_name} with given parameters")
-                return existing_data['data']
-            
+                return {"data": existing_data['data'], "parameters": parameters}
+
             # If parameters have changed or data doesn't exist, proceed to calculate new data
             selected_class = getattr(methods, self.selected_class_name, None)
             if not selected_class:
@@ -990,43 +1043,49 @@ class App(QMainWindow):
             connectivity_calculator = selected_class(**parameters)
             result = connectivity_calculator.connectivity()
             
-            print("HIII")
             # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
             if isinstance(result, tuple):
-                self.dfc_data, _ = result
+                self.dfc_data['data'], _ = result
+                self.dfc_data['parameters'] = parameters
                 self.state_tc = None
                 self.edge_ts = result[1][0] if isinstance(result[1], tuple) else None
 
             # Result is DFC object (pydfc methods)
             elif isinstance(result, pydfc.dfc.DFC):
-                self.dfc_data = np.transpose(result.get_dFC_mat(), (1, 2, 0))
+                self.dfc_data['data'] = np.transpose(result.get_dFC_mat(), (1, 2, 0))
+                self.dfc_data['parameters'] = parameters
                 self.dfc_states = result.FCSs
                 self.state_tc = result.state_TC()
                 self.edge_ts = None
             
             # Only a single matrix is returned (most cases)
             else:
-                self.dfc_data = result
+                self.dfc_data['data'] = result
+                self.dfc_data['parameters'] = parameters
                 self.state_tc = None
                 self.edge_ts = None
 
             # Store in memory if checkbox is checked
             if keep_in_memory:
                 # Update the dictionary entry for the selected_class_name with the new data and parameters
-                self.dfc_data_dict[self.selected_class_name] = {'data': self.dfc_data, 'parameters': parameters}
+                self.dfc_data_dict[self.selected_class_name] = {'data': self.dfc_data['data'], 'parameters': parameters}
                 print(f"Updated {self.selected_class_name} data with new parameters in memory")
 
             return self.dfc_data
 
         except Exception as e:
-            print(f"Hi, Exception: {e}")
+            print(f"Exception when calculating dFC: {e}")
             self.calculatingLabel.setText(f"Error calculating connectivity, check parameters.")
             return None
-            
+
+    def saveDataToDict(self, parameters):
+        self.dfc_data_dict[self.selected_class_name] = {'data': self.dfc_data['data'], 'parameters': parameters}
+        return
+
     def onKeepInMemoryChanged(self, state):
-        if state == 2 and self.dfc_data is not None:
+        if state == 2 and self.dfc_data['data'] is not None:
+            self.saveDataToDict(self.parameters)
             print(f"Saved {self.selected_class_name} data to memory")
-            self.dfc_data_dict[self.selected_class_name] = self.dfc_data
                 
     def onClearMemory(self):
         self.dfc_data_dict = {}
@@ -1049,13 +1108,14 @@ class App(QMainWindow):
         self.figure.clear()
         ax = self.figure.add_subplot(111)
 
-        if self.dfc_data is not None:
+        if self.dfc_data['data'] is not None:
+            current_data = self.dfc_data['data']
             try:
-                current_slice = self.dfc_data[:, :, self.currentSliderValue] if len(self.dfc_data.shape) == 3 else self.dfc_data
+                current_slice = current_data[:, :, self.currentSliderValue] if len(current_data.shape) == 3 else current_data
                 vmax = np.max(np.abs(current_slice))
                 self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
             except:
-                current_slice = self.dfc_data[:, :, 0] if len(self.dfc_data.shape) == 3 else self.dfc_data
+                current_slice = current_data[:, :, 0] if len(current_data.shape) == 3 else current_data
                 vmax = np.max(np.abs(current_slice))
                 self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
 
@@ -1065,27 +1125,28 @@ class App(QMainWindow):
             cbar = self.figure.colorbar(self.im, cax=cax)
             cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
 
-            self.slider.setMaximum(self.dfc_data.shape[2] - 1 if len(self.dfc_data.shape) == 3 else 0)
+            self.slider.setMaximum(current_data.shape[2] - 1 if len(current_data.shape) == 3 else 0)
         
         self.figure.set_facecolor('#E0E0E0')
         self.figure.tight_layout()
         self.canvas.draw()
 
     def plotTimeSeries(self):
+        current_data = self.dfc_data['data']
         # Get dimensions of the data
-        if self.dfc_data is not None and self.dfc_data.ndim == 3:
-            self.rowSelector.setMaximum(self.dfc_data.shape[0] - 1)
-            self.colSelector.setMaximum(self.dfc_data.shape[1] - 1)
+        if current_data is not None and current_data.ndim == 3:
+            self.rowSelector.setMaximum(current_data.shape[0] - 1)
+            self.colSelector.setMaximum(current_data.shape[1] - 1)
 
         row = self.rowSelector.value()
         col = self.colSelector.value()
         self.rowSelector.show()
         self.colSelector.show()
 
-        if self.dfc_data is not None and row < self.dfc_data.shape[0] and col < self.dfc_data.shape[1] and self.edge_ts is None and self.state_tc is None:    
+        if current_data is not None and row < current_data.shape[0] and col < current_data.shape[1] and self.edge_ts is None and self.state_tc is None:    
             self.timeSeriesFigure.clear()
             ax = self.timeSeriesFigure.add_subplot(111)
-            time_series = self.dfc_data[row, col, :] if len(self.dfc_data.shape) == 3 else self.dfc_data[row, col]
+            time_series = current_data[row, col, :] if len(current_data.shape) == 3 else current_data[row, col]
             ax.set_title(f"dFC time course between region {row} and {col}.")
             
             ax.plot(time_series)
@@ -1161,14 +1222,16 @@ class App(QMainWindow):
         self.canvas.draw()
 
     def updateDistribution(self):
-        if self.dfc_data is None or not hasattr(self, 'distributionFigure'):
+        current_data = self.dfc_data['data']
+
+        if current_data is None or not hasattr(self, 'distributionFigure'):
             return
 
         # Clear the current distribution plot
         self.distributionFigure.clear()
 
         # Assuming you want to plot the distribution of values in the current slice
-        current_slice = self.dfc_data[:, :, self.slider.value()] if len(self.dfc_data.shape) == 3 else self.dfc_data
+        current_slice = current_data[:, :, self.slider.value()] if len(current_data.shape) == 3 else current_data
         ax = self.distributionFigure.add_subplot(111)
         ax.hist(current_slice.flatten(), bins=50)  # number of bins
 
@@ -1176,15 +1239,15 @@ class App(QMainWindow):
 
     def onSliderValueChanged(self, value):
         # Ensure there is data to work with
-        if self.dfc_data is None or self.im is None:
+        if self.dfc_data['data'] is None or self.im is None:
             return
         
-        currentTabIndex = self.tabWidget.currentIndex()
+        self.currentTabIndex = self.tabWidget.currentIndex()
         
-        if currentTabIndex == 0 or currentTabIndex == 1:
+        if self.currentTabIndex == 0 or self.currentTabIndex == 2:
             # Get and update the data of the imshow object
             self.currentSliderValue = value
-            data = self.dfc_data
+            data = self.dfc_data['data']
             self.im.set_data(data[:, :, value]) if len(data.shape) == 3 else self.im.set_data(data)
 
             vlim = np.max(np.abs(data[:, :, value])) if len(data.shape) == 3 else np.max(np.abs(data))
@@ -1194,13 +1257,13 @@ class App(QMainWindow):
             self.canvas.draw()
             self.updateDistribution()
 
-            total_length = self.dfc_data.shape[2] if len(self.dfc_data.shape) == 3 else 0
-            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data.shape) == 3 else " static "
+            total_length = self.dfc_data['data'].shape[2] if len(self.dfc_data['data'].shape) == 3 else 0
+            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data['data'].shape) == 3 else " static "
             self.positionLabel.setText(position_text)
 
-            currentTabIndex = self.tabWidget.currentIndex()
+            self.currentTabIndex = self.tabWidget.currentIndex()
     
-        elif currentTabIndex == 2:
+        elif self.currentTabIndex == 1:
             self.updateTimeSeriesPlot(value)
 
     def moveBack(self):
@@ -1228,10 +1291,10 @@ class App(QMainWindow):
         self.updateDistribution()
 
     def updateTimeSeriesPlot(self, center):
-        if self.dfc_data is None:
+        if self.dfc_data['data'] is None:
             return
 
-        max_index = self.dfc_data.shape[2] - 1 if len(self.dfc_data.shape) == 3 else 0
+        max_index = self.dfc_data['data'].shape[2] - 1 if len(self.dfc_data['data'].shape) == 3 else 0
         width = 101
 
         # Determine if we should show the entire series or a window
@@ -1244,7 +1307,7 @@ class App(QMainWindow):
 
         row = self.rowSelector.value()
         col = self.colSelector.value()
-        time_series_slice = self.dfc_data[row, col, start:end]
+        time_series_slice = self.dfc_data['data'][row, col, start:end]
 
         self.timeSeriesFigure.clear()
         ax = self.timeSeriesFigure.add_subplot(111)
