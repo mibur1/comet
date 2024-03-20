@@ -283,10 +283,10 @@ class App(QMainWindow):
         self.tabWidget.addTab(distributionTab, "Distribution")
 
         # Tab 4: Graph analysis
-        graphTab = QWidget()
-        graphLayout = QVBoxLayout()
-        graphTab.setLayout(graphLayout)
-        self.tabWidget.addTab(graphTab, "Graph analysis")
+        #graphTab = QWidget()
+        #graphLayout = QVBoxLayout()
+        #graphTab.setLayout(graphLayout)
+        #self.tabWidget.addTab(graphTab, "Graph analysis")
 
         # Method for doing things if the tab is changed
         self.tabWidget.currentChanged.connect(self.onTabChanged)
@@ -388,6 +388,8 @@ class App(QMainWindow):
     def onMethodChanged(self, methodName=None):
         # Clear old variables and data
         self.clearLayout(self.parameterLayout)
+        self.dfc_data['data'] = None
+        self.dfc_data['parameters'] = None
 
         if methodName == None or methodName == "Use checkboxes to get available methods":
             return
@@ -404,6 +406,7 @@ class App(QMainWindow):
             self.plot_dfc()
             self.updateDistribution()
             self.plotTimeSeries()
+            self.slider.show()
             self.calculatingLabel.setText(f"Loaded {self.selected_class_name} with shape {self.dfc_data['data'].shape}")
             print(f"Loaded {self.selected_class_name} from memory")
 
@@ -422,10 +425,13 @@ class App(QMainWindow):
             self.canvas.draw()
             self.distributionFigure.clear()
             self.distributionCanvas.draw()
+            self.timeSeriesFigure.clear()
+            self.timeSeriesCanvas.draw()
 
             position_text = f"no data available"
             self.positionLabel.setText(position_text)
             self.slider.setValue(self.slider.value())
+            self.slider.hide()
 
         # This dynamically creates the parameter labels and input boxes
         self.setup_class_parameters(selected_class)
@@ -562,8 +568,7 @@ class App(QMainWindow):
         continuous_classes = [
             'CONT Sliding Window', 'CONT Jackknife Correlation', 'CONT Dynamic Conditional Correlation', 
             'CONT Flexible Least Squares', 'CONT Spatial Distance', 'CONT Multiplication of Temporal Derivatives', 
-            'CONT Phase Synchronization', 'CONT Leading Eigenvector Dynamics', 'CONT Wavelet Coherence', 
-            'CONT Sliding Window (pydfc)', 'CONT Time-frequency (pydfc)', 'CONT Edge-centric Connectivity'
+            'CONT Phase Synchronization', 'CONT Leading Eigenvector Dynamics', 'CONT Wavelet Coherence', 'CONT Edge-centric Connectivity'
         ]
 
         state_based_classes = [
@@ -623,7 +628,8 @@ class App(QMainWindow):
                 return True
         return False
 
-    def onTabChanged(self, index):
+    def onTabChanged(self):
+        self.currentTabIndex = self.tabWidget.currentIndex()
         # index 0: Connectivity plot
         # index 1: Time series plot
         # index 2: Distribution plot
@@ -631,9 +637,20 @@ class App(QMainWindow):
 
         if self.dfc_data['data'] is None:
             self.plot_logo()
+            self.canvas.draw()
+            self.distributionFigure.clear()
+            self.distributionCanvas.draw()
+            self.timeSeriesFigure.clear()
+            self.timeSeriesCanvas.draw()
+            self.backLargeButton.hide()
+            self.backButton.hide()
+            self.forwardButton.hide()
+            self.forwardLargeButton.hide()
+            self.slider.hide()
+            position_text = ""
             return
         
-        if index == 0 or index == 2:
+        if self.currentTabIndex == 0 or self.currentTabIndex == 2:
             self.slider.show()
             self.slider.setValue(self.currentSliderValue)
             self.backLargeButton.show()
@@ -649,14 +666,14 @@ class App(QMainWindow):
 
             self.positionLabel.setText(position_text)
 
-        elif index == 1:
+        elif self.currentTabIndex == 1:
             self.backLargeButton.hide()
             self.backButton.hide()
             self.forwardButton.hide()
             self.forwardLargeButton.hide()
             
-            # If we have nothing to scroll trhough, hide some GUI elements
-            if len(self.dfc_data['data'].shape) == 2 or self.edge_ts is not None:
+            # If we have nothing to scroll though, hide some GUI elements
+            if len(self.dfc_data['data'].shape) == 2 or self.edge_ts is not None or self.state_tc is not None:
                 position_text = ""
                 self.slider.hide()
                 
@@ -665,6 +682,7 @@ class App(QMainWindow):
                     widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
                     if widget is not None:
                         widget.setVisible(False)
+
             else:
                 self.slider.hide()
                 position_text = ""
@@ -676,16 +694,27 @@ class App(QMainWindow):
                     if widget is not None:
                         widget.setVisible(True)
 
-            if index == 3:
-                self.backLargeButton.hide()
-                self.backButton.hide()
-                self.forwardButton.hide()
-                self.forwardLargeButton.hide()
-                self.slider.hide()
-                position_text = ""
+            # We have a static measure
+            if len(self.dfc_data['data'].shape) == 2 and self.edge_ts is None and self.state_tc is None:
+                self.timeSeriesFigure.clear()
+                self.timeSeriesCanvas.draw()
+
+                # Disable brain area selector widgets
+                for i in range(self.timeSeriesSelectorLayout.count()):    
+                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
+                    if widget is not None:
+                        widget.setVisible(False)
+                        
+        if self.currentTabIndex == 3:
+            self.backLargeButton.hide()
+            self.backButton.hide()
+            self.forwardButton.hide()
+            self.forwardLargeButton.hide()
+            self.slider.hide()
+            position_text = ""
             
-            self.positionLabel.setText(position_text)
-            self.update()
+        self.positionLabel.setText(position_text)
+        self.update()
 
     def getInfoText(self, param, dfc_method):
         if param == "windowsize":
@@ -903,6 +932,12 @@ class App(QMainWindow):
         if self.dfc_data['data'] is not None:
             self.calculatingLabel.setText(f"Calculated {self.selected_class_name} with shape {self.dfc_data['data'].shape}")
             
+            if len(self.dfc_data['data'].shape) == 3:
+                self.slider.show()
+                self.rowSelector.setMaximum(self.dfc_data['data'].shape[0] - 1)
+                self.colSelector.setMaximum(self.dfc_data['data'].shape[1] - 1)
+                self.rowSelector.setValue(1)
+
             # Update time label
             total_length = self.dfc_data['data'].shape[2] if len(self.dfc_data['data'].shape) == 3 else 0
             
@@ -919,6 +954,7 @@ class App(QMainWindow):
         self.updateDistribution()
         self.plotTimeSeries()
         self.calculateButton.setEnabled(True)
+        self.onTabChanged()
 
     def handleError(self, error):
         # Handles errors in the worker thread
@@ -1225,6 +1261,7 @@ class App(QMainWindow):
         current_data = self.dfc_data['data']
 
         if current_data is None or not hasattr(self, 'distributionFigure'):
+            self.distributionFigure.clear()
             return
 
         # Clear the current distribution plot
@@ -1241,8 +1278,6 @@ class App(QMainWindow):
         # Ensure there is data to work with
         if self.dfc_data['data'] is None or self.im is None:
             return
-        
-        self.currentTabIndex = self.tabWidget.currentIndex()
         
         if self.currentTabIndex == 0 or self.currentTabIndex == 2:
             # Get and update the data of the imshow object
@@ -1261,7 +1296,6 @@ class App(QMainWindow):
             position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data['data'].shape) == 3 else " static "
             self.positionLabel.setText(position_text)
 
-            self.currentTabIndex = self.tabWidget.currentIndex()
     
         elif self.currentTabIndex == 1:
             self.updateTimeSeriesPlot(value)
