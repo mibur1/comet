@@ -28,14 +28,14 @@ class Worker(QObject):
     error = pyqtSignal(str)
     result = pyqtSignal(object)
 
-    def __init__(self, manageMemoryFunc, parameters):
+    def __init__(self, calculationFunc, parameters):
         super().__init__()
-        self.manageMemoryFunc = manageMemoryFunc
+        self.calculationFunc = calculationFunc
         self.parameters = parameters
 
     def run(self):
         try:
-            result = self.manageMemoryFunc(self.parameters)
+            result = self.calculationFunc(self.parameters)
             self.result.emit(result)  # Emit results
         except Exception as e:
             self.error.emit(str(e))  # Emit errors
@@ -112,6 +112,7 @@ class App(QMainWindow):
             "iterations":            "Iterations",
             "sw_method":            "Sliding window",
             "dhmm_obs_state_ratio": "State ratio",
+            "vlim":                 "Color axis limit"
 
         }
         self.reverse_param_names = {v: k for k, v in self.param_names.items()}
@@ -734,6 +735,8 @@ class App(QMainWindow):
             text = "Sliding window method"
         elif param == "State ratio":
             text = "Observation/state ratio for the DHMM"
+        elif param == "vlim":
+            text = "Limit for color axis (edge time series)"
         else:
             text = f"TODO"
         return text
@@ -907,46 +910,55 @@ class App(QMainWindow):
             print("Selected class not found in connectivity module")
             return
         
-        # Perform main calculations
-        self.calculatingLabel.setText(f"Calculating {self.methodComboBox.currentText()}, please wait...")
-        QApplication.processEvents()
+        # Process all pending events
+        QApplication.processEvents() 
 
-        # Get the time series and parameters (from the UI) for the selected connectivity method
-        parameters = {}
-        parameters['time_series'] = self.ts_data
+        # Get the time series and parameters (from the UI) for the selected connectivity method and store them in a dictionary
+        self.parameters = {}
+        self.parameters['time_series'] = self.ts_data
+
+        # Converts string to boolean, float, or retains as string if conversion is not applicable
+        def convert_value(value):
+            if value.lower() in ['true', 'false']:
+                return value.lower() == 'true'
+            try:
+                return float(value)
+            except ValueError:
+                return value
+
+        # Gets the value from the widget based on its type
+        def get_widget_value(widget):
+            if isinstance(widget, QLineEdit):
+                return widget.text()
+            elif isinstance(widget, QComboBox):
+                return widget.currentText()
+            elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
+                return widget.value()
+            return None  # Default return if widget type is not recognized
 
         for i in range(self.parameterLayout.count()):
             layout = self.parameterLayout.itemAt(i).layout()
             if layout:
-                label = layout.itemAt(0).widget().text()[:-1]  # Remove the colon at the end
-                if label == 'Time series':  # Skip 'time_series' from UI collection as this contains te data
-                    continue
+                label = layout.itemAt(0).widget().text().rstrip(':')
+                if label == 'Time series':
+                    continue  # Skip 'time_series' as it's already added
 
-                # This might be the worst piece of code I've ever written, need do rework this
-                # Convert the parameter strings from the UI into their intended data types
                 widget = layout.itemAt(1).widget()
-                if isinstance(widget, QLineEdit):
-                    value = widget.text()
-                elif isinstance(widget, QComboBox):
-                    value = widget.currentText()
-                elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
-                    value = widget.value()
+                value = get_widget_value(widget)
 
-                if isinstance(value, str):
-                    if value.lower() in ['true', 'false']:
-                        parameters[self.reverse_param_names[label]] = value.lower() == 'true'
+                if value is not None:  # Ensure there is a value before attempting to convert and store
+                    param_key = self.reverse_param_names.get(label)
+                    if param_key:  # Ensure the key exists in the reverse_param_names dictionary
+                        self.parameters[param_key] = convert_value(value) if isinstance(value, str) else value
                     else:
-                        try:
-                            parameters[self.reverse_param_names[label]] = float(value)
-                        except ValueError:
-                            parameters[self.reverse_param_names[label]] = value
+                        self.calculatingLabel.setText(f"Error: Unrecognized parameter '{label}'")
                 else:
-                    parameters[self.reverse_param_names[label]] = value
-                    self.calculatingLabel.setText(f"Error: No value entered for parameter '{self.reverse_param_names[label]}'")
-
-        # Worker thread for dFC calculations
+                    # Value could not be retrieved from the widget
+                    self.calculatingLabel.setText(f"Error: No value entered for parameter '{label}'")
+        
+        # Start worker thread for dFC calculations and submit for calculation
         self.workerThread = QThread()
-        self.worker = Worker(self.manageMemory, parameters)
+        self.worker = Worker(self.calculateDFC, self.parameters)
         self.worker.moveToThread(self.workerThread)
         
         self.worker.finished.connect(self.workerThread.quit)
@@ -957,60 +969,55 @@ class App(QMainWindow):
         self.workerThread.start()
         self.calculatingLabel.setText(f"Calculating {self.methodComboBox.currentText()}, please wait...")
         self.calculateButton.setEnabled(False)
-        #self.calculateButton.setText("Cancel Calculation")
 
-        #if self.calculateButton.text() == "Calculate Connectivity": 
-        #    ...
-        #else:
-        #    self.abortFlag = True
-        #    print("Calculation will be aborted at the next opportunity...")
-        #    self.calculateButton.setText("Calculate Connectivity")
-        #    self.calculatingLabel.setText(f"No data calculated yet.")
-        #    self.plot_logo()
-
-    def manageMemory(self, parameters):
+    def calculateDFC(self, parameters):
         keep_in_memory = self.keepInMemoryCheckbox.isChecked()
         
         try:
-            if self.selected_class_name in self.dfc_data_dict:
-                # Use stored data
-                return self.dfc_data_dict[self.selected_class_name]
-            else:
-                # Calculate new data
-                selected_class = getattr(methods, self.selected_class_name, None)
-                if not selected_class:
-                    print("Selected class not found in connectivity module")
-                    return None
-
-                connectivity_calculator = selected_class(**parameters)
-                result = connectivity_calculator.connectivity()
-                
-                # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
-                if isinstance(result, tuple):
-                    self.dfc_data, _ = result
-                    self.state_tc = None
-                    self.edge_ts = result[1][0] if len(result[1]) > 0 else None
-
-                # Result is DFC object (pydfc methods)
-                elif isinstance(result, pydfc.dfc.DFC):
-                    self.dfc_data = np.transpose(result.get_dFC_mat(), (1, 2, 0))
-                    self.dfc_states = result.FCSs
-                    self.state_tc = result.state_TC()
-                    self.edge_ts = None
-                
-                # Only a single matrix is returned (most cases)
-                else:
-                    self.dfc_data = result
-                    self.state_tc = None
-                    self.edge_ts = None
-                
-                # Store in memory if checkbox is checked
-                if keep_in_memory:
-                    self.dfc_data_dict[self.selected_class_name] = self.dfc_data
-                    print(f"Saved {self.selected_class_name} to memory")
-
-                return self.dfc_data
+            # Check if data for the selected class name exists with the same parameters
+            existing_data = self.dfc_data_dict.get(self.selected_class_name)
+            print(existing_data['parameters'], parameters)
+            if existing_data and existing_data['parameters'] == parameters:
+                print(f"Using stored data for {self.selected_class_name} with given parameters")
+                return existing_data['data']
             
+            # If parameters have changed or data doesn't exist, proceed to calculate new data
+            selected_class = getattr(methods, self.selected_class_name, None)
+            if not selected_class:
+                print("Selected class not found in connectivity module")
+                return None
+
+            connectivity_calculator = selected_class(**parameters)
+            result = connectivity_calculator.connectivity()
+            
+            print("HIII")
+            # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
+            if isinstance(result, tuple):
+                self.dfc_data, _ = result
+                self.state_tc = None
+                self.edge_ts = result[1][0] if isinstance(result[1], tuple) else None
+
+            # Result is DFC object (pydfc methods)
+            elif isinstance(result, pydfc.dfc.DFC):
+                self.dfc_data = np.transpose(result.get_dFC_mat(), (1, 2, 0))
+                self.dfc_states = result.FCSs
+                self.state_tc = result.state_TC()
+                self.edge_ts = None
+            
+            # Only a single matrix is returned (most cases)
+            else:
+                self.dfc_data = result
+                self.state_tc = None
+                self.edge_ts = None
+
+            # Store in memory if checkbox is checked
+            if keep_in_memory:
+                # Update the dictionary entry for the selected_class_name with the new data and parameters
+                self.dfc_data_dict[self.selected_class_name] = {'data': self.dfc_data, 'parameters': parameters}
+                print(f"Updated {self.selected_class_name} data with new parameters in memory")
+
+            return self.dfc_data
+
         except Exception as e:
             print(f"Hi, Exception: {e}")
             self.calculatingLabel.setText(f"Error calculating connectivity, check parameters.")
@@ -1119,7 +1126,7 @@ class App(QMainWindow):
 
             # The first subplot occupies the 1st row
             ax1 = self.timeSeriesFigure.add_subplot(gs[:1, 0])
-            ax1.imshow(self.edge_ts.T, cmap='coolwarm', aspect='auto')
+            ax1.imshow(self.edge_ts.T, cmap='coolwarm', aspect='auto', vmin=-1*self.parameters["vlim"], vmax=self.parameters["vlim"])
             ax1.set_title("Edge time series")
             ax1.set_xlabel("Time (TRs)")
             ax1.set_ylabel("Edges")
