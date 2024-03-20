@@ -551,4 +551,4 @@ class Multiverse:
         ax[0].legend(handles=legend_items, loc='upper left', fontsize=fontsize)
 
         plt.tight_layout()
-        plt.savefig(f"{results_path}/specification_curve.pdf")
+        plt.savefig(f"{results_path}/specification_curve.png")
