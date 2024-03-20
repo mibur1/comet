@@ -365,6 +365,18 @@ class App(QMainWindow):
         # Make sure both the dFC data and the method object are provided
         assert self.init_method is not None, "Please provide the method object corresponding to your dFC data as the second argument to the GUI."
 
+        # Get parameters
+        self.selected_class_name = self.class_info.get(self.init_method.name)
+        self.getParameters() # TODO: Something goes wrong here for SW (maybe because of strings in the parameters)
+        self.dfc_data['parameters'] = self.parameters
+        self.dfc_data_dict[self.selected_class_name] = {'data': self.dfc_data['data'], 'parameters': self.dfc_data['parameters']}
+
+        # Set the slider elements
+        total_length = self.dfc_data['data'].shape[2] if len(self.dfc_data['data'].shape) == 3 else 0
+        position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data['data'].shape) == 3 else " static "
+        self.positionLabel.setText(position_text)
+        self.slider.setValue(self.slider.value())
+
         # Disable the GUI elements
         self.methodComboBox.setEnabled(False)
         self.calculateButton.setEnabled(False)
@@ -374,14 +386,12 @@ class App(QMainWindow):
         # Set labels
         self.fileNameLabel.setText(f"Loaded dFC from script")
         self.calculatingLabel.setText(f"Loaded dFC from script")
-
         self.methodComboBox.setCurrentText(self.init_method.name)
         
         # Set plots
         self.plot_dfc()
         self.updateDistribution()
 
-        self.rowSelector.setMaximum(1)
         self.rowSelector.setValue(1)
         self.plotTimeSeries()
 
@@ -412,8 +422,7 @@ class App(QMainWindow):
 
             # Update the slider
             total_length = self.dfc_data['data'].shape[2] if len(self.dfc_data['data'].shape) == 3 else 0
-            #position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data['data'].shape) == 3 else " static "
-            position_text = ""
+            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data['data'].shape) == 3 else " static "
             self.positionLabel.setText(position_text)
             self.slider.setValue(self.slider.value())
         
@@ -450,7 +459,6 @@ class App(QMainWindow):
         for param in init_signature.parameters.values():
             label_width = font_metrics.boundingRect(f"{self.param_names[param.name]}:").width()
             max_label_width = max(max_label_width, label_width)
-
 
         # Special case for 'time_series' parameter as this is created from the loaded file
         # Add label for time_series
