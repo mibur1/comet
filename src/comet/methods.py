@@ -729,7 +729,7 @@ class Edge_centric_connectivity(ConnectivityMethod):
     name = "CONT Edge-centric Connectivity"
     options = {}
 
-    def __init__(self, time_series, standardizeData=True, diagonal=0, standardize=False, fisher_z=False, tril=False):
+    def __init__(self, time_series, standardizeData=True, vlim=3, diagonal=0, standardize=False, fisher_z=False, tril=False):
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.standardizeData = standardizeData
     
