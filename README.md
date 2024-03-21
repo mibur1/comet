@@ -34,6 +34,16 @@ pip install -e .
 
 ### Usage
 
+**General** 
+
+The toolbox is designed in a modular way, which means you can use the individual parts in combination with others, but also by themselves.
+
+* continuous and static dFC measures require 2D time series data (n_timepoints x n_regions) as input
+* state-based dFC methods require a TIME_SERIES object (as used in the pydfc package) containing data for multiple subjects as input
+* Graph measures need 2D adjacency/connectivity matrices as input
+* Multiverse analysis needs decision/option pairs of any kind to create forking paths in the analysis
+
+
 **GUI** 
 
 After installation, you can use the graphical user interface through the terminal by typing:
@@ -42,7 +52,12 @@ After installation, you can use the graphical user interface through the termina
 comet-gui
 ```
 
-If you want to explore the toolbox with example data, you can load the ```src/comet/resources/simulation.txt``` file which should result in two changing connectivity patterns.
+If you want to explore the toolbox with example data, you can load data included in the ```tutorials/example_data/``` folder:
+
+* ```simulation.txt``` contains simulated BOLD data for 10 brain regions with 2 changing brain states (usable for continuous and static dFC measures)
+* ```abide_50088.txt``` contains parcellated BOLD data for a single subject from the ABIDE data set (usable for continuous and static dFC measures)
+* ```aomic_multi.pkl``` contains parcellated BOLD data for 5 subjects from the AOMIC data set (usable for state-based dFC measures)
+
 
 **Scripting**
 
@@ -51,6 +66,7 @@ If you intend to use the toolbox in a standard python script, [demo scripts](htt
 * Demo script for calculating dFC: [click here](tutorials/example_dfc.ipynb)
 * Demo script for performing multiverse analysis: [click here](tutorials/example_multiverse.ipynb)
 * Demo script for the multiverse analysis as presented preprint (+ additional visualizations): [click here](tutorials/example_analysis.ipynb)
+* Demo script for graph analysis: [click here](tutorials/example_graph.ipynb)
 
 ### Feedback and contribution
 
