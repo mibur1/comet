@@ -31,7 +31,8 @@ dependencies = [
   "qdarkstyle >=3.2.3",
   "seaborn >=0.13.0",
   "networkx >=3.2.1",
-  "pydfc >=1.0.4"
+  "pydfc >=1.0.4",
+  "ipykernel >=6.29.3"
 ]
 
 [project.urls]
