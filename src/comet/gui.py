@@ -2,6 +2,7 @@ import sys
 import pickle
 import inspect
 import numpy as np
+import pandas as pd
 from scipy.io import loadmat, savemat
 from importlib import resources as pkg_resources
 
@@ -60,6 +61,7 @@ class App(QMainWindow):
         super().__init__()
         self.title = 'Comet Dynamic Functional Connectivity Toolbox'
         self.ts_data = None
+        self.roi_data = None
         self.dfc_data = {}
         self.state_tc = None
         self.dfc_states = None
@@ -818,7 +820,7 @@ class App(QMainWindow):
                 pass
     
     def loadFile(self):
-        fileFilter = "All Supported Files (*.mat *.txt *.npy *pkl);;MAT Files (*.mat);;Text Files (*.txt);;NumPy Files (*.npy);;Pickle Files (*.pkl)"
+        fileFilter = "All Supported Files (*.mat *.txt *.npy *pkl *tsv);;MAT Files (*.mat);;Text Files (*.txt);;NumPy Files (*.npy);;Pickle Files (*.pkl);;TSV Files (*.tsv))"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
         self.file_name = file_path.split('/')[-1]
 
@@ -835,6 +837,36 @@ class App(QMainWindow):
             elif file_path.endswith('.pkl'):
                 with open(file_path, 'rb') as f:
                     self.ts_data = pickle.load(f)
+            elif file_path.endswith(".tsv"):
+                data = pd.read_csv(file_path, sep='\t', header=None, na_values='n/a')
+
+                if data.iloc[0].apply(lambda x: np.isscalar(x) and np.isreal(x)).all():
+                    rois = None  # No rois found, the first row is part of the data
+                else:
+                    rois = data.iloc[0]  # The first row is rois
+                    data = data.iloc[1:]  # Remove the header row from the data
+
+                # Convert all data to numeric, making sure 'n/a' and other non-numeric are treated as NaN
+                data = data.apply(pd.to_numeric, errors='coerce')
+
+                # Identify entirely empty columns
+                empty_columns = data.columns[data.isna().all()]
+                
+                # Remove corresponding rois if rois exist
+                if rois is not None:
+                    removed_rois = rois[empty_columns].to_list()
+                    print("The following regions were empty and thus removed:", removed_rois)
+                    rois = rois.drop(empty_columns)
+
+                # Remove entirely empty columns and rows
+                data = data.dropna(axis=1, how='all').dropna(axis=0, how='all')
+
+                # Convert the cleaned data back to numpy array
+                self.ts_data = data.to_numpy()
+
+                # Update header_list if rois exist
+                self.roi_data = np.array(rois, dtype=object)
+
             else:
                 self.ts_data = None
                 self.time_series_textbox.setText("Unsupported file format")
@@ -908,7 +940,7 @@ class App(QMainWindow):
             
             # Save the data
             try:
-                savemat(filePath, {'dfc_data': self.dfc_data['data']})
+                savemat(filePath, {'dfc_data': self.dfc_data['data'], 'roi_data': self.roi_data})
             except Exception as e:
                 print(f"Error saving data: {e}")
 
