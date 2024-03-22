@@ -753,7 +753,7 @@ State based dFC methods. Basically wrapper functions to bring methods from https
 '''
 class Sliding_Window(BaseDFCMethod):
     name = "CONT Sliding Window (pydfc)"
-    options = {}
+    options = {"clstr_distance": ["euclidean"]}
     '''
     Sliding Window
     '''
@@ -866,7 +866,7 @@ class Cap(BaseDFCMethod):
     
 class Sliding_Window_Clustr(BaseDFCMethod):
     name = "STATE Sliding Window Clustering"
-    options = {"clstr_distance": ["euclidean"]}
+    options = {"clstr_distance": ["euclidean", "manhattan"], }
 
     '''
     Sliding Window Clustering
