@@ -33,6 +33,7 @@ dependencies = [
   "networkx >=3.2.1",
   "pydfc >=1.0.4",
   "ipykernel >=6.29.3"
+  "notebook >=7.0.6"
 ]
 
 [project.urls]
