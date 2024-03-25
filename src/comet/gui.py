@@ -61,16 +61,18 @@ class InfoButton(QPushButton):
 
 @dataclass
 class Data:
-    id:           int        = field(default_factory=lambda: str(uuid.uuid4())) # unique ID
-    method_name:  str        = field(default=None)          # method class name
-    file_name:    str        = field(default=None)          # data file name
-    time_series:  np.ndarray = field(default=None)          # input time series data
-    rois:         np.ndarray = field(default=None)          # input roi data
-    params:       Dict       = field(default_factory=dict)  # input parameters
-    dfc_data:     np.ndarray = field(default=None)          # dfc data
-    dfc_states:   Dict       = field(default_factory=dict)  # dfc states
-    dfc_state_tc: np.ndarray = field(default=None)          # dfc state time course
-    dfc_edge_ts:  np.ndarray = field(default=None)          # dfc edge time series
+    id:           int        = field(default_factory=lambda: str(uuid.uuid4())) # unique ID # DONE
+    file_name:    str        = field(default=None)          # data file name                # DONE
+    file_data:    np.ndarray = field(default=None)          # input time series data        #
+    roi_names:    np.ndarray = field(default=None)          # input roi data                #
+    
+    dfc_instance: Any        = field(default=None)          # instance of the dFC class     #
+    dfc_name:     str        = field(default=None)          # method class name             #
+    dfc_params:   Dict       = field(default_factory=dict)  # input parameters              #
+    dfc_data:     np.ndarray = field(default=None)          # dfc data                      #
+    dfc_states:   Dict       = field(default_factory=dict)  # dfc states                    #
+    dfc_state_tc: np.ndarray = field(default=None)          # dfc state time course         #
+    dfc_edge_ts:  np.ndarray = field(default=None)          # dfc edge time series          #
     
 class DataStorage:
     def __init__(self):
@@ -79,8 +81,8 @@ class DataStorage:
     def generate_hash(self, data_obj):
         # Generate a hash based on method_name, file_name, and sorted params
         # This hash will be used to check if we already have existing data
-        params_tuple = tuple(sorted(data_obj.params.items()))
-        return hash((data_obj.method_name, data_obj.file_name, params_tuple))
+        params_tuple = tuple(sorted(data_obj.dfc_params.items()))
+        return hash((data_obj.file_name, data_obj.dfc_name, params_tuple))
 
     def add_data(self, data_obj):
         # Decide if we should add the data based on the hash
@@ -112,10 +114,8 @@ class App(QMainWindow):
         self.edge_ts = None # y
         self.init_method = init_method # y
         self.dfc_data_dict = {} # y
-        self.selected_class_name = None # y
         self.currentSliderValue = 0
         self.currentTabIndex = 0
-        self.file_name = "" # y
 
         self.param_names = {
             "self":                 "self", 
@@ -224,12 +224,8 @@ class App(QMainWindow):
         self.leftLayout.addLayout(checkboxLayout)
         self.leftLayout.addWidget(self.methodComboBox)
 
-        # Retrieve class names and their human-readable names
-        self.class_info = {
-            obj.name: name  # Map human-readable name to class name
-            for name, obj in inspect.getmembers(methods)
-            if inspect.isclass(obj) and obj.__module__ == methods.__name__ and name != "ConnectivityMethod"
-        }
+        # Get all the dFC methods and names
+        self.class_info = self.get_dfc_methods()
 
         # Create a layout for dynamic textboxes
         self.parameterLayout = QVBoxLayout()
@@ -242,7 +238,7 @@ class App(QMainWindow):
         # Add the container widget to the left layout directly below the combobox
         self.leftLayout.addWidget(self.parameterContainer)
         
-        # Initial population of the combobox
+        # Initial population of the combobox, this does the entire initialization
         self.updateMethodComboBox()
 
         # Add parameter textbox for time_series
@@ -371,9 +367,6 @@ class App(QMainWindow):
         navButtonLayout.addStretch(1)  # Spacer to the right of the buttons
         rightLayout.addLayout(navButtonLayout)
 
-        # Initialize parameters for the default method (from left layout but has to be done after figure creation)
-        self.onMethodChanged()
-
         # UI elements for dFC time series plotting
         self.rowSelector = QSpinBox()
         self.rowSelector.setMaximum(0)
@@ -407,14 +400,25 @@ class App(QMainWindow):
         self.stateBasedCheckBox.setChecked(True)
         self.staticCheckBox.setChecked(True)
 
+    def get_dfc_methods(self):
+        # Retrieve class names and their human-readable names
+        # Keys: human-readable names, Values: class names
+        dfc_methods = {
+            obj.name: name  # Map human-readable name to class name
+            for name, obj in inspect.getmembers(methods)
+            if inspect.isclass(obj) and obj.__module__ == methods.__name__ and name != "ConnectivityMethod"
+        }
+
+        return dfc_methods
+
     def init_from_calculated_data(self):
         # Make sure both the dFC data and the method object are provided
         assert self.init_method is not None, "Please provide the method object corresponding to your dFC data as the second argument to the GUI."
         # Get parameters
-        self.selected_class_name = self.class_info.get(self.init_method.name)
+        #self.data.dfc_name = self.class_info.get(self.init_method.name)
         self.getParameters() # TODO: Something goes wrong here for SW (maybe because of strings in the parameters)
         self.dfc_data['parameters'] = self.parameters
-        self.dfc_data_dict[self.selected_class_name] = {'data': self.dfc_data['data'], 'parameters': self.dfc_data['parameters']}
+        self.dfc_data_dict[self.data.dfc_name] = {'data': self.dfc_data['data'], 'parameters': self.dfc_data['parameters']}
 
         # Set the slider elements
         total_length = self.dfc_data['data'].shape[2] if len(self.dfc_data['data'].shape) == 3 else 0
@@ -443,27 +447,30 @@ class App(QMainWindow):
     def onMethodChanged(self, methodName=None):
         # Clear old variables and data
         self.clearLayout(self.parameterLayout)
-        self.dfc_data['data'] = None
-        self.dfc_data['parameters'] = None
+        self.dfc_data['data'] = None        # TODEL
+        self.dfc_data['parameters'] = None  # TODEL
+
+        self.data = Data()
 
         if methodName == None or methodName == "Use checkboxes to get available methods":
             return
         
         # Get selected connectivity method
-        self.selected_class_name = self.class_info.get(methodName)
-        selected_class = getattr(methods, self.selected_class_name, None)
+        self.data.dfc_instance = getattr(methods, self.class_info.get(methodName), None) # the actual class
+        self.data.dfc_name = self.class_info.get(methodName) # class name
+        
         if self.init_method is not None:
-            selected_class = self.init_method
+            self.data.dfc_instance = self.init_method
 
         # If connectivity for this method already exists we load and plot it
-        if self.selected_class_name in self.dfc_data_dict:
-            self.dfc_data = self.dfc_data_dict[self.selected_class_name]
+        if self.data.dfc_name in self.dfc_data_dict:
+            self.dfc_data = self.dfc_data_dict[self.data.dfc_name]
             self.plot_dfc()
             self.updateDistribution()
             self.plotTimeSeries()
             self.slider.show()
-            self.calculatingLabel.setText(f"Loaded {self.selected_class_name} with shape {self.dfc_data['data'].shape}")
-            print(f"Loaded {self.selected_class_name} from memory")
+            self.calculatingLabel.setText(f"Loaded {self.data.dfc_name} with shape {self.dfc_data['data'].shape}")
+            print(f"Loaded {self.data.dfc_name} from memory")
 
             # Update the slider
             total_length = self.dfc_data['data'].shape[2] if len(self.dfc_data['data'].shape) == 3 else 0
@@ -488,18 +495,18 @@ class App(QMainWindow):
             self.slider.hide()
 
         # This dynamically creates the parameter labels and input boxes
-        self.setup_class_parameters(selected_class)
+        self.setup_class_parameters(self.data.dfc_instance)
 
         self.parameterLayout.addStretch(1) # Stretch to fill empty space
         self.update() # Update UI
 
-    def setup_class_parameters(self, selected_class):
+    def setup_class_parameters(self, class_instance):
         # Now the parameter labels and boxes are set up    
         labels = []
 
         # Calculate the maximum label width (just a visual thing)
         max_label_width = 0
-        init_signature = inspect.signature(selected_class.__init__)
+        init_signature = inspect.signature(class_instance.__init__)
         font_metrics = QFontMetrics(self.font())
         for param in init_signature.parameters.values():
             label_width = font_metrics.boundingRect(f"{self.param_names[param.name]}:").width()
@@ -513,7 +520,7 @@ class App(QMainWindow):
         labels.append(time_series_label)
         
         if self.init_method is None:
-            self.time_series_textbox.setText(self.file_name)
+            self.time_series_textbox.setText(self.data.file_name)
             self.time_series_textbox.setEnabled(True)
         else:
             self.time_series_textbox.setText("from script")
@@ -533,7 +540,7 @@ class App(QMainWindow):
         max_label_width += 10
         time_series_label.setFixedWidth(max_label_width)
 
-        existing_params = vars(selected_class)
+        existing_params = vars(class_instance)
 
         for param in init_signature.parameters.values():
             if param.name not in ['self', 'time_series', 'tril', 'standardize', 'params']:
@@ -559,10 +566,10 @@ class App(QMainWindow):
                         param_input_widget.setCurrentIndex(default_index)
                         param_input_widget.setEnabled(False)
                 # Dropdown for parameters with predefined options
-                elif param.name in selected_class.options:
+                elif param.name in class_instance.options:
                     param_input_widget = QComboBox()
-                    param_input_widget.addItems(selected_class.options[param.name])
-                    if param.default in selected_class.options[param.name]:
+                    param_input_widget.addItems(class_instance.options[param.name])
+                    if param.default in class_instance.options[param.name]:
                         if self.init_method is None:
                             default_index = param_input_widget.findText(param.default)
                             param_input_widget.setCurrentIndex(default_index)
@@ -604,7 +611,7 @@ class App(QMainWindow):
                         param_input_widget.setEnabled(False)
 
                 # Create info button with tooltip
-                info_text = self.getInfoText(param.name, self.selected_class_name)
+                info_text = self.getInfoText(param.name, self.data.dfc_name)
                 info_button = InfoButton(info_text)
 
                 # Create layout for label, widget, and info button
@@ -865,7 +872,7 @@ class App(QMainWindow):
     def loadFile(self):
         fileFilter = "All Supported Files (*.mat *.txt *.npy *pkl *tsv);;MAT Files (*.mat);;Text Files (*.txt);;NumPy Files (*.npy);;Pickle Files (*.pkl);;TSV Files (*.tsv))"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
-        self.file_name = file_path.split('/')[-1]
+        file_name = file_path.split('/')[-1]
 
         if not file_path:
             return  # Early exit if no file is selected
@@ -923,7 +930,7 @@ class App(QMainWindow):
             # Set filenames depending on file type
             if file_path.endswith('.pkl'):
                 self.fileNameLabel.setText(f"Loaded TIME_SERIES object")
-                self.time_series_textbox.setText(self.file_name)
+                self.time_series_textbox.setText(file_name)
 
                 self.continuousCheckBox.setEnabled(False)
                 self.continuousCheckBox.setChecked(False)
@@ -936,8 +943,8 @@ class App(QMainWindow):
 
                 self.reshapeCheckbox.setEnabled(False)
             else: 
-                self.fileNameLabel.setText(f"Loaded {self.file_name} with shape {self.ts_data.shape}")
-                self.time_series_textbox.setText(self.file_name)
+                self.fileNameLabel.setText(f"Loaded {file_name} with shape {self.ts_data.shape}")
+                self.time_series_textbox.setText(file_name)
 
                 self.continuousCheckBox.setEnabled(True)
                 self.continuousCheckBox.setChecked(True)
@@ -955,14 +962,17 @@ class App(QMainWindow):
 
             # Reset and enable the GUI elements
             self.methodComboBox.setEnabled(True)
-            #self.methodComboBox.setCurrentText("Sliding Window")
             self.init_method = None
-            #self.onMethodChanged()
 
             self.methodComboBox.setEnabled(True)
             self.calculateButton.setEnabled(True)
             self.clearMemoryButton.setEnabled(True)
             self.keepInMemoryCheckbox.setEnabled(True)
+
+            # new data stoage stuff
+            self.data.file_name = file_name
+            self.data.file_data = self.ts_data
+            self.data.roi_names = self.roi_data
 
         except Exception as e:
             print(f"Error loading data: {e}")
@@ -1000,32 +1010,27 @@ class App(QMainWindow):
 
         # Update the labels
         self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.ts_data.shape}")
-        self.time_series_textbox.setText(self.file_name)
+        self.time_series_textbox.setText(self.data.file_name)
 
     def handleResult(self, result):
         # Handles the result of the worker thread
-        self.dfc_data = result
-
-        #if self.abortFlag:
-        #    print("Calculation was aborted, no results will be shown.")
-        #    self.abortFlag = False
-        #    return
+        self.data.dfc_data = result
 
         # Update the sliders and text
-        if self.dfc_data['data'] is not None:
-            self.calculatingLabel.setText(f"Calculated {self.selected_class_name} with shape {self.dfc_data['data'].shape}")
+        if self.data.dfc_data is not None:
+            self.calculatingLabel.setText(f"Calculated {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
             
-            if len(self.dfc_data['data'].shape) == 3:
+            if len(self.data.dfc_data.shape) == 3:
                 self.slider.show()
-                self.rowSelector.setMaximum(self.dfc_data['data'].shape[0] - 1)
-                self.colSelector.setMaximum(self.dfc_data['data'].shape[1] - 1)
+                self.rowSelector.setMaximum(self.data.dfc_data.shape[0] - 1)
+                self.colSelector.setMaximum(self.data.dfc_data.shape[1] - 1)
                 self.rowSelector.setValue(1)
 
             # Update time label
-            total_length = self.dfc_data['data'].shape[2] if len(self.dfc_data['data'].shape) == 3 else 0
+            total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
             
             if self.currentTabIndex == 0 or self.currentTabIndex == 2:
-                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data['data'].shape) == 3 else " static "
+                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
             else:
                 position_text = ""
 
@@ -1045,8 +1050,9 @@ class App(QMainWindow):
 
     def getParameters(self):
         # Get the time series and parameters (from the UI) for the selected connectivity method and store them in a dictionary
-        self.parameters = {}
-        self.parameters['time_series'] = self.ts_data
+        
+        # Time series data
+        self.data.dfc_params['time_series'] = self.data.file_data
 
         # Converts string to boolean, float, or retains as string if conversion is not applicable
         def convert_value(value):
@@ -1080,7 +1086,7 @@ class App(QMainWindow):
                 if value is not None:  # Ensure there is a value before attempting to convert and store
                     param_key = self.reverse_param_names.get(label)
                     if param_key:  # Ensure the key exists in the reverse_param_names dictionary
-                        self.parameters[param_key] = convert_value(value) if isinstance(value, str) else value
+                        self.data.dfc_params[param_key] = convert_value(value) if isinstance(value, str) else value
                     else:
                         self.calculatingLabel.setText(f"Error: Unrecognized parameter '{label}'")
                 else:
@@ -1089,16 +1095,10 @@ class App(QMainWindow):
 
     def onCalculateConnectivity(self):
         # Check if ts_data is available
-        if self.ts_data is None:
+        if self.data.file_data is None:
             self.calculatingLabel.setText(f"Error. No time series data has been loaded.")
             return
     
-        # Check if method is available
-        selected_class = getattr(methods, self.selected_class_name, None)
-        if not selected_class:
-            print("Selected class not found in connectivity module")
-            return
-        
         # Process all pending events
         QApplication.processEvents() 
 
@@ -1107,7 +1107,7 @@ class App(QMainWindow):
         
         # Start worker thread for dFC calculations and submit for calculation
         self.workerThread = QThread()
-        self.worker = Worker(self.calculateDFC, self.parameters)
+        self.worker = Worker(self.calculateDFC, self.data.dfc_params)
         self.worker.moveToThread(self.workerThread)
         
         self.worker.finished.connect(self.workerThread.quit)
@@ -1144,67 +1144,58 @@ class App(QMainWindow):
     def calculateDFC(self, parameters):
         keep_in_memory = self.keepInMemoryCheckbox.isChecked()
         
-        # Try to calculate dFC, throw an exception if  it fails
-        try:
-            # Check if data for the selected class name exists with the same parameters
-            existing_data = self.dfc_data_dict.get(self.selected_class_name) # returns None if key does not exist (avoid KeyError)
-            #if existing_data is not None and existing_data.get('data') is not None and existing_data.get('data').size > 0 and self.check_data_dict_equality(existing_data.get('parameters'), parameters):
-            if existing_data is not None and existing_data.get('data') is not None and self.check_data_dict_equality(existing_data.get('parameters'), parameters):
-                print(f"Using stored data for {self.selected_class_name} with given parameters")
-                return {"data": existing_data['data'], "parameters": parameters}
+        # Try to calculate dFC, throw an exception if it fails
 
-            # If parameters have changed or data doesn't exist, proceed to calculate new data
-            selected_class = getattr(methods, self.selected_class_name, None)
-            if not selected_class:
-                print("Selected class not found in connectivity module")
-                return None
+        # Check if data already exists
+        existing_data = self.data_storage.check_and_get_data(self.data)
+        if existing_data is not None:
+            print(f"Using stored data for {self.data.dfc_name} with given parameters")
+            return existing_data
 
-            connectivity_calculator = selected_class(**parameters)
-            result = connectivity_calculator.connectivity()
-            
-            # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
-            if isinstance(result, tuple):
-                self.dfc_data['data'], _ = result
-                self.dfc_data['parameters'] = parameters
-                self.state_tc = None
-                self.edge_ts = result[1][0] if isinstance(result[1], tuple) else None
+        # Data does not exist, perform calculation
+        connectivity_calculator = self.data.dfc_instance(**parameters)
+        result = connectivity_calculator.connectivity()
+        
+        print("HO", result.shape)
 
-            # Result is DFC object (pydfc methods)
-            elif isinstance(result, pydfc.dfc.DFC):
-                self.dfc_data['data'] = np.transpose(result.get_dFC_mat(), (1, 2, 0))
-                self.dfc_data['parameters'] = parameters
-                self.dfc_states = result.FCSs
-                self.state_tc = result.state_TC()
-                self.edge_ts = None
-            
-            # Only a single matrix is returned (most cases)
-            else:
-                self.dfc_data['data'] = result
-                self.dfc_data['parameters'] = parameters
-                self.state_tc = None
-                self.edge_ts = None
+        # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
+        if isinstance(result, tuple):
+            self.dfc_data['data'], _ = result
+            self.dfc_data['parameters'] = parameters
+            self.state_tc = None
+            self.edge_ts = result[1][0] if isinstance(result[1], tuple) else None
 
-            # Store in memory if checkbox is checked
-            if keep_in_memory:
-                # Update the dictionary entry for the selected_class_name with the new data and parameters
-                self.dfc_data_dict[self.selected_class_name] = {'data': self.dfc_data['data'], 'parameters': parameters}
-                print(f"Updated {self.selected_class_name} data with new parameters in memory")
+        # Result is DFC object (pydfc methods)
+        elif isinstance(result, pydfc.dfc.DFC):
+            self.dfc_data['data'] = np.transpose(result.get_dFC_mat(), (1, 2, 0))
+            self.dfc_data['parameters'] = parameters
+            self.dfc_states = result.FCSs
+            self.state_tc = result.state_TC()
+            self.edge_ts = None
+        
+        # Only a single matrix is returned (most cases)
+        else:
+            self.dfc_data['data'] = result
+            self.dfc_data['parameters'] = parameters
+            self.state_tc = None
+            self.edge_ts = None
 
-            return self.dfc_data
+        # Store in memory if checkbox is checked
+        if keep_in_memory:
+            # Update the dictionary entry for the selected_class_name with the new data and parameters
+            self.dfc_data_dict[self.data.dfc_name] = {'data': self.dfc_data['data'], 'parameters': parameters}
+            print(f"Updated {self.data.dfc_name} data with new parameters in memory")
 
-        except Exception as e:
-            print(f"Exception when calculating dFC: {e}")
-            self.calculatingLabel.setText(f"Error calculating connectivity, check parameters.")
-            return None
+        return self.dfc_data
 
     def saveDataToDict(self, parameters):
-        self.dfc_data_dict[self.selected_class_name] = {'data': self.dfc_data['data'], 'parameters': parameters}
+        self.dfc_data_dict[self.data.dfc_name] = {'data': self.dfc_data['data'], 'parameters': parameters}
         return
 
     def onKeepInMemoryChanged(self, state):
         if state == 2 and self.dfc_data['data'] is not None:
             self.saveDataToDict(self.parameters)
-            print(f"Saved {self.selected_class_name} data to memory")
+            print(f"Saved {self.data.dfc_name} data to memory")
                 
     def onClearMemory(self):
         self.dfc_data_dict = {}
