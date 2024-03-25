@@ -1,9 +1,12 @@
 import sys
+import uuid
 import pickle
 import inspect
 import numpy as np
 import pandas as pd
+from typing import Any, Dict
 from scipy.io import loadmat, savemat
+from dataclasses import dataclass, field
 from importlib import resources as pkg_resources
 
 import qdarkstyle
@@ -56,23 +59,64 @@ class InfoButton(QPushButton):
         QToolTip.showText(tooltip_pos, self.info_text)
         super().enterEvent(event)
 
+@dataclass
+class Data:
+    id:           int        = field(default_factory=lambda: str(uuid.uuid4())) # unique ID
+    method_name:  str        = field(default=None)          # method class name
+    file_name:    str        = field(default=None)          # data file name
+    time_series:  np.ndarray = field(default=None)          # input time series data
+    rois:         np.ndarray = field(default=None)          # input roi data
+    params:       Dict       = field(default_factory=dict)  # input parameters
+    dfc_data:     np.ndarray = field(default=None)          # dfc data
+    dfc_states:   Dict       = field(default_factory=dict)  # dfc states
+    dfc_state_tc: np.ndarray = field(default=None)          # dfc state time course
+    dfc_edge_ts:  np.ndarray = field(default=None)          # dfc edge time series
+    
+class DataStorage:
+    def __init__(self):
+        self.storage = {}
+
+    def generate_hash(self, data_obj):
+        # Generate a hash based on method_name, file_name, and sorted params
+        # This hash will be used to check if we already have existing data
+        params_tuple = tuple(sorted(data_obj.params.items()))
+        return hash((data_obj.method_name, data_obj.file_name, params_tuple))
+
+    def add_data(self, data_obj):
+        # Decide if we should add the data based on the hash
+        data_hash = self.generate_hash(data_obj)
+        if data_hash not in self.storage:
+            self.storage[data_hash] = data_obj
+            return True
+        return False
+
+    def check_and_get_data(self, data_obj):
+        # Check if we already have data and return it, otherwise return None
+        data_hash = self.generate_hash(data_obj)
+        return self.storage.get(data_hash, None)
+
+
 class App(QMainWindow):
     def __init__(self, init_data=None, init_method=None):
         super().__init__()
         self.title = 'Comet Dynamic Functional Connectivity Toolbox'
-        self.ts_data = None
-        self.roi_data = None
-        self.dfc_data = {}
-        self.state_tc = None
-        self.dfc_states = None
-        self.edge_ts = None
-        self.abortFlag = False
-        self.init_method = init_method
-        self.dfc_data_dict = {}
-        self.selected_class_name = None
+        
+        self.data = Data()
+        self.data_storage = DataStorage()
+        
+        self.ts_data = None # y
+        self.roi_data = None # y
+        self.dfc_data = {} # y
+        self.state_tc = None # y
+        self.dfc_states = None # y
+        self.edge_ts = None # y
+        self.init_method = init_method # y
+        self.dfc_data_dict = {} # y
+        self.selected_class_name = None # y
         self.currentSliderValue = 0
         self.currentTabIndex = 0
-        self.file_name = ""
+        self.file_name = "" # y
+
         self.param_names = {
             "self":                 "self", 
             "time_series":          "Time series",
@@ -119,13 +163,13 @@ class App(QMainWindow):
 
         }
         self.reverse_param_names = {v: k for k, v in self.param_names.items()}
-
+        
         self.initUI()
         
-        self.dfc_data['data'] = init_data
-        self.dfc_data['parameters'] = None # TODO pass parameters
+        self.dfc_data['data'] = init_data # y
+        self.dfc_data['parameters'] = None # y
 
-        if self.dfc_data['data'] is not None:
+        if init_data is not None:
             self.init_from_calculated_data()
 
     def initUI(self):
@@ -366,7 +410,6 @@ class App(QMainWindow):
     def init_from_calculated_data(self):
         # Make sure both the dFC data and the method object are provided
         assert self.init_method is not None, "Please provide the method object corresponding to your dFC data as the second argument to the GUI."
-
         # Get parameters
         self.selected_class_name = self.class_info.get(self.init_method.name)
         self.getParameters() # TODO: Something goes wrong here for SW (maybe because of strings in the parameters)
