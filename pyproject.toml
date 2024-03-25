@@ -1,6 +1,6 @@
 [project]
 name = "comet-toolbox"
-version = "0.1.1"
+version = "0.1.2"
 authors = [
   {name="Micha Burkhardt", email="micha.burkhardt@uol.de"},
 ]
@@ -32,7 +32,7 @@ dependencies = [
   "seaborn >=0.13.0",
   "networkx >=3.2.1",
   "pydfc >=1.0.4",
-  "ipykernel >=6.29.3"
+  "ipykernel >=6.29.3",
   "notebook >=7.0.6"
 ]
 
