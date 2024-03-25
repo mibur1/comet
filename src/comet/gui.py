@@ -81,7 +81,8 @@ class DataStorage:
     def generate_hash(self, data_obj):
         # Generate a hash based on method_name, file_name, and sorted params
         # This hash will be used to check if we already have existing data
-        params_tuple = tuple(sorted(data_obj.dfc_params.items()))
+        hashable_params = {k: v for k, v in data_obj.dfc_params.items() if not isinstance(v, np.ndarray)}
+        params_tuple = tuple(sorted(hashable_params.items()))
         return hash((data_obj.file_name, data_obj.dfc_name, params_tuple))
 
     def add_data(self, data_obj):
