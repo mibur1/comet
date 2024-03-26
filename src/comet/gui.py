@@ -1234,11 +1234,11 @@ class App(QMainWindow):
             ax.plot(time_series)
             self.timeSeriesCanvas.draw()
 
-        elif self.state_tc is not None:
+        elif self.data.dfc_state_tc is not None:
             self.timeSeriesFigure.clear()
 
-            time_series = self.state_tc
-            num_states = len(self.dfc_states)
+            time_series = self.data.dfc_state_tc
+            num_states = len(self.data.dfc_states)
             # Setup the gridspec layout
             gs = gridspec.GridSpec(3, num_states, self.timeSeriesFigure, height_ratios=[1, 0.5, 1])
 
@@ -1263,7 +1263,7 @@ class App(QMainWindow):
 
             self.timeSeriesFigure.canvas.draw()
 
-        elif self.edge_ts is not None:
+        elif self.data.dfc_edge_ts is not None:
             self.timeSeriesFigure.clear()
             gs = gridspec.GridSpec(3, 1, self.timeSeriesFigure, height_ratios=[2, 0.5, 1]) # GridSpec with 3 rows and 1 column
 
@@ -1276,7 +1276,7 @@ class App(QMainWindow):
 
             # The second subplot occupies the 3rd row
             ax2 = self.timeSeriesFigure.add_subplot(gs[2, 0])
-            mean_edge_values = np.mean(self.edge_ts.T, axis=0)
+            mean_edge_values = np.mean(self.data.dfc_edge_ts.T, axis=0)
             ax2.plot(mean_edge_values)
             ax2.set_xlim(0, len(mean_edge_values) - 1)
             ax2.set_title("Mean time series")
