@@ -1,5 +1,4 @@
 import sys
-import uuid
 import pickle
 import inspect
 import numpy as np
@@ -9,13 +8,7 @@ from scipy.io import loadmat, savemat
 from dataclasses import dataclass, field
 from importlib import resources as pkg_resources
 
-import qdarkstyle
-from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject
-from PyQt6.QtGui import QEnterEvent, QFontMetrics
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
-    QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, \
-    QSpacerItem, QCheckBox, QTabWidget, QMessageBox, QSpinBox, QDoubleSpinBox
-
+# Plotting imports
 from matplotlib.image import imread
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -23,11 +16,20 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
 import matplotlib.gridspec as gridspec
 
+# Qt imports
+import qdarkstyle
+from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject
+from PyQt6.QtGui import QEnterEvent, QFontMetrics
+from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
+    QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, \
+    QSpacerItem, QCheckBox, QTabWidget, QMessageBox, QSpinBox, QDoubleSpinBox
+
+# DFC methods
 from . import methods
 import pydfc
 
-# Worker class for dFC calculations, which run in a separate thread
 class Worker(QObject):
+    # Worker class for dFC calculation (runs in a separate thread)
     finished = pyqtSignal()
     error = pyqtSignal(str)
     result = pyqtSignal(object)
@@ -46,8 +48,8 @@ class Worker(QObject):
         finally:
             self.finished.emit()  # Notify completion
 
-# Info button class
 class InfoButton(QPushButton):
+    # Info button class
     def __init__(self, info_text, parent=None):
         super().__init__("i", parent)
         self.info_text = info_text
@@ -61,7 +63,7 @@ class InfoButton(QPushButton):
 
 @dataclass
 class Data:
-    id:           int        = field(default_factory=lambda: str(uuid.uuid4())) # unique ID # DONE
+    # Data class to hold currently relevant data
     file_name:    str        = field(default=None)          # data file name                # DONE
     file_data:    np.ndarray = field(default=None)          # input time series data        #
     roi_names:    np.ndarray = field(default=None)          # input roi data                #
@@ -73,8 +75,9 @@ class Data:
     dfc_states:   Dict       = field(default_factory=dict)  # dfc states                    #
     dfc_state_tc: np.ndarray = field(default=None)          # dfc state time course         #
     dfc_edge_ts:  np.ndarray = field(default=None)          # dfc edge time series          #
-    
+
 class DataStorage:
+    # Database class for storing calculated data
     def __init__(self):
         self.storage = {}
 
@@ -97,7 +100,6 @@ class DataStorage:
         # Check if we already have data and return it, otherwise return None
         data_hash = self.generate_hash(data_obj)
         return self.storage.get(data_hash, None)
-
 
 class App(QMainWindow):
     def __init__(self, init_data=None, init_method=None):
@@ -1014,9 +1016,6 @@ class App(QMainWindow):
         self.time_series_textbox.setText(self.data.file_name)
 
     def handleResult(self, result):
-        # Handles the result of the worker thread
-        self.data.dfc_data = result
-
         # Update the sliders and text
         if self.data.dfc_data is not None:
             self.calculatingLabel.setText(f"Calculated {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
@@ -1156,38 +1155,36 @@ class App(QMainWindow):
         # Data does not exist, perform calculation
         connectivity_calculator = self.data.dfc_instance(**parameters)
         result = connectivity_calculator.connectivity()
-        
-        print("HO", result.shape)
 
         # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
         if isinstance(result, tuple):
-            self.dfc_data['data'], _ = result
-            self.dfc_data['parameters'] = parameters
-            self.state_tc = None
-            self.edge_ts = result[1][0] if isinstance(result[1], tuple) else None
+            self.data.dfc_data = result
+            self.data.dfc_params = parameters
+            self.data.dfc_state_tc = None
+            self.data.dfc_edge_ts = result[1][0] if isinstance(result[1], tuple) else None
 
         # Result is DFC object (pydfc methods)
         elif isinstance(result, pydfc.dfc.DFC):
-            self.dfc_data['data'] = np.transpose(result.get_dFC_mat(), (1, 2, 0))
-            self.dfc_data['parameters'] = parameters
-            self.dfc_states = result.FCSs
-            self.state_tc = result.state_TC()
-            self.edge_ts = None
+            self.data.dfc_data = np.transpose(result.get_dFC_mat(), (1, 2, 0))
+            self.data.dfc_params = parameters
+            self.data.dfc_state_tc = result.FCSs
+            self.data.dfc_state_tc = result.state_TC()
+            self.data.dfc_edge_ts = None
         
         # Only a single matrix is returned (most cases)
         else:
-            self.dfc_data['data'] = result
-            self.dfc_data['parameters'] = parameters
-            self.state_tc = None
-            self.edge_ts = None
+            self.data.dfc_data = result
+            self.data.dfc_params = parameters
+            self.data.dfc_state_tc = None
+            self.data.dfc_edge_ts = None
 
         # Store in memory if checkbox is checked
         if keep_in_memory:
             # Update the dictionary entry for the selected_class_name with the new data and parameters
-            self.dfc_data_dict[self.data.dfc_name] = {'data': self.dfc_data['data'], 'parameters': parameters}
+            self.data_storage.add_data(self.data)
             print(f"Updated {self.data.dfc_name} data with new parameters in memory")
 
-        return self.dfc_data
+        return self.data
 
     def saveDataToDict(self, parameters):
         self.dfc_data_dict[self.data.dfc_name] = {'data': self.dfc_data['data'], 'parameters': parameters}
@@ -1212,38 +1209,39 @@ class App(QMainWindow):
         return
 
     def plot_dfc(self):
-        if not hasattr(self, 'dfc_data'):
+        current_data = self.data.dfc_data
+        
+        if current_data is None:
             print("No calculated data available for plotting")
             return
 
         self.figure.clear()
         ax = self.figure.add_subplot(111)
 
-        if self.dfc_data['data'] is not None:
-            current_data = self.dfc_data['data']
-            try:
-                current_slice = current_data[:, :, self.currentSliderValue] if len(current_data.shape) == 3 else current_data
-                vmax = np.max(np.abs(current_slice))
-                self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
-            except:
-                current_slice = current_data[:, :, 0] if len(current_data.shape) == 3 else current_data
-                vmax = np.max(np.abs(current_slice))
-                self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+        try:
+            current_slice = current_data[:, :, self.currentSliderValue] if len(current_data.shape) == 3 else current_data
+            vmax = np.max(np.abs(current_slice))
+            self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+        except:
+            current_slice = current_data[:, :, 0] if len(current_data.shape) == 3 else current_data
+            vmax = np.max(np.abs(current_slice))
+            self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
 
-            # Create the colorbar
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="5%", pad=0.15)
-            cbar = self.figure.colorbar(self.im, cax=cax)
-            cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
+        # Create the colorbar
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.15)
+        cbar = self.figure.colorbar(self.im, cax=cax)
+        cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
 
-            self.slider.setMaximum(current_data.shape[2] - 1 if len(current_data.shape) == 3 else 0)
-        
+        self.slider.setMaximum(current_data.shape[2] - 1 if len(current_data.shape) == 3 else 0)
+    
         self.figure.set_facecolor('#E0E0E0')
         self.figure.tight_layout()
         self.canvas.draw()
 
     def plotTimeSeries(self):
-        current_data = self.dfc_data['data']
+        current_data = self.data.dfc_data
+
         # Get dimensions of the data
         if current_data is not None and current_data.ndim == 3:
             self.rowSelector.setMaximum(current_data.shape[0] - 1)
@@ -1333,7 +1331,7 @@ class App(QMainWindow):
         self.canvas.draw()
 
     def updateDistribution(self):
-        current_data = self.dfc_data['data']
+        current_data = self.data.dfc_data
 
         if current_data is None or not hasattr(self, 'distributionFigure'):
             self.distributionFigure.clear()
