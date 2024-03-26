@@ -472,6 +472,7 @@ class App(QMainWindow):
         self.data.dfc_name = self.class_info.get(methodName) # class name
         
         # Get current parameters and check if we have data in memory
+        # TODO: Something is rwing here
         print(self.data_storage.storage.keys())
         self.getParameters()
 
