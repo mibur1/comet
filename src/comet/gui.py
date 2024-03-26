@@ -64,17 +64,17 @@ class InfoButton(QPushButton):
 @dataclass
 class Data:
     # Data class to hold currently relevant data
-    file_name:    str        = field(default=None)          # data file name                # DONE
-    file_data:    np.ndarray = field(default=None)          # input time series data        #
-    roi_names:    np.ndarray = field(default=None)          # input roi data                #
-    
-    dfc_instance: Any        = field(default=None)          # instance of the dFC class     #
-    dfc_name:     str        = field(default=None)          # method class name             #
-    dfc_params:   Dict       = field(default_factory=dict)  # input parameters              #
-    dfc_data:     np.ndarray = field(default=None)          # dfc data                      #
-    dfc_states:   Dict       = field(default_factory=dict)  # dfc states                    #
-    dfc_state_tc: np.ndarray = field(default=None)          # dfc state time course         #
-    dfc_edge_ts:  np.ndarray = field(default=None)          # dfc edge time series          #
+    file_name:    str        = field(default=None)         # data file name
+    file_data:    np.ndarray = field(default=None)         # input time series data
+    roi_names:    np.ndarray = field(default=None)         # input roi data     
+
+    dfc_instance: Any        = field(default=None)         # instance of the dFC class
+    dfc_name:     str        = field(default=None)         # method class name
+    dfc_params:   Dict       = field(default_factory=dict) # input parameters
+    dfc_data:     np.ndarray = field(default=None)         # dfc data
+    dfc_states:   Dict       = field(default_factory=dict) # dfc states
+    dfc_state_tc: np.ndarray = field(default=None)         # dfc state time course
+    dfc_edge_ts:  np.ndarray = field(default=None)         # dfc edge time series
 
 class DataStorage:
     # Database class for storing calculated data
@@ -95,7 +95,7 @@ class DataStorage:
             self.storage[data_hash] = data_obj
             return True
         return False
-
+    
     def check_and_get_data(self, data_obj):
         # Check if we already have data and return it, otherwise return None
         data_hash = self.generate_hash(data_obj)
@@ -108,15 +108,7 @@ class App(QMainWindow):
         
         self.data = Data()
         self.data_storage = DataStorage()
-        
-        self.ts_data = None # y
-        self.roi_data = None # y
-        self.dfc_data = {} # y
-        self.state_tc = None # y
-        self.dfc_states = None # y
-        self.edge_ts = None # y
-        self.init_method = init_method # y
-        self.dfc_data_dict = {} # y
+
         self.currentSliderValue = 0
         self.currentTabIndex = 0
 
@@ -168,9 +160,6 @@ class App(QMainWindow):
         self.reverse_param_names = {v: k for k, v in self.param_names.items()}
         
         self.initUI()
-        
-        self.dfc_data['data'] = init_data # y
-        self.dfc_data['parameters'] = None # y
 
         if init_data is not None:
             self.init_from_calculated_data()
@@ -450,9 +439,6 @@ class App(QMainWindow):
     def onMethodChanged(self, methodName=None):
         # Clear old variables and data
         self.clearLayout(self.parameterLayout)
-        self.dfc_data['data'] = None        # TODEL
-        self.dfc_data['parameters'] = None  # TODEL
-
         self.data = Data()
 
         if methodName == None or methodName == "Use checkboxes to get available methods":
@@ -466,18 +452,20 @@ class App(QMainWindow):
             self.data.dfc_instance = self.init_method
 
         # If connectivity for this method already exists we load and plot it
-        if self.data.dfc_name in self.dfc_data_dict:
-            self.dfc_data = self.dfc_data_dict[self.data.dfc_name]
+        existing_data = self.data_storage.check_and_get_data(self.data)
+        
+        if existing_data is not None:
+            self.data = existing_data
             self.plot_dfc()
             self.updateDistribution()
             self.plotTimeSeries()
             self.slider.show()
-            self.calculatingLabel.setText(f"Loaded {self.data.dfc_name} with shape {self.dfc_data['data'].shape}")
+            self.calculatingLabel.setText(f"Loaded {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
             print(f"Loaded {self.data.dfc_name} from memory")
 
             # Update the slider
-            total_length = self.dfc_data['data'].shape[2] if len(self.dfc_data['data'].shape) == 3 else 0
-            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data['data'].shape) == 3 else " static "
+            total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
+            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
             self.positionLabel.setText(position_text)
             self.slider.setValue(self.slider.value())
         
@@ -982,7 +970,7 @@ class App(QMainWindow):
             self.fileNameLabel.setText(f"Error. No time series data has been loaded.")
 
     def saveFile(self):
-        if not hasattr(self, 'dfc_data'):
+        if self.data.dfc_data is None:
             print("No dFC data available to save.")
             return
 
@@ -996,9 +984,26 @@ class App(QMainWindow):
             
             # Save the data
             try:
-                savemat(filePath, {'dfc_data': self.dfc_data['data'], 'roi_data': self.roi_data})
+                datadict = self.dataclass_to_dict(self.data)
+                savemat(filePath, datadict)
             except Exception as e:
                 print(f"Error saving data: {e}")
+
+    def dataclass_to_dict(self, data_instance):
+        data_dict = {}
+        for field in data_instance.__dataclass_fields__:
+            value = getattr(data_instance, field)
+            if isinstance(value, np.ndarray):
+                data_dict[field] = value
+            elif isinstance(value, dict):
+                # Assume dictionaries contain simple types or numpy arrays
+                data_dict[field] = {k: (v.tolist() if isinstance(v, np.ndarray) else v) for k, v in value.items()}
+            elif field == 'dfc_instance':
+                # For the dfc_instance only its type is stored
+                data_dict[field] = str(type(value))
+            else:
+                data_dict[field] = value
+        return data_dict
 
     def onReshapeCheckboxChanged(self, state):
         if self.ts_data is None:
@@ -1043,6 +1048,7 @@ class App(QMainWindow):
         self.plotTimeSeries()
         self.calculateButton.setEnabled(True)
         self.onTabChanged()
+        self.update()
 
     def handleError(self, error):
         # Handles errors in the worker thread
@@ -1101,9 +1107,6 @@ class App(QMainWindow):
     
         # Process all pending events
         QApplication.processEvents() 
-
-        # Gets the parameters and stores them in self.parameters
-        self.getParameters()
         
         # Start worker thread for dFC calculations and submit for calculation
         self.workerThread = QThread()
@@ -1119,28 +1122,6 @@ class App(QMainWindow):
         self.calculatingLabel.setText(f"Calculating {self.methodComboBox.currentText()}, please wait...")
         self.calculateButton.setEnabled(False)
     
-    def check_data_dict_equality(self, dict1, dict2):
-        if dict1.keys() != dict2.keys():
-            return False  # The dictionaries have different sets of keys
-        
-        for key in dict1:
-            val1, val2 = dict1[key], dict2[key]
-            
-            # If both values are numpy arrays, use numpy.array_equal
-            if isinstance(val1, np.ndarray) and isinstance(val2, np.ndarray):
-                if not np.array_equal(val1, val2):
-                    return False
-            # If values are dictionaries, recursively compare
-            elif isinstance(val1, dict) and isinstance(val2, dict):
-                if not self.check_data_dict_equality(val1, val2):
-                    return False
-            # For other types, use standard equality check
-            else:
-                if val1 != val2:
-                    return False
-
-        return True  # All keys and values are equal
-
     def calculateDFC(self, parameters):
         keep_in_memory = self.keepInMemoryCheckbox.isChecked()
         
@@ -1186,17 +1167,13 @@ class App(QMainWindow):
 
         return self.data
 
-    def saveDataToDict(self, parameters):
-        self.dfc_data_dict[self.data.dfc_name] = {'data': self.dfc_data['data'], 'parameters': parameters}
-        return
-
     def onKeepInMemoryChanged(self, state):
-        if state == 2 and self.dfc_data['data'] is not None:
-            self.saveDataToDict(self.parameters)
+        if state == 2 and self.data.dfc_data is not None:
+            self.data_storage.add_data(self.data)
             print(f"Saved {self.data.dfc_name} data to memory")
                 
     def onClearMemory(self):
-        self.dfc_data_dict = {}
+        self.data_storage = DataStorage()
         
         self.figure.clear()
         self.canvas.draw()
@@ -1205,7 +1182,6 @@ class App(QMainWindow):
 
         self.calculatingLabel.setText(f"Cleared memory")
         print("Cleared memory")
-
         return
 
     def plot_dfc(self):
@@ -1349,13 +1325,13 @@ class App(QMainWindow):
 
     def onSliderValueChanged(self, value):
         # Ensure there is data to work with
-        if self.dfc_data['data'] is None or self.im is None:
+        if self.data.dfc_data is None or self.im is None:
             return
         
         if self.currentTabIndex == 0 or self.currentTabIndex == 2:
             # Get and update the data of the imshow object
             self.currentSliderValue = value
-            data = self.dfc_data['data']
+            data = self.data.dfc_data
             self.im.set_data(data[:, :, value]) if len(data.shape) == 3 else self.im.set_data(data)
 
             vlim = np.max(np.abs(data[:, :, value])) if len(data.shape) == 3 else np.max(np.abs(data))
@@ -1365,8 +1341,8 @@ class App(QMainWindow):
             self.canvas.draw()
             self.updateDistribution()
 
-            total_length = self.dfc_data['data'].shape[2] if len(self.dfc_data['data'].shape) == 3 else 0
-            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data['data'].shape) == 3 else " static "
+            total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
+            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
             self.positionLabel.setText(position_text)
 
     
@@ -1398,10 +1374,10 @@ class App(QMainWindow):
         self.updateDistribution()
 
     def updateTimeSeriesPlot(self, center):
-        if self.dfc_data['data'] is None:
+        if self.data.dfc_data is None:
             return
 
-        max_index = self.dfc_data['data'].shape[2] - 1 if len(self.dfc_data['data'].shape) == 3 else 0
+        max_index = self.data.dfc_data.shape[2] - 1 if len(self.data.dfc_data.shape) == 3 else 0
         width = 101
 
         # Determine if we should show the entire series or a window
@@ -1419,7 +1395,6 @@ class App(QMainWindow):
         self.timeSeriesFigure.clear()
         ax = self.timeSeriesFigure.add_subplot(111)
         ax.plot(range(start, end), time_series_slice)
-        #ax.set_title(f"dFC time series ({row}, {col})")
         self.timeSeriesCanvas.draw()
 
 def run(dfc_data=None, method=None):
