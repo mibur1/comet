@@ -441,7 +441,7 @@ class App(QMainWindow):
     def onMethodChanged(self, methodName=None):
         # Clear old variables and data
         self.clearLayout(self.parameterLayout)
-        self.data = Data()
+        #self.data = Data()
 
         if methodName == None or methodName == "Use checkboxes to get available methods":
             return
@@ -666,7 +666,7 @@ class App(QMainWindow):
         # index 2: Distribution plot
         # index 3: Graph analysis
 
-        if self.dfc_data['data'] is None:
+        if self.data.dfc_data is None:
             self.plot_logo()
             self.canvas.draw()
             self.distributionFigure.clear()
@@ -689,9 +689,9 @@ class App(QMainWindow):
             self.forwardButton.show()
             self.forwardLargeButton.show()
 
-            if self.dfc_data['data'] is not None:
-                total_length = self.dfc_data['data'].shape[2] if len(self.dfc_data['data'].shape) == 3 else 0
-                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data['data'].shape) == 3 else " static "
+            if self.data.dfc_data is not None:
+                total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
+                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
             else:
                 position_text = "no data available"
 
@@ -704,7 +704,7 @@ class App(QMainWindow):
             self.forwardLargeButton.hide()
             
             # If we have nothing to scroll though, hide some GUI elements
-            if len(self.dfc_data['data'].shape) == 2 or self.edge_ts is not None or self.state_tc is not None:
+            if len(self.data.dfc_data.shape) == 2 or self.data.dfc_edge_ts is not None or self.data.dfc_state_tc is not None:
                 position_text = ""
                 self.slider.hide()
                 
@@ -726,7 +726,7 @@ class App(QMainWindow):
                         widget.setVisible(True)
 
             # We have a static measure
-            if len(self.dfc_data['data'].shape) == 2 and self.edge_ts is None and self.state_tc is None:
+            if len(self.data.dfc_data.shape) == 2 and self.data.dfc_edge_ts is None and self.data.dfc_state_tc is None:
                 self.timeSeriesFigure.clear()
                 self.timeSeriesCanvas.draw()
 
@@ -849,101 +849,94 @@ class App(QMainWindow):
         if not file_path:
             return  # Early exit if no file is selected
 
-        try:
-            if file_path.endswith('.mat'):
-                self.data.file_data = loadmat(file_path)  # Assuming you'll adjust how to extract the array
-            elif file_path.endswith('.txt'):
-                self.data.file_data = np.loadtxt(file_path)
-            elif file_path.endswith('.npy'):
-                self.data.file_data = np.load(file_path)
-            elif file_path.endswith('.pkl'):
-                with open(file_path, 'rb') as f:
-                    self.data.file_data = pickle.load(f)
-            elif file_path.endswith(".tsv"):
-                data = pd.read_csv(file_path, sep='\t', header=None, na_values='n/a')
+        if file_path.endswith('.mat'):
+            self.data.file_data = loadmat(file_path)  # Assuming you'll adjust how to extract the array
+        elif file_path.endswith('.txt'):
+            self.data.file_data = np.loadtxt(file_path)
+        elif file_path.endswith('.npy'):
+            self.data.file_data = np.load(file_path)
+        elif file_path.endswith('.pkl'):
+            with open(file_path, 'rb') as f:
+                self.data.file_data = pickle.load(f)
+        elif file_path.endswith(".tsv"):
+            data = pd.read_csv(file_path, sep='\t', header=None, na_values='n/a')
 
-                if data.iloc[0].apply(lambda x: np.isscalar(x) and np.isreal(x)).all():
-                    rois = None  # No rois found, the first row is part of the data
-                else:
-                    rois = data.iloc[0]  # The first row is rois
-                    data = data.iloc[1:]  # Remove the header row from the data
-
-                # Convert all data to numeric, making sure 'n/a' and other non-numeric are treated as NaN
-                data = data.apply(pd.to_numeric, errors='coerce')
-
-                # Identify entirely empty columns
-                empty_columns = data.columns[data.isna().all()]
-                
-                # Remove corresponding rois if rois exist
-                if rois is not None:
-                    removed_rois = rois[empty_columns].to_list()
-                    print("The following regions were empty and thus removed:", removed_rois)
-                    rois = rois.drop(empty_columns)
-
-                # Remove entirely empty columns and rows
-                data = data.dropna(axis=1, how='all').dropna(axis=0, how='all')
-
-                # Convert the cleaned data back to numpy array
-                self.data.file_data = data.to_numpy()
-
-                # Update header_list if rois exist
-                self.data.roi_names = np.array(rois, dtype=object)
-
+            if data.iloc[0].apply(lambda x: np.isscalar(x) and np.isreal(x)).all():
+                rois = None  # No rois found, the first row is part of the data
             else:
-                self.data.file_data = None
-                self.time_series_textbox.setText("Unsupported file format")
+                rois = data.iloc[0]  # The first row is rois
+                data = data.iloc[1:]  # Remove the header row from the data
 
-            # New data, reset slider and plot
-            self.currentSliderValue = 0
-            self.slider.setValue(0)
-            self.figure.clear()
-            self.canvas.draw()
+            # Convert all data to numeric, making sure 'n/a' and other non-numeric are treated as NaN
+            data = data.apply(pd.to_numeric, errors='coerce')
 
-            # Set filenames depending on file type
-            if file_path.endswith('.pkl'):
-                self.fileNameLabel.setText(f"Loaded TIME_SERIES object")
-                self.time_series_textbox.setText(file_name)
+            # Identify entirely empty columns
+            empty_columns = data.columns[data.isna().all()]
+            
+            # Remove corresponding rois if rois exist
+            if rois is not None:
+                removed_rois = rois[empty_columns].to_list()
+                print("The following regions were empty and thus removed:", removed_rois)
+                rois = rois.drop(empty_columns)
 
-                self.continuousCheckBox.setEnabled(False)
-                self.continuousCheckBox.setChecked(False)
+            # Remove entirely empty columns and rows
+            data = data.dropna(axis=1, how='all').dropna(axis=0, how='all')
 
-                self.stateBasedCheckBox.setEnabled(True)
-                self.stateBasedCheckBox.setChecked(True)
+            # Convert the cleaned data back to numpy array
+            self.data.file_data = data.to_numpy()
 
-                self.staticCheckBox.setEnabled(False)
-                self.staticCheckBox.setChecked(False)
+            # Update header_list if rois exist
+            self.data.roi_names = np.array(rois, dtype=object)
 
-                self.reshapeCheckbox.setEnabled(False)
-            else: 
-                self.fileNameLabel.setText(f"Loaded {file_name} with shape {self.ts_data.shape}")
-                self.time_series_textbox.setText(file_name)
+        else:
+            self.data.file_data = None
+            self.time_series_textbox.setText("Unsupported file format")
 
-                self.continuousCheckBox.setEnabled(True)
-                self.continuousCheckBox.setChecked(True)
+        # New data, reset slider and plot
+        self.currentSliderValue = 0
+        self.slider.setValue(0)
+        self.figure.clear()
+        self.canvas.draw()
 
-                self.stateBasedCheckBox.setEnabled(False)
-                self.stateBasedCheckBox.setChecked(False)
+        # Set filenames depending on file type
+        if file_path.endswith('.pkl'):
+            self.fileNameLabel.setText(f"Loaded TIME_SERIES object")
+            self.time_series_textbox.setText(file_name)
 
-                self.staticCheckBox.setEnabled(True)
-                self.staticCheckBox.setChecked(True)
-      
-                self.reshapeCheckbox.setEnabled(True)
+            self.continuousCheckBox.setEnabled(False)
+            self.continuousCheckBox.setChecked(False)
 
-            # Show transpose textbox
-            self.reshapeCheckbox.show()
+            self.stateBasedCheckBox.setEnabled(True)
+            self.stateBasedCheckBox.setChecked(True)
 
-            # Reset and enable the GUI elements
-            self.methodComboBox.setEnabled(True)
-            self.init_method = None
+            self.staticCheckBox.setEnabled(False)
+            self.staticCheckBox.setChecked(False)
 
-            self.methodComboBox.setEnabled(True)
-            self.calculateButton.setEnabled(True)
-            self.clearMemoryButton.setEnabled(True)
-            self.keepInMemoryCheckbox.setEnabled(True)
+            self.reshapeCheckbox.setEnabled(False)
+        else:
+            self.fileNameLabel.setText(f"Loaded {self.data.file_name} with shape {self.data.file_data.shape}")
+            self.time_series_textbox.setText(file_name)
 
-        except Exception as e:
-            print(f"Error loading data: {e}")
-            self.fileNameLabel.setText(f"Error. No time series data has been loaded.")
+            self.continuousCheckBox.setEnabled(True)
+            self.continuousCheckBox.setChecked(True)
+
+            self.stateBasedCheckBox.setEnabled(False)
+            self.stateBasedCheckBox.setChecked(False)
+
+            self.staticCheckBox.setEnabled(True)
+            self.staticCheckBox.setChecked(True)
+    
+            self.reshapeCheckbox.setEnabled(True)
+
+        # Show transpose textbox
+        self.reshapeCheckbox.show()
+
+        # Reset and enable the GUI elements
+        self.methodComboBox.setEnabled(True)
+        self.methodComboBox.setEnabled(True)
+        self.calculateButton.setEnabled(True)
+        self.clearMemoryButton.setEnabled(True)
+        self.keepInMemoryCheckbox.setEnabled(True)
 
     def saveFile(self):
         if self.data.dfc_data is None:
@@ -982,18 +975,18 @@ class App(QMainWindow):
         return data_dict
 
     def onReshapeCheckboxChanged(self, state):
-        if self.ts_data is None:
+        if self.data.file_data is None:
             return  # No data loaded, so do nothing
 
         if state == Qt.CheckState.Checked:
             # Transpose the data
-            self.ts_data = self.ts_data.transpose()
+            self.data.file_data = self.data.file_data.transpose()
         else:
             # Transpose it back to original
-            self.ts_data = self.ts_data.transpose()
+            self.data.file_data = self.data.file_data.transpose()
 
         # Update the labels
-        self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.ts_data.shape}")
+        self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.data.file_data.shape}")
         self.time_series_textbox.setText(self.data.file_name)
 
     def handleResult(self, result):
@@ -1080,6 +1073,10 @@ class App(QMainWindow):
         if self.data.file_data is None:
             self.calculatingLabel.setText(f"Error. No time series data has been loaded.")
             return
+        
+        # Get the current parameters from the UI for the upcoming calculation
+        self.data.dfc_params = {} # Reset parameters as the dict would otherwise keep growing
+        self.getParameters() # Get new parameters
     
         # Process all pending events
         QApplication.processEvents() 
@@ -1204,7 +1201,7 @@ class App(QMainWindow):
         self.rowSelector.show()
         self.colSelector.show()
 
-        if current_data is not None and row < current_data.shape[0] and col < current_data.shape[1] and self.edge_ts is None and self.state_tc is None:    
+        if current_data is not None and row < current_data.shape[0] and col < current_data.shape[1] and self.data.dfc_edge_ts is None and self.data.dfc_state_tc is None:    
             self.timeSeriesFigure.clear()
             ax = self.timeSeriesFigure.add_subplot(111)
             time_series = current_data[row, col, :] if len(current_data.shape) == 3 else current_data[row, col]
