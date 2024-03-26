@@ -162,6 +162,9 @@ class App(QMainWindow):
         self.initUI()
 
         if init_data is not None:
+            self.data.dfc_data = init_data
+            self.data.dfc_instance = init_method
+            self.data.file_data = "loaded from script"
             self.init_from_calculated_data()
 
     def initUI(self):
@@ -405,16 +408,15 @@ class App(QMainWindow):
 
     def init_from_calculated_data(self):
         # Make sure both the dFC data and the method object are provided
-        assert self.init_method is not None, "Please provide the method object corresponding to your dFC data as the second argument to the GUI."
+        assert self.data.dfc_instance is not None, "Please provide the method object corresponding to your dFC data as the second argument to the GUI."
         # Get parameters
         #self.data.dfc_name = self.class_info.get(self.init_method.name)
         self.getParameters() # TODO: Something goes wrong here for SW (maybe because of strings in the parameters)
-        self.dfc_data['parameters'] = self.parameters
-        self.dfc_data_dict[self.data.dfc_name] = {'data': self.dfc_data['data'], 'parameters': self.dfc_data['parameters']}
+        self.data_storage.add_data(self.data) # Add to data storage
 
         # Set the slider elements
-        total_length = self.dfc_data['data'].shape[2] if len(self.dfc_data['data'].shape) == 3 else 0
-        position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.dfc_data['data'].shape) == 3 else " static "
+        total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
+        position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
         self.positionLabel.setText(position_text)
         self.slider.setValue(self.slider.value())
 
@@ -447,9 +449,6 @@ class App(QMainWindow):
         # Get selected connectivity method
         self.data.dfc_instance = getattr(methods, self.class_info.get(methodName), None) # the actual class
         self.data.dfc_name = self.class_info.get(methodName) # class name
-        
-        if self.init_method is not None:
-            self.data.dfc_instance = self.init_method
 
         # If connectivity for this method already exists we load and plot it
         existing_data = self.data_storage.check_and_get_data(self.data)
@@ -510,12 +509,8 @@ class App(QMainWindow):
         time_series_label.setMinimumSize(time_series_label.sizeHint())
         labels.append(time_series_label)
         
-        if self.init_method is None:
-            self.time_series_textbox.setText(self.data.file_name)
-            self.time_series_textbox.setEnabled(True)
-        else:
-            self.time_series_textbox.setText("from script")
-            self.time_series_textbox.setEnabled(False)
+        self.time_series_textbox.setText(self.data.file_name)
+        self.time_series_textbox.setEnabled(True)
 
         # Create info button for time_series
         time_series_info_text = "2D time series loaded from file. Time has to be the first dimension."
@@ -530,8 +525,6 @@ class App(QMainWindow):
         # Adjust max width for aesthetics
         max_label_width += 10
         time_series_label.setFixedWidth(max_label_width)
-
-        existing_params = vars(class_instance)
 
         for param in init_signature.parameters.values():
             if param.name not in ['self', 'time_series', 'tril', 'standardize', 'params']:
@@ -548,58 +541,45 @@ class App(QMainWindow):
                     param_input_widget = QComboBox()
                     param_input_widget.addItems(["True", "False"])
                     
-                    if self.init_method is None:
-                        default_index = param_input_widget.findText(str(param.default))
-                        param_input_widget.setCurrentIndex(default_index)
-                        param_input_widget.setEnabled(True)
-                    else:
-                        default_index = param_input_widget.findText(str(existing_params[param.name]))
-                        param_input_widget.setCurrentIndex(default_index)
-                        param_input_widget.setEnabled(False)
+                    default_index = param_input_widget.findText(str(param.default))
+                    param_input_widget.setCurrentIndex(default_index)
+                    param_input_widget.setEnabled(True)
+
                 # Dropdown for parameters with predefined options
                 elif param.name in class_instance.options:
                     param_input_widget = QComboBox()
                     param_input_widget.addItems(class_instance.options[param.name])
+                    
                     if param.default in class_instance.options[param.name]:
-                        if self.init_method is None:
-                            default_index = param_input_widget.findText(param.default)
-                            param_input_widget.setCurrentIndex(default_index)
-                            param_input_widget.setEnabled(True)
-                        else:
-                            param_input_widget.setCurrentIndex(str(existing_params[param.name]))
-                            param_input_widget.setEnabled(False)    
+                        default_index = param_input_widget.findText(param.default)
+                        param_input_widget.setCurrentIndex(default_index)
+                        param_input_widget.setEnabled(True)
+
                 # Spinbox for integer parameterss
                 elif type(param.default) == int:
                     param_input_widget = QSpinBox()
                     param_input_widget.setMaximum(10000)
                     param_input_widget.setMinimum(-10000)
                     param_input_widget.setSingleStep(1)
-                    if self.init_method is None:
-                        param_input_widget.setValue(int(param.default) if param.default != inspect.Parameter.empty else 0)
-                        param_input_widget.setEnabled(True)
-                    else:
-                        param_input_widget.setValue(int(existing_params[param.name]))
-                        param_input_widget.setEnabled(False)
+
+                    param_input_widget.setValue(int(param.default) if param.default != inspect.Parameter.empty else 0)
+                    param_input_widget.setEnabled(True)
+
                 # Spinbox for float parameters
                 elif type(param.default) == float:
                     param_input_widget = QDoubleSpinBox()
                     param_input_widget.setMaximum(10000.0)
                     param_input_widget.setMinimum(-10000.0)
                     param_input_widget.setSingleStep(0.1)
-                    if self.init_method is None:
-                        param_input_widget.setValue(float(param.default) if param.default != inspect.Parameter.empty else 0.0)
-                        param_input_widget.setEnabled(True)
-                    else: 
-                        param_input_widget.setValue(float(existing_params[param.name]))
-                        param_input_widget.setEnabled(False)
+
+                    param_input_widget.setValue(float(param.default) if param.default != inspect.Parameter.empty else 0.0)
+                    param_input_widget.setEnabled(True)
+
                 # Text field for other types of parameters
                 else:
-                    if self.init_method is None:
-                        param_input_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
-                        param_input_widget.setEnabled(True)
-                    else:
-                        param_input_widget.setValue(str(existing_params[param.name]))
-                        param_input_widget.setEnabled(False)
+                    param_input_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
+                    param_input_widget.setEnabled(True)
+   
 
                 # Create info button with tooltip
                 info_text = self.getInfoText(param.name, self.data.dfc_name)
@@ -864,20 +844,21 @@ class App(QMainWindow):
         fileFilter = "All Supported Files (*.mat *.txt *.npy *pkl *tsv);;MAT Files (*.mat);;Text Files (*.txt);;NumPy Files (*.npy);;Pickle Files (*.pkl);;TSV Files (*.tsv))"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
         file_name = file_path.split('/')[-1]
+        self.data.file_name = file_name
 
         if not file_path:
             return  # Early exit if no file is selected
 
         try:
             if file_path.endswith('.mat'):
-                self.ts_data = loadmat(file_path)  # Assuming you'll adjust how to extract the array
+                self.data.file_data = loadmat(file_path)  # Assuming you'll adjust how to extract the array
             elif file_path.endswith('.txt'):
-                self.ts_data = np.loadtxt(file_path)
+                self.data.file_data = np.loadtxt(file_path)
             elif file_path.endswith('.npy'):
-                self.ts_data = np.load(file_path)
+                self.data.file_data = np.load(file_path)
             elif file_path.endswith('.pkl'):
                 with open(file_path, 'rb') as f:
-                    self.ts_data = pickle.load(f)
+                    self.data.file_data = pickle.load(f)
             elif file_path.endswith(".tsv"):
                 data = pd.read_csv(file_path, sep='\t', header=None, na_values='n/a')
 
@@ -903,13 +884,13 @@ class App(QMainWindow):
                 data = data.dropna(axis=1, how='all').dropna(axis=0, how='all')
 
                 # Convert the cleaned data back to numpy array
-                self.ts_data = data.to_numpy()
+                self.data.file_data = data.to_numpy()
 
                 # Update header_list if rois exist
-                self.roi_data = np.array(rois, dtype=object)
+                self.data.roi_names = np.array(rois, dtype=object)
 
             else:
-                self.ts_data = None
+                self.data.file_data = None
                 self.time_series_textbox.setText("Unsupported file format")
 
             # New data, reset slider and plot
@@ -959,11 +940,6 @@ class App(QMainWindow):
             self.calculateButton.setEnabled(True)
             self.clearMemoryButton.setEnabled(True)
             self.keepInMemoryCheckbox.setEnabled(True)
-
-            # new data stoage stuff
-            self.data.file_name = file_name
-            self.data.file_data = self.ts_data
-            self.data.roi_names = self.roi_data
 
         except Exception as e:
             print(f"Error loading data: {e}")
