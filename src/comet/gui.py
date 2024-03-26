@@ -76,6 +76,15 @@ class Data:
     dfc_state_tc: np.ndarray = field(default=None)         # dfc state time course
     dfc_edge_ts:  np.ndarray = field(default=None)         # dfc edge time series
 
+    def clear_dfc_data(self):
+        self.dfc_instance = None
+        self.dfc_name     = None
+        self.dfc_params   = {}
+        self.dfc_data     = None
+        self.dfc_states   = {}
+        self.dfc_state_tc = None
+        self.dfc_edge_ts  = None
+
 class DataStorage:
     # Database class for storing calculated data
     def __init__(self):
@@ -96,10 +105,20 @@ class DataStorage:
             return True
         return False
     
-    def check_and_get_data(self, data_obj):
+    def check_and_get_data(self, data_obj, methodName):
         # Check if we already have data and return it, otherwise return None
         data_hash = self.generate_hash(data_obj)
-        return self.storage.get(data_hash, None)
+        data = self.storage.get(data_hash, None)
+
+        if data is not None:
+            return data
+        else:
+            print("current items:", self.storage.keys())
+            for key, value in self.storage.items():
+                if value.dfc_name == methodName and value.dfc_data is not None:
+                    print(value.dfc_name, methodName, value.dfc_name == methodName)
+                    return value
+        return None
 
 class App(QMainWindow):
     def __init__(self, init_data=None, init_method=None):
@@ -441,17 +460,23 @@ class App(QMainWindow):
     def onMethodChanged(self, methodName=None):
         # Clear old variables and data
         self.clearLayout(self.parameterLayout)
-        #self.data = Data()
 
         if methodName == None or methodName == "Use checkboxes to get available methods":
             return
         
+        # Clear old dFC data
+        self.data.clear_dfc_data()
+
         # Get selected connectivity method
         self.data.dfc_instance = getattr(methods, self.class_info.get(methodName), None) # the actual class
         self.data.dfc_name = self.class_info.get(methodName) # class name
+        
+        # Get current parameters and check if we have data in memory
+        print(self.data_storage.storage.keys())
+        self.getParameters()
 
-        # If connectivity for this method already exists we load and plot it
-        existing_data = self.data_storage.check_and_get_data(self.data)
+        # TODO: get most recent one of the method and its parameters
+        existing_data = self.data_storage.check_and_get_data(self.data, self.data.dfc_name)
         
         if existing_data is not None:
             self.data = existing_data
@@ -1075,8 +1100,7 @@ class App(QMainWindow):
             return
         
         # Get the current parameters from the UI for the upcoming calculation
-        self.data.dfc_params = {} # Reset parameters as the dict would otherwise keep growing
-        self.getParameters() # Get new parameters
+        self.getParameters()
     
         # Process all pending events
         QApplication.processEvents() 
@@ -1101,7 +1125,7 @@ class App(QMainWindow):
         # Try to calculate dFC, throw an exception if it fails
 
         # Check if data already exists
-        existing_data = self.data_storage.check_and_get_data(self.data)
+        existing_data = self.data_storage.check_and_get_data(self.data, self.data.dfc_name)
         if existing_data is not None:
             print(f"Using stored data for {self.data.dfc_name} with given parameters")
             return existing_data
