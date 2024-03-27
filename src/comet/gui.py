@@ -109,22 +109,23 @@ class DataStorage:
         # Check if we already have data and return it, otherwise return None
         data_hash = self.generate_hash(data_obj)
         data = self.storage.get(data_hash, None)
-
-        if data is not None:
-            return data
-        else:
-            print("current items:", self.storage.keys())
-            for key, value in self.storage.items():
-                if value.dfc_name == methodName and value.dfc_data is not None:
-                    print(value.dfc_name, methodName, value.dfc_name == methodName)
-                    return value
+        return data
+    
+    def get_previous_parameters(self, methodName):
+        # Get parameters for the last calculation with a given method
+        for hash, data_obj in self.storage.items():
+                if data_obj.dfc_name == methodName and data_obj.dfc_data is not None:
+                    print("previous param data exists")
+                    return data_obj.dfc_params # return the previous parameters
+        print("no previous param data")
         return None
 
 class App(QMainWindow):
     def __init__(self, init_data=None, init_method=None):
         super().__init__()
         self.title = 'Comet Dynamic Functional Connectivity Toolbox'
-        
+        self.init_flag = True
+
         self.data = Data()
         self.data_storage = DataStorage()
 
@@ -458,6 +459,7 @@ class App(QMainWindow):
         self.plotTimeSeries()
 
     def onMethodChanged(self, methodName=None):
+        print("\nMETHOD CHANGED")
         # Clear old variables and data
         self.clearLayout(self.parameterLayout)
 
@@ -465,18 +467,28 @@ class App(QMainWindow):
             return
         
         # Clear old dFC data
-        self.data.clear_dfc_data()
+        #self.data.clear_dfc_data()
 
         # Get selected connectivity method
         self.data.dfc_instance = getattr(methods, self.class_info.get(methodName), None) # the actual class
         self.data.dfc_name = self.class_info.get(methodName) # class name
-        
-        # Get current parameters and check if we have data in memory
-        # TODO: Something is rwing here
-        print(self.data_storage.storage.keys())
+
+        # Create and get new parameter layout
+        self.data.dfc_data = None
+        self.data.dfc_params = {}
+        self.setup_class_parameters(self.data.dfc_instance)
+        self.parameterLayout.addStretch(1) # Stretch to fill empty space
         self.getParameters()
 
-        # TODO: get most recent one of the method and its parameters
+        # See if some data has previously been calculated, we change the paramters to this
+        previous_params = self.data_storage.get_previous_parameters(self.data.dfc_name)
+        if previous_params is not None:
+            print("set as previously calculated")
+            print(previous_params)
+            self.data.dfc_params = previous_params
+            self.setParameters()
+
+        # TODO: We check if we have existing data (maybe unnecessar now)
         existing_data = self.data_storage.check_and_get_data(self.data, self.data.dfc_name)
         
         if existing_data is not None:
@@ -510,10 +522,6 @@ class App(QMainWindow):
             self.slider.setValue(self.slider.value())
             self.slider.hide()
 
-        # This dynamically creates the parameter labels and input boxes
-        self.setup_class_parameters(self.data.dfc_instance)
-
-        self.parameterLayout.addStretch(1) # Stretch to fill empty space
         self.update() # Update UI
 
     def setup_class_parameters(self, class_instance):
@@ -867,10 +875,13 @@ class App(QMainWindow):
                 pass
     
     def loadFile(self):
+        print("\nLOADING FILE")
         fileFilter = "All Supported Files (*.mat *.txt *.npy *pkl *tsv);;MAT Files (*.mat);;Text Files (*.txt);;NumPy Files (*.npy);;Pickle Files (*.pkl);;TSV Files (*.tsv))"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
         file_name = file_path.split('/')[-1]
         self.data.file_name = file_name
+        self.getParameters() # Get current UI parameters
+        print("after loading file", self.data.dfc_params)
 
         if not file_path:
             return  # Early exit if no file is selected
@@ -1095,6 +1106,54 @@ class App(QMainWindow):
                     # Value could not be retrieved from the widget
                     self.calculatingLabel.setText(f"Error: No value entered for parameter '{label}'")
 
+    def setParameters(self):
+        # Converts value to string
+        def convert_value_to_string(value):
+            if isinstance(value, bool):
+                return 'true' if value else 'false'
+            elif isinstance(value, (int, float)):
+                return str(value)
+            else:
+                return value
+
+        # Sets the value of the widget based on its type
+        def set_widget_value(widget, value):
+            if isinstance(widget, QLineEdit):
+                widget.setText(value)
+            elif isinstance(widget, QComboBox):
+                index = widget.findText(value)
+                if index >= 0:
+                    widget.setCurrentIndex(index)
+            elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
+                widget.setValue(float(value))
+
+        # No parameters yet, return
+        if not self.data.dfc_params:
+            self.getParameters()
+            return
+
+        # Time series data
+        self.data.dfc_params['time_series'] = self.data.file_data
+
+        for i in range(self.parameterLayout.count()):
+            layout = self.parameterLayout.itemAt(i).layout()
+            if layout:
+                label = layout.itemAt(0).widget().text().rstrip(':')
+                if label == 'Time series':
+                    continue  # Skip 'time_series' as it's already set
+
+                param_key = self.reverse_param_names.get(label)
+                if param_key:  # Ensure the key exists in the reverse_param_names dictionary
+                    value = self.data.dfc_params.get(param_key)
+                    if value is not None:  # Ensure there is a value before attempting to convert and set
+                        widget = layout.itemAt(1).widget()
+                        set_widget_value(widget, convert_value_to_string(value))
+                    else:
+                        # Value could not be retrieved from the dictionary
+                        self.calculatingLabel.setText(f"Error: No value entered for parameter '{label}'")
+                else:
+                    self.calculatingLabel.setText(f"Error: Unrecognized parameter '{label}'")
+
     def onCalculateConnectivity(self):
         # Check if ts_data is available
         if self.data.file_data is None:
@@ -1103,6 +1162,7 @@ class App(QMainWindow):
         
         # Get the current parameters from the UI for the upcoming calculation
         self.getParameters()
+        print("onCalculate", self.data.dfc_params)
     
         # Process all pending events
         QApplication.processEvents() 
@@ -1125,6 +1185,7 @@ class App(QMainWindow):
         keep_in_memory = self.keepInMemoryCheckbox.isChecked()
         
         # Try to calculate dFC, throw an exception if it fails
+        # TODO: Add try except block again
 
         # Check if data already exists
         existing_data = self.data_storage.check_and_get_data(self.data, self.data.dfc_name)
@@ -1135,6 +1196,7 @@ class App(QMainWindow):
         # Data does not exist, perform calculation
         connectivity_calculator = self.data.dfc_instance(**parameters)
         result = connectivity_calculator.connectivity()
+        self.init_flag = False
 
         # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
         if isinstance(result, tuple):
