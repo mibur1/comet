@@ -876,7 +876,8 @@ class App(QMainWindow):
             return  # Early exit if no file is selected
 
         if file_path.endswith('.mat'):
-            self.data.file_data = loadmat(file_path)  # Assuming you'll adjust how to extract the array
+            data_dict = loadmat(file_path)
+            self.data.file_data = data_dict[list(data_dict.keys())[-1]] # always get the last key
         elif file_path.endswith('.txt'):
             self.data.file_data = np.loadtxt(file_path)
         elif file_path.endswith('.npy'):
