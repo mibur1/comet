@@ -877,7 +877,7 @@ class App(QMainWindow):
 
         if file_path.endswith('.mat'):
             data_dict = loadmat(file_path)
-            self.data.file_data = data_dict[list(data_dict.keys())[-1]] # always get the last key
+            self.data.file_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
         elif file_path.endswith('.txt'):
             self.data.file_data = np.loadtxt(file_path)
         elif file_path.endswith('.npy'):
