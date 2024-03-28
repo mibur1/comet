@@ -1198,7 +1198,7 @@ class App(QMainWindow):
 
         # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
         if isinstance(result, tuple):
-            self.data.dfc_data = result
+            self.data.dfc_data = result[0]
             self.data.dfc_params = parameters
             self.data.dfc_state_tc = None
             self.data.dfc_edge_ts = result[1][0] if isinstance(result[1], tuple) else None
