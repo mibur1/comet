@@ -111,13 +111,15 @@ class DataStorage:
         data = self.storage.get(data_hash, None)
         return data
     
-    def get_previous_parameters(self, methodName):
+    def check_previous_data(self, methodName):
         # Get parameters for the last calculation with a given method
         for hash, data_obj in self.storage.items():
-                if data_obj.dfc_name == methodName and data_obj.dfc_data is not None:
-                    print("previous param data exists")
-                    return data_obj.dfc_params # return the previous parameters
-        print("no previous param data")
+            print(data_obj.dfc_name)
+        #    print(data_obj.dfc_name, methodName, data_obj.dfc_name == methodName, data_obj.dfc_data is not None)
+        #    if data_obj.dfc_name == methodName and data_obj.dfc_data is not None:
+        #        print("previous data exists")
+        #        return data_obj # return theprevious data object
+        #print("no previous data")
         return None
 
 class App(QMainWindow):
@@ -466,33 +468,25 @@ class App(QMainWindow):
         if methodName == None or methodName == "Use checkboxes to get available methods":
             return
         
-        # Clear old dFC data
-        #self.data.clear_dfc_data()
-
         # Get selected connectivity method
         self.data.dfc_instance = getattr(methods, self.class_info.get(methodName), None) # the actual class
         self.data.dfc_name = self.class_info.get(methodName) # class name
 
         # Create and get new parameter layout
-        self.data.dfc_data = None
+        #self.data.dfc_data = None
         self.data.dfc_params = {}
         self.setup_class_parameters(self.data.dfc_instance)
         self.parameterLayout.addStretch(1) # Stretch to fill empty space
         self.getParameters()
 
         # See if some data has previously been calculated, we change the paramters to this
-        previous_params = self.data_storage.get_previous_parameters(self.data.dfc_name)
-        if previous_params is not None:
-            print("set as previously calculated")
-            print(previous_params)
-            self.data.dfc_params = previous_params
+        previous_data = self.data_storage.check_previous_data(self.data.dfc_name)
+        if previous_data is not None:
+            print("set from previously calculated")
+            print(previous_data.dfc_params)
+            self.data = previous_data
             self.setParameters()
 
-        # TODO: We check if we have existing data (maybe unnecessar now)
-        existing_data = self.data_storage.check_and_get_data(self.data, self.data.dfc_name)
-        
-        if existing_data is not None:
-            self.data = existing_data
             self.plot_dfc()
             self.updateDistribution()
             self.plotTimeSeries()
@@ -509,6 +503,7 @@ class App(QMainWindow):
         # If connectivity data does not exist we reset the figure and slider to prepare for a new calculation
         # This also indicates to the user that this data was not yet calculated/saved
         else:
+            print("no previous data available")
             self.figure.clear()
             self.plot_logo()
             self.canvas.draw()
@@ -1005,6 +1000,9 @@ class App(QMainWindow):
             elif isinstance(value, dict):
                 # Assume dictionaries contain simple types or numpy arrays
                 data_dict[field] = {k: (v.tolist() if isinstance(v, np.ndarray) else v) for k, v in value.items()}
+            elif value is None:
+                # Handle None values appropriately
+                data_dict[field] = np.array([])
             elif field == 'dfc_instance':
                 # For the dfc_instance only its type is stored
                 data_dict[field] = str(type(value))
@@ -1224,7 +1222,7 @@ class App(QMainWindow):
         if keep_in_memory:
             # Update the dictionary entry for the selected_class_name with the new data and parameters
             self.data_storage.add_data(self.data)
-            print(f"Updated {self.data.dfc_name} data with new parameters in memory")
+            print(f"Added {self.data.dfc_name} data to memory")
 
         return self.data
 
