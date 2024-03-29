@@ -1,4 +1,5 @@
 import sys
+import copy
 import pickle
 import inspect
 import numpy as np
@@ -101,25 +102,21 @@ class DataStorage:
         # Decide if we should add the data based on the hash
         data_hash = self.generate_hash(data_obj)
         if data_hash not in self.storage:
-            self.storage[data_hash] = data_obj
+            self.storage[data_hash] = copy.copy(data_obj) # IMPORTANT: copy the data object
             return True
         return False
     
-    def check_and_get_data(self, data_obj, methodName):
-        # Check if we already have data and return it, otherwise return None
+    def check_for_identical_data(self, data_obj):
         data_hash = self.generate_hash(data_obj)
-        data = self.storage.get(data_hash, None)
-        return data
+        data = self.storage.get(data_hash, None)   
+        return copy.copy(data)
     
     def check_previous_data(self, methodName):
         # Get parameters for the last calculation with a given method
         for hash, data_obj in self.storage.items():
-            print(data_obj.dfc_name)
-        #    print(data_obj.dfc_name, methodName, data_obj.dfc_name == methodName, data_obj.dfc_data is not None)
-        #    if data_obj.dfc_name == methodName and data_obj.dfc_data is not None:
-        #        print("previous data exists")
-        #        return data_obj # return theprevious data object
-        #print("no previous data")
+            if data_obj.dfc_name == methodName and data_obj.dfc_data is not None:
+                print(f"Found data for {methodName}, load with parameters as last time")
+                return copy.copy(data_obj) # return the previous data object
         return None
 
 class App(QMainWindow):
@@ -461,7 +458,6 @@ class App(QMainWindow):
         self.plotTimeSeries()
 
     def onMethodChanged(self, methodName=None):
-        print("\nMETHOD CHANGED")
         # Clear old variables and data
         self.clearLayout(self.parameterLayout)
 
@@ -478,14 +474,19 @@ class App(QMainWindow):
         self.setup_class_parameters(self.data.dfc_instance)
         self.parameterLayout.addStretch(1) # Stretch to fill empty space
         self.getParameters()
+        print("get window size", self.data.dfc_params["windowsize"])
+
+        for hash, dataobj in self.data_storage.storage.items():
+            print(hash, dataobj.dfc_name, dataobj.dfc_params["windowsize"])
 
         # See if some data has previously been calculated, we change the paramters to this
         previous_data = self.data_storage.check_previous_data(self.data.dfc_name)
         if previous_data is not None:
-            print("set from previously calculated")
-            print(previous_data.dfc_params)
+            print("Found previous data, load with previous parameters")
             self.data = previous_data
+            print("found window size", self.data.dfc_params["windowsize"])
             self.setParameters()
+            print("set window size", self.data.dfc_params["windowsize"])
 
             self.plot_dfc()
             self.updateDistribution()
@@ -503,7 +504,7 @@ class App(QMainWindow):
         # If connectivity data does not exist we reset the figure and slider to prepare for a new calculation
         # This also indicates to the user that this data was not yet calculated/saved
         else:
-            print("no previous data available")
+            print("No previous data found")
             self.figure.clear()
             self.plot_logo()
             self.canvas.draw()
@@ -870,13 +871,11 @@ class App(QMainWindow):
                 pass
     
     def loadFile(self):
-        print("\nLOADING FILE")
         fileFilter = "All Supported Files (*.mat *.txt *.npy *pkl *tsv);;MAT Files (*.mat);;Text Files (*.txt);;NumPy Files (*.npy);;Pickle Files (*.pkl);;TSV Files (*.tsv))"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
         file_name = file_path.split('/')[-1]
         self.data.file_name = file_name
         self.getParameters() # Get current UI parameters
-        print("after loading file", self.data.dfc_params)
 
         if not file_path:
             return  # Early exit if no file is selected
@@ -990,6 +989,35 @@ class App(QMainWindow):
                 savemat(filePath, datadict)
             except Exception as e:
                 print(f"Error saving data: {e}")
+
+    def compare_param_dicts(self, dict1, dict2):
+        # Check if both inputs are dictionaries
+        if not isinstance(dict1, dict) or not isinstance(dict2, dict):
+            return False
+        
+        # Check if the keys match
+        if sorted(dict1.keys()) != sorted(dict2.keys()):
+            return False
+        
+        # Recursively compare values
+        for key in dict1.keys():
+            value1 = dict1[key]
+            value2 = dict2[key]
+            
+            if isinstance(value1, dict) and isinstance(value2, dict):
+                # Recursively compare nested dictionaries
+                if not self.compare_param_dicts(value1, value2):
+                    return False
+            elif isinstance(value1, np.ndarray) and isinstance(value2, np.ndarray):
+                # Compare NumPy arrays
+                if not np.array_equal(value1, value2):
+                    return False
+            elif value1 != value2:
+                # Compare other types
+                return False
+        
+        # All checks passed, dictionaries are equivalent
+        return True
 
     def dataclass_to_dict(self, data_instance):
         data_dict = {}
@@ -1123,16 +1151,17 @@ class App(QMainWindow):
                 if index >= 0:
                     widget.setCurrentIndex(index)
             elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
-                widget.setValue(float(value))
+                widget.setValue(int(value))
 
         # No parameters yet, return
         if not self.data.dfc_params:
             self.getParameters()
             return
 
-        # Time series data
+        # Time series data has to be in the params as we run the dFC method with just these params
         self.data.dfc_params['time_series'] = self.data.file_data
 
+        # Set the parameters in the UI based on the stored dictionary
         for i in range(self.parameterLayout.count()):
             layout = self.parameterLayout.itemAt(i).layout()
             if layout:
@@ -1160,7 +1189,6 @@ class App(QMainWindow):
         
         # Get the current parameters from the UI for the upcoming calculation
         self.getParameters()
-        print("onCalculate", self.data.dfc_params)
     
         # Process all pending events
         QApplication.processEvents() 
@@ -1186,11 +1214,13 @@ class App(QMainWindow):
         # TODO: Add try except block again
 
         # Check if data already exists
-        existing_data = self.data_storage.check_and_get_data(self.data, self.data.dfc_name)
+        existing_data = self.data_storage.check_for_identical_data(self.data)
         if existing_data is not None:
-            print(f"Using stored data for {self.data.dfc_name} with given parameters")
+            print("Found identical data, no need to calculate")
+            print("dFC return with existing window size", self.data.dfc_params["windowsize"])
             return existing_data
-
+        print("No identical data found, calculate new")
+        print("dFC calculate new with window size", self.data.dfc_params["windowsize"])
         # Data does not exist, perform calculation
         connectivity_calculator = self.data.dfc_instance(**parameters)
         result = connectivity_calculator.connectivity()
@@ -1222,14 +1252,14 @@ class App(QMainWindow):
         if keep_in_memory:
             # Update the dictionary entry for the selected_class_name with the new data and parameters
             self.data_storage.add_data(self.data)
-            print(f"Added {self.data.dfc_name} data to memory")
+            #print(f"Added {self.data.dfc_name} data to memory")
 
         return self.data
 
     def onKeepInMemoryChanged(self, state):
         if state == 2 and self.data.dfc_data is not None:
             self.data_storage.add_data(self.data)
-            print(f"Saved {self.data.dfc_name} data to memory")
+            #print(f"Saved {self.data.dfc_name} data to memory")
                 
     def onClearMemory(self):
         self.data_storage = DataStorage()
