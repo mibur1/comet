@@ -93,18 +93,25 @@ class DataStorage:
 
     def generate_hash(self, data_obj):
         # Generate a hash based on method_name, file_name, and sorted params
-        # This hash will be used to check if we already have existing data
+        # This hash will be used to check if identical data exists
         hashable_params = {k: v for k, v in data_obj.dfc_params.items() if not isinstance(v, np.ndarray)}
         params_tuple = tuple(sorted(hashable_params.items()))
         return hash((data_obj.file_name, data_obj.dfc_name, params_tuple))
 
     def add_data(self, data_obj):
-        # Decide if we should add the data based on the hash
+        self.delete_data(data_obj) # Delete existing data for the same method
+
         data_hash = self.generate_hash(data_obj)
         if data_hash not in self.storage:
-            self.storage[data_hash] = copy.deepcopy(data_obj) # IMPORTANT: deep copy for completely new data object
+            self.storage[data_hash] = copy.deepcopy(data_obj) # IMPORTANT: deep copy for a completely new data object
             return True
         return False
+    
+    def delete_data(self, data_obj):
+        # Identify and delete existing entries with the same dfc_name as data_obj
+        keys_to_delete = [key for key, value in self.storage.items() if value.dfc_name == data_obj.dfc_name]
+        for key in keys_to_delete:
+            del self.storage[key]
     
     def check_for_identical_data(self, data_obj):
         # Get data and parameters for previously calculated identical data
@@ -116,8 +123,7 @@ class DataStorage:
         # Get data for the last calculation with a given method
         for data_obj in reversed(list(self.storage.values())):
             if data_obj.dfc_name == methodName and data_obj.dfc_data is not None:
-                print(f"Found data for {methodName}, load with parameters as last time")
-                return copy.deepcopy(data_obj)  # IMPORTANT: deep copy
+                return copy.deepcopy(data_obj) # IMPORTANT: deep copy
         return None
 
 class App(QMainWindow):
