@@ -78,8 +78,6 @@ class Data:
     dfc_edge_ts:  np.ndarray = field(default=None)         # dfc edge time series
 
     def clear_dfc_data(self):
-        self.dfc_instance = None
-        self.dfc_name     = None
         self.dfc_params   = {}
         self.dfc_data     = None
         self.dfc_states   = {}
@@ -214,12 +212,12 @@ class App(QMainWindow):
         self.fileButton.clicked.connect(self.loadFile)
 
         # Create a checkbox for reshaping the data
-        self.reshapeCheckbox = QCheckBox("Transpose")
-        self.leftLayout.addWidget(self.reshapeCheckbox)
-        self.reshapeCheckbox.hide()
+        self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
+        self.leftLayout.addWidget(self.transposeCheckbox)
+        self.transposeCheckbox.setEnabled(False)
 
         # Connect the checkbox to a method
-        self.reshapeCheckbox.stateChanged.connect(self.onReshapeCheckboxChanged)
+        self.transposeCheckbox.stateChanged.connect(self.onTransposeChecked)
 
         # Add spacer for an empty line
         self.leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
@@ -284,7 +282,7 @@ class App(QMainWindow):
         self.calculateButton = QPushButton('Calculate Connectivity')
         self.calculateButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         buttonsLayout.addWidget(self.calculateButton, 2)  # 2/3 of the space
-        self.calculateButton.clicked.connect(self.onCalculateConnectivity)
+        self.calculateButton.clicked.connect(self.onCalculateButton)
 
         # Create the "Save" button
         self.saveButton = QPushButton('Save')
@@ -297,7 +295,7 @@ class App(QMainWindow):
 
         # Memory buttons
         self.keepInMemoryCheckbox = QCheckBox("Keep in memory")
-        self.keepInMemoryCheckbox.stateChanged.connect(self.onKeepInMemoryChanged)
+        self.keepInMemoryCheckbox.stateChanged.connect(self.onKeepInMemoryChecked)
         self.clearMemoryButton = QPushButton("Clear Memory")
         self.clearMemoryButton.clicked.connect(self.onClearMemory)
 
@@ -454,7 +452,9 @@ class App(QMainWindow):
         self.methodComboBox.setCurrentText(self.init_method.name)
         
         # Set plots
-        self.updatePlots()
+        self.plotConnectivity()
+        self.plotDistribution()
+        self.plotTimeSeries()
 
     """
     I/O functions
@@ -533,7 +533,7 @@ class App(QMainWindow):
             self.staticCheckBox.setEnabled(False)
             self.staticCheckBox.setChecked(False)
 
-            self.reshapeCheckbox.setEnabled(False)
+            self.transposeCheckbox.setEnabled(False)
         else:
             self.fileNameLabel.setText(f"Loaded {self.data.file_name} with shape {self.data.file_data.shape}")
             self.time_series_textbox.setText(file_name)
@@ -547,10 +547,7 @@ class App(QMainWindow):
             self.staticCheckBox.setEnabled(True)
             self.staticCheckBox.setChecked(True)
     
-            self.reshapeCheckbox.setEnabled(True)
-
-        # Show transpose textbox
-        self.reshapeCheckbox.show()
+            self.transposeCheckbox.setEnabled(True)
 
         # Reset and enable the GUI elements
         self.methodComboBox.setEnabled(True)
@@ -598,7 +595,7 @@ class App(QMainWindow):
         
         return
 
-    def onReshapeCheckboxChanged(self, state):
+    def onTransposeChecked(self, state):
         if self.data.file_data is None:
             return  # No data loaded, so do nothing
 
@@ -616,7 +613,7 @@ class App(QMainWindow):
     """
     dFC functions
     """
-    def onMethodChanged(self, methodName=None):
+    def onMethodCombobox(self, methodName=None):
         # Clear old variables and data
         self.clearParameters(self.parameterLayout)
 
@@ -640,10 +637,14 @@ class App(QMainWindow):
         if previous_data is not None:
             self.data = previous_data
             self.setParameters()
-            self.updatePlots()
             self.slider.show()
             self.calculatingLabel.setText(f"Loaded {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
             print(f"Loaded {self.data.dfc_name} from memory")
+
+            # Plot the data
+            self.plotConnectivity()
+            self.plotDistribution()
+            self.plotTimeSeries()
 
             # Update the slider
             total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
@@ -696,7 +697,7 @@ class App(QMainWindow):
 
         # Disconnect existing connections to avoid multiple calls
         try:
-            self.methodComboBox.currentTextChanged.disconnect(self.onMethodChanged)
+            self.methodComboBox.currentTextChanged.disconnect(self.onMethodCombobox)
         except TypeError:
             pass
 
@@ -704,26 +705,22 @@ class App(QMainWindow):
         self.methodComboBox.clear()
         self.methodComboBox.addItems(filtered_and_ordered_classes)
 
-        # Adjust combobox width to fit the longest option
-        self.adjustComboBoxWidth()
+        # Adjust combobox width
+        if self.methodComboBox.count() > 0:
+            font_metrics = QFontMetrics(self.methodComboBox.font())
+            longest_text_width = max(font_metrics.boundingRect(self.methodComboBox.itemText(i)).width() for i in range(self.methodComboBox.count()))
+            minimum_width = longest_text_width + 30
+            self.methodComboBox.setMinimumWidth(minimum_width)
+        else:
+            default_minimum_width = 300
+            self.methodComboBox.setMinimumWidth(default_minimum_width)
 
         # Reconnect the signal
-        self.methodComboBox.currentTextChanged.connect(self.onMethodChanged)
+        self.methodComboBox.currentTextChanged.connect(self.onMethodCombobox)
 
-        # Optionally, trigger the onMethodChanged for the initial setup
+        # Trigger the onMethodCombobox for the initial setup
         if filtered_and_ordered_classes:
-            self.onMethodChanged(filtered_and_ordered_classes[0])
-
-    def adjustComboBoxWidth(self):
-        if self.methodComboBox.count() > 0:  # Check if the combobox has at least one item
-            #font_metrics = QFontMetrics(self.methodComboBox.font())
-            #longest_text_width = max(font_metrics.boundingRect(self.methodComboBox.itemText(i)).width() for i in range(self.methodComboBox.count()))
-            #width = longest_text_width + 50
-            width = 320
-            self.methodComboBox.setFixedWidth(width)
-        else:
-            default_width = 320
-            self.methodComboBox.setFixedWidth(default_width)
+            self.onMethodCombobox(filtered_and_ordered_classes[0])
 
     def shouldIncludeClass(self, className):
         if self.continuousCheckBox.isChecked() and className.startswith("CONT"):
@@ -845,7 +842,7 @@ class App(QMainWindow):
         self.parameterLayout.addLayout(time_series_layout)
 
         # Adjust max width for aesthetics
-        max_label_width += 10
+        max_label_width += 5
         time_series_label.setFixedWidth(max_label_width)
 
         for param in init_signature.parameters.values():
@@ -1027,7 +1024,7 @@ class App(QMainWindow):
     """
     dFC calculation
     """
-    def onCalculateConnectivity(self):
+    def onCalculateButton(self):
         # Check if ts_data is available
         if self.data.file_data is None:
             self.calculatingLabel.setText(f"Error. No time series data has been loaded.")
@@ -1041,7 +1038,7 @@ class App(QMainWindow):
         
         # Start worker thread for dFC calculations and submit for calculation
         self.workerThread = QThread()
-        self.worker = Worker(self.calculateDFC, self.data.dfc_params)
+        self.worker = Worker(self.calculateConnectivity, self.data.dfc_params)
         self.worker.moveToThread(self.workerThread)
         
         self.worker.finished.connect(self.workerThread.quit)
@@ -1053,12 +1050,9 @@ class App(QMainWindow):
         self.calculatingLabel.setText(f"Calculating {self.methodComboBox.currentText()}, please wait...")
         self.calculateButton.setEnabled(False)
     
-    def calculateDFC(self, parameters):
+    def calculateConnectivity(self, parameters):
         keep_in_memory = self.keepInMemoryCheckbox.isChecked()
         
-        # Try to calculate dFC, throw an exception if it fails
-        # TODO: Add try except block again
-
         # Check if data already exists
         existing_data = self.data_storage.check_for_identical_data(self.data)
         if existing_data is not None:
@@ -1095,12 +1089,11 @@ class App(QMainWindow):
         if keep_in_memory:
             # Update the dictionary entry for the selected_class_name with the new data and parameters
             self.data_storage.add_data(self.data)
-            #print(f"Added {self.data.dfc_name} data to memory")
 
-        print("Finished calculation.")    
+        print("Finished calculation.")
         return self.data
 
-    def handleResult(self, result):
+    def handleResult(self):
         # Update the sliders and text
         if self.data.dfc_data is not None:
             self.calculatingLabel.setText(f"Calculated {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
@@ -1123,7 +1116,10 @@ class App(QMainWindow):
             self.slider.setValue(self.slider.value())
             
         # Plot
-        self.updatePlots()
+        self.plotConnectivity()
+        self.plotDistribution()
+        self.plotTimeSeries()
+
         self.calculateButton.setEnabled(True)
         self.onTabChanged()
         self.update()
@@ -1131,14 +1127,17 @@ class App(QMainWindow):
     def handleError(self, error):
         # Handles errors in the worker thread
         print(f"Error occurred: {error}")
+        self.calculateButton.setEnabled(True)
+        self.data.clear_dfc_data()
+        self.positionLabel.setText("no data available")
+        self.plotLogo()
 
     """
     Memory functions
     """
-    def onKeepInMemoryChanged(self, state):
+    def onKeepInMemoryChecked(self, state):
         if state == 2 and self.data.dfc_data is not None:
             self.data_storage.add_data(self.data)
-            #print(f"Saved {self.data.dfc_name} data to memory")
                 
     def onClearMemory(self):
         self.data_storage = DataStorage()
@@ -1155,12 +1154,7 @@ class App(QMainWindow):
     """
     Plotting functions
     """
-    def updatePlots(self):
-        self.plotDFC()
-        self.plotDistribution()
-        self.plotTimeSeries()
-
-    def plotDFC(self):
+    def plotConnectivity(self):
         current_data = self.data.dfc_data
         
         if current_data is None:
@@ -1270,30 +1264,6 @@ class App(QMainWindow):
             self.timeSeriesFigure.clear()
             self.timeSeriesCanvas.draw()
 
-    def updateTimeSeriesPlot(self, center):
-        if self.data.dfc_data is None:
-            return
-
-        max_index = self.data.dfc_data.shape[2] - 1 if len(self.data.dfc_data.shape) == 3 else 0
-        width = 101
-
-        # Determine if we should show the entire series or a window
-        if center == 0 or center == max_index:
-            start = 0
-            end = max_index
-        else:
-            start = max(0, center - width // 2)
-            end = min(max_index, center + width // 2)
-
-        row = self.rowSelector.value()
-        col = self.colSelector.value()
-        time_series_slice = self.dfc_data['data'][row, col, start:end]
-
-        self.timeSeriesFigure.clear()
-        ax = self.timeSeriesFigure.add_subplot(111)
-        ax.plot(range(start, end), time_series_slice)
-        self.timeSeriesCanvas.draw()
-
     def plotDistribution(self):
         current_data = self.data.dfc_data
 
@@ -1323,6 +1293,30 @@ class App(QMainWindow):
         self.figure.set_facecolor('#f4f1f6')
         self.figure.tight_layout()
         self.canvas.draw()
+
+    def updateTimeSeriesPlot(self, center):
+        if self.data.dfc_data is None:
+            return
+
+        max_index = self.data.dfc_data.shape[2] - 1 if len(self.data.dfc_data.shape) == 3 else 0
+        width = 101
+
+        # Determine if we should show the entire series or a window
+        if center == 0 or center == max_index:
+            start = 0
+            end = max_index
+        else:
+            start = max(0, center - width // 2)
+            end = min(max_index, center + width // 2)
+
+        row = self.rowSelector.value()
+        col = self.colSelector.value()
+        time_series_slice = self.dfc_data['data'][row, col, start:end]
+
+        self.timeSeriesFigure.clear()
+        ax = self.timeSeriesFigure.add_subplot(111)
+        ax.plot(range(start, end), time_series_slice)
+        self.timeSeriesCanvas.draw()
 
     def onTabChanged(self):
         self.currentTabIndex = self.tabWidget.currentIndex()
@@ -1434,31 +1428,29 @@ class App(QMainWindow):
             position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
             self.positionLabel.setText(position_text)
 
-    
-        elif self.currentTabIndex == 1:
-            self.updateTimeSeriesPlot(value)
-
-    def updateSliderValue(self, delta):
-        # Update the slider value considering its range
-        self.currentSliderValue = max(0, min(self.slider.value() + delta, self.slider.maximum()))
-        self.slider.setValue(self.currentSliderValue)
-        self.updatePlots()
-
     def onSliderButtonClicked(self):
         # Clicking a button moves the slider by x steps
         button = self.sender()
+        delta = 0
 
         if button == self.backButton:
-            self.updateSliderValue(-1)
+            delta = -1
 
         if button == self.forwardButton:
-            self.updateSliderValue(1)
+            delta = 1
 
         if button == self.backLargeButton:
-            self.updateSliderValue(-10)
+            delta = -10
 
         if button == self.forwardLargeButton:
-            self.updateSliderValue(10)
+            delta = 10
+
+        self.currentSliderValue = max(0, min(self.slider.value() + delta, self.slider.maximum()))
+        self.slider.setValue(self.currentSliderValue)
+        self.slider.update()
+        
+        self.plotConnectivity()
+        self.plotDistribution()
 
 """
 Run the application
