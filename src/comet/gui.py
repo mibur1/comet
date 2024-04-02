@@ -102,21 +102,22 @@ class DataStorage:
         # Decide if we should add the data based on the hash
         data_hash = self.generate_hash(data_obj)
         if data_hash not in self.storage:
-            self.storage[data_hash] = copy.copy(data_obj) # IMPORTANT: copy the data object
+            self.storage[data_hash] = copy.deepcopy(data_obj) # IMPORTANT: deep copy for completely new data object
             return True
         return False
     
     def check_for_identical_data(self, data_obj):
+        # Get data and parameters for previously calculated identical data
         data_hash = self.generate_hash(data_obj)
         data = self.storage.get(data_hash, None)   
-        return copy.copy(data)
+        return copy.deepcopy(data) # IMPORTANT: deep copy
     
     def check_previous_data(self, methodName):
-        # Get parameters for the last calculation with a given method
-        for hash, data_obj in self.storage.items():
+        # Get data for the last calculation with a given method
+        for data_obj in reversed(list(self.storage.values())):
             if data_obj.dfc_name == methodName and data_obj.dfc_data is not None:
                 print(f"Found data for {methodName}, load with parameters as last time")
-                return copy.copy(data_obj) # return the previous data object
+                return copy.deepcopy(data_obj)  # IMPORTANT: deep copy
         return None
 
 class App(QMainWindow):
@@ -474,20 +475,12 @@ class App(QMainWindow):
         self.setup_class_parameters(self.data.dfc_instance)
         self.parameterLayout.addStretch(1) # Stretch to fill empty space
         self.getParameters()
-        print("get window size", self.data.dfc_params["windowsize"])
-
-        for hash, dataobj in self.data_storage.storage.items():
-            print(hash, dataobj.dfc_name, dataobj.dfc_params["windowsize"])
 
         # See if some data has previously been calculated, we change the paramters to this
         previous_data = self.data_storage.check_previous_data(self.data.dfc_name)
         if previous_data is not None:
-            print("Found previous data, load with previous parameters")
             self.data = previous_data
-            print("found window size", self.data.dfc_params["windowsize"])
             self.setParameters()
-            print("set window size", self.data.dfc_params["windowsize"])
-
             self.plot_dfc()
             self.updateDistribution()
             self.plotTimeSeries()
@@ -504,7 +497,6 @@ class App(QMainWindow):
         # If connectivity data does not exist we reset the figure and slider to prepare for a new calculation
         # This also indicates to the user that this data was not yet calculated/saved
         else:
-            print("No previous data found")
             self.figure.clear()
             self.plot_logo()
             self.canvas.draw()
@@ -1216,11 +1208,8 @@ class App(QMainWindow):
         # Check if data already exists
         existing_data = self.data_storage.check_for_identical_data(self.data)
         if existing_data is not None:
-            print("Found identical data, no need to calculate")
-            print("dFC return with existing window size", self.data.dfc_params["windowsize"])
             return existing_data
-        print("No identical data found, calculate new")
-        print("dFC calculate new with window size", self.data.dfc_params["windowsize"])
+        
         # Data does not exist, perform calculation
         connectivity_calculator = self.data.dfc_instance(**parameters)
         result = connectivity_calculator.connectivity()
@@ -1254,6 +1243,10 @@ class App(QMainWindow):
             self.data_storage.add_data(self.data)
             #print(f"Added {self.data.dfc_name} data to memory")
 
+        for hash, dataobj in self.data_storage.storage.items():
+            print(hash, dataobj.dfc_name)
+
+        print("Finished calculation.")    
         return self.data
 
     def onKeepInMemoryChanged(self, state):
@@ -1361,7 +1354,7 @@ class App(QMainWindow):
 
             # The first subplot occupies the 1st row
             ax1 = self.timeSeriesFigure.add_subplot(gs[:1, 0])
-            ax1.imshow(self.edge_ts.T, cmap='coolwarm', aspect='auto', vmin=-1*self.parameters["vlim"], vmax=self.parameters["vlim"])
+            ax1.imshow(self.data.dfc_edge_ts.T, cmap='coolwarm', aspect='auto', vmin=-1*self.data.dfc_params["vlim"], vmax=self.data.dfc_params["vlim"])
             ax1.set_title("Edge time series")
             ax1.set_xlabel("Time (TRs)")
             ax1.set_ylabel("Edges")
