@@ -127,6 +127,10 @@ class DataStorage:
         return None
 
 class App(QMainWindow):
+    
+    """
+    Initialization functions
+    """
     def __init__(self, init_data=None, init_method=None):
         super().__init__()
         self.title = 'Comet Dynamic Functional Connectivity Toolbox'
@@ -191,7 +195,7 @@ class App(QMainWindow):
             self.data.dfc_data = init_data
             self.data.dfc_instance = init_method
             self.data.file_data = "loaded from script"
-            self.init_from_calculated_data()
+            self.initFromData()
 
     def initUI(self):
         self.setWindowTitle(self.title)
@@ -246,7 +250,11 @@ class App(QMainWindow):
         self.leftLayout.addWidget(self.methodComboBox)
 
         # Get all the dFC methods and names
-        self.class_info = self.get_dfc_methods()
+        self.class_info = {
+            obj.name: name  # Map human-readable name to class name
+            for name, obj in inspect.getmembers(methods)
+            if inspect.isclass(obj) and obj.__module__ == methods.__name__ and name != "ConnectivityMethod"
+        }
 
         # Create a layout for dynamic textboxes
         self.parameterLayout = QVBoxLayout()
@@ -372,20 +380,19 @@ class App(QMainWindow):
         self.forwardButton = QPushButton(">")
         self.forwardLargeButton = QPushButton(">>")
 
-        # Adding buttons to the layout
+        # Buttons that interact with the slider
         navButtonLayout.addWidget(self.backLargeButton)
         navButtonLayout.addWidget(self.backButton)
         navButtonLayout.addWidget(self.positionLabel)
         navButtonLayout.addWidget(self.forwardButton)
         navButtonLayout.addWidget(self.forwardLargeButton)
 
-        # Connect buttons to their respective slots
-        self.backLargeButton.clicked.connect(self.moveBackLarge)
-        self.backButton.clicked.connect(self.moveBack)
-        self.forwardButton.clicked.connect(self.moveForward)
-        self.forwardLargeButton.clicked.connect(self.moveForwardLarge)
+        self.backLargeButton.clicked.connect(self.onSliderButtonClicked)
+        self.backButton.clicked.connect(self.onSliderButtonClicked)
+        self.forwardButton.clicked.connect(self.onSliderButtonClicked)
+        self.forwardLargeButton.clicked.connect(self.onSliderButtonClicked)
 
-        navButtonLayout.addStretch(1)  # Spacer to the right of the buttons
+        navButtonLayout.addStretch(1) # Spacer to the right of the buttons
         rightLayout.addLayout(navButtonLayout)
 
         # UI elements for dFC time series plotting
@@ -421,18 +428,7 @@ class App(QMainWindow):
         self.stateBasedCheckBox.setChecked(True)
         self.staticCheckBox.setChecked(True)
 
-    def get_dfc_methods(self):
-        # Retrieve class names and their human-readable names
-        # Keys: human-readable names, Values: class names
-        dfc_methods = {
-            obj.name: name  # Map human-readable name to class name
-            for name, obj in inspect.getmembers(methods)
-            if inspect.isclass(obj) and obj.__module__ == methods.__name__ and name != "ConnectivityMethod"
-        }
-
-        return dfc_methods
-
-    def init_from_calculated_data(self):
+    def initFromData(self):
         # Make sure both the dFC data and the method object are provided
         assert self.data.dfc_instance is not None, "Please provide the method object corresponding to your dFC data as the second argument to the GUI."
         # Get parameters
@@ -458,416 +454,11 @@ class App(QMainWindow):
         self.methodComboBox.setCurrentText(self.init_method.name)
         
         # Set plots
-        self.plot_dfc()
-        self.updateDistribution()
+        self.updatePlots()
 
-        self.rowSelector.setValue(1)
-        self.plotTimeSeries()
-
-    def onMethodChanged(self, methodName=None):
-        # Clear old variables and data
-        self.clearLayout(self.parameterLayout)
-
-        if methodName == None or methodName == "Use checkboxes to get available methods":
-            return
-        
-        # Get selected connectivity method
-        self.data.dfc_instance = getattr(methods, self.class_info.get(methodName), None) # the actual class
-        self.data.dfc_name = self.class_info.get(methodName) # class name
-
-        # Create and get new parameter layout
-        #self.data.dfc_data = None
-        self.data.dfc_params = {}
-        self.setup_class_parameters(self.data.dfc_instance)
-        self.parameterLayout.addStretch(1) # Stretch to fill empty space
-        self.getParameters()
-
-        # See if some data has previously been calculated, we change the paramters to this
-        previous_data = self.data_storage.check_previous_data(self.data.dfc_name)
-        if previous_data is not None:
-            self.data = previous_data
-            self.setParameters()
-            self.plot_dfc()
-            self.updateDistribution()
-            self.plotTimeSeries()
-            self.slider.show()
-            self.calculatingLabel.setText(f"Loaded {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
-            print(f"Loaded {self.data.dfc_name} from memory")
-
-            # Update the slider
-            total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
-            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
-            self.positionLabel.setText(position_text)
-            self.slider.setValue(self.slider.value())
-        
-        # If connectivity data does not exist we reset the figure and slider to prepare for a new calculation
-        # This also indicates to the user that this data was not yet calculated/saved
-        else:
-            self.figure.clear()
-            self.plot_logo()
-            self.canvas.draw()
-            self.distributionFigure.clear()
-            self.distributionCanvas.draw()
-            self.timeSeriesFigure.clear()
-            self.timeSeriesCanvas.draw()
-
-            position_text = f"no data available"
-            self.positionLabel.setText(position_text)
-            self.slider.setValue(self.slider.value())
-            self.slider.hide()
-
-        self.update() # Update UI
-
-    def setup_class_parameters(self, class_instance):
-        # Now the parameter labels and boxes are set up    
-        labels = []
-
-        # Calculate the maximum label width (just a visual thing)
-        max_label_width = 0
-        init_signature = inspect.signature(class_instance.__init__)
-        font_metrics = QFontMetrics(self.font())
-        for param in init_signature.parameters.values():
-            label_width = font_metrics.boundingRect(f"{self.param_names[param.name]}:").width()
-            max_label_width = max(max_label_width, label_width)
-
-        # Special case for 'time_series' parameter as this is created from the loaded file
-        # Add label for time_series
-        time_series_label = QLabel("Time series:")
-        time_series_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        time_series_label.setMinimumSize(time_series_label.sizeHint())
-        labels.append(time_series_label)
-        
-        self.time_series_textbox.setText(self.data.file_name)
-        self.time_series_textbox.setEnabled(True)
-
-        # Create info button for time_series
-        time_series_info_text = "2D time series loaded from file. Time has to be the first dimension."
-        time_series_info_button = InfoButton(time_series_info_text)
-
-        time_series_layout = QHBoxLayout()
-        time_series_layout.addWidget(time_series_label)
-        time_series_layout.addWidget(self.time_series_textbox)
-        time_series_layout.addWidget(time_series_info_button)
-        self.parameterLayout.addLayout(time_series_layout)
-
-        # Adjust max width for aesthetics
-        max_label_width += 10
-        time_series_label.setFixedWidth(max_label_width)
-
-        for param in init_signature.parameters.values():
-            if param.name not in ['self', 'time_series', 'tril', 'standardize', 'params']:
-                # Create label for parameter
-                param_label = QLabel(f"{self.param_names[param.name]}:")
-                param_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-                param_label.setMinimumSize(param_label.sizeHint())
-                param_label.setFixedWidth(max_label_width)
-                labels.append(param_label)
-
-                # Determine the widget type based on the parameter
-                # Dropdown for boolean parameters
-                if type(param.default) == bool:
-                    param_input_widget = QComboBox()
-                    param_input_widget.addItems(["True", "False"])
-                    
-                    default_index = param_input_widget.findText(str(param.default))
-                    param_input_widget.setCurrentIndex(default_index)
-                    param_input_widget.setEnabled(True)
-
-                # Dropdown for parameters with predefined options
-                elif param.name in class_instance.options:
-                    param_input_widget = QComboBox()
-                    param_input_widget.addItems(class_instance.options[param.name])
-                    
-                    if param.default in class_instance.options[param.name]:
-                        default_index = param_input_widget.findText(param.default)
-                        param_input_widget.setCurrentIndex(default_index)
-                        param_input_widget.setEnabled(True)
-
-                # Spinbox for integer parameterss
-                elif type(param.default) == int:
-                    param_input_widget = QSpinBox()
-                    param_input_widget.setMaximum(10000)
-                    param_input_widget.setMinimum(-10000)
-                    param_input_widget.setSingleStep(1)
-
-                    param_input_widget.setValue(int(param.default) if param.default != inspect.Parameter.empty else 0)
-                    param_input_widget.setEnabled(True)
-
-                # Spinbox for float parameters
-                elif type(param.default) == float:
-                    param_input_widget = QDoubleSpinBox()
-                    param_input_widget.setMaximum(10000.0)
-                    param_input_widget.setMinimum(-10000.0)
-                    param_input_widget.setSingleStep(0.1)
-
-                    param_input_widget.setValue(float(param.default) if param.default != inspect.Parameter.empty else 0.0)
-                    param_input_widget.setEnabled(True)
-
-                # Text field for other types of parameters
-                else:
-                    param_input_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
-                    param_input_widget.setEnabled(True)
-   
-
-                # Create info button with tooltip
-                info_text = self.getInfoText(param.name, self.data.dfc_name)
-                info_button = InfoButton(info_text)
-
-                # Create layout for label, widget, and info button
-                param_layout = QHBoxLayout()
-                param_layout.addWidget(param_label)
-                param_layout.addWidget(param_input_widget)
-                param_layout.addWidget(info_button) 
-
-                # Add the layout to the main parameter layout
-                self.parameterLayout.addLayout(param_layout)
-
-    def updateMethodComboBox(self):
-        # Ordered lists as per 'shouldIncludeClass'
-        continuous_classes = [
-            'CONT Sliding Window', 'CONT Jackknife Correlation', 'CONT Dynamic Conditional Correlation', 
-            'CONT Flexible Least Squares', 'CONT Spatial Distance', 'CONT Multiplication of Temporal Derivatives', 
-            'CONT Phase Synchronization', 'CONT Leading Eigenvector Dynamics', 'CONT Wavelet Coherence', 'CONT Edge-centric Connectivity'
-        ]
-
-        state_based_classes = [
-            'STATE Sliding Window Clustering', 'STATE Co-activation patterns', 'STATE Discrete Hidden Markov Model', 
-            'STATE Continuous Hidden Markov Model', 'STATE Windowless'
-        ]
-
-        static_classes = [
-            'STATIC Pearson Correlation', 'STATIC Partial Correlation', 'STATIC Mutual Information'
-        ]
-
-        # Concatenate the lists in the desired order
-        ordered_classes = continuous_classes + state_based_classes + static_classes
-
-        # Filter and order the class names based on the checkboxes
-        filtered_and_ordered_classes = [
-            class_name for class_name in ordered_classes if self.shouldIncludeClass(class_name) and class_name in self.class_info
-        ]
-
-        # Disconnect existing connections to avoid multiple calls
-        try:
-            self.methodComboBox.currentTextChanged.disconnect(self.onMethodChanged)
-        except TypeError:
-            pass
-
-        # Update the combobox
-        self.methodComboBox.clear()
-        self.methodComboBox.addItems(filtered_and_ordered_classes)
-
-        # Adjust combobox width to fit the longest option
-        self.adjustComboBoxWidth()
-
-        # Reconnect the signal
-        self.methodComboBox.currentTextChanged.connect(self.onMethodChanged)
-
-        # Optionally, trigger the onMethodChanged for the initial setup
-        if filtered_and_ordered_classes:
-            self.onMethodChanged(filtered_and_ordered_classes[0])
-
-    def adjustComboBoxWidth(self):
-        if self.methodComboBox.count() > 0:  # Check if the combobox has at least one item
-            #font_metrics = QFontMetrics(self.methodComboBox.font())
-            #longest_text_width = max(font_metrics.boundingRect(self.methodComboBox.itemText(i)).width() for i in range(self.methodComboBox.count()))
-            #width = longest_text_width + 50
-            width = 320
-            self.methodComboBox.setFixedWidth(width)
-        else:
-            default_width = 320
-            self.methodComboBox.setFixedWidth(default_width)
-
-    def shouldIncludeClass(self, className):
-        if self.continuousCheckBox.isChecked() and className.startswith("CONT"):
-                return True
-        if self.stateBasedCheckBox.isChecked() and className.startswith("STATE"):
-                return True 
-        if self.staticCheckBox.isChecked() and className.startswith("STATIC"):
-                return True
-        return False
-
-    def onTabChanged(self):
-        self.currentTabIndex = self.tabWidget.currentIndex()
-        # index 0: Connectivity plot
-        # index 1: Time series plot
-        # index 2: Distribution plot
-        # index 3: Graph analysis
-
-        if self.data.dfc_data is None:
-            self.plot_logo()
-            self.canvas.draw()
-            self.distributionFigure.clear()
-            self.distributionCanvas.draw()
-            self.timeSeriesFigure.clear()
-            self.timeSeriesCanvas.draw()
-            self.backLargeButton.hide()
-            self.backButton.hide()
-            self.forwardButton.hide()
-            self.forwardLargeButton.hide()
-            self.slider.hide()
-            position_text = ""
-            return
-        
-        if self.currentTabIndex == 0 or self.currentTabIndex == 2:
-            self.slider.show()
-            self.slider.setValue(self.currentSliderValue)
-            self.backLargeButton.show()
-            self.backButton.show()
-            self.forwardButton.show()
-            self.forwardLargeButton.show()
-
-            if self.data.dfc_data is not None:
-                total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
-                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
-            else:
-                position_text = "no data available"
-
-            self.positionLabel.setText(position_text)
-
-        elif self.currentTabIndex == 1:
-            self.backLargeButton.hide()
-            self.backButton.hide()
-            self.forwardButton.hide()
-            self.forwardLargeButton.hide()
-            
-            # If we have nothing to scroll though, hide some GUI elements
-            if len(self.data.dfc_data.shape) == 2 or self.data.dfc_edge_ts is not None or self.data.dfc_state_tc is not None:
-                position_text = ""
-                self.slider.hide()
-                
-                # Disable brain area selector widgets
-                for i in range(self.timeSeriesSelectorLayout.count()):    
-                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
-                    if widget is not None:
-                        widget.setVisible(False)
-
-            else:
-                self.slider.hide()
-                position_text = ""
-                #position_text = f"Use the slider to zoom in and scroll through the time series"
-                
-                # Enable brain area selector widgets
-                for i in range(self.timeSeriesSelectorLayout.count()):    
-                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
-                    if widget is not None:
-                        widget.setVisible(True)
-
-            # We have a static measure
-            if len(self.data.dfc_data.shape) == 2 and self.data.dfc_edge_ts is None and self.data.dfc_state_tc is None:
-                self.timeSeriesFigure.clear()
-                self.timeSeriesCanvas.draw()
-
-                # Disable brain area selector widgets
-                for i in range(self.timeSeriesSelectorLayout.count()):    
-                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
-                    if widget is not None:
-                        widget.setVisible(False)
-                        
-        if self.currentTabIndex == 3:
-            self.backLargeButton.hide()
-            self.backButton.hide()
-            self.forwardButton.hide()
-            self.forwardLargeButton.hide()
-            self.slider.hide()
-            position_text = ""
-            
-        self.positionLabel.setText(position_text)
-        self.update()
-
-    def getInfoText(self, param, dfc_method):
-        if param == "windowsize":
-            text = "Size of the window used by the method. Should typically be an uneven number to have a center."
-        elif param == "shape":
-            text = "Shape of the windowing function."
-        elif param == "std":
-            text = "Width (sigma) of the window."
-        elif param == "diagonal":
-            text = "Values for the main diagonal of the connectivity matrix."
-        elif param == "fisher_z":
-            text = "Fisher z-transform the connectivity values."
-        elif param == "num_cores":
-            text = "Parallelize on multiple cores (highly recommended for DCC and FLS)."
-        elif param == "standardizeData":
-            text = "z-standardize the time series data."
-        elif param == "mu":
-            text = "Weighting parameter for FLS. Smaller values will produce more erratic changes in connectivity estimate."
-        elif param == "flip_eigenvectors":
-            text = "Flips the sign of the eigenvectors."
-        elif param == "dist":
-            text = "Distance function"
-        elif param == "TR":
-            text = "Repetition time of the data (in seconds)"
-        elif param == "fmin":
-            text = "Minimum wavelet frequency"
-        elif param == "fmax":
-            text = "Maximum wavelet frequency"
-        elif param == "n_scales":
-            text = "Number of wavelet scales"
-        elif param == "drop_scales":
-            text = "Drop the n largest and smalles scales to account for the cone of influence"
-        elif param == "drop_timepoints":
-            text = "Drop n first and last time points from the time series to account for the cone of influence"
-        elif param == "method" and dfc_method == "WaveletCoherence":
-            text = "Specific implementation of the method"
-        elif param == "method" and dfc_method == "PhaseSynchrony":
-            text = "Specific implementation of the method"
-        elif param == "params":
-            text = "Various parameters"
-        elif param == "coi_correction":
-            text = "Cone of influence correction"
-        elif param == "clstr_distance":
-            text = "Distance metric"
-        elif param == "num_bins":
-            text = "Number of bins for discretization"
-        elif param == "method":
-            text = "Specific type of method"
-        elif param == "n_overlap":
-            text = "Window overlap"
-        elif param == "tapered_window":
-            text = "Tapered window"
-        elif param == "n_states":
-            text = "Number of states"
-        elif param == "n_subj_clusters":
-            text = "Number of subjects"
-        elif param == "normalization":
-            text = "Normalization"
-        elif param == "clstr_distance":
-            text = "Distance measure"
-        elif param == "subject":
-            text = "Subject"
-        elif param == "Base measure":
-            text = "Base measure for the clustering"
-        elif param == "Iterations":
-            text = "Number of iterations"
-        elif param == "Sliding window":
-            text = "Sliding window method"
-        elif param == "State ratio":
-            text = "Observation/state ratio for the DHMM"
-        elif param == "vlim":
-            text = "Limit for color axis (edge time series)"
-        else:
-            text = f"TODO"
-        return text
-
-    def showInfoPopup(self, param_name):
-        info_text = f"Information about {param_name}"  # Replace with actual information
-        QMessageBox.information(self, "Parameter Information", info_text)
-
-    def clearLayout(self, layout):
-        while layout.count():
-            item = layout.takeAt(0)  # Take the first item from the layout
-            if item.widget():  # If the item is a widget
-                widget = item.widget()
-                if widget is not None and widget is not self.time_series_textbox:
-                    widget.deleteLater()  # Schedule the widget for deletion
-            elif item.layout():  # If the item is a layout
-                self.clearLayout(item.layout())  # Recursively clear the layout
-                item.layout().deleteLater()  # Delete the layout itself
-            elif item.spacerItem():  # If the item is a spacer
-                # No need to delete spacer items; they are automatically handled by Qt
-                pass
-    
+    """
+    I/O functions
+    """
     def loadFile(self):
         fileFilter = "All Supported Files (*.mat *.txt *.npy *pkl *tsv);;MAT Files (*.mat);;Text Files (*.txt);;NumPy Files (*.npy);;Pickle Files (*.pkl);;TSV Files (*.tsv))"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
@@ -981,60 +572,31 @@ class App(QMainWindow):
             if not filePath.endswith('.mat'):
                 filePath += '.mat'
             
-            # Save the data
+            # Save the the current data object to a .mat file
             try:
-                datadict = self.dataclass_to_dict(self.data)
-                savemat(filePath, datadict)
+                data_dict = {}
+                for field in self.data.__dataclass_fields__:
+                    value = getattr(self.data, field)
+                    if isinstance(value, np.ndarray):
+                        data_dict[field] = value
+                    elif isinstance(value, dict):
+                        # Assume dictionaries contain simple types or numpy arrays
+                        data_dict[field] = {k: (v.tolist() if isinstance(v, np.ndarray) else v) for k, v in value.items()}
+                    elif value is None:
+                        # Handle None values appropriately
+                        data_dict[field] = np.array([])
+                    elif field == 'dfc_instance':
+                        # For the dfc_instance only its type is stored
+                        data_dict[field] = str(type(value))
+                    else:
+                        data_dict[field] = value
+
+                savemat(filePath, data_dict)
+
             except Exception as e:
                 print(f"Error saving data: {e}")
-
-    def compare_param_dicts(self, dict1, dict2):
-        # Check if both inputs are dictionaries
-        if not isinstance(dict1, dict) or not isinstance(dict2, dict):
-            return False
         
-        # Check if the keys match
-        if sorted(dict1.keys()) != sorted(dict2.keys()):
-            return False
-        
-        # Recursively compare values
-        for key in dict1.keys():
-            value1 = dict1[key]
-            value2 = dict2[key]
-            
-            if isinstance(value1, dict) and isinstance(value2, dict):
-                # Recursively compare nested dictionaries
-                if not self.compare_param_dicts(value1, value2):
-                    return False
-            elif isinstance(value1, np.ndarray) and isinstance(value2, np.ndarray):
-                # Compare NumPy arrays
-                if not np.array_equal(value1, value2):
-                    return False
-            elif value1 != value2:
-                # Compare other types
-                return False
-        
-        # All checks passed, dictionaries are equivalent
-        return True
-
-    def dataclass_to_dict(self, data_instance):
-        data_dict = {}
-        for field in data_instance.__dataclass_fields__:
-            value = getattr(data_instance, field)
-            if isinstance(value, np.ndarray):
-                data_dict[field] = value
-            elif isinstance(value, dict):
-                # Assume dictionaries contain simple types or numpy arrays
-                data_dict[field] = {k: (v.tolist() if isinstance(v, np.ndarray) else v) for k, v in value.items()}
-            elif value is None:
-                # Handle None values appropriately
-                data_dict[field] = np.array([])
-            elif field == 'dfc_instance':
-                # For the dfc_instance only its type is stored
-                data_dict[field] = str(type(value))
-            else:
-                data_dict[field] = value
-        return data_dict
+        return
 
     def onReshapeCheckboxChanged(self, state):
         if self.data.file_data is None:
@@ -1051,39 +613,308 @@ class App(QMainWindow):
         self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.data.file_data.shape}")
         self.time_series_textbox.setText(self.data.file_name)
 
-    def handleResult(self, result):
-        # Update the sliders and text
-        if self.data.dfc_data is not None:
-            self.calculatingLabel.setText(f"Calculated {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
-            
-            if len(self.data.dfc_data.shape) == 3:
-                self.slider.show()
-                self.rowSelector.setMaximum(self.data.dfc_data.shape[0] - 1)
-                self.colSelector.setMaximum(self.data.dfc_data.shape[1] - 1)
-                self.rowSelector.setValue(1)
+    """
+    dFC functions
+    """
+    def onMethodChanged(self, methodName=None):
+        # Clear old variables and data
+        self.clearParameters(self.parameterLayout)
 
-            # Update time label
+        # Return if no methods are available
+        if methodName == None or methodName == "Use checkboxes to get available methods":
+            return
+        
+        # Get selected connectivity method
+        self.data.dfc_instance = getattr(methods, self.class_info.get(methodName), None) # the actual class
+        self.data.dfc_name = self.class_info.get(methodName) # class name
+
+        # Create and get new parameter layout
+        #self.data.dfc_data = None
+        self.data.dfc_params = {}
+        self.initParameters(self.data.dfc_instance)
+        self.parameterLayout.addStretch(1) # Stretch to fill empty space
+        self.getParameters()
+
+        # See if some data has previously been calculated, we change the paramters to this
+        previous_data = self.data_storage.check_previous_data(self.data.dfc_name)
+        if previous_data is not None:
+            self.data = previous_data
+            self.setParameters()
+            self.updatePlots()
+            self.slider.show()
+            self.calculatingLabel.setText(f"Loaded {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
+            print(f"Loaded {self.data.dfc_name} from memory")
+
+            # Update the slider
             total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
-            
-            if self.currentTabIndex == 0 or self.currentTabIndex == 2:
-                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
-            else:
-                position_text = ""
-
+            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
             self.positionLabel.setText(position_text)
             self.slider.setValue(self.slider.value())
-            
-        # Plot
-        self.plot_dfc()
-        self.updateDistribution()
-        self.plotTimeSeries()
-        self.calculateButton.setEnabled(True)
-        self.onTabChanged()
-        self.update()
+        
+        # If connectivity data does not exist we reset the figure and slider to prepare for a new calculation
+        # This also indicates to the user that this data was not yet calculated/saved
+        else:
+            self.figure.clear()
+            self.plotLogo()
+            self.canvas.draw()
+            self.distributionFigure.clear()
+            self.distributionCanvas.draw()
+            self.timeSeriesFigure.clear()
+            self.timeSeriesCanvas.draw()
 
-    def handleError(self, error):
-        # Handles errors in the worker thread
-        print(f"Error occurred: {error}")
+            position_text = f"no data available"
+            self.positionLabel.setText(position_text)
+            self.slider.setValue(self.slider.value())
+            self.slider.hide()
+
+        self.update() # Update UI
+
+    def updateMethodComboBox(self):
+        # Ordered lists as per 'shouldIncludeClass'
+        continuous_classes = [
+            'CONT Sliding Window', 'CONT Jackknife Correlation', 'CONT Dynamic Conditional Correlation', 
+            'CONT Flexible Least Squares', 'CONT Spatial Distance', 'CONT Multiplication of Temporal Derivatives', 
+            'CONT Phase Synchronization', 'CONT Leading Eigenvector Dynamics', 'CONT Wavelet Coherence', 'CONT Edge-centric Connectivity'
+        ]
+
+        state_based_classes = [
+            'STATE Sliding Window Clustering', 'STATE Co-activation patterns', 'STATE Discrete Hidden Markov Model', 
+            'STATE Continuous Hidden Markov Model', 'STATE Windowless'
+        ]
+
+        static_classes = [
+            'STATIC Pearson Correlation', 'STATIC Partial Correlation', 'STATIC Mutual Information'
+        ]
+
+        # Concatenate the lists in the desired order
+        ordered_classes = continuous_classes + state_based_classes + static_classes
+
+        # Filter and order the class names based on the checkboxes
+        filtered_and_ordered_classes = [
+            class_name for class_name in ordered_classes if self.shouldIncludeClass(class_name) and class_name in self.class_info
+        ]
+
+        # Disconnect existing connections to avoid multiple calls
+        try:
+            self.methodComboBox.currentTextChanged.disconnect(self.onMethodChanged)
+        except TypeError:
+            pass
+
+        # Update the combobox
+        self.methodComboBox.clear()
+        self.methodComboBox.addItems(filtered_and_ordered_classes)
+
+        # Adjust combobox width to fit the longest option
+        self.adjustComboBoxWidth()
+
+        # Reconnect the signal
+        self.methodComboBox.currentTextChanged.connect(self.onMethodChanged)
+
+        # Optionally, trigger the onMethodChanged for the initial setup
+        if filtered_and_ordered_classes:
+            self.onMethodChanged(filtered_and_ordered_classes[0])
+
+    def adjustComboBoxWidth(self):
+        if self.methodComboBox.count() > 0:  # Check if the combobox has at least one item
+            #font_metrics = QFontMetrics(self.methodComboBox.font())
+            #longest_text_width = max(font_metrics.boundingRect(self.methodComboBox.itemText(i)).width() for i in range(self.methodComboBox.count()))
+            #width = longest_text_width + 50
+            width = 320
+            self.methodComboBox.setFixedWidth(width)
+        else:
+            default_width = 320
+            self.methodComboBox.setFixedWidth(default_width)
+
+    def shouldIncludeClass(self, className):
+        if self.continuousCheckBox.isChecked() and className.startswith("CONT"):
+                return True
+        if self.stateBasedCheckBox.isChecked() and className.startswith("STATE"):
+                return True 
+        if self.staticCheckBox.isChecked() and className.startswith("STATIC"):
+                return True
+        return False
+
+    def getInfoText(self, param, dfc_method):
+        if param == "windowsize":
+            text = "Size of the window used by the method. Should typically be an uneven number to have a center."
+        elif param == "shape":
+            text = "Shape of the windowing function."
+        elif param == "std":
+            text = "Width (sigma) of the window."
+        elif param == "diagonal":
+            text = "Values for the main diagonal of the connectivity matrix."
+        elif param == "fisher_z":
+            text = "Fisher z-transform the connectivity values."
+        elif param == "num_cores":
+            text = "Parallelize on multiple cores (highly recommended for DCC and FLS)."
+        elif param == "standardizeData":
+            text = "z-standardize the time series data."
+        elif param == "mu":
+            text = "Weighting parameter for FLS. Smaller values will produce more erratic changes in connectivity estimate."
+        elif param == "flip_eigenvectors":
+            text = "Flips the sign of the eigenvectors."
+        elif param == "dist":
+            text = "Distance function"
+        elif param == "TR":
+            text = "Repetition time of the data (in seconds)"
+        elif param == "fmin":
+            text = "Minimum wavelet frequency"
+        elif param == "fmax":
+            text = "Maximum wavelet frequency"
+        elif param == "n_scales":
+            text = "Number of wavelet scales"
+        elif param == "drop_scales":
+            text = "Drop the n largest and smalles scales to account for the cone of influence"
+        elif param == "drop_timepoints":
+            text = "Drop n first and last time points from the time series to account for the cone of influence"
+        elif param == "method" and dfc_method == "WaveletCoherence":
+            text = "Specific implementation of the method"
+        elif param == "method" and dfc_method == "PhaseSynchrony":
+            text = "Specific implementation of the method"
+        elif param == "params":
+            text = "Various parameters"
+        elif param == "coi_correction":
+            text = "Cone of influence correction"
+        elif param == "clstr_distance":
+            text = "Distance metric"
+        elif param == "num_bins":
+            text = "Number of bins for discretization"
+        elif param == "method":
+            text = "Specific type of method"
+        elif param == "n_overlap":
+            text = "Window overlap"
+        elif param == "tapered_window":
+            text = "Tapered window"
+        elif param == "n_states":
+            text = "Number of states"
+        elif param == "n_subj_clusters":
+            text = "Number of subjects"
+        elif param == "normalization":
+            text = "Normalization"
+        elif param == "clstr_distance":
+            text = "Distance measure"
+        elif param == "subject":
+            text = "Subject"
+        elif param == "Base measure":
+            text = "Base measure for the clustering"
+        elif param == "Iterations":
+            text = "Number of iterations"
+        elif param == "Sliding window":
+            text = "Sliding window method"
+        elif param == "State ratio":
+            text = "Observation/state ratio for the DHMM"
+        elif param == "vlim":
+            text = "Limit for color axis (edge time series)"
+        else:
+            text = f"TODO"
+        return text
+
+    """
+    Parameters
+    """
+    def initParameters(self, class_instance):
+        # Now the parameter labels and boxes are set up    
+        labels = []
+
+        # Calculate the maximum label width (just a visual thing)
+        max_label_width = 0
+        init_signature = inspect.signature(class_instance.__init__)
+        font_metrics = QFontMetrics(self.font())
+        for param in init_signature.parameters.values():
+            label_width = font_metrics.boundingRect(f"{self.param_names[param.name]}:").width()
+            max_label_width = max(max_label_width, label_width)
+
+        # Special case for 'time_series' parameter as this is created from the loaded file
+        # Add label for time_series
+        time_series_label = QLabel("Time series:")
+        time_series_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        time_series_label.setMinimumSize(time_series_label.sizeHint())
+        labels.append(time_series_label)
+        
+        self.time_series_textbox.setText(self.data.file_name)
+        self.time_series_textbox.setEnabled(True)
+
+        # Create info button for time_series
+        time_series_info_text = "2D time series loaded from file. Time has to be the first dimension."
+        time_series_info_button = InfoButton(time_series_info_text)
+
+        time_series_layout = QHBoxLayout()
+        time_series_layout.addWidget(time_series_label)
+        time_series_layout.addWidget(self.time_series_textbox)
+        time_series_layout.addWidget(time_series_info_button)
+        self.parameterLayout.addLayout(time_series_layout)
+
+        # Adjust max width for aesthetics
+        max_label_width += 10
+        time_series_label.setFixedWidth(max_label_width)
+
+        for param in init_signature.parameters.values():
+            if param.name not in ['self', 'time_series', 'tril', 'standardize', 'params']:
+                # Create label for parameter
+                param_label = QLabel(f"{self.param_names[param.name]}:")
+                param_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+                param_label.setMinimumSize(param_label.sizeHint())
+                param_label.setFixedWidth(max_label_width)
+                labels.append(param_label)
+
+                # Determine the widget type based on the parameter
+                # Dropdown for boolean parameters
+                if type(param.default) == bool:
+                    param_input_widget = QComboBox()
+                    param_input_widget.addItems(["True", "False"])
+                    
+                    default_index = param_input_widget.findText(str(param.default))
+                    param_input_widget.setCurrentIndex(default_index)
+                    param_input_widget.setEnabled(True)
+
+                # Dropdown for parameters with predefined options
+                elif param.name in class_instance.options:
+                    param_input_widget = QComboBox()
+                    param_input_widget.addItems(class_instance.options[param.name])
+                    
+                    if param.default in class_instance.options[param.name]:
+                        default_index = param_input_widget.findText(param.default)
+                        param_input_widget.setCurrentIndex(default_index)
+                        param_input_widget.setEnabled(True)
+
+                # Spinbox for integer parameterss
+                elif type(param.default) == int:
+                    param_input_widget = QSpinBox()
+                    param_input_widget.setMaximum(10000)
+                    param_input_widget.setMinimum(-10000)
+                    param_input_widget.setSingleStep(1)
+
+                    param_input_widget.setValue(int(param.default) if param.default != inspect.Parameter.empty else 0)
+                    param_input_widget.setEnabled(True)
+
+                # Spinbox for float parameters
+                elif type(param.default) == float:
+                    param_input_widget = QDoubleSpinBox()
+                    param_input_widget.setMaximum(10000.0)
+                    param_input_widget.setMinimum(-10000.0)
+                    param_input_widget.setSingleStep(0.1)
+
+                    param_input_widget.setValue(float(param.default) if param.default != inspect.Parameter.empty else 0.0)
+                    param_input_widget.setEnabled(True)
+
+                # Text field for other types of parameters
+                else:
+                    param_input_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
+                    param_input_widget.setEnabled(True)
+   
+
+                # Create info button with tooltip
+                info_text = self.getInfoText(param.name, self.data.dfc_name)
+                info_button = InfoButton(info_text)
+
+                # Create layout for label, widget, and info button
+                param_layout = QHBoxLayout()
+                param_layout.addWidget(param_label)
+                param_layout.addWidget(param_input_widget)
+                param_layout.addWidget(info_button) 
+
+                # Add the layout to the main parameter layout
+                self.parameterLayout.addLayout(param_layout)
 
     def getParameters(self):
         # Get the time series and parameters (from the UI) for the selected connectivity method and store them in a dictionary
@@ -1179,6 +1010,23 @@ class App(QMainWindow):
                 else:
                     self.calculatingLabel.setText(f"Error: Unrecognized parameter '{label}'")
 
+    def clearParameters(self, layout):
+        while layout.count():
+            item = layout.takeAt(0)  # Take the first item from the layout
+            if item.widget():  # If the item is a widget
+                widget = item.widget()
+                if widget is not None and widget is not self.time_series_textbox:
+                    widget.deleteLater()  # Schedule the widget for deletion
+            elif item.layout():  # If the item is a layout
+                self.clearParameters(item.layout())  # Recursively clear the layout
+                item.layout().deleteLater()  # Delete the layout itself
+            elif item.spacerItem():  # If the item is a spacer
+                # No need to delete spacer items; they are automatically handled by Qt
+                pass
+
+    """
+    dFC calculation
+    """
     def onCalculateConnectivity(self):
         # Check if ts_data is available
         if self.data.file_data is None:
@@ -1252,6 +1100,41 @@ class App(QMainWindow):
         print("Finished calculation.")    
         return self.data
 
+    def handleResult(self, result):
+        # Update the sliders and text
+        if self.data.dfc_data is not None:
+            self.calculatingLabel.setText(f"Calculated {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
+            
+            if len(self.data.dfc_data.shape) == 3:
+                self.slider.show()
+                self.rowSelector.setMaximum(self.data.dfc_data.shape[0] - 1)
+                self.colSelector.setMaximum(self.data.dfc_data.shape[1] - 1)
+                self.rowSelector.setValue(1)
+
+            # Update time label
+            total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
+            
+            if self.currentTabIndex == 0 or self.currentTabIndex == 2:
+                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+            else:
+                position_text = ""
+
+            self.positionLabel.setText(position_text)
+            self.slider.setValue(self.slider.value())
+            
+        # Plot
+        self.updatePlots()
+        self.calculateButton.setEnabled(True)
+        self.onTabChanged()
+        self.update()
+
+    def handleError(self, error):
+        # Handles errors in the worker thread
+        print(f"Error occurred: {error}")
+
+    """
+    Memory functions
+    """
     def onKeepInMemoryChanged(self, state):
         if state == 2 and self.data.dfc_data is not None:
             self.data_storage.add_data(self.data)
@@ -1269,7 +1152,15 @@ class App(QMainWindow):
         print("Cleared memory")
         return
 
-    def plot_dfc(self):
+    """
+    Plotting functions
+    """
+    def updatePlots(self):
+        self.plotDFC()
+        self.plotDistribution()
+        self.plotTimeSeries()
+
+    def plotDFC(self):
         current_data = self.data.dfc_data
         
         if current_data is None:
@@ -1379,86 +1270,6 @@ class App(QMainWindow):
             self.timeSeriesFigure.clear()
             self.timeSeriesCanvas.draw()
 
-    def plot_logo(self):
-        with pkg_resources.path("comet.resources.img", "logo.png") as file_path:
-            logo = imread(file_path)
-
-        self.figure.clear()
-        ax = self.figure.add_subplot(111)
-        ax.set_axis_off()
-        self.im = ax.imshow(logo)
-
-        self.figure.set_facecolor('#f4f1f6')
-        self.figure.tight_layout()
-        self.canvas.draw()
-
-    def updateDistribution(self):
-        current_data = self.data.dfc_data
-
-        if current_data is None or not hasattr(self, 'distributionFigure'):
-            self.distributionFigure.clear()
-            return
-
-        # Clear the current distribution plot
-        self.distributionFigure.clear()
-
-        # Assuming you want to plot the distribution of values in the current slice
-        current_slice = current_data[:, :, self.slider.value()] if len(current_data.shape) == 3 else current_data
-        ax = self.distributionFigure.add_subplot(111)
-        ax.hist(current_slice.flatten(), bins=50)  # number of bins
-
-        self.distributionCanvas.draw()
-
-    def onSliderValueChanged(self, value):
-        # Ensure there is data to work with
-        if self.data.dfc_data is None or self.im is None:
-            return
-        
-        if self.currentTabIndex == 0 or self.currentTabIndex == 2:
-            # Get and update the data of the imshow object
-            self.currentSliderValue = value
-            data = self.data.dfc_data
-            self.im.set_data(data[:, :, value]) if len(data.shape) == 3 else self.im.set_data(data)
-
-            vlim = np.max(np.abs(data[:, :, value])) if len(data.shape) == 3 else np.max(np.abs(data))
-            self.im.set_clim(-vlim, vlim)
-
-            # Redraw the canvas
-            self.canvas.draw()
-            self.updateDistribution()
-
-            total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
-            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
-            self.positionLabel.setText(position_text)
-
-    
-        elif self.currentTabIndex == 1:
-            self.updateTimeSeriesPlot(value)
-
-    def moveBack(self):
-        # Move slider back by 1
-        self.updateSliderValue(-1)
-
-    def moveForward(self):
-        # Move slider forward by 1
-        self.updateSliderValue(1)
-
-    def moveBackLarge(self):
-        # Move slider back by 10
-        self.updateSliderValue(-10)
-
-    def moveForwardLarge(self):
-        # Move slider forward by 10
-        self.updateSliderValue(10)
-
-    def updateSliderValue(self, delta):
-        # Update the slider value considering its range
-        self.currentSliderValue = max(0, min(self.slider.value() + delta, self.slider.maximum()))
-        self.slider.setValue(self.currentSliderValue)
-
-        self.plot_dfc()
-        self.updateDistribution()
-
     def updateTimeSeriesPlot(self, center):
         if self.data.dfc_data is None:
             return
@@ -1483,6 +1294,175 @@ class App(QMainWindow):
         ax.plot(range(start, end), time_series_slice)
         self.timeSeriesCanvas.draw()
 
+    def plotDistribution(self):
+        current_data = self.data.dfc_data
+
+        if current_data is None or not hasattr(self, 'distributionFigure'):
+            self.distributionFigure.clear()
+            return
+
+        # Clear the current distribution plot
+        self.distributionFigure.clear()
+
+        # Assuming you want to plot the distribution of values in the current slice
+        current_slice = current_data[:, :, self.slider.value()] if len(current_data.shape) == 3 else current_data
+        ax = self.distributionFigure.add_subplot(111)
+        ax.hist(current_slice.flatten(), bins=50)  # number of bins
+
+        self.distributionCanvas.draw()
+
+    def plotLogo(self):
+        with pkg_resources.path("comet.resources.img", "logo.png") as file_path:
+            logo = imread(file_path)
+
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        ax.set_axis_off()
+        self.im = ax.imshow(logo)
+
+        self.figure.set_facecolor('#f4f1f6')
+        self.figure.tight_layout()
+        self.canvas.draw()
+
+    def onTabChanged(self):
+        self.currentTabIndex = self.tabWidget.currentIndex()
+        # index 0: Connectivity plot
+        # index 1: Time series plot
+        # index 2: Distribution plot
+        # index 3: Graph analysis
+
+        if self.data.dfc_data is None:
+            self.plotLogo()
+            self.canvas.draw()
+            self.distributionFigure.clear()
+            self.distributionCanvas.draw()
+            self.timeSeriesFigure.clear()
+            self.timeSeriesCanvas.draw()
+            self.backLargeButton.hide()
+            self.backButton.hide()
+            self.forwardButton.hide()
+            self.forwardLargeButton.hide()
+            self.slider.hide()
+            position_text = ""
+            return
+        
+        if self.currentTabIndex == 0 or self.currentTabIndex == 2:
+            self.slider.show()
+            self.slider.setValue(self.currentSliderValue)
+            self.backLargeButton.show()
+            self.backButton.show()
+            self.forwardButton.show()
+            self.forwardLargeButton.show()
+
+            if self.data.dfc_data is not None:
+                total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
+                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+            else:
+                position_text = "no data available"
+
+            self.positionLabel.setText(position_text)
+
+        elif self.currentTabIndex == 1:
+            self.backLargeButton.hide()
+            self.backButton.hide()
+            self.forwardButton.hide()
+            self.forwardLargeButton.hide()
+            
+            # If we have nothing to scroll though, hide some GUI elements
+            if len(self.data.dfc_data.shape) == 2 or self.data.dfc_edge_ts is not None or self.data.dfc_state_tc is not None:
+                position_text = ""
+                self.slider.hide()
+                
+                # Disable brain area selector widgets
+                for i in range(self.timeSeriesSelectorLayout.count()):    
+                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
+                    if widget is not None:
+                        widget.setVisible(False)
+
+            else:
+                self.slider.hide()
+                position_text = ""
+                #position_text = f"Use the slider to zoom in and scroll through the time series"
+                
+                # Enable brain area selector widgets
+                for i in range(self.timeSeriesSelectorLayout.count()):    
+                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
+                    if widget is not None:
+                        widget.setVisible(True)
+
+            # We have a static measure
+            if len(self.data.dfc_data.shape) == 2 and self.data.dfc_edge_ts is None and self.data.dfc_state_tc is None:
+                self.timeSeriesFigure.clear()
+                self.timeSeriesCanvas.draw()
+
+                # Disable brain area selector widgets
+                for i in range(self.timeSeriesSelectorLayout.count()):    
+                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
+                    if widget is not None:
+                        widget.setVisible(False)
+                        
+        if self.currentTabIndex == 3:
+            self.backLargeButton.hide()
+            self.backButton.hide()
+            self.forwardButton.hide()
+            self.forwardLargeButton.hide()
+            self.slider.hide()
+            position_text = ""
+            
+        self.positionLabel.setText(position_text)
+        self.update()
+
+    def onSliderValueChanged(self, value):
+        # Ensure there is data to work with
+        if self.data.dfc_data is None or self.im is None:
+            return
+        
+        if self.currentTabIndex == 0 or self.currentTabIndex == 2:
+            # Get and update the data of the imshow object
+            self.currentSliderValue = value
+            data = self.data.dfc_data
+            self.im.set_data(data[:, :, value]) if len(data.shape) == 3 else self.im.set_data(data)
+
+            vlim = np.max(np.abs(data[:, :, value])) if len(data.shape) == 3 else np.max(np.abs(data))
+            self.im.set_clim(-vlim, vlim)
+
+            # Redraw the canvas
+            self.canvas.draw()
+            self.plotDistribution()
+
+            total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
+            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+            self.positionLabel.setText(position_text)
+
+    
+        elif self.currentTabIndex == 1:
+            self.updateTimeSeriesPlot(value)
+
+    def updateSliderValue(self, delta):
+        # Update the slider value considering its range
+        self.currentSliderValue = max(0, min(self.slider.value() + delta, self.slider.maximum()))
+        self.slider.setValue(self.currentSliderValue)
+        self.updatePlots()
+
+    def onSliderButtonClicked(self):
+        # Clicking a button moves the slider by x steps
+        button = self.sender()
+
+        if button == self.backButton:
+            self.updateSliderValue(-1)
+
+        if button == self.forwardButton:
+            self.updateSliderValue(1)
+
+        if button == self.backLargeButton:
+            self.updateSliderValue(-10)
+
+        if button == self.forwardLargeButton:
+            self.updateSliderValue(10)
+
+"""
+Run the application
+"""
 def run(dfc_data=None, method=None):
     app = QApplication(sys.argv)
 
