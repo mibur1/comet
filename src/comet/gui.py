@@ -1226,7 +1226,7 @@ class App(QMainWindow):
         elif isinstance(result, pydfc.dfc.DFC):
             self.data.dfc_data = np.transpose(result.get_dFC_mat(), (1, 2, 0))
             self.data.dfc_params = parameters
-            self.data.dfc_state_tc = result.FCSs
+            self.data.dfc_states = result.FCSs_
             self.data.dfc_state_tc = result.state_TC()
             self.data.dfc_edge_ts = None
         
@@ -1242,9 +1242,6 @@ class App(QMainWindow):
             # Update the dictionary entry for the selected_class_name with the new data and parameters
             self.data_storage.add_data(self.data)
             #print(f"Added {self.data.dfc_name} data to memory")
-
-        for hash, dataobj in self.data_storage.storage.items():
-            print(hash, dataobj.dfc_name)
 
         print("Finished calculation.")    
         return self.data
@@ -1324,6 +1321,7 @@ class App(QMainWindow):
 
             time_series = self.data.dfc_state_tc
             num_states = len(self.data.dfc_states)
+
             # Setup the gridspec layout
             gs = gridspec.GridSpec(3, num_states, self.timeSeriesFigure, height_ratios=[1, 0.5, 1])
 
@@ -1339,7 +1337,7 @@ class App(QMainWindow):
             ax_time_series.set_xlabel("Time (TRs)")
 
             # Plot the individual states
-            for col, (state, matrix) in enumerate(self.dfc_states.items()):
+            for col, (state, matrix) in enumerate(self.data.dfc_states.items()):
                 ax_state = self.timeSeriesFigure.add_subplot(gs[2, col])
                 ax_state.imshow(matrix, cmap='coolwarm', aspect=1)
                 ax_state.set_title(f"State {col+1}")
