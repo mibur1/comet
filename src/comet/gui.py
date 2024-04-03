@@ -278,6 +278,11 @@ class App(QMainWindow):
         self.time_series_textbox = QLineEdit()
         self.time_series_textbox.setReadOnly(True) # read only as based on the loaded file
 
+        # Set up the atlas combobox
+        self.atlasComboBox = QComboBox()
+        self.atlasComboBox.addItems(["Glasser MMP", "Schaefer Kong 200", "Schaefer Tian 254"])
+        self.atlasComboBox.currentIndexChanged.connect(self.onAtlasSelected)
+
         # Add a stretch after the parameter layout container
         self.leftLayout.addStretch()
 
@@ -835,6 +840,13 @@ class App(QMainWindow):
 
     def onAtlasSelected(self):
         atlas_name = self.atlasComboBox.currentText()
+        atlas_map = {
+            "Glasser MMP": "glasser",
+            "Schaefer Kong 200": "schaefer_kong",
+            "Schaefer Tian 254": "schaefer_tian"
+        }
+        atlas_name = atlas_map.get(atlas_name, None)
+
         self.data.file_data = hcp.parcellate(self.data.cifti_data, atlas=atlas_name)
         self.fileNameLabel.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
        
@@ -884,10 +896,6 @@ class App(QMainWindow):
             atlas_label.setMinimumSize(atlas_label.sizeHint())
             atlas_label.setFixedWidth(max_label_width)
             labels.append(atlas_label)
-
-            self.atlasComboBox = QComboBox()
-            self.atlasComboBox.addItems(["glasser", "schaefer_kong", "schaefer_tian"])
-            self.atlasComboBox.currentIndexChanged.connect(self.onAtlasSelected)
 
             # Create the info button for parcellation
             atlas_info_button_text = "Atlas to parcellate the .dtseries.nii file."
@@ -973,9 +981,8 @@ class App(QMainWindow):
     def getParameters(self):
         # Get the time series and parameters (from the UI) for the selected connectivity method and store them in a dictionary
         
-        # Time series data
-        self.data.dfc_params['time_series'] = self.data.file_data
-
+        self.data.dfc_params['time_series'] = self.data.file_data # Time series data
+        
         # Converts string to boolean, float, or retains as string if conversion is not applicable
         def convert_value(value):
             if value.lower() in ['true', 'false']:
@@ -1069,7 +1076,7 @@ class App(QMainWindow):
             item = layout.takeAt(0)  # Take the first item from the layout
             if item.widget():  # If the item is a widget
                 widget = item.widget()
-                if widget is not None and widget is not self.time_series_textbox:
+                if widget is not None and widget is not self.time_series_textbox and widget is not self.atlasComboBox:
                     widget.deleteLater()  # Schedule the widget for deletion
             elif item.layout():  # If the item is a layout
                 self.clearParameters(item.layout())  # Recursively clear the layout
