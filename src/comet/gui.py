@@ -4,6 +4,7 @@ import pickle
 import inspect
 import numpy as np
 import pandas as pd
+import nibabel as nib
 from typing import Any, Dict
 from scipy.io import loadmat, savemat
 from dataclasses import dataclass, field
@@ -25,8 +26,8 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout,
     QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, \
     QSpacerItem, QCheckBox, QTabWidget, QMessageBox, QSpinBox, QDoubleSpinBox
 
-# DFC methods
-from . import methods
+# Comet imports and state-based dFC methods from pydfc
+from . import methods, hcp
 import pydfc
 
 class Worker(QObject):
@@ -460,7 +461,7 @@ class App(QMainWindow):
     I/O functions
     """
     def loadFile(self):
-        fileFilter = "All Supported Files (*.mat *.txt *.npy *pkl *tsv);;MAT Files (*.mat);;Text Files (*.txt);;NumPy Files (*.npy);;Pickle Files (*.pkl);;TSV Files (*.tsv))"
+        fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
         file_name = file_path.split('/')[-1]
         self.data.file_name = file_name
@@ -472,13 +473,17 @@ class App(QMainWindow):
         if file_path.endswith('.mat'):
             data_dict = loadmat(file_path)
             self.data.file_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
+        
         elif file_path.endswith('.txt'):
             self.data.file_data = np.loadtxt(file_path)
+        
         elif file_path.endswith('.npy'):
             self.data.file_data = np.load(file_path)
+        
         elif file_path.endswith('.pkl'):
             with open(file_path, 'rb') as f:
                 self.data.file_data = pickle.load(f)
+        
         elif file_path.endswith(".tsv"):
             data = pd.read_csv(file_path, sep='\t', header=None, na_values='n/a')
 
@@ -508,6 +513,14 @@ class App(QMainWindow):
 
             # Update header_list if rois exist
             self.data.roi_names = np.array(rois, dtype=object)
+        
+        elif file_path.endswith(".dtseries.nii"):
+            data = nib.load(file_path)
+            self.data.file_data = hcp.parcellate(data, atlas="glasser")
+        
+        elif file_path.endswith(".ptseries.nii"):
+            data = nib.load(file_path)
+            self.data.file_data = data.get_fdata()
 
         else:
             self.data.file_data = None
@@ -671,29 +684,42 @@ class App(QMainWindow):
         self.update() # Update UI
 
     def updateMethodComboBox(self):
-        # Ordered lists as per 'shouldIncludeClass'
-        continuous_classes = [
-            'CONT Sliding Window', 'CONT Jackknife Correlation', 'CONT Dynamic Conditional Correlation', 
-            'CONT Flexible Least Squares', 'CONT Spatial Distance', 'CONT Multiplication of Temporal Derivatives', 
-            'CONT Phase Synchronization', 'CONT Leading Eigenvector Dynamics', 'CONT Wavelet Coherence', 'CONT Edge-centric Connectivity'
+
+        def shouldIncludeClass(className):
+            if self.continuousCheckBox.isChecked() and className.startswith("CONT"):
+                    return True
+            if self.stateBasedCheckBox.isChecked() and className.startswith("STATE"):
+                    return True 
+            if self.staticCheckBox.isChecked() and className.startswith("STATIC"):
+                    return True
+            return False
+
+        class_mappings = {
+            'CONT': [
+                'Sliding Window', 'Jackknife Correlation', 'Dynamic Conditional Correlation', 
+                'Flexible Least Squares', 'Spatial Distance', 'Multiplication of Temporal Derivatives', 
+                'Phase Synchronization', 'Leading Eigenvector Dynamics', 'Wavelet Coherence', 'Edge-centric Connectivity'
+            ],
+            'STATE': [
+                'Sliding Window Clustering', 'Co-activation patterns', 'Discrete Hidden Markov Model', 
+                'Continuous Hidden Markov Model', 'Windowless'
+            ],
+            'STATIC': [
+                'Pearson Correlation', 'Partial Correlation', 'Mutual Information'
+            ]
+        }
+
+        # Dynamically generate the ordered classes based on available mappings
+        ordered_classes = [
+            f"{prefix} {name}" for prefix, names in class_mappings.items() for name in names
         ]
 
-        state_based_classes = [
-            'STATE Sliding Window Clustering', 'STATE Co-activation patterns', 'STATE Discrete Hidden Markov Model', 
-            'STATE Continuous Hidden Markov Model', 'STATE Windowless'
-        ]
-
-        static_classes = [
-            'STATIC Pearson Correlation', 'STATIC Partial Correlation', 'STATIC Mutual Information'
-        ]
-
-        # Concatenate the lists in the desired order
-        ordered_classes = continuous_classes + state_based_classes + static_classes
-
-        # Filter and order the class names based on the checkboxes
+        # Generic filtering function
         filtered_and_ordered_classes = [
-            class_name for class_name in ordered_classes if self.shouldIncludeClass(class_name) and class_name in self.class_info
+            class_name for class_name in ordered_classes
+            if shouldIncludeClass(class_name) and class_name in self.class_info
         ]
+
 
         # Disconnect existing connections to avoid multiple calls
         try:
@@ -721,15 +747,6 @@ class App(QMainWindow):
         # Trigger the onMethodCombobox for the initial setup
         if filtered_and_ordered_classes:
             self.onMethodCombobox(filtered_and_ordered_classes[0])
-
-    def shouldIncludeClass(self, className):
-        if self.continuousCheckBox.isChecked() and className.startswith("CONT"):
-                return True
-        if self.stateBasedCheckBox.isChecked() and className.startswith("STATE"):
-                return True 
-        if self.staticCheckBox.isChecked() and className.startswith("STATIC"):
-                return True
-        return False
 
     def getInfoText(self, param, dfc_method):
         if param == "windowsize":
