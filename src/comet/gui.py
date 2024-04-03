@@ -65,11 +65,11 @@ class InfoButton(QPushButton):
 
 @dataclass
 class Data:
-    # Data class to hold currently relevant data
+    # File variables
     file_name:    str        = field(default=None)         # data file name
-    file_data:    np.ndarray = field(default=None)         # input time series data
-    roi_names:    np.ndarray = field(default=None)         # input roi data     
+    file_data:    np.ndarray = field(default=None)         # input time series data  
 
+    # DFC variables
     dfc_instance: Any        = field(default=None)         # instance of the dFC class
     dfc_name:     str        = field(default=None)         # method class name
     dfc_params:   Dict       = field(default_factory=dict) # input parameters
@@ -77,6 +77,10 @@ class Data:
     dfc_states:   Dict       = field(default_factory=dict) # dfc states
     dfc_state_tc: np.ndarray = field(default=None)         # dfc state time course
     dfc_edge_ts:  np.ndarray = field(default=None)         # dfc edge time series
+
+    # Misc variables
+    cifti_data:   np.ndarray = field(default=None)         # input cifti data (for .dtseries files)
+    roi_names:    np.ndarray = field(default=None)         # input roi data (for .tsv files)
 
     def clear_dfc_data(self):
         self.dfc_params   = {}
@@ -126,7 +130,7 @@ class DataStorage:
         return None
 
 class App(QMainWindow):
-    
+
     """
     Initialization functions
     """
@@ -183,7 +187,8 @@ class App(QMainWindow):
             "iterations":            "Iterations",
             "sw_method":            "Sliding window",
             "dhmm_obs_state_ratio": "State ratio",
-            "vlim":                 "Color axis limit"
+            "vlim":                 "Color axis limit",
+            "parcellation":         "Parcellation"
 
         }
         self.reverse_param_names = {v: k for k, v in self.param_names.items()}
@@ -515,9 +520,9 @@ class App(QMainWindow):
             self.data.roi_names = np.array(rois, dtype=object)
         
         elif file_path.endswith(".dtseries.nii"):
-            data = nib.load(file_path)
-            self.data.file_data = hcp.parcellate(data, atlas="glasser")
-        
+            self.data.cifti_data = nib.load(file_path)
+            self.data.file_data = hcp.parcellate(self.data.cifti_data, atlas="glasser")
+
         elif file_path.endswith(".ptseries.nii"):
             data = nib.load(file_path)
             self.data.file_data = data.get_fdata()
@@ -547,8 +552,8 @@ class App(QMainWindow):
             self.staticCheckBox.setChecked(False)
 
             self.transposeCheckbox.setEnabled(False)
+        
         else:
-            self.fileNameLabel.setText(f"Loaded {self.data.file_name} with shape {self.data.file_data.shape}")
             self.time_series_textbox.setText(file_name)
 
             self.continuousCheckBox.setEnabled(True)
@@ -559,9 +564,14 @@ class App(QMainWindow):
 
             self.staticCheckBox.setEnabled(True)
             self.staticCheckBox.setChecked(True)
-    
-            self.transposeCheckbox.setEnabled(True)
 
+            if file_path.endswith('.nii'):
+                self.fileNameLabel.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
+                self.transposeCheckbox.setEnabled(False)
+            else:
+                self.fileNameLabel.setText(f"Loaded {self.data.file_name} with shape {self.data.file_data.shape}")
+                self.transposeCheckbox.setEnabled(True)
+        
         # Reset and enable the GUI elements
         self.methodComboBox.setEnabled(True)
         self.methodComboBox.setEnabled(True)
@@ -622,7 +632,7 @@ class App(QMainWindow):
         # Update the labels
         self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.data.file_data.shape}")
         self.time_series_textbox.setText(self.data.file_name)
-
+ 
     """
     dFC functions
     """
@@ -823,6 +833,11 @@ class App(QMainWindow):
             text = f"TODO"
         return text
 
+    def onAtlasSelected(self):
+        atlas_name = self.atlasComboBox.currentText()
+        self.data.file_data = hcp.parcellate(self.data.cifti_data, atlas=atlas_name)
+        self.fileNameLabel.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
+       
     """
     Parameters
     """
@@ -861,6 +876,31 @@ class App(QMainWindow):
         # Adjust max width for aesthetics
         max_label_width += 5
         time_series_label.setFixedWidth(max_label_width)
+
+        # If we have a .dtseries.nii file, we need to add an atlas dropdown. This defaults to the glasser atlas
+        if self.data.file_name is not None and self.data.file_name.endswith('.dtseries.nii'):
+            atlas_label = QLabel("Parcellation:")
+            atlas_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+            atlas_label.setMinimumSize(atlas_label.sizeHint())
+            atlas_label.setFixedWidth(max_label_width)
+            labels.append(atlas_label)
+
+            self.atlasComboBox = QComboBox()
+            self.atlasComboBox.addItems(["glasser", "schaefer_kong", "schaefer_tian"])
+            self.atlasComboBox.currentIndexChanged.connect(self.onAtlasSelected)
+
+            # Create the info button for parcellation
+            atlas_info_button_text = "Atlas to parcellate the .dtseries.nii file."
+            atlas_info_button = InfoButton(atlas_info_button_text)
+
+            # Create layout for the atlas dropdown
+            atlas_layout = QHBoxLayout()
+            atlas_layout.addWidget(atlas_label)
+            atlas_layout.addWidget(self.atlasComboBox)
+            atlas_layout.addWidget(atlas_info_button)
+
+            # Add the atlas layout to the main parameter layout
+            self.parameterLayout.addLayout(atlas_layout)
 
         for param in init_signature.parameters.values():
             if param.name not in ['self', 'time_series', 'tril', 'standardize', 'params']:
@@ -1075,8 +1115,12 @@ class App(QMainWindow):
         if existing_data is not None:
             return existing_data
         
+        # Remove keys not allowed for calculation
+        clean_parameters = parameters.copy()
+        clean_parameters.pop('parcellation', None)
+
         # Data does not exist, perform calculation
-        connectivity_calculator = self.data.dfc_instance(**parameters)
+        connectivity_calculator = self.data.dfc_instance(**clean_parameters)
         result = connectivity_calculator.connectivity()
         self.init_flag = False
 
