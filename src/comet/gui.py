@@ -27,7 +27,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout,
     QSpacerItem, QCheckBox, QTabWidget, QMessageBox, QSpinBox, QDoubleSpinBox
 
 # Comet imports and state-based dFC methods from pydfc
-from . import methods, hcp
+from . import cifti, methods
 import pydfc
 
 class Worker(QObject):
@@ -526,7 +526,7 @@ class App(QMainWindow):
         
         elif file_path.endswith(".dtseries.nii"):
             self.data.cifti_data = nib.load(file_path)
-            self.data.file_data = hcp.parcellate(self.data.cifti_data, atlas="glasser")
+            self.data.file_data = cifti.parcellate(self.data.cifti_data, atlas="glasser")
 
         elif file_path.endswith(".ptseries.nii"):
             data = nib.load(file_path)
@@ -847,7 +847,7 @@ class App(QMainWindow):
         }
         atlas_name = atlas_map.get(atlas_name, None)
 
-        self.data.file_data = hcp.parcellate(self.data.cifti_data, atlas=atlas_name)
+        self.data.file_data = cifti.parcellate(self.data.cifti_data, atlas=atlas_name)
         self.fileNameLabel.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
        
     """
@@ -1076,7 +1076,7 @@ class App(QMainWindow):
             item = layout.takeAt(0)  # Take the first item from the layout
             if item.widget():  # If the item is a widget
                 widget = item.widget()
-                if widget is not None and widget is not self.time_series_textbox and widget is not self.atlasComboBox:
+                if widget is not None and widget is not self.time_series_textbox and widget is not self.atlasComboBox: # do not clear time series textbox and atlas combobox
                     widget.deleteLater()  # Schedule the widget for deletion
             elif item.layout():  # If the item is a layout
                 self.clearParameters(item.layout())  # Recursively clear the layout
