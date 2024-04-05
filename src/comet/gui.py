@@ -1096,7 +1096,7 @@ class App(QMainWindow):
                     # Value could not be retrieved from the widget
                     self.calculatingLabel.setText(f"Error: No value entered for parameter '{label}'")
 
-    def setParameters(self, disable=True):
+    def setParameters(self, disable=False):
         # Converts value to string
         def convert_value_to_string(value):
             if isinstance(value, bool):
