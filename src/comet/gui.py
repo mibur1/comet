@@ -443,6 +443,7 @@ class App(QMainWindow):
         self.data.dfc_instance = init_dfc_instance
         self.data.file_name = "loaded from script"
         self.data.dfc_name = init_dfc_instance.name
+        self.data.time_series = np.array([]) # for potential saving to .mat
 
         # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
         if isinstance(init_dfc_data, tuple):
@@ -630,7 +631,7 @@ class App(QMainWindow):
 
         # Open a file dialog to specify where to save the file
         filePath, _ = QFileDialog.getSaveFileName(self, "Save File", "", "MAT Files (*.mat)")
-        
+
         if filePath:
             # Ensure the file has the correct extension
             if not filePath.endswith('.mat'):
@@ -641,17 +642,26 @@ class App(QMainWindow):
                 data_dict = {}
                 for field in self.data.__dataclass_fields__:
                     value = getattr(self.data, field)
+                    
                     if isinstance(value, np.ndarray):
                         data_dict[field] = value
                     elif isinstance(value, dict):
-                        # Assume dictionaries contain simple types or numpy arrays
-                        data_dict[field] = {k: (v.tolist() if isinstance(v, np.ndarray) else v) for k, v in value.items()}
+                        # Ensure all dict values are appropriately converted
+                        converted_dict = {}
+                        for k, v in value.items():
+                            if isinstance(v, np.ndarray):
+                                converted_dict[k] = v
+                            elif v is None:
+                                converted_dict[k] = np.array([])
+                                print(f"Converted None to empty array for dict key: {k}")
+                            else:
+                                converted_dict[k] = v
+                        data_dict[field] = converted_dict
                     elif value is None:
-                        # Handle None values appropriately
                         data_dict[field] = np.array([])
+                        print(f"Converted None to empty array for field: {field}")
                     elif field == 'dfc_instance':
-                        # For the dfc_instance only its type is stored
-                        data_dict[field] = str(type(value))
+                        pass
                     else:
                         data_dict[field] = value
 
@@ -659,7 +669,7 @@ class App(QMainWindow):
 
             except Exception as e:
                 print(f"Error saving data: {e}")
-        
+            
         return
 
     def onTransposeChecked(self, state):
