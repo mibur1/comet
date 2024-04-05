@@ -136,7 +136,7 @@ class App(QMainWindow):
     """
     def __init__(self, init_dfc_data=None, init_dfc_instance=None):
         super().__init__()
-        self.title = 'Comet Dynamic Functional Connectivity Toolbox'
+        self.title = 'Comet Toolbox'
         self.init_flag = True
 
         self.data = Data()
