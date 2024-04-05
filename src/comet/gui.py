@@ -134,7 +134,7 @@ class App(QMainWindow):
     """
     Initialization functions
     """
-    def __init__(self, init_data=None, init_method=None):
+    def __init__(self, init_dfc_data=None, init_dfc_instance=None):
         super().__init__()
         self.title = 'Comet Dynamic Functional Connectivity Toolbox'
         self.init_flag = True
@@ -195,11 +195,8 @@ class App(QMainWindow):
         
         self.initUI()
 
-        if init_data is not None:
-            self.data.dfc_data = init_data
-            self.data.dfc_instance = init_method
-            self.data.file_data = "loaded from script"
-            self.initFromData()
+        if init_dfc_data is not None:
+            self.initFromData(init_dfc_data, init_dfc_instance)
 
     def initUI(self):
         self.setWindowTitle(self.title)
@@ -437,20 +434,38 @@ class App(QMainWindow):
         self.stateBasedCheckBox.setChecked(True)
         self.staticCheckBox.setChecked(True)
 
-    def initFromData(self):
+    def initFromData(self, init_dfc_data=None, init_dfc_instance=None):
         # Make sure both the dFC data and the method object are provided
         assert self.data.dfc_instance is not None, "Please provide the method object corresponding to your dFC data as the second argument to the GUI."
-        # Get parameters
-        #self.data.dfc_name = self.class_info.get(self.init_method.name)
-        self.getParameters() # TODO: Something goes wrong here for SW (maybe because of strings in the parameters)
-        self.data_storage.add_data(self.data) # Add to data storage
+        
+        # Init the data structures
+        self.data.dfc_data = init_dfc_data
+        self.data.dfc_instance = init_dfc_instance
+        self.data.file_name = "loaded from script"
+        self.data.dfc_name = init_dfc_instance.name
 
-        # Set the slider elements
-        total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
-        position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
-        self.positionLabel.setText(position_text)
-        self.slider.setValue(self.slider.value())
+        # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
+        if isinstance(init_dfc_data, tuple):
+            self.data.dfc_data = init_dfc_data[0]
+            self.data.dfc_state_tc = None
+            self.data.dfc_edge_ts = init_dfc_data[1][0] if isinstance(init_dfc_data[1], tuple) else None
 
+        # Result is DFC object (pydfc methods)
+        elif isinstance(init_dfc_data, pydfc.dfc.DFC):
+            self.data.dfc_data = np.transpose(init_dfc_data.get_dFC_mat(), (1, 2, 0))
+            self.data.dfc_states = init_dfc_data.FCSs_
+            self.data.dfc_state_tc = init_dfc_data.state_TC()
+            self.data.dfc_edge_ts = None
+        
+        # Only a single matrix is returned (most cases)
+        else:
+            self.data.dfc_data = init_dfc_data
+            self.data.dfc_state_tc = None
+            self.data.dfc_edge_ts = None
+        
+        # Add to data storage
+        self.data_storage.add_data(self.data)
+        
         # Disable the GUI elements
         self.methodComboBox.setEnabled(False)
         self.calculateButton.setEnabled(False)
@@ -460,12 +475,36 @@ class App(QMainWindow):
         # Set labels
         self.fileNameLabel.setText(f"Loaded dFC from script")
         self.calculatingLabel.setText(f"Loaded dFC from script")
-        self.methodComboBox.setCurrentText(self.init_method.name)
+        self.methodComboBox.setCurrentText(self.data.dfc_name)
+
+        # Disable checkboxes
+        self.continuousCheckBox.setChecked(True)
+        self.stateBasedCheckBox.setChecked(True)
+        self.staticCheckBox.setChecked(True)
+        self.continuousCheckBox.setEnabled(False)
+        self.stateBasedCheckBox.setEnabled(False)
+        self.staticCheckBox.setEnabled(False)
         
         # Set plots
         self.plotConnectivity()
         self.plotDistribution()
         self.plotTimeSeries()
+
+        # Set the slider elements
+        total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
+        position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+        self.positionLabel.setText(position_text)
+        self.slider.setValue(self.slider.value())
+        self.slider.show()
+
+        # This first gets the parameters from the signature of the method and then fill them with the curent values
+        init_signature = inspect.signature(init_dfc_instance.__init__)
+        self.data.dfc_params = {}
+
+        for param_name in init_signature.parameters:
+            self.data.dfc_params[param_name] = getattr(init_dfc_instance, param_name, None)
+        
+        self.setParameters(disable=True)
 
     """
     I/O functions
@@ -1022,7 +1061,7 @@ class App(QMainWindow):
                     # Value could not be retrieved from the widget
                     self.calculatingLabel.setText(f"Error: No value entered for parameter '{label}'")
 
-    def setParameters(self):
+    def setParameters(self, disable=True):
         # Converts value to string
         def convert_value_to_string(value):
             if isinstance(value, bool):
@@ -1051,6 +1090,10 @@ class App(QMainWindow):
         # Time series data has to be in the params as we run the dFC method with just these params
         self.data.dfc_params['time_series'] = self.data.file_data
 
+        if disable:
+            self.time_series_textbox.setText(self.data.file_name)
+            self.time_series_textbox.setEnabled(False)
+
         # Set the parameters in the UI based on the stored dictionary
         for i in range(self.parameterLayout.count()):
             layout = self.parameterLayout.itemAt(i).layout()
@@ -1065,6 +1108,8 @@ class App(QMainWindow):
                     if value is not None:  # Ensure there is a value before attempting to convert and set
                         widget = layout.itemAt(1).widget()
                         set_widget_value(widget, convert_value_to_string(value))
+                        if disable:
+                            widget.setEnabled(False)
                     else:
                         # Value could not be retrieved from the dictionary
                         self.calculatingLabel.setText(f"Error: No value entered for parameter '{label}'")
@@ -1533,7 +1578,7 @@ def run(dfc_data=None, method=None):
             border: 1px solid black;
         }
     """)
-    ex = App(init_data=dfc_data, init_method=method)
+    ex = App(init_dfc_data=dfc_data, init_dfc_instance=method)
     ex.setStyleSheet(qdarkstyle.load_stylesheet_pyqt6())
     ex.show()
 
