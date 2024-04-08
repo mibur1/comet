@@ -27,7 +27,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout,
     QSpacerItem, QCheckBox, QTabWidget, QMessageBox, QSpinBox, QDoubleSpinBox
 
 # Comet imports and state-based dFC methods from pydfc
-from . import cifti, methods
+from . import cifti, methods, graph
 import pydfc
 
 class Worker(QObject):
@@ -549,7 +549,47 @@ class App(QMainWindow):
         leftLayout.addLayout(buttonsLayout)
         leftLayout.addWidget(self.graphFileNameLabel)
         leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+
+        # Graph analysis options
+        graphTabLabel = QLabel("Graph analysis options:")
+        leftLayout.addWidget(graphTabLabel)
+
+        # Create the combo box for selecting the graph analysis type
+        self.graphAnalysisComboBox = QComboBox()
+        leftLayout.addWidget(self.graphAnalysisComboBox)
+
+        # Populate the combo box with options
+        graphOptions = {
+            "handle_negative_weights": "Negative weights",
+            "threshold": "Threshold",
+            "binarise": "Binarise",
+            "normalise": "Normalise",
+            "invert": "Invert",
+            "logtransform": "Log-transform",
+            "symmetrise": "Symmetrise",
+            "randomise": "Randomise",
+        }
+
+        for analysis_function, pretty_name in graphOptions.items():
+            if hasattr(graph, analysis_function) and callable(getattr(graph, analysis_function)):
+                self.graphAnalysisComboBox.addItem(pretty_name, analysis_function)
+
+        self.graphAnalysisComboBox.currentIndexChanged.connect(self.onGraphCombobox)
         
+        self.graphParameterLayout = QVBoxLayout()
+
+        # Create a container widget for the parameter layout
+        parameterContainer = QWidget()  # Use an instance attribute to access it later
+        parameterContainer.setLayout(self.graphParameterLayout)
+        parameterContainer.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+
+        # Add the container widget to the left layout directly below the combobox
+        leftLayout.addWidget(parameterContainer)
+        
+        self.onGraphCombobox()
+
+        leftLayout.addStretch()
+
         ################################
         #  Right section for plotting  #
         ################################
@@ -733,6 +773,10 @@ class App(QMainWindow):
             self.data.graph_data = None
             self.time_series_textbox.setText("Unsupported file format")
 
+        self.graphFileNameLabel.setText(f"Loaded {self.data.graph_file} with shape {self.data.graph_data.shape}")
+        
+        self.onGraphCombobox() # update the combo box
+
     def saveConnectivityFile(self):
         if self.data.dfc_data is None:
             print("No dFC data available to save.")
@@ -804,8 +848,12 @@ class App(QMainWindow):
             print("No current dFC data available.")
             return
         
-        self.data.graph_data = self.data.dfc_data
-        print("Used current dFC data.")
+        self.data.graph_data = self.data.dfc_data[:,:,self.currentSliderValue]
+        print(f"Used current dFC data with shape {self.data.graph_data.shape}")
+        self.graphFileNameLabel.setText(f"Used current dFC data with shape {self.data.graph_data.shape}")
+        self.data.graph_file = "current dFC data"
+        self.plotGraph()
+        self.onGraphCombobox()
 
     """
     dFC functions
@@ -1018,7 +1066,10 @@ class App(QMainWindow):
 
         self.data.file_data = cifti.parcellate(self.data.cifti_data, atlas=atlas_name)
         self.fileNameLabel.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
-       
+
+    def onGraphCombobox(self):
+        self.setGraphParameters()
+
     """
     Parameters
     """
@@ -1259,7 +1310,64 @@ class App(QMainWindow):
             elif item.spacerItem():  # If the item is a spacer
                 # No need to delete spacer items; they are automatically handled by Qt
                 pass
+    
+    def setGraphParameters(self):  
+        # Clear parameters
+        self.clearParameters(self.graphParameterLayout)
+        
+        # Retrieve the selected function from the graph module
+        func = getattr(graph, self.graphAnalysisComboBox.currentData())
 
+        # Retrieve the signature of the function
+        func_signature = inspect.signature(func)
+
+        # Calculate the maximum label width
+        max_label_width = 0
+        font_metrics = QFontMetrics(self.font())
+        for name, param in func_signature.parameters.items():
+            if name not in ['self', 'args', 'kwargs']:  # Skip unwanted parameters
+                label_width = font_metrics.boundingRect(f"{name}:").width()
+                max_label_width = max(max_label_width, label_width)
+
+        is_first_parameter = True  # Flag to identify the first parameter
+
+        # Iterate over parameters in the function signature
+        for name, param in func_signature.parameters.items():
+            if name not in ['self', 'args', 'kwargs']:  # Skip unwanted parameters
+                    
+                # Horizontal layout for each parameter
+                param_layout = QHBoxLayout()
+                    
+                # Create a label for the parameter and set its fixed width
+                param_label = QLabel(f"{name}:")
+                param_label.setFixedWidth(max_label_width + 20)  # Add some padding
+                param_layout.addWidget(param_label)
+
+                # For the first parameter, set its value based on the data source and lock it
+                if is_first_parameter:
+                    param_widget = QLineEdit(self.data.graph_file if self.data.graph_file else "")
+                    param_widget.setReadOnly(True)  # Make the widget read-only
+                    is_first_parameter = False  # Update the flag so this block runs only for the first parameter
+                else:
+                    # Initialize the appropriate widget for subsequent parameters based on the default type
+                    if isinstance(param.default, bool):
+                        param_widget = QComboBox()
+                        param_widget.addItems(["True", "False"])
+                        param_widget.setCurrentIndex(int(param.default))
+                    elif isinstance(param.default, int):
+                        param_widget = QSpinBox()
+                        param_widget.setValue(param.default)
+                    elif isinstance(param.default, float):
+                        param_widget = QDoubleSpinBox()
+                        param_widget.setValue(param.default)
+                    else:
+                        param_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
+
+                param_layout.addWidget(param_widget)
+                self.graphParameterLayout.addLayout(param_layout)
+
+        self.graphParameterLayout.addStretch()
+    
     """
     dFC calculation
     """
@@ -1524,6 +1632,29 @@ class App(QMainWindow):
         ax.hist(current_slice.flatten(), bins=50)  # number of bins
 
         self.distributionCanvas.draw()
+
+    def plotGraph(self):
+        current_data = self.data.graph_data
+        
+        if current_data is None:
+            print("No data available for plotting")
+            return
+
+        self.graphFigure.clear()
+        ax = self.graphFigure.add_subplot(111)
+
+        vmax = np.max(np.abs(current_data))
+        self.im = ax.imshow(current_data, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+
+        # Create the colorbar
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.15)
+        cbar = self.graphFigure.colorbar(self.im, cax=cax)
+        cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
+    
+        self.graphFigure.set_facecolor('#E0E0E0')
+        self.graphFigure.tight_layout()
+        self.graphCanvas.draw()
 
     def plotLogo(self, figure=None):
         with pkg_resources.path("comet.resources.img", "logo.png") as file_path:
