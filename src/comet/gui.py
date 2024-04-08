@@ -568,6 +568,7 @@ class App(QMainWindow):
         self.graphFigure.patch.set_facecolor('#E0E0E0')
         imshowLayout.addWidget(self.graphCanvas)
         graphTabWidget.addTab(imshowTab, "Adjacency Matrix")
+        rightLayout.addWidget(graphTabWidget)
        
         # Draw default plot (logo)
         self.plotLogo(self.graphFigure)
