@@ -78,6 +78,11 @@ class Data:
     dfc_state_tc: np.ndarray = field(default=None)         # dfc state time course
     dfc_edge_ts:  np.ndarray = field(default=None)         # dfc edge time series
 
+    # Graph variables
+    graph_file:   str        = field(default=None)         # graph file name
+    graph_data:   np.ndarray = field(default=None)         # input graph data
+
+
     # Misc variables
     cifti_data:   np.ndarray = field(default=None)         # input cifti data (for .dtseries files)
     roi_names:    np.ndarray = field(default=None)         # input roi data (for .tsv files)
@@ -304,7 +309,7 @@ class App(QMainWindow):
             self.fileNameLabel = QLabel('No file loaded')
             self.leftLayout.addWidget(self.fileButton)
             self.leftLayout.addWidget(self.fileNameLabel)
-            self.fileButton.clicked.connect(self.loadFile)
+            self.fileButton.clicked.connect(self.loadConnectivityFile)
 
             # Create a checkbox for reshaping the data
             self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
@@ -388,7 +393,7 @@ class App(QMainWindow):
             self.saveButton = QPushButton('Save')
             self.saveButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
             buttonsLayout.addWidget(self.saveButton, 1)  # 1/3 of the space
-            self.saveButton.clicked.connect(self.saveFile)
+            self.saveButton.clicked.connect(self.saveConnectivityFile)
 
             # Add the buttons layout to the left layout
             self.leftLayout.addLayout(buttonsLayout)
@@ -518,10 +523,65 @@ class App(QMainWindow):
 
     def graphTab(self):
         graphTab = QWidget()
-        graphLayout = QVBoxLayout()
+        graphLayout = QVBoxLayout()  # Main layout for the tab
         graphTab.setLayout(graphLayout)
+        
+        ###############################
+        #  Left section for settings  #
+        ###############################
+        leftLayout = QVBoxLayout()
 
-        # Add Graph Analysis tab to the top level tab widget
+        # Calculate connectivity and save button
+        buttonsLayout = QHBoxLayout()
+
+        self.loadGraphFileButton = QPushButton('Load File')
+        self.loadGraphFileButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        buttonsLayout.addWidget(self.loadGraphFileButton, 1)
+        self.loadGraphFileButton.clicked.connect(self.loadGraphFile)
+
+        self.takeCurrentButton = QPushButton('Take Current')
+        self.takeCurrentButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        buttonsLayout.addWidget(self.takeCurrentButton, 1)
+        self.takeCurrentButton.clicked.connect(self.takeCurrentData)
+        
+        self.graphFileNameLabel = QLabel('No file loaded')
+
+        leftLayout.addLayout(buttonsLayout)
+        leftLayout.addWidget(self.graphFileNameLabel)
+        leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        
+        ################################
+        #  Right section for plotting  #
+        ################################
+        rightLayout = QVBoxLayout()
+        
+        # Different plotting tabs
+        graphTabWidget = QTabWidget()
+
+         # Tab 1: Imshow plot
+        imshowTab = QWidget()
+        imshowLayout = QVBoxLayout()
+        imshowTab.setLayout(imshowLayout)
+
+        self.graphFigure = Figure()
+        self.graphCanvas = FigureCanvas(self.graphFigure)
+        self.graphFigure.patch.set_facecolor('#E0E0E0')
+        imshowLayout.addWidget(self.graphCanvas)
+        graphTabWidget.addTab(imshowTab, "Adjacency Matrix")
+       
+        # Draw default plot (logo)
+        self.plotLogo(self.graphFigure)
+        self.graphCanvas.draw()
+
+        #####################
+        #  Combine layouts  #
+        #####################
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(leftLayout, 1)
+        mainLayout.addLayout(rightLayout, 2)
+        graphLayout.addLayout(mainLayout)
+
+        # Add the tab to the top level tab widget
         self.topTabWidget.addTab(graphTab, "Graph Analysis")
 
     def multiverseTab(self):
@@ -533,9 +593,9 @@ class App(QMainWindow):
         self.topTabWidget.addTab(multiverseTab, "Multiverse Analysis")
     
     """
-    I/O functions
+    I/O and data related functions
     """
-    def loadFile(self):
+    def loadConnectivityFile(self):
         fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
         file_name = file_path.split('/')[-1]
@@ -649,7 +709,30 @@ class App(QMainWindow):
         self.clearMemoryButton.setEnabled(True)
         self.keepInMemoryCheckbox.setEnabled(True)
 
-    def saveFile(self):
+    def loadGraphFile(self):
+        fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
+        file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
+        file_name = file_path.split('/')[-1]
+        self.data.graph_file = file_name
+
+        if not file_path:
+            return  # Early exit if no file is selected
+
+        if file_path.endswith('.mat'):
+            data_dict = loadmat(file_path)
+            self.data.graph_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
+        
+        elif file_path.endswith('.txt'):
+            self.data.graph_data = np.loadtxt(file_path)
+        
+        elif file_path.endswith('.npy'):
+            self.data.graph_data = np.load(file_path)
+      
+        else:
+            self.data.graph_data = None
+            self.time_series_textbox.setText("Unsupported file format")
+
+    def saveConnectivityFile(self):
         if self.data.dfc_data is None:
             print("No dFC data available to save.")
             return
@@ -696,6 +779,9 @@ class App(QMainWindow):
                 print(f"Error saving data: {e}")
             
         return
+    
+    def saveGraphFile(self):
+        pass
 
     def onTransposeChecked(self, state):
         if self.data.file_data is None:
@@ -711,7 +797,15 @@ class App(QMainWindow):
         # Update the labels
         self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.data.file_data.shape}")
         self.time_series_textbox.setText(self.data.file_name)
- 
+    
+    def takeCurrentData(self):
+        if self.data.dfc_data is None:
+            print("No current dFC data available.")
+            return
+        
+        self.data.graph_data = self.data.dfc_data
+        print("Used current dFC data.")
+
     """
     dFC functions
     """
@@ -758,7 +852,7 @@ class App(QMainWindow):
         # This also indicates to the user that this data was not yet calculated/saved
         else:
             self.figure.clear()
-            self.plotLogo()
+            self.plotLogo(self.figure)
             self.canvas.draw()
             self.distributionFigure.clear()
             self.distributionCanvas.draw()
@@ -1278,7 +1372,8 @@ class App(QMainWindow):
         self.calculateButton.setEnabled(True)
         self.data.clear_dfc_data()
         self.positionLabel.setText("no data available")
-        self.plotLogo()
+        self.plotLogo(self.figure)
+        self.canvas.draw()
 
     """
     Memory functions
@@ -1429,18 +1524,17 @@ class App(QMainWindow):
 
         self.distributionCanvas.draw()
 
-    def plotLogo(self):
+    def plotLogo(self, figure=None):
         with pkg_resources.path("comet.resources.img", "logo.png") as file_path:
             logo = imread(file_path)
 
-        self.figure.clear()
-        ax = self.figure.add_subplot(111)
+        figure.clear()
+        ax = figure.add_subplot(111)
         ax.set_axis_off()
-        self.im = ax.imshow(logo)
+        ax.imshow(logo)
 
-        self.figure.set_facecolor('#f4f1f6')
-        self.figure.tight_layout()
-        self.canvas.draw()
+        figure.set_facecolor('#f4f1f6')
+        figure.tight_layout()
 
     def updateTimeSeriesPlot(self, center):
         if self.data.dfc_data is None:
@@ -1474,7 +1568,7 @@ class App(QMainWindow):
         # index 3: Graph analysis
 
         if self.data.dfc_data is None:
-            self.plotLogo()
+            self.plotLogo(self.figure)
             self.canvas.draw()
             self.distributionFigure.clear()
             self.distributionCanvas.draw()
