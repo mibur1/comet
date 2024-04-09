@@ -151,6 +151,7 @@ class App(QMainWindow):
 
         self.currentSliderValue = 0
         self.currentTabIndex = 0
+        self.graphStepCounter = 1
 
         self.param_names = {
             "self":                 "self", 
@@ -1497,7 +1498,7 @@ class App(QMainWindow):
 
                 # For the first parameter, set its value based on the data source and lock it
                 if is_first_parameter:
-                    param_widget = QLineEdit(self.data.graph_file if self.data.graph_file else "")
+                    param_widget = QLineEdit("as shown in plot" if self.data.graph_file else "")
                     param_widget.setReadOnly(True)  # Make the widget read-only
                     is_first_parameter = False  # Update the flag so this block runs only for the first parameter
                 else:
@@ -1725,59 +1726,53 @@ class App(QMainWindow):
     def onAddGraphOption(self):
         option, params = self.getGraphOptions()
 
-        if option.startswith("PREP"):
-            # Get the function
-            func_name = self.reverse_graphOptions[option]
-            func = getattr(graph, func_name)
+        # Get the function
+        func_name = self.reverse_graphOptions[option]
+        func = getattr(graph, func_name)
 
-            # Replace first patameter with graph data
-            if params:
-                first_param_name = next(iter(params))
-                graph_params = {first_param_name: self.data.graph_data}
-                graph_params.update({k: v for k, v in params.items() if k != first_param_name})
-                
-                # Perform the graph calculation and plot the result
-                try:
-                    self.data.graph_data = func(**graph_params)
-                    self.plotGraph()
-                    self.optionsTextbox.append(f"{option}: {params}")
+        # Replace first patameter with graph data
+        if params:
+            first_param_name = next(iter(params))
+            graph_params = {first_param_name: self.data.graph_data}
+            graph_params.update({k: v for k, v in params.items() if k != first_param_name})
 
-                except Exception as e:
-                    print(f"Error executing function {func.__name__}: {e}")
-
-            else:
-                print("No parameters provided.")
-
-        elif option.startswith("GRAPH"):
-            # Get the function
-            func_name = self.reverse_graphOptions[option]
-            func = getattr(graph, func_name)
-
-            # Replace first patameter with graph data
-            if params:
-                first_param_name = next(iter(params))
-                graph_params = {first_param_name: self.data.graph_data}
-                graph_params.update({k: v for k, v in params.items() if k != first_param_name})
-                
-                # Perform the graph calculation and plot the result
-                try:
-                    self.data.graph_out = func(**graph_params)
-                    self.plotMeasure()
-                    self.optionsTextbox.append(f"{option}: {params}")
-
-                except Exception as e:
-                    print(f"Error executing function {func.__name__}: {e}")
-
-            else:
-                print("No parameters provided.")
+            # Perform the graph calculation
+            try:
+                self.calculateGraph(func, graph_params, option)
+            except Exception as e:
+                print(f"Error executing function {func.__name__}: {e}")
 
         else:
-            print(f"Unknown graph option: {option}")
+            print("No parameters provided.")
+
+    def calculateGraph(self, func, graph_params, option):
+        if option.startswith("PREP"):
+            self.data.graph_data = func(**graph_params)
+            self.plotGraph()
+        elif option.startswith("GRAPH"):
+            self.data.graph_out = func(**graph_params)
+            self.plotMeasure()
+        
+        option_from_second_word = option.strip().split()[1]
+        
+        # Remove unused parameters from the options textbox
+        if option_from_second_word == 'Threshold':
+            if graph_params.get('type') == 'absolute':
+                filtered_params = {k: v for k, v in graph_params.items() if k != 'density'}
+            elif graph_params.get('type') == 'density':
+                filtered_params = {k: v for k, v in graph_params.items() if k != 'threshold'}
+        else:
+            filtered_params = graph_params
+
+        filtered_params = {k: v for k, v in list(filtered_params.items())[1:]}
+        self.optionsTextbox.append(f"{self.graphStepCounter}. {option_from_second_word}: {filtered_params}")
+        self.graphStepCounter += 1
 
     def onClearGraphOptions(self):
         self.data.graph_data = self.data.graph_raw
         self.plotGraph()
         self.optionsTextbox.clear()
+        self.graphStepCounter = 1
 
     """
     Memory functions

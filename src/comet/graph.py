@@ -242,11 +242,15 @@ def symmetrise(W: np.ndarray,
     
     return W
 
-def randomise(G: np.ndarray) -> np.ndarray:
+def randomise(G: np.ndarray,
+              copy: bool = True) -> np.ndarray:
     '''
     Randomly rewire edges of a adjacency/connectivity matrix. Based on the small_world_propensity implementation
     which just randomizes the matrix: https://github.com/rkdan/small_world_propensity
     '''
+    if copy:
+        G = G.copy()
+    
     num_nodes = G.shape[0]
     G_rand = np.zeros((num_nodes, num_nodes))
     mask = np.triu(np.ones((num_nodes, num_nodes)), 1)
