@@ -2138,6 +2138,13 @@ def run(dfc_data=None, method=None):
     """)
     ex = App(init_dfc_data=dfc_data, init_dfc_instance=method)
     ex.setStyleSheet(qdarkstyle.load_stylesheet_pyqt6())
+
+    default_width = ex.width()
+    default_height = ex.height()
+    new_width = int(default_width * 1.8)
+    new_height = int(default_height * 1.5)
+    ex.resize(new_width, new_height)
+
     ex.show()
 
     try:
