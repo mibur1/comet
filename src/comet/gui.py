@@ -24,7 +24,7 @@ from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject
 from PyQt6.QtGui import QEnterEvent, QFontMetrics
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
     QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, \
-    QSpacerItem, QCheckBox, QTabWidget, QMessageBox, QSpinBox, QDoubleSpinBox
+    QSpacerItem, QCheckBox, QTabWidget, QMessageBox, QSpinBox, QDoubleSpinBox, QTextEdit
 
 # Comet imports and state-based dFC methods from pydfc
 from . import cifti, methods, graph
@@ -80,7 +80,8 @@ class Data:
 
     # Graph variables
     graph_file:   str        = field(default=None)         # graph file name
-    graph_data:   np.ndarray = field(default=None)         # input graph data
+    graph_raw:    np.ndarray = field(default=None)         # raw input data for graph
+    graph_data:   np.ndarray = field(default=None)         # working data for graph
 
 
     # Misc variables
@@ -214,7 +215,7 @@ class App(QMainWindow):
         # Setup the individual tabs
         self.connectivityTab()
         self.graphTab()
-        self.multiverseTab()
+        #self.multiverseTab()
 
         # Set main window layout to the top-level layout
         centralWidget = QWidget()
@@ -559,7 +560,7 @@ class App(QMainWindow):
         leftLayout.addWidget(self.graphAnalysisComboBox)
 
         # Populate the combo box with options
-        graphOptions = {
+        self.graphOptions = {
             "no_data_available": "No data available",
             "handle_negative_weights": "Negative weights",
             "threshold": "Threshold",
@@ -570,10 +571,11 @@ class App(QMainWindow):
             "symmetrise": "Symmetrise",
             "randomise": "Randomise",
         }
+        self.reverse_graphOptions = {v: k for k, v in self.graphOptions.items()}
 
-        self.graphAnalysisComboBox.addItem(graphOptions["no_data_available"], "empty_init")
+        self.graphAnalysisComboBox.addItem(self.graphOptions["no_data_available"], "empty_init")
 
-        for analysis_function, pretty_name in graphOptions.items():
+        for analysis_function, pretty_name in self.graphOptions.items():
             if hasattr(graph, analysis_function) and callable(getattr(graph, analysis_function)):
                 self.graphAnalysisComboBox.addItem(pretty_name, analysis_function)
 
@@ -595,16 +597,26 @@ class App(QMainWindow):
 
         # Create the "Add option" button
         addOptionButton = QPushButton('Add option')
-        buttonsLayout.addWidget(addOptionButton, 1)  # The second parameter '1' is the stretch factor
-        addOptionButton.clicked.connect(self.onAddGraphOption)  # Connect to a slot that handles the click
+        buttonsLayout.addWidget(addOptionButton, 1) # The second parameter is the stretch factor
+        addOptionButton.clicked.connect(self.onAddGraphOption)
 
         # Create the "Save" button
-        saveButton = QPushButton('Save')
-        buttonsLayout.addWidget(saveButton, 1)  # The second parameter '1' is the stretch factor
-        saveButton.clicked.connect(self.saveGraphFile)  # Connect to a slot that handles the click
+        saveButton = QPushButton('Clear options')
+        buttonsLayout.addWidget(saveButton, 1)
+        saveButton.clicked.connect(self.onClearGraphOptions)
 
         # Add the buttons layout to the left layout
         leftLayout.addLayout(buttonsLayout)
+
+        self.optionsTextbox = QTextEdit()
+        self.optionsTextbox.setReadOnly(True) # Make the textbox read-only
+        leftLayout.addWidget(self.optionsTextbox)
+
+        # "Save" button
+        saveButton = QPushButton('Save')
+        leftLayout.addWidget(saveButton)
+        saveButton.clicked.connect(self.saveGraphFile)
+
 
 
         leftLayout.addStretch()
@@ -847,7 +859,7 @@ class App(QMainWindow):
         if file_path.endswith('.mat'):
             data_dict = loadmat(file_path)
             self.data.graph_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
-        
+
         elif file_path.endswith('.txt'):
             self.data.graph_data = np.loadtxt(file_path)
         
@@ -858,6 +870,7 @@ class App(QMainWindow):
             self.data.graph_data = None
             self.time_series_textbox.setText("Unsupported file format")
 
+        self.data.graph_raw = self.data.graph_data
         self.graphFileNameLabel.setText(f"Loaded {self.data.graph_file} with shape {self.data.graph_data.shape}")
         
         self.onGraphCombobox() # update the combo box
@@ -916,9 +929,11 @@ class App(QMainWindow):
             return
         
         self.data.graph_data = self.data.dfc_data[:,:,self.currentSliderValue]
+        self.data.graph_raw = self.data.graph_data
+        
         print(f"Used current dFC data with shape {self.data.graph_data.shape}")
         self.graphFileNameLabel.setText(f"Used current dFC data with shape {self.data.graph_data.shape}")
-        self.data.graph_file = f"dfC from {self.data.file_name} with {self.data.dfc_name} at t={self.currentSliderValue}"
+        self.data.graph_file = f"dfC from {self.data.file_name}" #with {self.data.dfc_name} at t={self.currentSliderValue}"
         self.plotGraph()
         self.onGraphCombobox()
 
@@ -1441,7 +1456,44 @@ class App(QMainWindow):
                 self.graphParameterLayout.addLayout(param_layout)
 
         self.graphParameterLayout.addStretch()
-    
+
+    def getGraphOptions(self):
+        # Initialize a dictionary to hold parameter names and their values
+        params_dict = {}
+
+        # Iterate over all layout items in the graphParameterLayout
+        for i in range(self.graphParameterLayout.count()):
+            layout_item = self.graphParameterLayout.itemAt(i)
+
+            # Check if the layout item is a QHBoxLayout (as each parameter is in its own QHBoxLayout)
+            if isinstance(layout_item, QHBoxLayout):
+                param_layout = layout_item.layout()
+
+                # The parameter name is in the QLabel, and the value is in the second widget (QLineEdit, QComboBox, etc.)
+                if param_layout.count() >= 2:
+                    # Extract the parameter name from the QLabel
+                    param_name_label = param_layout.itemAt(0).widget()
+                    if isinstance(param_name_label, QLabel):
+                        param_name = param_name_label.text().rstrip(':')  # Remove the colon at the end
+
+                        # Extract the parameter value from the appropriate widget type
+                        param_widget = param_layout.itemAt(1).widget()
+                        if isinstance(param_widget, QLineEdit):
+                            param_value = param_widget.text()
+                        elif isinstance(param_widget, QComboBox):
+                            param_value = param_widget.currentText()
+                        elif isinstance(param_widget, QSpinBox) or isinstance(param_widget, QDoubleSpinBox):
+                            param_value = param_widget.value()
+
+                        # Add the parameter name and value to the dictionary
+                        params_dict[param_name] = param_value
+
+        # Retrieve the currently selected option in the graphAnalysisComboBox
+        current_option = self.graphAnalysisComboBox.currentText()
+
+        # Return the current option and its parameters
+        return current_option, params_dict
+
     """
     Calculation
     """
@@ -1561,7 +1613,34 @@ class App(QMainWindow):
 
     # Graph functions
     def onAddGraphOption(self):
-        pass
+        option, params = self.getGraphOptions()
+
+        # Get the function
+        func_name = self.reverse_graphOptions[option]
+        func = getattr(graph, func_name)
+
+        # Replace first patameter with graph data
+        if params:
+            first_param_name = next(iter(params))
+            graph_params = {first_param_name: self.data.graph_data}
+            graph_params.update({k: v for k, v in params.items() if k != first_param_name})
+            
+            # Perform the graph calculation and plot the result
+            try:
+                self.data.graph_data = func(**graph_params)
+                self.plotGraph()
+                self.optionsTextbox.append(f"{option}: {params}")
+
+            except Exception as e:
+                print(f"Error executing function {func.__name__}: {e}")
+
+        else:
+            print("No parameters provided.")
+
+    def onClearGraphOptions(self):
+        self.data.graph_data = self.data.graph_raw
+        self.plotGraph()
+        self.optionsTextbox.clear()
 
     """
     Memory functions
@@ -1713,18 +1792,6 @@ class App(QMainWindow):
         ax.hist(current_slice.flatten(), bins=50)  # number of bins
 
         self.distributionCanvas.draw()
-
-    def plotLogo(self, figure=None):
-        with pkg_resources.path("comet.resources.img", "logo.png") as file_path:
-            logo = imread(file_path)
-
-        figure.clear()
-        ax = figure.add_subplot(111)
-        ax.set_axis_off()
-        ax.imshow(logo)
-
-        figure.set_facecolor('#f4f1f6')
-        figure.tight_layout()
 
     def updateTimeSeriesPlot(self, center):
         if self.data.dfc_data is None:
@@ -1907,6 +1974,19 @@ class App(QMainWindow):
         self.graphFigure.set_facecolor('#E0E0E0')
         self.graphFigure.tight_layout()
         self.graphCanvas.draw()
+
+    # Shared functions
+    def plotLogo(self, figure=None):
+        with pkg_resources.path("comet.resources.img", "logo.png") as file_path:
+            logo = imread(file_path)
+
+        figure.clear()
+        ax = figure.add_subplot(111)
+        ax.set_axis_off()
+        ax.imshow(logo)
+
+        figure.set_facecolor('#f4f1f6')
+        figure.tight_layout()
 
 """
 Run the application
