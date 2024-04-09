@@ -560,6 +560,7 @@ class App(QMainWindow):
 
         # Populate the combo box with options
         graphOptions = {
+            "no_data_available": "No data available",
             "handle_negative_weights": "Negative weights",
             "threshold": "Threshold",
             "binarise": "Binarise",
@@ -569,6 +570,8 @@ class App(QMainWindow):
             "symmetrise": "Symmetrise",
             "randomise": "Randomise",
         }
+
+        self.graphAnalysisComboBox.addItem(graphOptions["no_data_available"], "empty_init")
 
         for analysis_function, pretty_name in graphOptions.items():
             if hasattr(graph, analysis_function) and callable(getattr(graph, analysis_function)):
@@ -585,8 +588,24 @@ class App(QMainWindow):
 
         # Add the container widget to the left layout directly below the combobox
         leftLayout.addWidget(parameterContainer)
-        
-        self.onGraphCombobox()
+        #parameterContainer.hide()
+
+        # Create a layout for the buttons
+        buttonsLayout = QHBoxLayout()
+
+        # Create the "Add option" button
+        addOptionButton = QPushButton('Add option')
+        buttonsLayout.addWidget(addOptionButton, 1)  # The second parameter '1' is the stretch factor
+        addOptionButton.clicked.connect(self.onAddGraphOption)  # Connect to a slot that handles the click
+
+        # Create the "Save" button
+        saveButton = QPushButton('Save')
+        buttonsLayout.addWidget(saveButton, 1)  # The second parameter '1' is the stretch factor
+        saveButton.clicked.connect(self.saveGraphFile)  # Connect to a slot that handles the click
+
+        # Add the buttons layout to the left layout
+        leftLayout.addLayout(buttonsLayout)
+
 
         leftLayout.addStretch()
 
@@ -609,6 +628,7 @@ class App(QMainWindow):
         imshowLayout.addWidget(self.graphCanvas)
         graphTabWidget.addTab(imshowTab, "Adjacency Matrix")
         rightLayout.addWidget(graphTabWidget)
+
        
         # Draw default plot (logo)
         self.plotLogo(self.graphFigure)
@@ -636,6 +656,7 @@ class App(QMainWindow):
     """
     I/O and data related functions
     """
+    # dFC functions
     def loadConnectivityFile(self):
         fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
@@ -750,33 +771,6 @@ class App(QMainWindow):
         self.clearMemoryButton.setEnabled(True)
         self.keepInMemoryCheckbox.setEnabled(True)
 
-    def loadGraphFile(self):
-        fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
-        file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
-        file_name = file_path.split('/')[-1]
-        self.data.graph_file = file_name
-
-        if not file_path:
-            return  # Early exit if no file is selected
-
-        if file_path.endswith('.mat'):
-            data_dict = loadmat(file_path)
-            self.data.graph_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
-        
-        elif file_path.endswith('.txt'):
-            self.data.graph_data = np.loadtxt(file_path)
-        
-        elif file_path.endswith('.npy'):
-            self.data.graph_data = np.load(file_path)
-      
-        else:
-            self.data.graph_data = None
-            self.time_series_textbox.setText("Unsupported file format")
-
-        self.graphFileNameLabel.setText(f"Loaded {self.data.graph_file} with shape {self.data.graph_data.shape}")
-        
-        self.onGraphCombobox() # update the combo box
-
     def saveConnectivityFile(self):
         if self.data.dfc_data is None:
             print("No dFC data available to save.")
@@ -824,9 +818,6 @@ class App(QMainWindow):
                 print(f"Error saving data: {e}")
             
         return
-    
-    def saveGraphFile(self):
-        pass
 
     def onTransposeChecked(self, state):
         if self.data.file_data is None:
@@ -842,7 +833,83 @@ class App(QMainWindow):
         # Update the labels
         self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.data.file_data.shape}")
         self.time_series_textbox.setText(self.data.file_name)
-    
+
+    # Graph functions
+    def loadGraphFile(self):
+        fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
+        file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
+        file_name = file_path.split('/')[-1]
+        self.data.graph_file = file_name
+
+        if not file_path:
+            return  # Early exit if no file is selected
+
+        if file_path.endswith('.mat'):
+            data_dict = loadmat(file_path)
+            self.data.graph_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
+        
+        elif file_path.endswith('.txt'):
+            self.data.graph_data = np.loadtxt(file_path)
+        
+        elif file_path.endswith('.npy'):
+            self.data.graph_data = np.load(file_path)
+      
+        else:
+            self.data.graph_data = None
+            self.time_series_textbox.setText("Unsupported file format")
+
+        self.graphFileNameLabel.setText(f"Loaded {self.data.graph_file} with shape {self.data.graph_data.shape}")
+        
+        self.onGraphCombobox() # update the combo box
+
+    def saveGraphFile(self):
+        if self.data.graph_data is None:
+            print("No graph data available to save.")
+            return
+
+        # Open a file dialog to specify where to save the file
+        filePath, _ = QFileDialog.getSaveFileName(self, "Save File", "", "MAT Files (*.mat)")
+
+        if filePath:
+            # Ensure the file has the correct extension
+            if not filePath.endswith('.mat'):
+                filePath += '.mat'
+            
+            # Save the the current data object to a .mat file
+            try:
+                data_dict = {}
+                for field in [f for f in self.data.__dataclass_fields__ if f.startswith('graph_')]:
+                    value = getattr(self.data, field)
+                    
+                    if isinstance(value, np.ndarray):
+                        data_dict[field] = value
+                    elif isinstance(value, dict):
+                        # Ensure all dict values are appropriately converted
+                        converted_dict = {}
+                        for k, v in value.items():
+                            if isinstance(v, np.ndarray):
+                                converted_dict[k] = v
+                            elif v is None:
+                                converted_dict[k] = np.array([])
+                                print(f"Converted None to empty array for dict key: {k}")
+                            else:
+                                converted_dict[k] = v
+                        data_dict[field] = converted_dict
+                    elif value is None:
+                        data_dict[field] = np.array([])
+                        print(f"Converted None to empty array for field: {field}")
+                    elif field == 'dfc_instance':
+                        pass
+                    else:
+                        data_dict[field] = value
+
+                savemat(filePath, data_dict)
+            
+            except Exception as e:
+                print(f"Error saving data: {e}")
+            
+            return
+
     def takeCurrentData(self):
         if self.data.dfc_data is None:
             print("No current dFC data available.")
@@ -851,13 +918,14 @@ class App(QMainWindow):
         self.data.graph_data = self.data.dfc_data[:,:,self.currentSliderValue]
         print(f"Used current dFC data with shape {self.data.graph_data.shape}")
         self.graphFileNameLabel.setText(f"Used current dFC data with shape {self.data.graph_data.shape}")
-        self.data.graph_file = "current dFC data"
+        self.data.graph_file = f"dfC from {self.data.file_name} with {self.data.dfc_name} at t={self.currentSliderValue}"
         self.plotGraph()
         self.onGraphCombobox()
 
     """
-    dFC functions
+    dFC/graph functions
     """
+    # dFC functions
     def onMethodCombobox(self, methodName=None):
         # Clear old variables and data
         self.clearParameters(self.parameterLayout)
@@ -1067,12 +1135,14 @@ class App(QMainWindow):
         self.data.file_data = cifti.parcellate(self.data.cifti_data, atlas=atlas_name)
         self.fileNameLabel.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
 
+    # Graph functios
     def onGraphCombobox(self):
         self.setGraphParameters()
 
     """
     Parameters
     """
+    # dFC functions
     def initParameters(self, class_instance):
         # Now the parameter labels and boxes are set up    
         labels = []
@@ -1311,9 +1381,13 @@ class App(QMainWindow):
                 # No need to delete spacer items; they are automatically handled by Qt
                 pass
     
+    # Graph functions
     def setGraphParameters(self):  
         # Clear parameters
         self.clearParameters(self.graphParameterLayout)
+        
+        if self.graphAnalysisComboBox.currentData() == "empty_init":
+            return
         
         # Retrieve the selected function from the graph module
         func = getattr(graph, self.graphAnalysisComboBox.currentData())
@@ -1369,8 +1443,9 @@ class App(QMainWindow):
         self.graphParameterLayout.addStretch()
     
     """
-    dFC calculation
+    Calculation
     """
+    # dFC functions
     def onCalculateButton(self):
         # Check if ts_data is available
         if self.data.file_data is None:
@@ -1484,9 +1559,14 @@ class App(QMainWindow):
         self.plotLogo(self.figure)
         self.canvas.draw()
 
+    # Graph functions
+    def onAddGraphOption(self):
+        pass
+
     """
     Memory functions
     """
+    # dFC functions
     def onKeepInMemoryChecked(self, state):
         if state == 2 and self.data.dfc_data is not None:
             self.data_storage.add_data(self.data)
@@ -1506,6 +1586,7 @@ class App(QMainWindow):
     """
     Plotting functions
     """
+    # dFC functions
     def plotConnectivity(self):
         current_data = self.data.dfc_data
         
@@ -1632,29 +1713,6 @@ class App(QMainWindow):
         ax.hist(current_slice.flatten(), bins=50)  # number of bins
 
         self.distributionCanvas.draw()
-
-    def plotGraph(self):
-        current_data = self.data.graph_data
-        
-        if current_data is None:
-            print("No data available for plotting")
-            return
-
-        self.graphFigure.clear()
-        ax = self.graphFigure.add_subplot(111)
-
-        vmax = np.max(np.abs(current_data))
-        self.im = ax.imshow(current_data, cmap='coolwarm', vmin=-vmax, vmax=vmax)
-
-        # Create the colorbar
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.15)
-        cbar = self.graphFigure.colorbar(self.im, cax=cax)
-        cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
-    
-        self.graphFigure.set_facecolor('#E0E0E0')
-        self.graphFigure.tight_layout()
-        self.graphCanvas.draw()
 
     def plotLogo(self, figure=None):
         with pkg_resources.path("comet.resources.img", "logo.png") as file_path:
@@ -1825,6 +1883,30 @@ class App(QMainWindow):
         
         self.plotConnectivity()
         self.plotDistribution()
+
+    # Graph functions
+    def plotGraph(self):
+        current_data = self.data.graph_data
+        
+        if current_data is None:
+            print("No data available for plotting")
+            return
+
+        self.graphFigure.clear()
+        ax = self.graphFigure.add_subplot(111)
+
+        vmax = np.max(np.abs(current_data))
+        self.im = ax.imshow(current_data, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+
+        # Create the colorbar
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.15)
+        cbar = self.graphFigure.colorbar(self.im, cax=cax)
+        cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
+    
+        self.graphFigure.set_facecolor('#E0E0E0')
+        self.graphFigure.tight_layout()
+        self.graphCanvas.draw()
 
 """
 Run the application
