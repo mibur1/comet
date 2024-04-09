@@ -1,7 +1,10 @@
 import numpy as np
 from numba import jit
+from typing import Literal, Optional
 
-def handle_negative_weights(W, type="absolute", copy=True):
+def handle_negative_weights(W: np.ndarray, 
+                            type: Literal["absolute", "discard"] = "absolute", 
+                            copy: bool = True) -> np.ndarray:
     '''Handle negative weights in a connectivity/adjacency matrix
 
     Connectivity methods can produce negative estimates, which can be handled in different ways before graph analysis.
@@ -35,7 +38,11 @@ def handle_negative_weights(W, type="absolute", copy=True):
         raise NotImplementedError("Options are: *absolute* or *discard*")
     return W
 
-def threshold(W, type="absolute", threshold=None, density=None, copy=True):
+def threshold(W: np.ndarray, 
+              type: Literal["absolute", "density"] = "absolute", 
+              threshold: Optional[float] = None, 
+              density: Optional[float] = None, 
+              copy: bool = True) -> np.ndarray:
     '''Thresholding of connectivity/adjacency matrix
     
     Performs absolute or density-based thresholding
@@ -77,7 +84,7 @@ def threshold(W, type="absolute", threshold=None, density=None, copy=True):
     if type == "absolute":
         W[W < threshold] = 0
     elif type == "density":
-        assert density > 0 and density < 1, "Error: Density must be between 0 and 1"
+        assert density >= 0 and density <= 1, "Error: Density must be between 0 and 1"
         assert np.allclose(W, W.T), "Error: Matrix is not symmetric"
         
         W[np.tril_indices(len(W))] = 0 # set lower triangle to zero
@@ -92,7 +99,8 @@ def threshold(W, type="absolute", threshold=None, density=None, copy=True):
         raise NotImplementedError("Thresholding must be of type *absolute* or *density*")
     return W
 
-def binarise(W, copy=True):
+def binarise(W: np.ndarray, 
+             copy: bool = True) -> np.ndarray:
     '''Binarise connectivity/adjacency matrix
 
     Parameters
@@ -115,7 +123,8 @@ def binarise(W, copy=True):
     W[W != 0] = 1
     return W
 
-def normalise(W, copy=True):
+def normalise(W: np.ndarray, 
+              copy: bool = True) -> np.ndarray:
     '''Normalise connectivity/adjacency matrix
 
     Parameters
@@ -139,7 +148,8 @@ def normalise(W, copy=True):
     W /= np.max(np.abs(W))
     return W
 
-def invert(W, copy=True):
+def invert(W: np.ndarray, 
+           copy: bool = True) -> np.ndarray:
     '''Invert connectivity/adjacency matrix
 
     Element wise inversion W such that each value W[i,j] will be 1 / W[i,j] (internode strengths internode distances)
@@ -165,7 +175,9 @@ def invert(W, copy=True):
     W = 1 / W_safe
     return W
 
-def logtransform(W, epsilon=1e-10, copy=True):
+def logtransform(W: np.ndarray, 
+                 epsilon: Optional[float] = 1e-10, 
+                 copy: bool = True) -> np.ndarray:
     '''Log transform of connectivity/adjacency matrix
 
     Element wise log transform of W such that each value W[i,j] will be -log(W[i,j]
@@ -197,7 +209,8 @@ def logtransform(W, epsilon=1e-10, copy=True):
     W = -np.log(W_safe)
     return W
 
-def symmetrise(W, copy=True):
+def symmetrise(W: np.ndarray, 
+               copy: bool = True) -> np.ndarray:
     '''Symmetrise connectivity/adjacency matrix
 
     Symmetrise W such that each value W[i,j] will be W[j,i]
@@ -229,7 +242,7 @@ def symmetrise(W, copy=True):
     
     return W
 
-def randomise(G):
+def randomise(G: np.ndarray) -> np.ndarray:
     '''
     Randomly rewire edges of a adjacency/connectivity matrix. Based on the small_world_propensity implementation
     which just randomizes the matrix: https://github.com/rkdan/small_world_propensity
@@ -329,7 +342,9 @@ def clustering_onella(W):
 
     return C.mean()
 
-def postproc(W, diag=0, copy=True):
+def postproc(W: np.ndarray, 
+             diag: Optional[float] = 0, 
+             copy: bool = True) -> np.ndarray:
     '''Postprocessing of connectivity/adjacency matrix
     
     Ensures W is symmetric, sets diagonal to diag, removes NaNs and infinities, and ensures exact binarity
@@ -360,6 +375,11 @@ def postproc(W, diag=0, copy=True):
     np.nan_to_num(W, nan=0.0, posinf=0.0, neginf=0.0, copy=False)
     W = np.round(W, decimals=5) # This should ensure exact binarity if floating point inaccuracies occur
     return W
+
+def efficiency(G: np.ndarray, 
+               weighted: bool = True,
+               local: bool = False) -> np.ndarray:
+    return efficiency_wei(G, local=local) if weighted else efficiency_bin(G, local=local)
 
 def efficiency_wei(Gw, local=False):
     '''Efficiency for weighted networks
@@ -492,7 +512,8 @@ def efficiency_bin(G, local=False):
     
     return E
 
-def small_world_sigma(G, nrand=10):
+def small_world_sigma(G: np.ndarray,
+                      nrand: int = 10) -> np.ndarray:
     '''Small-worldness sigma for undirected networks (binary or weighted)
         
     Small worldness sigma is calculated as the ratio of the clustering coefficient and the characteristic path length 
@@ -531,7 +552,7 @@ def small_world_sigma(G, nrand=10):
     sigma = (C / Cr) / (L / Lr)
     return sigma
 
-def small_world_propensity(G):
+def small_world_propensity(G: np.ndarray) -> np.ndarray:
     assert np.allclose(G, G.T), "Error: Matrix is not symmetrical"
     G = G / np.max(G)
     n = G.shape[0]  # Number of nodes
@@ -588,7 +609,7 @@ def small_world_propensity(G):
     return SWP, delta_C, delta_L
 
 @jit(nopython=True)
-def matching_ind_und(G):
+def matching_ind_und(G: np.ndarray) -> np.ndarray:
     '''Matching index for undirected networks
     
     Based on the MATLAB implementation by Stuart Oldham: https://github.com/StuartJO/FasterMatchingIndex

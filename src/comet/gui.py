@@ -5,10 +5,10 @@ import inspect
 import numpy as np
 import pandas as pd
 import nibabel as nib
-from typing import Any, Dict
 from scipy.io import loadmat, savemat
 from dataclasses import dataclass, field
 from importlib import resources as pkg_resources
+from typing import Any, Dict, get_type_hints, get_origin, get_args, Literal, Union
 
 # Plotting imports
 from matplotlib.image import imread
@@ -82,6 +82,7 @@ class Data:
     graph_file:   str        = field(default=None)         # graph file name
     graph_raw:    np.ndarray = field(default=None)         # raw input data for graph
     graph_data:   np.ndarray = field(default=None)         # working data for graph
+    graph_out:    np.ndarray = field(default=None)         # Calculated graph data
 
 
     # Misc variables
@@ -215,7 +216,7 @@ class App(QMainWindow):
         # Setup the individual tabs
         self.connectivityTab()
         self.graphTab()
-        #self.multiverseTab()
+        self.multiverseTab()
 
         # Set main window layout to the top-level layout
         centralWidget = QWidget()
@@ -540,7 +541,7 @@ class App(QMainWindow):
         buttonsLayout.addWidget(self.loadGraphFileButton, 1)
         self.loadGraphFileButton.clicked.connect(self.loadGraphFile)
 
-        self.takeCurrentButton = QPushButton('Take Current')
+        self.takeCurrentButton = QPushButton('From current dFC')
         self.takeCurrentButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         buttonsLayout.addWidget(self.takeCurrentButton, 1)
         self.takeCurrentButton.clicked.connect(self.takeCurrentData)
@@ -561,27 +562,28 @@ class App(QMainWindow):
 
         # Populate the combo box with options
         self.graphOptions = {
-            "no_data_available": "No data available",
-            "handle_negative_weights": "Negative weights",
-            "threshold": "Threshold",
-            "binarise": "Binarise",
-            "normalise": "Normalise",
-            "invert": "Invert",
-            "logtransform": "Log-transform",
-            "symmetrise": "Symmetrise",
-            "randomise": "Randomise",
+            "handle_negative_weights":  "PREP  Negative weights",
+            "threshold":                "PREP  Threshold",
+            "binarise":                 "PREP  Binarise",
+            "normalise":                "PREP  Normalise",
+            "invert":                   "PREP  Invert",
+            "logtransform":             "PREP  Log-transform",
+            "symmetrise":               "PREP  Symmetrise",
+            "randomise":                "PREP  Randomise",
+            "postproc":                 "PREP  Post-processing",
+            "efficiency":               "GRAPH Efficiency",
+            "small_world_propensity":   "GRAPH Small world propensity",
+            "matching_ind_und":         "GRAPH Matching index",
         }
         self.reverse_graphOptions = {v: k for k, v in self.graphOptions.items()}
 
-        self.graphAnalysisComboBox.addItem(self.graphOptions["no_data_available"], "empty_init")
-
         for analysis_function, pretty_name in self.graphOptions.items():
-            if hasattr(graph, analysis_function) and callable(getattr(graph, analysis_function)):
+            if hasattr(graph, analysis_function):
                 self.graphAnalysisComboBox.addItem(pretty_name, analysis_function)
 
         self.graphAnalysisComboBox.currentIndexChanged.connect(self.onGraphCombobox)
-        
         self.graphParameterLayout = QVBoxLayout()
+        self.onGraphCombobox() # init parameters
 
         # Create a container widget for the parameter layout
         parameterContainer = QWidget()  # Use an instance attribute to access it later
@@ -590,13 +592,15 @@ class App(QMainWindow):
 
         # Add the container widget to the left layout directly below the combobox
         leftLayout.addWidget(parameterContainer)
-        #parameterContainer.hide()
+
+        # Stretch empty space
+        leftLayout.addStretch()
 
         # Create a layout for the buttons
         buttonsLayout = QHBoxLayout()
 
         # Create the "Add option" button
-        addOptionButton = QPushButton('Add option')
+        addOptionButton = QPushButton('Add current option')
         buttonsLayout.addWidget(addOptionButton, 1) # The second parameter is the stretch factor
         addOptionButton.clicked.connect(self.onAddGraphOption)
 
@@ -618,9 +622,6 @@ class App(QMainWindow):
         saveButton.clicked.connect(self.saveGraphFile)
 
 
-
-        leftLayout.addStretch()
-
         ################################
         #  Right section for plotting  #
         ################################
@@ -629,22 +630,40 @@ class App(QMainWindow):
         # Different plotting tabs
         graphTabWidget = QTabWidget()
 
-         # Tab 1: Imshow plot
-        imshowTab = QWidget()
-        imshowLayout = QVBoxLayout()
-        imshowTab.setLayout(imshowLayout)
+        # Tab 1: Adjacency matrix plot
+        matrixTab = QWidget()
+        matrixLayout = QVBoxLayout()
+        matrixTab.setLayout(matrixLayout)
+
+        self.matrixFigure = Figure()
+        self.matrixCanvas = FigureCanvas(self.matrixFigure)
+        self.matrixFigure.patch.set_facecolor('#E0E0E0')
+        matrixLayout.addWidget(self.matrixCanvas)
+        graphTabWidget.addTab(matrixTab, "Adjacency Matrix")
+       
+        # Draw default plot (logo)
+        self.plotLogo(self.matrixFigure)
+        self.matrixCanvas.draw()
+
+
+        # Tab 2: Graph measures plot
+        measureTab = QWidget()
+        measureLayout = QVBoxLayout()
+        measureTab.setLayout(measureLayout)
 
         self.graphFigure = Figure()
         self.graphCanvas = FigureCanvas(self.graphFigure)
         self.graphFigure.patch.set_facecolor('#E0E0E0')
-        imshowLayout.addWidget(self.graphCanvas)
-        graphTabWidget.addTab(imshowTab, "Adjacency Matrix")
-        rightLayout.addWidget(graphTabWidget)
-
-       
+        measureLayout.addWidget(self.graphCanvas)
+        graphTabWidget.addTab(measureTab, "Graph measure")
+        
         # Draw default plot (logo)
         self.plotLogo(self.graphFigure)
         self.graphCanvas.draw()
+
+        
+        # Add widgets to the right layout
+        rightLayout.addWidget(graphTabWidget)
 
         #####################
         #  Combine layouts  #
@@ -659,10 +678,51 @@ class App(QMainWindow):
 
     def multiverseTab(self):
         multiverseTab = QWidget()
-        multiverseLayout = QVBoxLayout()
+        multiverseLayout = QVBoxLayout()  # Main layout for the tab
         multiverseTab.setLayout(multiverseLayout)
+        
+        ###############################
+        #  Left section for settings  #
+        ###############################
+        leftLayout = QVBoxLayout()
 
-        # Add Multiverse Analysis tab to the top level tab widget
+        tempLabel = QLabel('TODO')
+        leftLayout.addWidget(tempLabel)
+        leftLayout.addStretch()
+
+        ################################
+        #  Right section for plotting  #
+        ################################
+        rightLayout = QVBoxLayout()
+        
+        # Different plotting tabs
+        multiverseTabWidget = QTabWidget()
+
+         # Tab 1: Imshow plot
+        imshowTab = QWidget()
+        imshowLayout = QVBoxLayout()
+        imshowTab.setLayout(imshowLayout)
+
+        self.multiverseFigure = Figure()
+        self.multiverseCanvas = FigureCanvas(self.multiverseFigure)
+        self.multiverseFigure.patch.set_facecolor('#E0E0E0')
+        imshowLayout.addWidget(self.multiverseCanvas)
+        multiverseTabWidget.addTab(imshowTab, "TODO")
+        rightLayout.addWidget(multiverseTabWidget)
+
+       
+        # Draw default plot (logo)
+        self.plotLogo(self.multiverseFigure)
+        self.multiverseCanvas.draw()
+
+        #####################
+        #  Combine layouts  #
+        #####################
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(leftLayout, 1)
+        mainLayout.addLayout(rightLayout, 2)
+        multiverseLayout.addLayout(mainLayout)
+
         self.topTabWidget.addTab(multiverseTab, "Multiverse Analysis")
     
     """
@@ -858,7 +918,10 @@ class App(QMainWindow):
 
         if file_path.endswith('.mat'):
             data_dict = loadmat(file_path)
-            self.data.graph_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
+            try:
+                self.data.graph_data = data_dict["graph_data"] # Try to load graph_data (saving files with comet will create this field)
+            except:
+                self.data.graph_data = data_dict[list(data_dict.keys())[-1]] # Else get the last item in the file (which is the data if there is only one field)
 
         elif file_path.endswith('.txt'):
             self.data.graph_data = np.loadtxt(file_path)
@@ -873,7 +936,8 @@ class App(QMainWindow):
         self.data.graph_raw = self.data.graph_data
         self.graphFileNameLabel.setText(f"Loaded {self.data.graph_file} with shape {self.data.graph_data.shape}")
         
-        self.onGraphCombobox() # update the combo box
+        self.plotGraph()
+        self.onGraphCombobox()
 
     def saveGraphFile(self):
         if self.data.graph_data is None:
@@ -1397,18 +1461,16 @@ class App(QMainWindow):
                 pass
     
     # Graph functions
-    def setGraphParameters(self):  
+    def setGraphParameters(self):
         # Clear parameters
         self.clearParameters(self.graphParameterLayout)
-        
-        if self.graphAnalysisComboBox.currentData() == "empty_init":
-            return
         
         # Retrieve the selected function from the graph module
         func = getattr(graph, self.graphAnalysisComboBox.currentData())
 
         # Retrieve the signature of the function
         func_signature = inspect.signature(func)
+        type_hints = get_type_hints(func)
 
         # Calculate the maximum label width
         max_label_width = 0
@@ -1421,11 +1483,12 @@ class App(QMainWindow):
         is_first_parameter = True  # Flag to identify the first parameter
 
         # Iterate over parameters in the function signature
+        temp_widgets = {}
         for name, param in func_signature.parameters.items():
-            if name not in ['self', 'args', 'kwargs']:  # Skip unwanted parameters
-                    
+            if name not in ['self', 'copy', 'args', 'kwargs']:  # Skip unwanted parameters
                 # Horizontal layout for each parameter
                 param_layout = QHBoxLayout()
+                param_type = type_hints.get(name)
                     
                 # Create a label for the parameter and set its fixed width
                 param_label = QLabel(f"{name}:")
@@ -1438,22 +1501,69 @@ class App(QMainWindow):
                     param_widget.setReadOnly(True)  # Make the widget read-only
                     is_first_parameter = False  # Update the flag so this block runs only for the first parameter
                 else:
-                    # Initialize the appropriate widget for subsequent parameters based on the default type
-                    if isinstance(param.default, bool):
+                    # Bool
+                    if param_type == bool:
                         param_widget = QComboBox()
                         param_widget.addItems(["True", "False"])
                         param_widget.setCurrentIndex(int(param.default))
-                    elif isinstance(param.default, int):
-                        param_widget = QSpinBox()
-                        param_widget.setValue(param.default)
-                    elif isinstance(param.default, float):
-                        param_widget = QDoubleSpinBox()
-                        param_widget.setValue(param.default)
+                    # Int or Float                   
+                    elif get_origin(param_type) == Union:
+                        args = get_args(param_type) 
+                        if int in args:
+                            param_widget = QSpinBox()
+                            param_widget.setValue(1)
+                            param_widget.setMaximum(10000)
+                            param_widget.setMinimum(-10000)
+                            param_widget.setSingleStep(1)
+                        elif float in args:
+                            param_widget = QDoubleSpinBox()
+                            if name == "threshold":
+                                param_widget.setValue(0.0)
+                            else:
+                                param_widget.setValue(1.0)
+                            param_widget.setMaximum(1.0)
+                            param_widget.setMinimum(0.0)
+                            param_widget.setSingleStep(0.01)
+                    # String
+                    elif get_origin(type_hints.get(name)) is Literal:
+                        options = type_hints.get(name).__args__ 
+                        param_widget = QComboBox()
+                        param_widget.addItems([str(option) for option in options])
+                    # Fallback
                     else:
                         param_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
 
+                temp_widgets[name] = (param_label, param_widget)
                 param_layout.addWidget(param_widget)
                 self.graphParameterLayout.addLayout(param_layout)
+
+        # Adjust visibility based on 'type' parameter
+        type_widget = None
+        if 'type' in temp_widgets:
+            _, type_widget = temp_widgets['type']
+
+        if type_widget:
+            # Function to update parameter visibility
+            def updateVisibility():
+                selected_type = type_widget.currentText()
+                if selected_type == 'absolute':
+                    if 'threshold' in temp_widgets:
+                        temp_widgets['threshold'][0].show()
+                        temp_widgets['threshold'][1].show()
+                    if 'density' in temp_widgets:
+                        temp_widgets['density'][0].hide()
+                        temp_widgets['density'][1].hide()
+                elif selected_type == 'density':
+                    if 'threshold' in temp_widgets:
+                        temp_widgets['threshold'][0].hide()
+                        temp_widgets['threshold'][1].hide()
+                    if 'density' in temp_widgets:
+                        temp_widgets['density'][0].show()
+                        temp_widgets['density'][1].show()
+            
+            # Connect the signal from the type_widget to the updateVisibility function
+            type_widget.currentIndexChanged.connect(updateVisibility)
+            updateVisibility()
 
         self.graphParameterLayout.addStretch()
 
@@ -1615,27 +1725,54 @@ class App(QMainWindow):
     def onAddGraphOption(self):
         option, params = self.getGraphOptions()
 
-        # Get the function
-        func_name = self.reverse_graphOptions[option]
-        func = getattr(graph, func_name)
+        if option.startswith("PREP"):
+            # Get the function
+            func_name = self.reverse_graphOptions[option]
+            func = getattr(graph, func_name)
 
-        # Replace first patameter with graph data
-        if params:
-            first_param_name = next(iter(params))
-            graph_params = {first_param_name: self.data.graph_data}
-            graph_params.update({k: v for k, v in params.items() if k != first_param_name})
-            
-            # Perform the graph calculation and plot the result
-            try:
-                self.data.graph_data = func(**graph_params)
-                self.plotGraph()
-                self.optionsTextbox.append(f"{option}: {params}")
+            # Replace first patameter with graph data
+            if params:
+                first_param_name = next(iter(params))
+                graph_params = {first_param_name: self.data.graph_data}
+                graph_params.update({k: v for k, v in params.items() if k != first_param_name})
+                
+                # Perform the graph calculation and plot the result
+                try:
+                    self.data.graph_data = func(**graph_params)
+                    self.plotGraph()
+                    self.optionsTextbox.append(f"{option}: {params}")
 
-            except Exception as e:
-                print(f"Error executing function {func.__name__}: {e}")
+                except Exception as e:
+                    print(f"Error executing function {func.__name__}: {e}")
+
+            else:
+                print("No parameters provided.")
+
+        elif option.startswith("GRAPH"):
+            # Get the function
+            func_name = self.reverse_graphOptions[option]
+            func = getattr(graph, func_name)
+
+            # Replace first patameter with graph data
+            if params:
+                first_param_name = next(iter(params))
+                graph_params = {first_param_name: self.data.graph_data}
+                graph_params.update({k: v for k, v in params.items() if k != first_param_name})
+                
+                # Perform the graph calculation and plot the result
+                try:
+                    self.data.graph_out = func(**graph_params)
+                    self.plotMeasure()
+                    self.optionsTextbox.append(f"{option}: {params}")
+
+                except Exception as e:
+                    print(f"Error executing function {func.__name__}: {e}")
+
+            else:
+                print("No parameters provided.")
 
         else:
-            print("No parameters provided.")
+            print(f"Unknown graph option: {option}")
 
     def onClearGraphOptions(self):
         self.data.graph_data = self.data.graph_raw
@@ -1959,8 +2096,8 @@ class App(QMainWindow):
             print("No data available for plotting")
             return
 
-        self.graphFigure.clear()
-        ax = self.graphFigure.add_subplot(111)
+        self.matrixFigure.clear()
+        ax = self.matrixFigure.add_subplot(111)
 
         vmax = np.max(np.abs(current_data))
         self.im = ax.imshow(current_data, cmap='coolwarm', vmin=-vmax, vmax=vmax)
@@ -1968,12 +2105,15 @@ class App(QMainWindow):
         # Create the colorbar
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.15)
-        cbar = self.graphFigure.colorbar(self.im, cax=cax)
+        cbar = self.matrixFigure.colorbar(self.im, cax=cax)
         cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
     
-        self.graphFigure.set_facecolor('#E0E0E0')
-        self.graphFigure.tight_layout()
-        self.graphCanvas.draw()
+        self.matrixFigure.set_facecolor('#E0E0E0')
+        self.matrixFigure.tight_layout()
+        self.matrixCanvas.draw()
+
+    def plotMeasure(self):
+        pass
 
     # Shared functions
     def plotLogo(self, figure=None):
