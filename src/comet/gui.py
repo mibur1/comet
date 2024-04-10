@@ -1,3 +1,4 @@
+import re
 import sys
 import copy
 import pickle
@@ -31,7 +32,7 @@ from . import cifti, methods, graph
 import pydfc
 
 class Worker(QObject):
-    # Worker class for dFC calculation (runs in a separate thread)
+    # Worker class for calculations (runs in a separate thread)
     finished = pyqtSignal()
     error = pyqtSignal(str)
     result = pyqtSignal(object)
@@ -1616,6 +1617,12 @@ class App(QMainWindow):
         # Return the current option and its parameters
         return current_option, params_dict
 
+    def onClearGraphOptions(self):
+        self.data.graph_data = self.data.graph_raw
+        self.plotGraph()
+        self.optionsTextbox.clear()
+        self.graphStepCounter = 1
+
     """
     Calculation
     """
@@ -1735,48 +1742,63 @@ class App(QMainWindow):
 
     # Graph functions
     def onAddGraphOption(self):
+
+        # Start worker thread for graph calculations
+        self.workerThread = QThread()
+        self.worker = Worker(self.calculateGraph, None)
+        self.worker.moveToThread(self.workerThread)
+
+        self.worker.finished.connect(self.workerThread.quit)
+        self.worker.result.connect(self.handleGraphResult)  # Ensure you have a slot to handle results
+        self.worker.error.connect(self.handleGraphError)  # And error handling
+
+        self.workerThread.started.connect(self.worker.run)
+        self.workerThread.start()
+
+    def calculateGraph(self, unused):
         option, params = self.getGraphOptions()
 
         # Get the function
         func_name = self.reverse_graphOptions[option]
         func = getattr(graph, func_name)
 
-        # Replace first patameter with graph data
-        if params:
-            first_param_name = next(iter(params))
-            graph_params = {first_param_name: self.data.graph_data}
-            graph_params.update({k: v for k, v in params.items() if k != first_param_name})
-
-            # Perform the graph calculation
-            try:
-                self.calculateGraph(func, graph_params, option)
-            except Exception as e:
-                print(f"Error executing function {func.__name__}: {e}")
-
-        else:
-            print("No parameters provided.")
-
-    def calculateGraph(self, func, graph_params, option):
-        option_name = option.strip().split()[1] # remove the PREP/GRAPH part
-        
+        option_name = re.sub(r'^\S+\s+', '', option) # regex to remove the PREP/GRAPH part
         self.optionsTextbox.append(f"{self.graphStepCounter}. {option_name}: calculating, please wait...")
-        QApplication.processEvents() 
-        
+
+        first_param_name = next(iter(params))
+        graph_params = {first_param_name: self.data.graph_data}
+        graph_params.update({k: v for k, v in params.items() if k != first_param_name})
+
+        # Perform the calculation
         if option.startswith("PREP"):
             self.data.graph_data = func(**graph_params)
-            self.plotGraph()
+            return 'graph_mat', func(**graph_params), option_name, graph_params
         elif option.startswith("GRAPH"):
             self.data.graph_out = func(**graph_params)
-            self.plotMeasure(option_name)
+            return 'graph_res', func(**graph_params), option_name, graph_params
+
+    def handleGraphResult(self, result):
+        output = result[0]
+        data   = result[1]
+        option = result[2]
+        params = result[3]
         
+        # Update self.data.graph_data or self.data.graph_out based on the result
+        if output == 'graph_mat':
+            self.data.graph_data = data
+            self.plotGraph()
+        elif output == 'graph_res':
+            self.data.graph_out = data
+            self.plotMeasure(option)
+
         # Output step and options to textbox, remove unused parameters
-        if option_name == 'Threshold':
-            if graph_params.get('type') == 'absolute':
-                filtered_params = {k: v for k, v in graph_params.items() if k != 'density'}
-            elif graph_params.get('type') == 'density':
-                filtered_params = {k: v for k, v in graph_params.items() if k != 'threshold'}
+        if option == 'Threshold':
+            if params.get('type') == 'absolute':
+                filtered_params = {k: v for k, v in params.items() if k != 'density'}
+            elif params.get('type') == 'density':
+                filtered_params = {k: v for k, v in params.items() if k != 'threshold'}
         else:
-            filtered_params = graph_params
+            filtered_params = params
 
         filtered_params = {k: v for k, v in list(filtered_params.items())[1:]}
 
@@ -1785,20 +1807,18 @@ class App(QMainWindow):
         lines = current_text.split('\n')
 
         if len(lines) > 1:
-            lines[-1] = f"{self.graphStepCounter}. {option_name}: {filtered_params}"
+            lines[-1] = f"{self.graphStepCounter}. {option}: {filtered_params}"
         else:
-            lines = [f"{self.graphStepCounter}. {option_name}: {filtered_params}"]
+            lines = [f"{self.graphStepCounter}. {option}: {filtered_params}"]
 
         updated_text = '\n'.join(lines)
         self.optionsTextbox.setPlainText(updated_text)
 
         self.graphStepCounter += 1
 
-    def onClearGraphOptions(self):
-        self.data.graph_data = self.data.graph_raw
-        self.plotGraph()
-        self.optionsTextbox.clear()
-        self.graphStepCounter = 1
+    def handleGraphError(self, error):
+        # Handles errors in the worker thread
+        print(f"Error occurred: {error}")
 
     """
     Memory functions
@@ -2134,39 +2154,50 @@ class App(QMainWindow):
         self.matrixCanvas.draw()
 
     def plotMeasure(self, measure):
-        # Clear the previous figure content
         self.graphFigure.clear()
+        ax = self.graphFigure.add_subplot(111)
 
-        # Check the structure of graph_out
-        if isinstance(self.data.graph_out, list) or isinstance(self.data.graph_out, np.ndarray):
-            if len(self.data.graph_out) == 1:
-                # If graph_out is a single value, just display its name and value in the textbox
-                self.graphTextbox.setText(f"{measure}: {self.data.graph_out[0]}")
-            elif len(self.data.graph_out) > 1:
-                # For a 1D vector, plot a horizontal lollipop plot and display mean/variance in the textbox
-                
-                # Prepare the plot
-                ax = self.graphFigure.add_subplot(111)  # Add a subplot to the figure
-                ax.stem(self.data.graph_out, orientation='vertical', linefmt='grey', markerfmt='o', basefmt=" ")
+        # Check the dimensionality of graph_out
+        if self.data.graph_out.ndim == 0:
+            # If graph_out is a single value (0D array)
+            self.graphTextbox.setText(f"{measure}: {self.data.graph_out.item()}")
+        elif self.data.graph_out.ndim == 1:
+            # For a 1D array, plot a vertical lollipop plot and display mean/variance in the textbox
+            ax.stem(self.data.graph_out, linefmt='grey', markerfmt='o', basefmt=" ")
 
-                # Set plot title and labels if needed
-                ax.set_xlabel("ROI")
-                ax.set_ylabel(f"{measure}")
-                self.graphFigure.tight_layout()
+            # Set plot title and labels
+            ax.set_xlabel("Index")
+            ax.set_ylabel(f"{measure}")
 
-                # Calculate mean and variance
-                mean_val = np.mean(self.data.graph_out)
-                var_val = np.var(self.data.graph_out)
+            # Calculate mean and variance
+            mean_val = np.mean(self.data.graph_out)
+            var_val = np.var(self.data.graph_out)
 
-                # Update the textbox with mean and variance
-                self.graphTextbox.setText(f"{measure}\nMean: {mean_val}\nVariance: {var_val}")
-                
-                # Draw the plot
-                self.graphCanvas.draw()
+            # Update the textbox with mean and variance
+            self.graphTextbox.setText(f"{measure}\nMean: {mean_val}\nVariance: {var_val}")
+        elif self.data.graph_out.ndim == 2:
+            # For a 2D array, use imshow
+            vmax = np.max(np.abs(self.data.graph_out))
+            self.im = ax.imshow(self.data.graph_out, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+
+            # Create the colorbar
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.15)
+            self.graphFigure.colorbar(self.im, cax=cax).ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
+
+            # Set face color and adjust layout
+            self.graphFigure.set_facecolor('#E0E0E0')
+            self.graphTextbox.setText(f"{measure} displayed as heat map.")
         else:
-            # If graph_out is not a list or has an unexpected structure, display an error or a default message
-            self.textBox.setText("Graph output data is not in expected format or is 2D, which is not handled.")
+            # Handle unexpected array dimensionality
+            self.graphTextbox.setText("Graph output data is not in expected format.")
 
+        # Draw the plot
+        self.graphFigure.tight_layout()
+        self.graphCanvas.draw()
+
+        return
+    
     # Shared functions
     def plotLogo(self, figure=None):
         with pkg_resources.path("comet.resources.img", "logo.png") as file_path:
