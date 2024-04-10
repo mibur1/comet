@@ -80,10 +80,9 @@ class Data:
 
     # Graph variables
     graph_file:   str        = field(default=None)         # graph file name
-    graph_raw:    np.ndarray = field(default=None)         # raw input data for graph
-    graph_data:   np.ndarray = field(default=None)         # working data for graph
-    graph_out:    np.ndarray = field(default=None)         # Calculated graph data
-
+    graph_raw:    np.ndarray = field(default=None)         # raw input data for graph (dFC matrix)
+    graph_data:   np.ndarray = field(default=None)         # working data for graph (while processing)
+    graph_out:    Any = field(default=None)                # output graph measure data
 
     # Misc variables
     cifti_data:   np.ndarray = field(default=None)         # input cifti data (for .dtseries files)
@@ -646,23 +645,35 @@ class App(QMainWindow):
         self.plotLogo(self.matrixFigure)
         self.matrixCanvas.draw()
 
-
         # Tab 2: Graph measures plot
         measureTab = QWidget()
         measureLayout = QVBoxLayout()
         measureTab.setLayout(measureLayout)
 
+        # Widget for the plot
+        plotWidget = QWidget()  # Create a widget to hold the plot
+        plotLayout = QVBoxLayout()  # Use QVBoxLayout for the plot widget
+        plotWidget.setLayout(plotLayout)
+
+        # Add the graph canvas to the plot layout
         self.graphFigure = Figure()
         self.graphCanvas = FigureCanvas(self.graphFigure)
         self.graphFigure.patch.set_facecolor('#E0E0E0')
-        measureLayout.addWidget(self.graphCanvas)
-        graphTabWidget.addTab(measureTab, "Graph measure")
-        
-        # Draw default plot (logo)
+        plotLayout.addWidget(self.graphCanvas)
+
+        # Widget for the textbox
+        self.graphTextbox = QTextEdit()
+        self.graphTextbox.setReadOnly(True)
+
+        # Add the plot widget and the textbox to the measure layout
+        measureLayout.addWidget(plotWidget, 2)
+        measureLayout.addWidget(self.graphTextbox, 1)
+        graphTabWidget.addTab(measureTab, "Graph Measure")
+
+        # Draw default plot (e.g., logo)
         self.plotLogo(self.graphFigure)
         self.graphCanvas.draw()
 
-        
         # Add widgets to the right layout
         rightLayout.addWidget(graphTabWidget)
 
@@ -1746,17 +1757,20 @@ class App(QMainWindow):
             print("No parameters provided.")
 
     def calculateGraph(self, func, graph_params, option):
+        option_name = option.strip().split()[1] # remove the PREP/GRAPH part
+        
+        self.optionsTextbox.append(f"{self.graphStepCounter}. {option_name}: calculating, please wait...")
+        QApplication.processEvents() 
+        
         if option.startswith("PREP"):
             self.data.graph_data = func(**graph_params)
             self.plotGraph()
         elif option.startswith("GRAPH"):
             self.data.graph_out = func(**graph_params)
-            self.plotMeasure()
+            self.plotMeasure(option_name)
         
-        option_from_second_word = option.strip().split()[1]
-        
-        # Remove unused parameters from the options textbox
-        if option_from_second_word == 'Threshold':
+        # Output step and options to textbox, remove unused parameters
+        if option_name == 'Threshold':
             if graph_params.get('type') == 'absolute':
                 filtered_params = {k: v for k, v in graph_params.items() if k != 'density'}
             elif graph_params.get('type') == 'density':
@@ -1765,7 +1779,19 @@ class App(QMainWindow):
             filtered_params = graph_params
 
         filtered_params = {k: v for k, v in list(filtered_params.items())[1:]}
-        self.optionsTextbox.append(f"{self.graphStepCounter}. {option_from_second_word}: {filtered_params}")
+
+        # Update the textbox with the current step and options
+        current_text = self.optionsTextbox.toPlainText()
+        lines = current_text.split('\n')
+
+        if len(lines) > 1:
+            lines[-1] = f"{self.graphStepCounter}. {option_name}: {filtered_params}"
+        else:
+            lines = [f"{self.graphStepCounter}. {option_name}: {filtered_params}"]
+
+        updated_text = '\n'.join(lines)
+        self.optionsTextbox.setPlainText(updated_text)
+
         self.graphStepCounter += 1
 
     def onClearGraphOptions(self):
@@ -2107,8 +2133,39 @@ class App(QMainWindow):
         self.matrixFigure.tight_layout()
         self.matrixCanvas.draw()
 
-    def plotMeasure(self):
-        pass
+    def plotMeasure(self, measure):
+        # Clear the previous figure content
+        self.graphFigure.clear()
+
+        # Check the structure of graph_out
+        if isinstance(self.data.graph_out, list) or isinstance(self.data.graph_out, np.ndarray):
+            if len(self.data.graph_out) == 1:
+                # If graph_out is a single value, just display its name and value in the textbox
+                self.graphTextbox.setText(f"{measure}: {self.data.graph_out[0]}")
+            elif len(self.data.graph_out) > 1:
+                # For a 1D vector, plot a horizontal lollipop plot and display mean/variance in the textbox
+                
+                # Prepare the plot
+                ax = self.graphFigure.add_subplot(111)  # Add a subplot to the figure
+                ax.stem(self.data.graph_out, orientation='vertical', linefmt='grey', markerfmt='o', basefmt=" ")
+
+                # Set plot title and labels if needed
+                ax.set_xlabel("ROI")
+                ax.set_ylabel(f"{measure}")
+                self.graphFigure.tight_layout()
+
+                # Calculate mean and variance
+                mean_val = np.mean(self.data.graph_out)
+                var_val = np.var(self.data.graph_out)
+
+                # Update the textbox with mean and variance
+                self.graphTextbox.setText(f"{measure}\nMean: {mean_val}\nVariance: {var_val}")
+                
+                # Draw the plot
+                self.graphCanvas.draw()
+        else:
+            # If graph_out is not a list or has an unexpected structure, display an error or a default message
+            self.textBox.setText("Graph output data is not in expected format or is 2D, which is not handled.")
 
     # Shared functions
     def plotLogo(self, figure=None):
