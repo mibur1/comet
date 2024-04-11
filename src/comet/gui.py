@@ -25,7 +25,7 @@ from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject
 from PyQt6.QtGui import QEnterEvent, QFontMetrics
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
     QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, \
-    QSpacerItem, QCheckBox, QTabWidget, QMessageBox, QSpinBox, QDoubleSpinBox, QTextEdit
+    QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit
 
 # Comet imports and state-based dFC methods from pydfc
 from . import cifti, methods, graph
@@ -602,6 +602,9 @@ class App(QMainWindow):
         self.graphCheckBox.stateChanged.connect(self.updateGraphComboBox)
         
         self.updateGraphComboBox()
+
+
+        
 
         # Create a container widget for the parameter layout
         parameterContainer = QWidget()  # Use an instance attribute to access it later
@@ -1255,9 +1258,6 @@ class App(QMainWindow):
             if self.graphCheckBox.isChecked() and funcName.startswith("GRAPH"):
                 return True
             return False
-        
-        # Filter options based on the checkboxes
-        filtered_options = {name: desc for name, desc in self.graphOptions.items() if shouldIncludeFunc(desc)}
 
         # Disconnect existing connections to avoid multiple calls
         try:
@@ -1265,8 +1265,11 @@ class App(QMainWindow):
         except TypeError:
             pass
 
-        # Update the combobox
+        # Clear the combobox
         self.graphAnalysisComboBox.clear()
+
+        # Filter options based on the checkboxes
+        filtered_options = {name: desc for name, desc in self.graphOptions.items() if shouldIncludeFunc(desc)}
 
         for analysis_function, pretty_name in filtered_options.items():
             if hasattr(graph, analysis_function):
@@ -1927,6 +1930,9 @@ class App(QMainWindow):
             vmax = np.max(np.abs(current_slice))
             self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
 
+        ax.set_xlabel("ROI")
+        ax.set_ylabel("ROI")
+
         # Create the colorbar
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.15)
@@ -1957,9 +1963,9 @@ class App(QMainWindow):
             ax = self.timeSeriesFigure.add_subplot(111)
             time_series = current_data[row, col, :] if len(current_data.shape) == 3 else current_data[row, col]
             ax.set_title(f"dFC time course between region {row} and {col}.")
-            
+            ax.set_xlabel("time (TRs)")
+            ax.set_ylabel("dFC strength")
             ax.plot(time_series)
-            self.timeSeriesCanvas.draw()
 
         elif self.data.dfc_state_tc is not None:
             self.timeSeriesFigure.clear()
@@ -1989,8 +1995,6 @@ class App(QMainWindow):
                 ax_state.set_xticks([])
                 ax_state.set_yticks([]) 
 
-            self.timeSeriesFigure.canvas.draw()
-
         elif self.data.dfc_edge_ts is not None:
             self.timeSeriesFigure.clear()
             gs = gridspec.GridSpec(3, 1, self.timeSeriesFigure, height_ratios=[2, 0.5, 1]) # GridSpec with 3 rows and 1 column
@@ -2010,13 +2014,16 @@ class App(QMainWindow):
             ax2.set_title("Mean time series")
             ax2.set_xlabel("Time (TRs)")
             ax2.set_ylabel("Mean Edge Value")
-            
-            self.timeSeriesFigure.canvas.draw()
         
         else:
             # Clear the plot if the data is not available
             self.timeSeriesFigure.clear()
-            self.timeSeriesCanvas.draw()
+
+        self.timeSeriesFigure.set_facecolor('#E0E0E0')
+        self.timeSeriesFigure.tight_layout()
+        self.timeSeriesCanvas.draw()
+
+        return
 
     def plotDistribution(self):
         current_data = self.data.dfc_data
@@ -2032,8 +2039,14 @@ class App(QMainWindow):
         current_slice = current_data[:, :, self.slider.value()] if len(current_data.shape) == 3 else current_data
         ax = self.distributionFigure.add_subplot(111)
         ax.hist(current_slice.flatten(), bins=50)  # number of bins
+        ax.set_xlabel("dFC values")
+        ax.set_ylabel("frequency")
 
+        self.distributionFigure.set_facecolor('#E0E0E0')
+        self.distributionFigure.tight_layout()
         self.distributionCanvas.draw()
+
+        return
 
     def updateTimeSeriesPlot(self, center):
         if self.data.dfc_data is None:
@@ -2057,7 +2070,11 @@ class App(QMainWindow):
         self.timeSeriesFigure.clear()
         ax = self.timeSeriesFigure.add_subplot(111)
         ax.plot(range(start, end), time_series_slice)
+        
+        self.timeSeriesFigure.tight_layout()
         self.timeSeriesCanvas.draw()
+        
+        return
 
     def onTabChanged(self):
         self.currentTabIndex = self.tabWidget.currentIndex()
@@ -2206,6 +2223,8 @@ class App(QMainWindow):
 
         vmax = np.max(np.abs(current_data))
         self.im = ax.imshow(current_data, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+        ax.set_xlabel("ROI")
+        ax.set_ylabel("ROI")
 
         # Create the colorbar
         divider = make_axes_locatable(ax)
@@ -2234,9 +2253,7 @@ class App(QMainWindow):
                 self.graphFigure.clear()
             elif self.data.graph_out.ndim == 1:
                 # For a 1D array, plot a vertical lollipop plot and display mean/variance in the textbox
-                ax.stem(self.data.graph_out, linefmt='grey', markerfmt='o', basefmt=" ")
-
-                # Set plot title and labels
+                ax.stem(self.data.graph_out, linefmt='blue', markerfmt='o', basefmt=" ")
                 ax.set_xlabel("Index")
                 ax.set_ylabel(f"{measure}")
 
@@ -2270,8 +2287,10 @@ class App(QMainWindow):
             self.graphTextbox.append("Graph output data is not in expected format.")
 
         # Draw the plot
+        self.graphFigure.set_facecolor('#E0E0E0')
         self.graphFigure.tight_layout()
         self.graphCanvas.draw()
+        
         return
     
     # Shared functions
