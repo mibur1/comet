@@ -1608,6 +1608,12 @@ class App(QMainWindow):
                         elif isinstance(param_widget, QSpinBox) or isinstance(param_widget, QDoubleSpinBox):
                             param_value = param_widget.value()
 
+                        # Convert to appropriate boolean type (LineEdit ad ComboBox return strings))
+                        if param_value == "True":
+                            param_value = True
+                        elif param_value == "False":
+                            param_value = False
+                            
                         # Add the parameter name and value to the dictionary
                         params_dict[param_name] = param_value
 
@@ -1621,6 +1627,7 @@ class App(QMainWindow):
         self.data.graph_data = self.data.graph_raw
         self.plotGraph()
         self.optionsTextbox.clear()
+        self.graphTextbox.clear()
         self.graphStepCounter = 1
 
     """
@@ -2157,45 +2164,57 @@ class App(QMainWindow):
         self.graphFigure.clear()
         ax = self.graphFigure.add_subplot(111)
 
+        # If we have a tuple, extract the first element
+        if type(self.data.graph_out) is tuple:
+            temp_data = self.data.graph_out
+            self.data.graph_out = temp_data[0]
+        
         # Check the dimensionality of graph_out
-        if self.data.graph_out.ndim == 0:
-            # If graph_out is a single value (0D array)
-            self.graphTextbox.setText(f"{measure}: {self.data.graph_out.item()}")
-        elif self.data.graph_out.ndim == 1:
-            # For a 1D array, plot a vertical lollipop plot and display mean/variance in the textbox
-            ax.stem(self.data.graph_out, linefmt='grey', markerfmt='o', basefmt=" ")
+        if type(self.data.graph_out) is np.ndarray or type(self.data.graph_out) is np.float64:
+            if self.data.graph_out.ndim == 0:
+                # If graph_out is a single value (0D array)
+                self.graphTextbox.append(f"{measure}: {self.data.graph_out.item()}")
+                self.graphFigure.clear()
+            elif self.data.graph_out.ndim == 1:
+                # For a 1D array, plot a vertical lollipop plot and display mean/variance in the textbox
+                ax.stem(self.data.graph_out, linefmt='grey', markerfmt='o', basefmt=" ")
 
-            # Set plot title and labels
-            ax.set_xlabel("Index")
-            ax.set_ylabel(f"{measure}")
+                # Set plot title and labels
+                ax.set_xlabel("Index")
+                ax.set_ylabel(f"{measure}")
 
-            # Calculate mean and variance
-            mean_val = np.mean(self.data.graph_out)
-            var_val = np.var(self.data.graph_out)
+                # Calculate mean and variance
+                mean_val = np.mean(self.data.graph_out)
+                var_val = np.var(self.data.graph_out)
 
-            # Update the textbox with mean and variance
-            self.graphTextbox.setText(f"{measure}\nMean: {mean_val}\nVariance: {var_val}")
-        elif self.data.graph_out.ndim == 2:
-            # For a 2D array, use imshow
-            vmax = np.max(np.abs(self.data.graph_out))
-            self.im = ax.imshow(self.data.graph_out, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+                # Update the textbox with mean and variance
+                self.graphTextbox.append(f"{measure} (mean: {mean_val}, variance: {var_val})")
+            
+            elif self.data.graph_out.ndim == 2:
+                # For a 2D array, use imshow
+                vmax = np.max(np.abs(self.data.graph_out))
+                self.im = ax.imshow(self.data.graph_out, cmap='coolwarm', vmin=-vmax, vmax=vmax)
 
-            # Create the colorbar
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="5%", pad=0.15)
-            self.graphFigure.colorbar(self.im, cax=cax).ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
+                # Create the colorbar
+                divider = make_axes_locatable(ax)
+                cax = divider.append_axes("right", size="5%", pad=0.15)
+                self.graphFigure.colorbar(self.im, cax=cax).ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
 
-            # Set face color and adjust layout
-            self.graphFigure.set_facecolor('#E0E0E0')
-            self.graphTextbox.setText(f"{measure} displayed as heat map.")
+                # Set face color and adjust layout
+                self.graphFigure.set_facecolor('#E0E0E0')
+                self.graphTextbox.append(f"{measure}")
+            
+            else:
+                # Handle unexpected array dimensionality
+                self.graphTextbox.append("3D graph data not currently supported for plotting.")
+        
         else:
             # Handle unexpected array dimensionality
-            self.graphTextbox.setText("Graph output data is not in expected format.")
+            self.graphTextbox.append("Graph output data is not in expected format.")
 
         # Draw the plot
         self.graphFigure.tight_layout()
         self.graphCanvas.draw()
-
         return
     
     # Shared functions

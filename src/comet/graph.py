@@ -323,7 +323,7 @@ def avg_shortest_path(G, include_diagonal=False, include_infinite=False):
 
 def transitivity(A):
     '''Transitivity is the ratio of triangles to triplets in the network (classical version of the clustering coefficient).
-    Only for undirected matrices (binary/weighted). Adapted from the bytpy implementation: https://github.com/aestrivex/bctpy
+    Only for undirected matrices (binary/weighted). Adapted from the bctpy implementation: https://github.com/aestrivex/bctpy
     '''
     is_binary = np.all(np.logical_or(np.isclose(A, 0), np.isclose(A, 1)))
     
@@ -610,7 +610,7 @@ def small_world_propensity(G: np.ndarray) -> np.ndarray:
           "δ", round(delta, 3),
           "SWP", round(SWP, 3))"""
 
-    return SWP, delta_C, delta_L
+    return SWP, delta_C, delta_L, alpha, delta
 
 @jit(nopython=True)
 def matching_ind_und(G: np.ndarray) -> np.ndarray:
