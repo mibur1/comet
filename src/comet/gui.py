@@ -298,231 +298,231 @@ class App(QMainWindow):
         self.setParameters(disable=True)
 
     def connectivityTab(self):
-            connectivityTab = QWidget()
-            connectivityLayout = QHBoxLayout()
-            connectivityTab.setLayout(connectivityLayout)
+        connectivityTab = QWidget()
+        connectivityLayout = QHBoxLayout()
+        connectivityTab.setLayout(connectivityLayout)
 
-            ###############################
-            #  Left section for settings  #
-            ###############################
-            self.leftLayout = QVBoxLayout()
+        ###############################
+        #  Left section for settings  #
+        ###############################
+        self.leftLayout = QVBoxLayout()
 
-            # Create button and label for file loading
-            self.fileButton = QPushButton('Load File')
-            self.fileNameLabel = QLabel('No file loaded')
-            self.leftLayout.addWidget(self.fileButton)
-            self.leftLayout.addWidget(self.fileNameLabel)
-            self.fileButton.clicked.connect(self.loadConnectivityFile)
+        # Create button and label for file loading
+        self.fileButton = QPushButton('Load File')
+        self.fileNameLabel = QLabel('No file loaded')
+        self.leftLayout.addWidget(self.fileButton)
+        self.leftLayout.addWidget(self.fileNameLabel)
+        self.fileButton.clicked.connect(self.loadConnectivityFile)
 
-            # Create a checkbox for reshaping the data
-            self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
-            self.leftLayout.addWidget(self.transposeCheckbox)
-            self.transposeCheckbox.setEnabled(False)
+        # Create a checkbox for reshaping the data
+        self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
+        self.leftLayout.addWidget(self.transposeCheckbox)
+        self.transposeCheckbox.setEnabled(False)
 
-            # Connect the checkbox to a method
-            self.transposeCheckbox.stateChanged.connect(self.onTransposeChecked)
+        # Connect the checkbox to a method
+        self.transposeCheckbox.stateChanged.connect(self.onTransposeChecked)
 
-            # Add spacer for an empty line
-            self.leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        # Add spacer for an empty line
+        self.leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
-            # Method label and combobox
-            self.methodLabel = QLabel("Dynamic functional connectivity method:")
-            
-            # Checkboxes for method types
-            self.continuousCheckBox = QCheckBox("Continuous")
-            self.stateBasedCheckBox = QCheckBox("State-based")
-            self.staticCheckBox = QCheckBox("Static")
+        # Method label and combobox
+        self.methodLabel = QLabel("Dynamic functional connectivity method:")
+        
+        # Checkboxes for method types
+        self.continuousCheckBox = QCheckBox("Continuous")
+        self.stateBasedCheckBox = QCheckBox("State-based")
+        self.staticCheckBox = QCheckBox("Static")
 
-            checkboxLayout = QHBoxLayout()
-            checkboxLayout.addWidget(self.continuousCheckBox)
-            checkboxLayout.addWidget(self.stateBasedCheckBox)
-            checkboxLayout.addWidget(self.staticCheckBox)
-            checkboxLayout.setSpacing(10)
-            checkboxLayout.addStretch()
+        checkboxLayout = QHBoxLayout()
+        checkboxLayout.addWidget(self.continuousCheckBox)
+        checkboxLayout.addWidget(self.stateBasedCheckBox)
+        checkboxLayout.addWidget(self.staticCheckBox)
+        checkboxLayout.setSpacing(10)
+        checkboxLayout.addStretch()
 
-            # Connect the stateChanged signal of checkboxes to the slot
-            self.continuousCheckBox.stateChanged.connect(self.updateMethodComboBox)
-            self.stateBasedCheckBox.stateChanged.connect(self.updateMethodComboBox)
-            self.staticCheckBox.stateChanged.connect(self.updateMethodComboBox)
-            
-            self.methodComboBox = QComboBox()
-            self.leftLayout.addWidget(self.methodLabel)
-            self.leftLayout.addLayout(checkboxLayout)
-            self.leftLayout.addWidget(self.methodComboBox)
+        # Connect the stateChanged signal of checkboxes to the slot
+        self.continuousCheckBox.stateChanged.connect(self.updateMethodComboBox)
+        self.stateBasedCheckBox.stateChanged.connect(self.updateMethodComboBox)
+        self.staticCheckBox.stateChanged.connect(self.updateMethodComboBox)
+        
+        self.methodComboBox = QComboBox()
+        self.leftLayout.addWidget(self.methodLabel)
+        self.leftLayout.addLayout(checkboxLayout)
+        self.leftLayout.addWidget(self.methodComboBox)
 
-            # Get all the dFC methods and names
-            self.class_info = {
-                obj.name: name  # Map human-readable name to class name
-                for name, obj in inspect.getmembers(methods)
-                if inspect.isclass(obj) and obj.__module__ == methods.__name__ and name != "ConnectivityMethod"
-            }
+        # Get all the dFC methods and names
+        self.class_info = {
+            obj.name: name  # Map human-readable name to class name
+            for name, obj in inspect.getmembers(methods)
+            if inspect.isclass(obj) and obj.__module__ == methods.__name__ and name != "ConnectivityMethod"
+        }
 
-            # Create a layout for dynamic textboxes
-            self.parameterLayout = QVBoxLayout()
+        # Create a layout for dynamic textboxes
+        self.parameterLayout = QVBoxLayout()
 
-            # Create a container widget for the parameter layout
-            self.parameterContainer = QWidget()  # Use an instance attribute to access it later
-            self.parameterContainer.setLayout(self.parameterLayout)
-            self.parameterContainer.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        # Create a container widget for the parameter layout
+        self.parameterContainer = QWidget()  # Use an instance attribute to access it later
+        self.parameterContainer.setLayout(self.parameterLayout)
+        self.parameterContainer.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
-            # Add the container widget to the left layout directly below the combobox
-            self.leftLayout.addWidget(self.parameterContainer)
-            
-            # Initial population of the combobox, this does the entire initialization
-            self.updateMethodComboBox()
+        # Add the container widget to the left layout directly below the combobox
+        self.leftLayout.addWidget(self.parameterContainer)
+        
+        # Initial population of the combobox, this does the entire initialization
+        self.updateMethodComboBox()
 
-            # Add parameter textbox for time_series
-            self.time_series_textbox = QLineEdit()
-            self.time_series_textbox.setReadOnly(True) # read only as based on the loaded file
+        # Add parameter textbox for time_series
+        self.time_series_textbox = QLineEdit()
+        self.time_series_textbox.setReadOnly(True) # read only as based on the loaded file
 
-            # Set up the atlas combobox
-            self.atlasComboBox = QComboBox()
-            self.atlasComboBox.addItems(["Glasser MMP", "Schaefer Kong 200", "Schaefer Tian 254"])
-            self.atlasComboBox.currentIndexChanged.connect(self.onAtlasSelected)
+        # Set up the atlas combobox
+        self.atlasComboBox = QComboBox()
+        self.atlasComboBox.addItems(["Glasser MMP", "Schaefer Kong 200", "Schaefer Tian 254"])
+        self.atlasComboBox.currentIndexChanged.connect(self.onAtlasSelected)
 
-            # Add a stretch after the parameter layout container
-            self.leftLayout.addStretch()
+        # Add a stretch after the parameter layout container
+        self.leftLayout.addStretch()
 
-            # Calculate connectivity and save button
-            buttonsLayout = QHBoxLayout()
+        # Calculate connectivity and save button
+        buttonsLayout = QHBoxLayout()
 
-            # Calculate connectivity button
-            self.calculateButton = QPushButton('Calculate Connectivity')
-            self.calculateButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-            buttonsLayout.addWidget(self.calculateButton, 2)  # 2/3 of the space
-            self.calculateButton.clicked.connect(self.onCalculateButton)
+        # Calculate connectivity button
+        self.calculateButton = QPushButton('Calculate Connectivity')
+        self.calculateButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        buttonsLayout.addWidget(self.calculateButton, 2)  # 2/3 of the space
+        self.calculateButton.clicked.connect(self.onCalculateButton)
 
-            # Create the "Save" button
-            self.saveButton = QPushButton('Save')
-            self.saveButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-            buttonsLayout.addWidget(self.saveButton, 1)  # 1/3 of the space
-            self.saveButton.clicked.connect(self.saveConnectivityFile)
+        # Create the "Save" button
+        self.saveButton = QPushButton('Save')
+        self.saveButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        buttonsLayout.addWidget(self.saveButton, 1)  # 1/3 of the space
+        self.saveButton.clicked.connect(self.saveConnectivityFile)
 
-            # Add the buttons layout to the left layout
-            self.leftLayout.addLayout(buttonsLayout)
+        # Add the buttons layout to the left layout
+        self.leftLayout.addLayout(buttonsLayout)
 
-            # Memory buttons
-            self.keepInMemoryCheckbox = QCheckBox("Keep in memory")
-            self.keepInMemoryCheckbox.stateChanged.connect(self.onKeepInMemoryChecked)
-            self.clearMemoryButton = QPushButton("Clear Memory")
-            self.clearMemoryButton.clicked.connect(self.onClearMemory)
+        # Memory buttons
+        self.keepInMemoryCheckbox = QCheckBox("Keep in memory")
+        self.keepInMemoryCheckbox.stateChanged.connect(self.onKeepInMemoryChecked)
+        self.clearMemoryButton = QPushButton("Clear Memory")
+        self.clearMemoryButton.clicked.connect(self.onClearMemory)
 
-            buttonLayout = QHBoxLayout()
-            buttonLayout.addWidget(self.keepInMemoryCheckbox)
-            buttonLayout.addWidget(self.clearMemoryButton)
+        buttonLayout = QHBoxLayout()
+        buttonLayout.addWidget(self.keepInMemoryCheckbox)
+        buttonLayout.addWidget(self.clearMemoryButton)
 
-            # Assuming you have a QVBoxLayout named 'leftLayout'
-            self.leftLayout.addLayout(buttonLayout)
+        # Assuming you have a QVBoxLayout named 'leftLayout'
+        self.leftLayout.addLayout(buttonLayout)
 
-            # Calculation info textbox
-            self.calculatingLabel = QLabel('No data calculated yet')
-            self.leftLayout.addWidget(self.calculatingLabel)
-            
-            ################################
-            #  Right section for plotting  #
-            ################################
-            rightLayout = QVBoxLayout()
-            self.tabWidget = QTabWidget()
-            
-            # Tab 1: Imshow plot
-            imshowTab = QWidget()
-            imshowLayout = QVBoxLayout()
-            imshowTab.setLayout(imshowLayout)
+        # Calculation info textbox
+        self.calculatingLabel = QLabel('No data calculated yet')
+        self.leftLayout.addWidget(self.calculatingLabel)
+        
+        ################################
+        #  Right section for plotting  #
+        ################################
+        rightLayout = QVBoxLayout()
+        self.tabWidget = QTabWidget()
+        
+        # Tab 1: Imshow plot
+        imshowTab = QWidget()
+        imshowLayout = QVBoxLayout()
+        imshowTab.setLayout(imshowLayout)
 
-            self.figure = Figure()
-            self.canvas = FigureCanvas(self.figure)
-            self.figure.patch.set_facecolor('#E0E0E0')
-            imshowLayout.addWidget(self.canvas)
-            self.tabWidget.addTab(imshowTab, "Connectivity")
+        self.figure = Figure()
+        self.canvas = FigureCanvas(self.figure)
+        self.figure.patch.set_facecolor('#E0E0E0')
+        imshowLayout.addWidget(self.canvas)
+        self.tabWidget.addTab(imshowTab, "Connectivity")
 
-            # Tab 2: Time series/course plot
-            timeSeriesTab = QWidget()
-            timeSeriesLayout = QVBoxLayout()
-            timeSeriesTab.setLayout(timeSeriesLayout)
+        # Tab 2: Time series/course plot
+        timeSeriesTab = QWidget()
+        timeSeriesLayout = QVBoxLayout()
+        timeSeriesTab.setLayout(timeSeriesLayout)
 
-            self.timeSeriesFigure = Figure()
-            self.timeSeriesCanvas = FigureCanvas(self.timeSeriesFigure)
-            self.timeSeriesFigure.patch.set_facecolor('#E0E0E0')
-            timeSeriesLayout.addWidget(self.timeSeriesCanvas)
-            self.tabWidget.addTab(timeSeriesTab, "Time course")
+        self.timeSeriesFigure = Figure()
+        self.timeSeriesCanvas = FigureCanvas(self.timeSeriesFigure)
+        self.timeSeriesFigure.patch.set_facecolor('#E0E0E0')
+        timeSeriesLayout.addWidget(self.timeSeriesCanvas)
+        self.tabWidget.addTab(timeSeriesTab, "Time course")
 
-            rightLayout.addWidget(self.tabWidget)
+        rightLayout.addWidget(self.tabWidget)
 
-            # Tab 3: Distribution plot
-            distributionTab = QWidget()
-            distributionLayout = QVBoxLayout()
-            distributionTab.setLayout(distributionLayout)
+        # Tab 3: Distribution plot
+        distributionTab = QWidget()
+        distributionLayout = QVBoxLayout()
+        distributionTab.setLayout(distributionLayout)
 
-            self.distributionFigure = Figure()
-            self.distributionCanvas = FigureCanvas(self.distributionFigure)
-            self.distributionFigure.patch.set_facecolor('#E0E0E0')
-            distributionLayout.addWidget(self.distributionCanvas)
-            self.tabWidget.addTab(distributionTab, "Distribution")
+        self.distributionFigure = Figure()
+        self.distributionCanvas = FigureCanvas(self.distributionFigure)
+        self.distributionFigure.patch.set_facecolor('#E0E0E0')
+        distributionLayout.addWidget(self.distributionCanvas)
+        self.tabWidget.addTab(distributionTab, "Distribution")
 
-            # Method for doing things if the tab is changed
-            self.tabWidget.currentChanged.connect(self.onTabChanged)
+        # Method for doing things if the tab is changed
+        self.tabWidget.currentChanged.connect(self.onTabChanged)
 
-            # Slider
-            self.slider = QSlider(Qt.Orientation.Horizontal)
-            self.slider.setMinimum(0)  # Set the minimum value of the slider
-            self.slider.setMaximum(0)  
-            self.slider.valueChanged.connect(self.onSliderValueChanged)
-            rightLayout.addWidget(self.slider)
+        # Slider
+        self.slider = QSlider(Qt.Orientation.Horizontal)
+        self.slider.setMinimum(0)  # Set the minimum value of the slider
+        self.slider.setMaximum(0)  
+        self.slider.valueChanged.connect(self.onSliderValueChanged)
+        rightLayout.addWidget(self.slider)
 
-            # Navigation buttons layout
-            navButtonLayout = QHBoxLayout()
-            navButtonLayout.addStretch(1)  # Spacer to the left of the buttons
+        # Navigation buttons layout
+        navButtonLayout = QHBoxLayout()
+        navButtonLayout.addStretch(1)  # Spacer to the left of the buttons
 
-            # Creating navigation buttons
-            self.backLargeButton = QPushButton("<<")
-            self.backButton = QPushButton("<")
-            self.positionLabel = QLabel('no data available')
-            self.forwardButton = QPushButton(">")
-            self.forwardLargeButton = QPushButton(">>")
+        # Creating navigation buttons
+        self.backLargeButton = QPushButton("<<")
+        self.backButton = QPushButton("<")
+        self.positionLabel = QLabel('no data available')
+        self.forwardButton = QPushButton(">")
+        self.forwardLargeButton = QPushButton(">>")
 
-            # Buttons that interact with the slider
-            navButtonLayout.addWidget(self.backLargeButton)
-            navButtonLayout.addWidget(self.backButton)
-            navButtonLayout.addWidget(self.positionLabel)
-            navButtonLayout.addWidget(self.forwardButton)
-            navButtonLayout.addWidget(self.forwardLargeButton)
+        # Buttons that interact with the slider
+        navButtonLayout.addWidget(self.backLargeButton)
+        navButtonLayout.addWidget(self.backButton)
+        navButtonLayout.addWidget(self.positionLabel)
+        navButtonLayout.addWidget(self.forwardButton)
+        navButtonLayout.addWidget(self.forwardLargeButton)
 
-            self.backLargeButton.clicked.connect(self.onSliderButtonClicked)
-            self.backButton.clicked.connect(self.onSliderButtonClicked)
-            self.forwardButton.clicked.connect(self.onSliderButtonClicked)
-            self.forwardLargeButton.clicked.connect(self.onSliderButtonClicked)
+        self.backLargeButton.clicked.connect(self.onSliderButtonClicked)
+        self.backButton.clicked.connect(self.onSliderButtonClicked)
+        self.forwardButton.clicked.connect(self.onSliderButtonClicked)
+        self.forwardLargeButton.clicked.connect(self.onSliderButtonClicked)
 
-            navButtonLayout.addStretch(1) # Spacer to the right of the buttons
-            rightLayout.addLayout(navButtonLayout)
+        navButtonLayout.addStretch(1) # Spacer to the right of the buttons
+        rightLayout.addLayout(navButtonLayout)
 
-            # UI elements for dFC time series plotting
-            self.rowSelector = QSpinBox()
-            self.rowSelector.setMaximum(0)
-            self.rowSelector.valueChanged.connect(self.plotTimeSeries)
+        # UI elements for dFC time series plotting
+        self.rowSelector = QSpinBox()
+        self.rowSelector.setMaximum(0)
+        self.rowSelector.valueChanged.connect(self.plotTimeSeries)
 
-            self.colSelector = QSpinBox()
-            self.colSelector.setMaximum(0)
-            self.colSelector.valueChanged.connect(self.plotTimeSeries)
+        self.colSelector = QSpinBox()
+        self.colSelector.setMaximum(0)
+        self.colSelector.valueChanged.connect(self.plotTimeSeries)
 
-            self.timeSeriesSelectorLayout = QHBoxLayout()
-            self.timeSeriesSelectorLayout.addWidget(QLabel("Brain region 1 (row):"))
-            self.timeSeriesSelectorLayout.addWidget(self.rowSelector)
-            self.timeSeriesSelectorLayout.addWidget(QLabel("Brain region 2 (column):"))
-            self.timeSeriesSelectorLayout.addWidget(self.colSelector)
+        self.timeSeriesSelectorLayout = QHBoxLayout()
+        self.timeSeriesSelectorLayout.addWidget(QLabel("Brain region 1 (row):"))
+        self.timeSeriesSelectorLayout.addWidget(self.rowSelector)
+        self.timeSeriesSelectorLayout.addWidget(QLabel("Brain region 2 (column):"))
+        self.timeSeriesSelectorLayout.addWidget(self.colSelector)
 
-            timeSeriesLayout.addLayout(self.timeSeriesSelectorLayout)
+        timeSeriesLayout.addLayout(self.timeSeriesSelectorLayout)
 
-            # Set checkboxes to default values
-            self.continuousCheckBox.setChecked(True)
-            self.stateBasedCheckBox.setChecked(True)
-            self.staticCheckBox.setChecked(True)
+        # Set checkboxes to default values
+        self.continuousCheckBox.setChecked(True)
+        self.stateBasedCheckBox.setChecked(True)
+        self.staticCheckBox.setChecked(True)
 
-            #####################
-            #  Combine layouts  #
-            #####################
-            connectivityLayout.addLayout(self.leftLayout, 1)
-            connectivityLayout.addLayout(rightLayout, 2)
-            self.topTabWidget.addTab(connectivityTab, "Connectivity Analysis")
+        #####################
+        #  Combine layouts  #
+        #####################
+        connectivityLayout.addLayout(self.leftLayout, 1)
+        connectivityLayout.addLayout(rightLayout, 2)
+        self.topTabWidget.addTab(connectivityTab, "Connectivity Analysis")
 
     def graphTab(self):
         graphTab = QWidget()
@@ -557,9 +557,9 @@ class App(QMainWindow):
         graphTabLabel = QLabel("Graph analysis options:")
         leftLayout.addWidget(graphTabLabel)
 
-        # Create the combo box for selecting the graph analysis type
-        self.graphAnalysisComboBox = QComboBox()
-        leftLayout.addWidget(self.graphAnalysisComboBox)
+        # Checkboxes for method types
+        self.preprocessingCheckBox = QCheckBox("Preprocessing")
+        self.graphCheckBox = QCheckBox("Graph measures")
 
         # Populate the combo box with options
         self.graphOptions = {
@@ -578,13 +578,30 @@ class App(QMainWindow):
         }
         self.reverse_graphOptions = {v: k for k, v in self.graphOptions.items()}
 
-        for analysis_function, pretty_name in self.graphOptions.items():
-            if hasattr(graph, analysis_function):
-                self.graphAnalysisComboBox.addItem(pretty_name, analysis_function)
+        # Checkboxes for function types
+        checkboxLayout = QHBoxLayout()
+        checkboxLayout.addWidget(self.preprocessingCheckBox)
+        checkboxLayout.addWidget(self.graphCheckBox)
+        checkboxLayout.setSpacing(10)
+        checkboxLayout.addStretch()
+
+        # Init checkbox states
+        self.preprocessingCheckBox.setChecked(True)
+        self.graphCheckBox.setChecked(False)
+        leftLayout.addLayout(checkboxLayout)
+            
+        # Create the combo box for selecting the graph analysis type
+        self.graphAnalysisComboBox = QComboBox()
+        leftLayout.addWidget(self.graphAnalysisComboBox)
 
         self.graphAnalysisComboBox.currentIndexChanged.connect(self.onGraphCombobox)
         self.graphParameterLayout = QVBoxLayout()
-        self.onGraphCombobox() # init parameters
+
+        # Connect the stateChanged signal of checkboxes to the slot
+        self.preprocessingCheckBox.stateChanged.connect(self.updateGraphComboBox)
+        self.graphCheckBox.stateChanged.connect(self.updateGraphComboBox)
+        
+        self.updateGraphComboBox()
 
         # Create a container widget for the parameter layout
         parameterContainer = QWidget()  # Use an instance attribute to access it later
@@ -1088,8 +1105,8 @@ class App(QMainWindow):
 
         class_mappings = {
             'CONT': [
-                'Sliding Window', 'Jackknife Correlation', 'Dynamic Conditional Correlation', 
-                'Flexible Least Squares', 'Spatial Distance', 'Multiplication of Temporal Derivatives', 
+                'Sliding Window', 'Jackknife Correlation', 'Flexible Least Squares', 'Spatial Distance', 
+                'Multiplication of Temporal Derivatives', 'Dynamic Conditional Correlation', 
                 'Phase Synchronization', 'Leading Eigenvector Dynamics', 'Wavelet Coherence', 'Edge-centric Connectivity'
             ],
             'STATE': [
@@ -1230,6 +1247,43 @@ class App(QMainWindow):
     # Graph functios
     def onGraphCombobox(self):
         self.setGraphParameters()
+
+    def updateGraphComboBox(self):
+        def shouldIncludeFunc(funcName):
+            if self.preprocessingCheckBox.isChecked() and funcName.startswith("PREP"):
+                return True
+            if self.graphCheckBox.isChecked() and funcName.startswith("GRAPH"):
+                return True
+            return False
+        
+        # Filter options based on the checkboxes
+        filtered_options = {name: desc for name, desc in self.graphOptions.items() if shouldIncludeFunc(desc)}
+
+        # Disconnect existing connections to avoid multiple calls
+        try:
+            self.graphAnalysisComboBox.currentTextChanged.disconnect(self.onGraphCombobox)
+        except TypeError:
+            pass
+
+        # Update the combobox
+        self.graphAnalysisComboBox.clear()
+
+        for analysis_function, pretty_name in filtered_options.items():
+            if hasattr(graph, analysis_function):
+                self.graphAnalysisComboBox.addItem(pretty_name, analysis_function)
+
+        # Adjust combobox width if necessary
+        font_metrics = QFontMetrics(self.graphAnalysisComboBox.font())
+        longest_text_width = max(font_metrics.boundingRect(desc).width() for desc in filtered_options.values())
+        minimum_width = longest_text_width + 30  # Add some padding
+        self.graphAnalysisComboBox.setMinimumWidth(minimum_width)
+
+        # Reconnect the signal
+        self.graphAnalysisComboBox.currentTextChanged.connect(self.onGraphCombobox)
+
+        # Trigger the onGraphCombobox for the initial setup if there are any options
+        if filtered_options:
+            self.onGraphCombobox()
 
     """
     Parameters
@@ -1479,6 +1533,9 @@ class App(QMainWindow):
         self.clearParameters(self.graphParameterLayout)
         
         # Retrieve the selected function from the graph module
+        if self.graphAnalysisComboBox.currentData() == None:
+            return
+        
         func = getattr(graph, self.graphAnalysisComboBox.currentData())
 
         # Retrieve the signature of the function
@@ -1613,7 +1670,7 @@ class App(QMainWindow):
                             param_value = True
                         elif param_value == "False":
                             param_value = False
-                            
+
                         # Add the parameter name and value to the dictionary
                         params_dict[param_name] = param_value
 
