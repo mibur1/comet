@@ -217,7 +217,7 @@ class App(QMainWindow):
         # Setup the individual tabs
         self.connectivityTab()
         self.graphTab()
-        self.multiverseTab()
+        #self.multiverseTab()
 
         # Set main window layout to the top-level layout
         centralWidget = QWidget()
@@ -603,9 +603,6 @@ class App(QMainWindow):
         
         self.updateGraphComboBox()
 
-
-        
-
         # Create a container widget for the parameter layout
         parameterContainer = QWidget()  # Use an instance attribute to access it later
         parameterContainer.setLayout(self.graphParameterLayout)
@@ -719,8 +716,28 @@ class App(QMainWindow):
         ###############################
         leftLayout = QVBoxLayout()
 
-        tempLabel = QLabel('TODO')
-        leftLayout.addWidget(tempLabel)
+        # Section for defining decision points
+        decisionPointLabel = QLabel('Define Decision Points:')
+        leftLayout.addWidget(decisionPointLabel)
+
+        # Container for dynamic input fields based on decision type
+        self.decisionFieldsContainer = QVBoxLayout()
+        self.decisionTypeDropdown = QComboBox()
+        self.decisionTypeDropdown.addItems(['Select Decision Type', 'strings', 'numbers', 'booleans', 'dfc_measures', 'graph_measures'])
+        self.decisionTypeDropdown.currentIndexChanged.connect(self.updateDecisionFields)  # Implement this method
+        leftLayout.addWidget(self.decisionTypeDropdown)
+        leftLayout.addLayout(self.decisionFieldsContainer)
+
+        addDecisionButton = QPushButton('Add Decision Point')
+        addDecisionButton.clicked.connect(self.addDecisionPoint)  # Implement this method
+        leftLayout.addWidget(addDecisionButton)
+
+        # Section for defining invalid paths
+        invalidPathsLabel = QLabel('Define Invalid Paths:')
+        self.invalidPathsEditor = QTextEdit()
+        leftLayout.addWidget(invalidPathsLabel)
+        leftLayout.addWidget(self.invalidPathsEditor)
+
         leftLayout.addStretch()
 
         ################################
@@ -731,7 +748,7 @@ class App(QMainWindow):
         # Different plotting tabs
         multiverseTabWidget = QTabWidget()
 
-         # Tab 1: Imshow plot
+        # Tab 1: Imshow plot
         imshowTab = QWidget()
         imshowLayout = QVBoxLayout()
         imshowTab.setLayout(imshowLayout)
@@ -740,10 +757,9 @@ class App(QMainWindow):
         self.multiverseCanvas = FigureCanvas(self.multiverseFigure)
         self.multiverseFigure.patch.set_facecolor('#E0E0E0')
         imshowLayout.addWidget(self.multiverseCanvas)
-        multiverseTabWidget.addTab(imshowTab, "TODO")
+        multiverseTabWidget.addTab(imshowTab, "Imshow Plot")
         rightLayout.addWidget(multiverseTabWidget)
 
-       
         # Draw default plot (logo)
         self.plotLogo(self.multiverseFigure)
         self.multiverseCanvas.draw()
@@ -757,7 +773,7 @@ class App(QMainWindow):
         multiverseLayout.addLayout(mainLayout)
 
         self.topTabWidget.addTab(multiverseTab, "Multiverse Analysis")
-    
+
     """
     I/O and data related functions
     """
@@ -1033,6 +1049,65 @@ class App(QMainWindow):
         self.data.graph_file = f"dfC from {self.data.file_name}" #with {self.data.dfc_name} at t={self.currentSliderValue}"
         self.plotGraph()
         self.onGraphCombobox()
+
+    """
+    multiverse functions
+    """
+    def updateDecisionFields(self):
+        # First, clear existing fields in the decisionFieldsContainer layout
+        for i in reversed(range(self.decisionFieldsContainer.count())): 
+            self.decisionFieldsContainer.itemAt(i).widget().deleteLater()
+
+        # Check which decision type is selected and create corresponding input fields
+        decision_type = self.decisionTypeDropdown.currentText()
+        if decision_type == "strings" or decision_type == "numbers":
+            inputField = QLineEdit()
+            self.decisionFieldsContainer.addWidget(QLabel(f"Enter {decision_type}:"))
+            self.decisionFieldsContainer.addWidget(inputField)
+        elif decision_type == "booleans":
+            inputField = QComboBox()
+            inputField.addItems(["True", "False"])
+            self.decisionFieldsContainer.addWidget(QLabel("Select boolean value:"))
+            self.decisionFieldsContainer.addWidget(inputField)
+        elif decision_type in ["dfc_measures", "graph_measures"]:
+            # For complex types like dfc_measures, you might need multiple fields
+            nameField = QLineEdit()
+            connectivityField = QLineEdit()
+            inputDataField = QLineEdit()
+            self.decisionFieldsContainer.addWidget(QLabel("Name:"))
+            self.decisionFieldsContainer.addWidget(nameField)
+            self.decisionFieldsContainer.addWidget(QLabel("Connectivity:"))
+            self.decisionFieldsContainer.addWidget(connectivityField)
+            self.decisionFieldsContainer.addWidget(QLabel("Input Data:"))
+            self.decisionFieldsContainer.addWidget(inputDataField)
+            # Add more fields as needed for args etc.
+        # Add more decision types as needed
+
+    def addDecisionPoint(self):
+        decision_type = self.decisionTypeDropdown.currentText()
+        decision_data = {}
+
+        if decision_type == "strings" or decision_type == "numbers":
+            value = self.decisionFieldsContainer.itemAt(1).widget().text()  # Assuming the second widget is the input field
+            decision_data[decision_type] = [value]  # Wrap value in a list to mimic the structure
+        elif decision_type == "booleans":
+            value = self.decisionFieldsContainer.itemAt(1).widget().currentText()
+            decision_data[decision_type] = [value == "True"]  # Convert to boolean
+        elif decision_type in ["dfc_measures", "graph_measures"]:
+            # Assuming the first, third, and fifth widgets are the input fields
+            name = self.decisionFieldsContainer.itemAt(1).widget().text()
+            connectivity = self.decisionFieldsContainer.itemAt(3).widget().text()
+            input_data = self.decisionFieldsContainer.itemAt(5).widget().text()
+            # Collect more fields as needed and construct the decision data
+            decision_data[decision_type] = [{
+                "name": name,
+                "connectivity": connectivity,
+                "input_data": input_data,
+                # Include "args" and other fields as needed
+            }]
+
+        print("Added decision point:", decision_data)
+        # Here, instead of printing, you would add decision_data to your forking_paths structure
 
     """
     dFC/graph functions
