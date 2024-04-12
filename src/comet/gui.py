@@ -30,6 +30,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout,
 # Comet imports and state-based dFC methods from pydfc
 from . import cifti, methods, graph
 import pydfc
+import bct
 
 class Worker(QObject):
     # Worker class for calculations (runs in a separate thread)
@@ -559,35 +560,58 @@ class App(QMainWindow):
 
         # Checkboxes for method types
         self.preprocessingCheckBox = QCheckBox("Preprocessing")
-        self.graphCheckBox = QCheckBox("Graph measures")
+        self.graphCheckBox = QCheckBox("Comet")
+        self.BCTCheckBox = QCheckBox("BCT")
 
         # Populate the combo box with options
         self.graphOptions = {
-            "handle_negative_weights":  "PREP  Negative weights",
-            "threshold":                "PREP  Threshold",
-            "binarise":                 "PREP  Binarise",
-            "normalise":                "PREP  Normalise",
-            "invert":                   "PREP  Invert",
-            "logtransform":             "PREP  Log-transform",
-            "symmetrise":               "PREP  Symmetrise",
-            "randomise":                "PREP  Randomise",
-            "postproc":                 "PREP  Post-processing",
-            "efficiency":               "GRAPH Efficiency",
-            "small_world_propensity":   "GRAPH Small world propensity",
-            "matching_ind_und":         "GRAPH Matching index",
+            "handle_negative_weights":      "PREP Negative weights",
+            "threshold":                    "PREP Threshold",
+            "binarise":                     "PREP Binarise",
+            "normalise":                    "PREP Normalise",
+            "invert":                       "PREP Invert",
+            "logtransform":                 "PREP Log-transform",
+            "symmetrise":                   "PREP Symmetrise",
+            "randomise":                    "PREP Randomise",
+            "postproc":                     "PREP Post-processing",
+            
+            "efficiency":                   "COMET Efficiency",
+            "small_world_propensity":       "COMET Small world propensity",
+            "matching_ind_und":             "COMET Matching index",
+
+            "backbone_wu":                  "BCT Backbone wu",
+            "betweenness_bin":              "BCT Betweenness bin",
+            "betweenness_wei":              "BCT Betweenness wei",
+            "clustering_coef_bu":           "BCT Clustering coef bu",
+            "clustering_coef_wu":           "BCT Clustering coef wu",
+            "degrees_und":                  "BCT Degrees und",
+            "density_und":                  "BCT Density und",
+            "eigenvector_centrality_und":   "BCT Eigenvector centrality und",
+            "gateway_coef_sign":            "BCT Gateway coef sign",
+            "pagerank_centrality":          "BCT Pagerank centrality",
+            "participation_coef":           "BCT Participation coef",
+            "participation_coef_sign":      "BCT Participation coef sign",
+            "participation_coef_sparse":    "BCT Participation coef sparse",
+            "rich_club_bu":                 "BCT Rich club bu",
+            "rich_club_wu":                 "BCT Rich club wu",
+            "transitivity_bu":              "BCT Transitivity bu",
+            "transitivity_wu":              "BCT Transitivity wu"
         }
+ 
         self.reverse_graphOptions = {v: k for k, v in self.graphOptions.items()}
 
         # Checkboxes for function types
         checkboxLayout = QHBoxLayout()
         checkboxLayout.addWidget(self.preprocessingCheckBox)
         checkboxLayout.addWidget(self.graphCheckBox)
+        checkboxLayout.addWidget(self.BCTCheckBox)
         checkboxLayout.setSpacing(10)
         checkboxLayout.addStretch()
 
         # Init checkbox states
         self.preprocessingCheckBox.setChecked(True)
         self.graphCheckBox.setChecked(False)
+        self.BCTCheckBox.setChecked(False)
         leftLayout.addLayout(checkboxLayout)
             
         # Create the combo box for selecting the graph analysis type
@@ -600,6 +624,7 @@ class App(QMainWindow):
         # Connect the stateChanged signal of checkboxes to the slot
         self.preprocessingCheckBox.stateChanged.connect(self.updateGraphComboBox)
         self.graphCheckBox.stateChanged.connect(self.updateGraphComboBox)
+        self.BCTCheckBox.stateChanged.connect(self.updateGraphComboBox)
         
         self.updateGraphComboBox()
 
@@ -1330,7 +1355,9 @@ class App(QMainWindow):
         def shouldIncludeFunc(funcName):
             if self.preprocessingCheckBox.isChecked() and funcName.startswith("PREP"):
                 return True
-            if self.graphCheckBox.isChecked() and funcName.startswith("GRAPH"):
+            if self.graphCheckBox.isChecked() and funcName.startswith("COMET"):
+                return True
+            if self.BCTCheckBox.isChecked() and funcName.startswith("BCT"):
                 return True
             return False
 
@@ -1347,14 +1374,7 @@ class App(QMainWindow):
         filtered_options = {name: desc for name, desc in self.graphOptions.items() if shouldIncludeFunc(desc)}
 
         for analysis_function, pretty_name in filtered_options.items():
-            if hasattr(graph, analysis_function):
-                self.graphAnalysisComboBox.addItem(pretty_name, analysis_function)
-
-        # Adjust combobox width if necessary
-        font_metrics = QFontMetrics(self.graphAnalysisComboBox.font())
-        longest_text_width = max(font_metrics.boundingRect(desc).width() for desc in filtered_options.values())
-        minimum_width = longest_text_width + 30  # Add some padding
-        self.graphAnalysisComboBox.setMinimumWidth(minimum_width)
+            self.graphAnalysisComboBox.addItem(pretty_name, analysis_function)
 
         # Reconnect the signal
         self.graphAnalysisComboBox.currentTextChanged.connect(self.onGraphCombobox)
@@ -1362,6 +1382,8 @@ class App(QMainWindow):
         # Trigger the onGraphCombobox for the initial setup if there are any options
         if filtered_options:
             self.onGraphCombobox()
+
+        return
 
     """
     Parameters
@@ -1613,9 +1635,12 @@ class App(QMainWindow):
         # Retrieve the selected function from the graph module
         if self.graphAnalysisComboBox.currentData() == None:
             return
-        
-        func = getattr(graph, self.graphAnalysisComboBox.currentData())
 
+        if self.graphOptions[self.graphAnalysisComboBox.currentData()].startswith("BCT"):
+            func = getattr(bct, self.graphAnalysisComboBox.currentData())
+        else:
+            func = getattr(graph, self.graphAnalysisComboBox.currentData())
+        
         # Retrieve the signature of the function
         func_signature = inspect.signature(func)
         type_hints = get_type_hints(func)
@@ -1633,6 +1658,7 @@ class App(QMainWindow):
         # Iterate over parameters in the function signature
         temp_widgets = {}
         for name, param in func_signature.parameters.items():
+
             if name not in ['self', 'copy', 'args', 'kwargs']:  # Skip unwanted parameters
                 # Horizontal layout for each parameter
                 param_layout = QHBoxLayout()
@@ -1915,7 +1941,7 @@ class App(QMainWindow):
         if option.startswith("PREP"):
             self.data.graph_data = func(**graph_params)
             return 'graph_mat', func(**graph_params), option_name, graph_params
-        elif option.startswith("GRAPH"):
+        elif option.startswith("COMET"):
             self.data.graph_out = func(**graph_params)
             return 'graph_res', func(**graph_params), option_name, graph_params
 

@@ -1,6 +1,7 @@
+import bct
 import numpy as np
 from numba import jit
-from typing import Literal, Optional
+from typing import Literal
 
 def handle_negative_weights(W: np.ndarray, 
                             type: Literal["absolute", "discard"] = "absolute", 
@@ -40,8 +41,8 @@ def handle_negative_weights(W: np.ndarray,
 
 def threshold(W: np.ndarray, 
               type: Literal["absolute", "density"] = "absolute", 
-              threshold: Optional[float] = None, 
-              density: Optional[float] = None, 
+              threshold: float = None, 
+              density: float = None, 
               copy: bool = True) -> np.ndarray:
     '''Thresholding of connectivity/adjacency matrix
     
@@ -176,7 +177,7 @@ def invert(W: np.ndarray,
     return W
 
 def logtransform(W: np.ndarray, 
-                 epsilon: Optional[float] = 1e-10, 
+                 epsilon: float = 1e-10, 
                  copy: bool = True) -> np.ndarray:
     '''Log transform of connectivity/adjacency matrix
 
@@ -347,7 +348,7 @@ def clustering_onella(W):
     return C.mean()
 
 def postproc(W: np.ndarray, 
-             diag: Optional[float] = 0, 
+             diag: float = 0, 
              copy: bool = True) -> np.ndarray:
     '''Postprocessing of connectivity/adjacency matrix
     
@@ -760,3 +761,54 @@ def distance_bin(G, inv=False):
         np.fill_diagonal(D, 0)
     
     return D
+
+# BCT wrapper functions with type hinting (GUI needs to know the parameter types)
+def backbone_wu(CIJ:np.ndarray, 
+                avgdeg: float) -> tuple[np.ndarray, np.ndarray]:
+    return bct.backbone_wu(CIJ, avgdeg)
+
+def betweenness(G: np.ndarray,
+                weighted: bool = True) -> np.ndarray:
+    return bct.betweenness_wei(G) if weighted else bct.betweenness_bin(G)
+
+def clustering_coef(G: np.ndarray,
+                       weighted: bool = True) -> np.ndarray:
+    return bct.clustering_coef_wu(G) if weighted else bct.clustering_coef_bu(G)
+
+def degrees_und(CIJ: np.ndarray) -> np.ndarray:
+    return bct.degrees_und(CIJ)
+
+def density_und(CIJ: np.ndarray) -> tuple[float, int, int]:
+    return bct.density_und(CIJ)
+
+def eigenvector_centrality_und(CIJ: np.ndarray) -> np.ndarray:
+    return bct.eigenvector_centrality_und(CIJ)
+
+def gateway_coef_sign(CIJ: np.ndarray,
+                      ci: Literal["louvain", "louvain"] = "louvain",
+                      centrality_type: Literal["degree", "betweenness"] = "degree", ) -> tuple[np.ndarray, np.ndarray]:
+    return bct.gateway_coef_sign(CIJ, ci, centrality_type)
+
+def pagerank_centrality(A: np.ndarray,
+                        d: float,
+                        falff: Literal["byesian prior"] = "byesian prior") -> np.ndarray:
+    return bct.pagerank_centrality(A,d, None)
+
+def participation_coef(CIJ: np.ndarray,
+                       ci: np.ndarray,
+                       sparse: bool = False,
+                       degree: Literal["undirected", "in", "out"] = "undirected") -> np.ndarray:
+    return bct.participation_coef_sparse(CIJ, ci, degree) if sparse else bct.participation_coef(CIJ, ci, degree)
+
+def participation_coef_sign(CIJ: np.ndarray,
+                            ci: Literal["louvain", "louvain"] = "louvain",) -> np.ndarray:
+    return bct.participation_coef_sign(CIJ, ci)
+
+def rich_club(CIJ: np.ndarray,
+                 weighted: bool=True,
+                 klevel: int = None) -> np.ndarray:
+    return bct.rich_club_wu(CIJ, klevel) if weighted else bct.rich_club_bu(CIJ, klevel)
+
+def transitivity(CIJ: np.ndarray,
+                 weighted: bool=True) -> float:
+    return bct.transitivity_wu(CIJ) if weighted else bct.transitivity_bu(CIJ)
