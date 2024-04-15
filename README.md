@@ -19,6 +19,9 @@ pip install comet-toolbox
 ```
 We further recommend using a dedicated [Anaconda](https://www.anaconda.com/download) or [Miniconda](https://conda.io/projects/conda/en/latest/index.html) environment to mitigate the risk of potential version conflicts.
 
+```
+conda create -n "comet" python==3.11
+```
 
 Installation from the source code of this repository is also possible:
 
