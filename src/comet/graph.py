@@ -272,7 +272,7 @@ def randomise(G: np.ndarray,
             edge += 1
     return G_rand
 
-def regular_matrix(G, r):
+def regular_matrix(G: np.ndarray, r: float) -> np.ndarray:
     n = G.shape[0]
     G_upper = np.triu(G)  # Keep only the upper triangular part
     B = np.sort(G_upper.flatten(order="F"))[::-1]  # Flatten and sort including zeros
@@ -299,7 +299,9 @@ def regular_matrix(G, r):
 
     return M
 
-def avg_shortest_path(G, include_diagonal=False, include_infinite=False):
+def avg_shortest_path(G: np.ndarray, 
+                      include_diagonal: bool = False, 
+                      include_infinite: bool = False) -> float:
     '''
     Average shortest path length calculated from the distance matrix.
     '''
@@ -322,7 +324,7 @@ def avg_shortest_path(G, include_diagonal=False, include_infinite=False):
     l = np.mean(Dv)
     return l
 
-def transitivity(A):
+def transitivity(A: np.ndarray) -> np.ndarray:
     '''Transitivity is the ratio of triangles to triplets in the network (classical version of the clustering coefficient).
     Only for undirected matrices (binary/weighted). Adapted from the bctpy implementation: https://github.com/aestrivex/bctpy
     '''
@@ -338,7 +340,7 @@ def transitivity(A):
         cyc3 = np.diag(np.dot(ws, np.dot(ws, ws)))
         return np.sum(cyc3, axis=0) / np.sum(K * (K - 1), axis=0)
 
-def clustering_onella(W):
+def clustering_onella(W: np.ndarray) -> np.ndarray:
     K = np.where(W > 0, 1, 0).sum(axis=1)
     W2 = W / W.max()
     cyc3 = np.diagonal(np.linalg.matrix_power(W2 ** (1/3), 3))
@@ -386,7 +388,8 @@ def efficiency(G: np.ndarray,
                local: bool = False) -> np.ndarray:
     return efficiency_wei(G, local=local) if weighted else efficiency_bin(G, local=local)
 
-def efficiency_wei(Gw, local=False):
+def efficiency_wei(Gw: np.ndarray, 
+                   local: bool=False) -> np.ndarray:
     '''Efficiency for weighted networks
     
     Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy
@@ -457,7 +460,8 @@ def efficiency_wei(Gw, local=False):
 
     return E
 
-def efficiency_bin(G, local=False):    
+def efficiency_bin(G: np.ndarray, 
+                   local: bool=False) -> np.ndarray:    
     '''Efficiency for binary networks
     
     Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy
