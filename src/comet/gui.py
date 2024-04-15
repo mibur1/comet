@@ -576,26 +576,21 @@ class App(QMainWindow):
             "postproc":                     "PREP Post-processing",
             
             "efficiency":                   "COMET Efficiency",
-            "small_world_propensity":       "COMET Small world propensity",
             "matching_ind_und":             "COMET Matching index",
+            "small_world_propensity":       "COMET Small world propensity",
 
-            "backbone_wu":                  "BCT Backbone wu",
-            "betweenness_bin":              "BCT Betweenness bin",
-            "betweenness_wei":              "BCT Betweenness wei",
-            "clustering_coef_bu":           "BCT Clustering coef bu",
-            "clustering_coef_wu":           "BCT Clustering coef wu",
-            "degrees_und":                  "BCT Degrees und",
-            "density_und":                  "BCT Density und",
-            "eigenvector_centrality_und":   "BCT Eigenvector centrality und",
-            "gateway_coef_sign":            "BCT Gateway coef sign",
+            "backbone_wu":                  "BCT Backbone (weighted)",
+            "betweenness":                  "BCT Betweenness centrality",
+            "clustering_coef":              "BCT Clustering coefficient",
+            "degrees_und":                  "BCT Degrees",
+            "density_und":                  "BCT Density",
+            "eigenvector_centrality_und":   "BCT Eigenvector centrality",
+            "gateway_coef_sign":            "BCT Gateway coefficient (sign)",
             "pagerank_centrality":          "BCT Pagerank centrality",
             "participation_coef":           "BCT Participation coef",
-            "participation_coef_sign":      "BCT Participation coef sign",
-            "participation_coef_sparse":    "BCT Participation coef sparse",
-            "rich_club_bu":                 "BCT Rich club bu",
-            "rich_club_wu":                 "BCT Rich club wu",
-            "transitivity_bu":              "BCT Transitivity bu",
-            "transitivity_wu":              "BCT Transitivity wu"
+            "participation_coef_sign":      "BCT Participation coef (sign)",
+            "rich_club":                    "BCT Rich club",
+            "transitivity":                 "BCT Transitivity",
         }
  
         self.reverse_graphOptions = {v: k for k, v in self.graphOptions.items()}
@@ -609,9 +604,9 @@ class App(QMainWindow):
         checkboxLayout.addStretch()
 
         # Init checkbox states
-        self.preprocessingCheckBox.setChecked(True)
+        self.preprocessingCheckBox.setChecked(False)
         self.graphCheckBox.setChecked(False)
-        self.BCTCheckBox.setChecked(False)
+        self.BCTCheckBox.setChecked(True)
         leftLayout.addLayout(checkboxLayout)
             
         # Create the combo box for selecting the graph analysis type
@@ -1636,10 +1631,7 @@ class App(QMainWindow):
         if self.graphAnalysisComboBox.currentData() == None:
             return
 
-        if self.graphOptions[self.graphAnalysisComboBox.currentData()].startswith("BCT"):
-            func = getattr(bct, self.graphAnalysisComboBox.currentData())
-        else:
-            func = getattr(graph, self.graphAnalysisComboBox.currentData())
+        func = getattr(graph, self.graphAnalysisComboBox.currentData())
         
         # Retrieve the signature of the function
         func_signature = inspect.signature(func)
@@ -1663,6 +1655,7 @@ class App(QMainWindow):
                 # Horizontal layout for each parameter
                 param_layout = QHBoxLayout()
                 param_type = type_hints.get(name)
+                param_default = param.default
                     
                 # Create a label for the parameter and set its fixed width
                 param_label = QLabel(f"{name}:")
@@ -1678,26 +1671,25 @@ class App(QMainWindow):
                     # Bool
                     if param_type == bool:
                         param_widget = QComboBox()
-                        param_widget.addItems(["True", "False"])
+                        param_widget.addItems(["False", "True"])
                         param_widget.setCurrentIndex(int(param.default))
-                    # Int or Float                   
-                    elif get_origin(param_type) == Union:
-                        args = get_args(param_type) 
-                        if int in args:
-                            param_widget = QSpinBox()
-                            param_widget.setValue(1)
-                            param_widget.setMaximum(10000)
-                            param_widget.setMinimum(-10000)
-                            param_widget.setSingleStep(1)
-                        elif float in args:
-                            param_widget = QDoubleSpinBox()
-                            if name == "threshold":
-                                param_widget.setValue(0.0)
-                            else:
-                                param_widget.setValue(1.0)
-                            param_widget.setMaximum(1.0)
-                            param_widget.setMinimum(0.0)
-                            param_widget.setSingleStep(0.01)
+                    # Int                  
+                    elif param_type == int:
+                        param_widget = QSpinBox()
+                        param_widget.setValue(1)
+                        param_widget.setMaximum(10000)
+                        param_widget.setMinimum(-10000)
+                        param_widget.setSingleStep(1)
+                    # Float 
+                    elif param_type == float:    
+                        param_widget = QDoubleSpinBox()
+                        if name == "threshold" or name == "avgdeg":
+                            param_widget.setValue(0.0)
+                        else:
+                            param_widget.setValue(1.0)
+                        param_widget.setMaximum(1.0)
+                        param_widget.setMinimum(0.0)
+                        param_widget.setSingleStep(0.01)
                     # String
                     elif get_origin(type_hints.get(name)) is Literal:
                         options = type_hints.get(name).__args__ 
@@ -1939,25 +1931,48 @@ class App(QMainWindow):
 
         # Perform the calculation
         if option.startswith("PREP"):
-            self.data.graph_data = func(**graph_params)
-            return 'graph_mat', func(**graph_params), option_name, graph_params
+            graph_data = func(**graph_params)
+            return 'graph_mat', graph_data, option_name, graph_params
         elif option.startswith("COMET"):
-            self.data.graph_out = func(**graph_params)
-            return 'graph_res', func(**graph_params), option_name, graph_params
+            graph_data = func(**graph_params)
+            return 'graph_comet', graph_data, option_name, graph_params
+        elif option.startswith("BCT"):
+            graph_data = func(**graph_params)
+            return 'graph_bct', graph_data, option_name, graph_params
+        else:
+            print("Error: Graph output not recognized.")
+            return None
 
     def handleGraphResult(self, result):
         output = result[0]
         data   = result[1]
         option = result[2]
         params = result[3]
-        
+
+        print(f"Finished calculation for {option}, output data: {type(data)}.")
+
         # Update self.data.graph_data or self.data.graph_out based on the result
-        if output == 'graph_mat':
+        if output == 'graph_comet':
             self.data.graph_data = data
             self.plotGraph()
+        
         elif output == 'graph_res':
             self.data.graph_out = data
             self.plotMeasure(option)
+        
+        elif output == 'graph_bct':
+            if type(data) == tuple:
+                self.data.graph_out = data[0]
+            elif type(data) == np.ndarray:
+                self.data.graph_out = data
+            else:
+                print("Error: Graph output data format is not recognized.")
+            
+            self.plotMeasure(option)
+        
+        else:
+            self.data.graph_data = None
+            print("Error: Graph output data is not recognized.")
 
         # Output step and options to textbox, remove unused parameters
         if option == 'Threshold':

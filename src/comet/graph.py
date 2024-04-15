@@ -764,8 +764,9 @@ def distance_bin(G, inv=False):
 
 # BCT wrapper functions with type hinting (GUI needs to know the parameter types)
 def backbone_wu(CIJ:np.ndarray, 
-                avgdeg: float) -> tuple[np.ndarray, np.ndarray]:
-    return bct.backbone_wu(CIJ, avgdeg)
+                avgdeg: int,
+                verbose: bool = False) -> tuple[np.ndarray, np.ndarray]:
+    return bct.backbone_wu(CIJ, avgdeg, verbose)
 
 def betweenness(G: np.ndarray,
                 weighted: bool = True) -> np.ndarray:
