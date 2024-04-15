@@ -589,7 +589,6 @@ class App(QMainWindow):
             "pagerank_centrality":          "BCT Pagerank centrality",
             "participation_coef":           "BCT Participation coef",
             "participation_coef_sign":      "BCT Participation coef (sign)",
-            "rich_club":                    "BCT Rich club",
             "transitivity":                 "BCT Transitivity",
         }
  
@@ -1655,8 +1654,17 @@ class App(QMainWindow):
                 # Horizontal layout for each parameter
                 param_layout = QHBoxLayout()
                 param_type = type_hints.get(name)
-                param_default = param.default
-                    
+                param_default = 1 if isinstance(param.default, inspect._empty) else param.default
+                
+                if param_default == None:
+                    if param_type == bool:
+                        param_default = False
+                    elif param_type == int or param_type == float:
+                        param_default = 1
+                    else:
+                        param_default = "empty"
+
+
                 # Create a label for the parameter and set its fixed width
                 param_label = QLabel(f"{name}:")
                 param_label.setFixedWidth(max_label_width + 20)  # Add some padding
@@ -1672,21 +1680,21 @@ class App(QMainWindow):
                     if param_type == bool:
                         param_widget = QComboBox()
                         param_widget.addItems(["False", "True"])
-                        param_widget.setCurrentIndex(int(param.default))
+                        param_widget.setCurrentIndex(int(param_default))
                     # Int                  
                     elif param_type == int:
                         param_widget = QSpinBox()
-                        param_widget.setValue(1)
+                        param_widget.setValue(param_default)
                         param_widget.setMaximum(10000)
                         param_widget.setMinimum(-10000)
-                        param_widget.setSingleStep(1)
+                        param_widget.setSingleStep(param_default)
                     # Float 
                     elif param_type == float:    
                         param_widget = QDoubleSpinBox()
-                        if name == "threshold" or name == "avgdeg":
+                        if name == "threshold":
                             param_widget.setValue(0.0)
                         else:
-                            param_widget.setValue(1.0)
+                            param_widget.setValue(param_default)
                         param_widget.setMaximum(1.0)
                         param_widget.setMinimum(0.0)
                         param_widget.setSingleStep(0.01)
@@ -1929,19 +1937,8 @@ class App(QMainWindow):
         graph_params = {first_param_name: self.data.graph_data}
         graph_params.update({k: v for k, v in params.items() if k != first_param_name})
 
-        # Perform the calculation
-        if option.startswith("PREP"):
-            graph_data = func(**graph_params)
-            return 'graph_mat', graph_data, option_name, graph_params
-        elif option.startswith("COMET"):
-            graph_data = func(**graph_params)
-            return 'graph_comet', graph_data, option_name, graph_params
-        elif option.startswith("BCT"):
-            graph_data = func(**graph_params)
-            return 'graph_bct', graph_data, option_name, graph_params
-        else:
-            print("Error: Graph output not recognized.")
-            return None
+        graph_data = func(**graph_params)
+        return f'graph_{option.split()[0].lower()}', graph_data, option_name, graph_params
 
     def handleGraphResult(self, result):
         output = result[0]
@@ -1952,27 +1949,12 @@ class App(QMainWindow):
         print(f"Finished calculation for {option}, output data: {type(data)}.")
 
         # Update self.data.graph_data or self.data.graph_out based on the result
-        if output == 'graph_comet':
+        if output == 'graph_prep':
             self.data.graph_data = data
             self.plotGraph()
-        
-        elif output == 'graph_res':
+        else:
             self.data.graph_out = data
             self.plotMeasure(option)
-        
-        elif output == 'graph_bct':
-            if type(data) == tuple:
-                self.data.graph_out = data[0]
-            elif type(data) == np.ndarray:
-                self.data.graph_out = data
-            else:
-                print("Error: Graph output data format is not recognized.")
-            
-            self.plotMeasure(option)
-        
-        else:
-            self.data.graph_data = None
-            print("Error: Graph output data is not recognized.")
 
         # Output step and options to textbox, remove unused parameters
         if option == 'Threshold':
@@ -2355,51 +2337,86 @@ class App(QMainWindow):
     def plotMeasure(self, measure):
         self.graphFigure.clear()
         ax = self.graphFigure.add_subplot(111)
-
-        # If we have a tuple, extract the first element
-        if type(self.data.graph_out) is tuple:
-            temp_data = self.data.graph_out
-            self.data.graph_out = temp_data[0]
         
-        # Check the dimensionality of graph_out
-        if type(self.data.graph_out) is np.ndarray or type(self.data.graph_out) is np.float64:
+        # Check type of the graph output data
+        if isinstance(self.data.graph_out, (np.ndarray, np.float64)):
             if self.data.graph_out.ndim == 0:
                 # If graph_out is a single value (0D array)
                 self.graphTextbox.append(f"{measure}: {self.data.graph_out.item()}")
-                self.graphFigure.clear()
             elif self.data.graph_out.ndim == 1:
-                # For a 1D array, plot a vertical lollipop plot and display mean/variance in the textbox
-                ax.stem(self.data.graph_out, linefmt='blue', markerfmt='o', basefmt=" ")
-                ax.set_xlabel("Index")
-                ax.set_ylabel(f"{measure}")
+                # For a 1D array, plot a vertical lollipop plot
+                ax.stem(self.data.graph_out, linefmt="#19232d", markerfmt='o', basefmt=" ")
+                ax.set_xlabel("ROI")
+                ax.set_ylabel(measure)
 
-                # Calculate mean and variance
+                # Calculate mean and variance, and update the textbox
                 mean_val = np.mean(self.data.graph_out)
                 var_val = np.var(self.data.graph_out)
-
-                # Update the textbox with mean and variance
-                self.graphTextbox.append(f"{measure} (mean: {mean_val}, variance: {var_val})")
+                self.graphTextbox.append(f"{measure} (mean: {mean_val:.2f}, variance: {var_val:.2f})")
             
             elif self.data.graph_out.ndim == 2:
                 # For a 2D array, use imshow
                 vmax = np.max(np.abs(self.data.graph_out))
-                self.im = ax.imshow(self.data.graph_out, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+                im = ax.imshow(self.data.graph_out, cmap='coolwarm', vmin=-vmax, vmax=vmax)
 
                 # Create the colorbar
                 divider = make_axes_locatable(ax)
                 cax = divider.append_axes("right", size="5%", pad=0.15)
-                self.graphFigure.colorbar(self.im, cax=cax).ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
-
-                # Set face color and adjust layout
-                self.graphFigure.set_facecolor('#E0E0E0')
-                self.graphTextbox.append(f"{measure}")
-            
+                self.graphFigure.colorbar(im, cax=cax).ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
             else:
-                # Handle unexpected array dimensionality
                 self.graphTextbox.append("3D graph data not currently supported for plotting.")
         
+        elif isinstance(self.data.graph_out, dict):
+            # Setup data for output
+            output_string = f"{measure}: "
+            output_arrays = []
+            for key, value in self.data.graph_out.items():
+                if isinstance(value, (int, float)):
+                    output_string += f"{key}: {value:.2f}, "
+                    self.plotLogo(self.graphFigure)
+
+                elif isinstance(value, np.ndarray):
+                    output_arrays.append((key, value))
+
+            # Print the output string
+            self.graphTextbox.append(output_string.strip(', '))  # Remove the trailing comma
+
+            # Plot the output arrays
+            if output_arrays:
+                self.graphFigure.clear()
+                n_subplots = len(output_arrays)
+
+                for i, (key, value) in enumerate(output_arrays):
+                    ax = self.graphFigure.add_subplot(1, n_subplots, i + 1)
+                    vmax = np.max(np.abs(value))
+                    if value.ndim == 1:
+                        # For a 1D vector, plot a vertical lollipop plot
+                        ax.stem(value, linefmt="#19232d", markerfmt='o', basefmt=" ")
+                        ax.set_xlabel("ROI")
+                        ax.set_ylabel(measure)
+
+                        # Calculate mean and variance, and update the textbox
+                        mean_val = np.mean(value)
+                        var_val = np.var(value)
+                        self.graphTextbox.append(f"{measure} (mean: {mean_val:.2f}, variance: {var_val:.2f})")
+                        
+                    elif value.ndim == 2:
+                        # For a 2D array, use imshow
+                        im = ax.imshow(value, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+                        ax.set_title(key)
+    
+                        # Create the colorbar
+                        divider = make_axes_locatable(ax)
+                        cax = divider.append_axes("right", size="5%", pad=0.15)
+                        cbar = self.graphFigure.colorbar(im, cax=cax)
+                        cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
+  
+                    else:
+                        self.graphTextbox.append("Graph output data is not in expected format.")
+
+                    ax.set_title(key)
+        
         else:
-            # Handle unexpected array dimensionality
             self.graphTextbox.append("Graph output data is not in expected format.")
 
         # Draw the plot
