@@ -655,7 +655,7 @@ def matching_ind_und(G: np.ndarray) -> np.ndarray:
     return M
 
 @jit(nopython=True)
-def distance_wei(G, inv=False):
+def distance_wei(G: np.ndarray, inv: bool = False) -> np.ndarray:
     '''(Inverse) distance matrix for weighted networks
     
     Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy
@@ -716,7 +716,7 @@ def distance_wei(G, inv=False):
     return D
 
 @jit(nopython=True)
-def distance_bin(G, inv=False):
+def distance_bin(G: np.ndarray, inv: bool = False) -> np.ndarray:
     '''(Inverse) distance matrix for binary networks
     
     Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy
@@ -763,53 +763,84 @@ def distance_bin(G, inv=False):
     return D
 
 # BCT wrapper functions with type hinting (GUI needs to know the parameter types)
-def backbone_wu(CIJ:np.ndarray, 
-                avgdeg: int,
+def backbone_wu(CIJ: np.ndarray, 
+                avgdeg: int = 0,
                 verbose: bool = False) -> tuple[np.ndarray, np.ndarray]:
-    return bct.backbone_wu(CIJ, avgdeg, verbose)
+    res = bct.backbone_wu(CIJ, avgdeg, verbose)
+    res_dict = {"Connection matrix of the minimum spanning tree of CIJ": res[0], 
+               f"Connection matrix of the minimum spanning tree plus strongest connections up to some average degree <avgdeg>": res[1]}
+    return res_dict
 
 def betweenness(G: np.ndarray,
                 weighted: bool = True) -> np.ndarray:
-    return bct.betweenness_wei(G) if weighted else bct.betweenness_bin(G)
+    res = bct.betweenness_wei(G) if weighted else bct.betweenness_bin(G)
+    res_dict = {"Nodal betweenness centrality (weighted)": res} if weighted else {"Nodal betweenness centrality (binary)": res}
+    return res_dict
 
 def clustering_coef(G: np.ndarray,
                        weighted: bool = True) -> np.ndarray:
-    return bct.clustering_coef_wu(G) if weighted else bct.clustering_coef_bu(G)
+    res = bct.clustering_coef_wu(G) if weighted else bct.clustering_coef_bu(G)
+    res_dict = {"Nodal clustering coefficient (weighted)": res} if weighted else {"Nodal clustering coefficient (binary)": res}
+    return res_dict
 
 def degrees_und(CIJ: np.ndarray) -> np.ndarray:
-    return bct.degrees_und(CIJ)
+    res = bct.degrees_und(CIJ)
+    res_dict = {"Nodal degree": res}
+    return res_dict
 
 def density_und(CIJ: np.ndarray) -> tuple[float, int, int]:
-    return bct.density_und(CIJ)
+    res = bct.density_und(CIJ)
+    res_dict = {"Density": res[0], "Number of vertices": res[1], "Number of edges": res[2]}
+    return res_dict
 
 def eigenvector_centrality_und(CIJ: np.ndarray) -> np.ndarray:
-    return bct.eigenvector_centrality_und(CIJ)
+    res = bct.eigenvector_centrality_und(CIJ)
+    res_dict = {"Nodal eigenvector centrality": res}
+    return res_dict
 
 def gateway_coef_sign(CIJ: np.ndarray,
-                      ci: Literal["louvain", "louvain"] = "louvain",
+                      ci: Literal["louvain"] = "louvain",
                       centrality_type: Literal["degree", "betweenness"] = "degree", ) -> tuple[np.ndarray, np.ndarray]:
-    return bct.gateway_coef_sign(CIJ, ci, centrality_type)
+    ci, q = bct.community_louvain(CIJ)
+    res = bct.gateway_coef_sign(CIJ, ci, centrality_type)
+    res_dict = {"Gateway coefficient for positive weights": res[0], "Gateway coefficient for negative weights": res[1]}
+    return res_dict
 
 def pagerank_centrality(A: np.ndarray,
-                        d: float,
+                        d: float = 0.85,
                         falff: Literal["byesian prior"] = "byesian prior") -> np.ndarray:
-    return bct.pagerank_centrality(A,d, None)
+    res = bct.pagerank_centrality(A, d, None)
+    res_dict = {"Nodal pageranking vectors": res}
+    return res_dict
 
 def participation_coef(CIJ: np.ndarray,
-                       ci: np.ndarray,
+                       ci: Literal["louvain"] = "louvain",
                        sparse: bool = False,
-                       degree: Literal["undirected", "in", "out"] = "undirected") -> np.ndarray:
-    return bct.participation_coef_sparse(CIJ, ci, degree) if sparse else bct.participation_coef(CIJ, ci, degree)
+                       degree: Literal["undirected"] = "undirected") -> np.ndarray:
+    ci, q = bct.community_louvain(CIJ)
+    res = bct.participation_coef_sparse(CIJ, ci, degree) if sparse else bct.participation_coef(CIJ, ci, degree)
+    res_dict = {"Nodal participation coefficient (sparse)": res} if sparse else {"Nodal participation coefficient": res}
+    return res_dict
 
 def participation_coef_sign(CIJ: np.ndarray,
-                            ci: Literal["louvain", "louvain"] = "louvain",) -> np.ndarray:
-    return bct.participation_coef_sign(CIJ, ci)
+                            ci: Literal["louvain"] = "louvain",) -> tuple[np.ndarray, np.ndarray]:
+    ci, q = bct.community_louvain(CIJ)
+    res = bct.participation_coef_sign(CIJ, ci)
+    res_dict = {"Nodal participation coefficient from positive weights": res[0], "Nodal participation coefficient from negative weights": res[1]}
+    return res_dict
 
+"""
 def rich_club(CIJ: np.ndarray,
                  weighted: bool=True,
                  klevel: int = None) -> np.ndarray:
-    return bct.rich_club_wu(CIJ, klevel) if weighted else bct.rich_club_bu(CIJ, klevel)
+    res = bct.rich_club_wu(CIJ, klevel) if weighted else bct.rich_club_bu(CIJ, klevel)
+    print("rich club", type(res))
+    print(res)
+    res_dict = {"Rich club coefficient vectors (weighted)": res} if weighted else {"Rich club coefficient vectors (binary)": res}
+    return res_dict"""
 
 def transitivity(CIJ: np.ndarray,
                  weighted: bool=True) -> float:
-    return bct.transitivity_wu(CIJ) if weighted else bct.transitivity_bu(CIJ)
+    res = bct.transitivity_wu(CIJ) if weighted else bct.transitivity_bu(CIJ)
+    res_dict = {"Global transitivity (weighted)": res} if weighted else {"Global transitivity (binary)": res}
+    return res_dict
