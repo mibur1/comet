@@ -12,23 +12,24 @@
 
 ### Installation
 
-Installation is possible through the Python Package Index (PyPI) with the pip or pip3 command, depending on your system:
-
-```
-pip install comet-toolbox
-```
-We further recommend using a dedicated [Anaconda](https://www.anaconda.com/download) or [Miniconda](https://conda.io/projects/conda/en/latest/index.html) environment to mitigate the risk of potential version conflicts.
+It is recommended to use a dedicated [Anaconda](https://www.anaconda.com/download) or [Miniconda](https://conda.io/projects/conda/en/latest/index.html) environment to mitigate the risk of potential version conflicts:
 
 ```
 conda create -n comet python==3.11
+conda activate comet
+```
+
+Installation is then possible through the Python Package Index (PyPI) with the pip or pip3 command, depending on your system:
+
+```
+pip install comet-toolbox
 ```
 
 Installation from the source code of this repository is also possible:
 
 1. Download/clone the repository
 2. Open a terminal in the folder which contains the pyproject.toml file
-3. Install the package via pip (or pip3, depending on your environment)
-4. If you intend to implement your own modification, installing in editable mode (-e) is a helpful approach
+3. Install the package via pip (installing in editable mode (-e) is a helpful approach if you intend to modify the source code):
 
 ```
 pip install -e .
@@ -41,9 +42,9 @@ pip install -e .
 The toolbox is designed in a modular way, which means you can use the individual parts in combination with others, but also by themselves.
 
 * continuous and static dFC measures require 2D time series data (n_timepoints x n_regions) as input
-* state-based dFC methods require a TIME_SERIES object (as used in the pydfc package) containing data for multiple subjects as input
+* state-based dFC methods require a TIME_SERIES object (as used in the [pydfc toolbox](https://github.com/neurodatascience/dFC)) containing data for multiple subjects as input
 * Graph measures need 2D adjacency/connectivity matrices as input
-* Multiverse analysis needs decision/option pairs of any kind to create forking paths in the analysis
+* Multiverse analysis needs decision/option pairs of any kind to create forking paths in the analysis as well as a template script for the analysis
 
 
 **GUI** 
