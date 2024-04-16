@@ -25,12 +25,11 @@ from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject
 from PyQt6.QtGui import QEnterEvent, QFontMetrics
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
     QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, \
-    QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit
+    QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox
 
 # Comet imports and state-based dFC methods from pydfc
 from . import cifti, methods, graph
 import pydfc
-import bct
 
 class Worker(QObject):
     # Worker class for calculations (runs in a separate thread)
@@ -68,27 +67,31 @@ class InfoButton(QPushButton):
 @dataclass
 class Data:
     # File variables
-    file_name:    str        = field(default=None)         # data file name
-    file_data:    np.ndarray = field(default=None)         # input time series data  
+    file_name:     str        = field(default=None)         # data file name
+    file_data:     np.ndarray = field(default=None)         # input time series data  
 
     # DFC variables
-    dfc_instance: Any        = field(default=None)         # instance of the dFC class
-    dfc_name:     str        = field(default=None)         # method class name
-    dfc_params:   Dict       = field(default_factory=dict) # input parameters
-    dfc_data:     np.ndarray = field(default=None)         # dfc data
-    dfc_states:   Dict       = field(default_factory=dict) # dfc states
-    dfc_state_tc: np.ndarray = field(default=None)         # dfc state time course
-    dfc_edge_ts:  np.ndarray = field(default=None)         # dfc edge time series
+    dfc_instance:  Any        = field(default=None)         # instance of the dFC class
+    dfc_name:      str        = field(default=None)         # method class name
+    dfc_params:    Dict       = field(default_factory=dict) # input parameters
+    dfc_data:      np.ndarray = field(default=None)         # dfc data
+    dfc_states:    Dict       = field(default_factory=dict) # dfc states
+    dfc_state_tc:  np.ndarray = field(default=None)         # dfc state time course
+    dfc_edge_ts:   np.ndarray = field(default=None)         # dfc edge time series
 
     # Graph variables
-    graph_file:   str        = field(default=None)         # graph file name
-    graph_raw:    np.ndarray = field(default=None)         # raw input data for graph (dFC matrix)
-    graph_data:   np.ndarray = field(default=None)         # working data for graph (while processing)
-    graph_out:    Any = field(default=None)                # output graph measure data
+    graph_file:    str        = field(default=None)         # graph file name
+    graph_raw:     np.ndarray = field(default=None)         # raw input data for graph (dFC matrix)
+    graph_data:    np.ndarray = field(default=None)         # working data for graph (while processing)
+    graph_out:     Any = field(default=None)                # output graph measure data
+
+    # Multiverse variables
+    forking_paths: Dict      = field(default_factory=dict) # Decision points for multiverse analysis
+    invalid_paths: list      = field(default_factory=list) # Invalid paths for multiverse analysis
 
     # Misc variables
-    cifti_data:   np.ndarray = field(default=None)         # input cifti data (for .dtseries files)
-    roi_names:    np.ndarray = field(default=None)         # input roi data (for .tsv files)
+    cifti_data:    np.ndarray = field(default=None)         # input cifti data (for .dtseries files)
+    roi_names:     np.ndarray = field(default=None)         # input roi data (for .tsv files)
 
     def clear_dfc_data(self):
         self.dfc_params   = {}
@@ -218,7 +221,7 @@ class App(QMainWindow):
         # Setup the individual tabs
         self.connectivityTab()
         self.graphTab()
-        #self.multiverseTab()
+        self.multiverseTab()
 
         # Set main window layout to the top-level layout
         centralWidget = QWidget()
@@ -310,7 +313,7 @@ class App(QMainWindow):
 
         # Create button and label for file loading
         self.fileButton = QPushButton('Load File')
-        self.fileNameLabel = QLabel('No file loaded')
+        self.fileNameLabel = QLabel('No file loaded yet')
         self.leftLayout.addWidget(self.fileButton)
         self.leftLayout.addWidget(self.fileNameLabel)
         self.fileButton.clicked.connect(self.loadConnectivityFile)
@@ -548,7 +551,7 @@ class App(QMainWindow):
         buttonsLayout.addWidget(self.takeCurrentButton, 1)
         self.takeCurrentButton.clicked.connect(self.takeCurrentData)
         
-        self.graphFileNameLabel = QLabel('No file loaded')
+        self.graphFileNameLabel = QLabel('No file loaded yet')
 
         leftLayout.addLayout(buttonsLayout)
         leftLayout.addWidget(self.graphFileNameLabel)
@@ -735,63 +738,219 @@ class App(QMainWindow):
         ###############################
         leftLayout = QVBoxLayout()
 
-        # Section for defining decision points
-        decisionPointLabel = QLabel('Define Decision Points:')
-        leftLayout.addWidget(decisionPointLabel)
+        loadLabel = QLabel('Create multiverse analysis template script:')
+        leftLayout.addWidget(loadLabel)
 
-        # Container for dynamic input fields based on decision type
-        self.decisionFieldsContainer = QVBoxLayout()
-        self.decisionTypeDropdown = QComboBox()
-        self.decisionTypeDropdown.addItems(['Select Decision Type', 'strings', 'numbers', 'booleans', 'dfc_measures', 'graph_measures'])
-        self.decisionTypeDropdown.currentIndexChanged.connect(self.updateDecisionFields)  # Implement this method
-        leftLayout.addWidget(self.decisionTypeDropdown)
-        leftLayout.addLayout(self.decisionFieldsContainer)
+        # Adding forking paths
+        self.decisionContainer = QVBoxLayout() # Container for dynamic input fields
+        leftLayout.addLayout(self.decisionContainer)
+        self.addDecision()  # Initialize with one set of inputs
 
-        addDecisionButton = QPushButton('Add Decision Point')
-        addDecisionButton.clicked.connect(self.addDecisionPoint)  # Implement this method
-        leftLayout.addWidget(addDecisionButton)
-
-        # Section for defining invalid paths
-        invalidPathsLabel = QLabel('Define Invalid Paths:')
-        self.invalidPathsEditor = QTextEdit()
-        leftLayout.addWidget(invalidPathsLabel)
-        leftLayout.addWidget(self.invalidPathsEditor)
+        # Horizontal layout for the "add new" button
+        buttonLayout = QHBoxLayout()
+        addDecisionButton = QPushButton("\u2795")
+        addDecisionButton.clicked.connect(self.addDecision)
+        buttonLayout.addWidget(addDecisionButton, 5)
+        buttonLayout.addStretch(17)
+        leftLayout.addLayout(buttonLayout)
 
         leftLayout.addStretch()
+
+        # Perform multiverse analysis
+        loadLabel = QLabel('Perform multiverse analysis:')
+        leftLayout.addWidget(loadLabel)
+
+        loadLayout = QHBoxLayout()
+        loadScriptButton = QPushButton('Load Script')
+        loadLayout.addWidget(loadScriptButton, 1)
+
+        # Textbox to display the loaded script path
+        self.loadedScriptDisplay = QLineEdit()
+        self.loadedScriptDisplay.setPlaceholderText("No script loaded yet")
+        self.loadedScriptDisplay.setReadOnly(True)
+        loadLayout.addWidget(self.loadedScriptDisplay, 3)
+
+        # Add the horizontal layout to the main left layout
+        leftLayout.addLayout(loadLayout)
+
+        # Connect the button to the method that handles file loading
+        loadScriptButton.clicked.connect(self.loadScript)
+
+        executeButton = QPushButton('Run multiverse analysis')
+        leftLayout.addWidget(executeButton)
+        executeButton.clicked.connect(self.executeScript)
 
         ################################
         #  Right section for plotting  #
         ################################
         rightLayout = QVBoxLayout()
-        
-        # Different plotting tabs
+
+        # Creating a tab widget for different purposes
         multiverseTabWidget = QTabWidget()
 
-        # Tab 1: Imshow plot
-        imshowTab = QWidget()
-        imshowLayout = QVBoxLayout()
-        imshowTab.setLayout(imshowLayout)
+        # Tab 1: Template textbox for script display
+        templateTab = QWidget()
+        templateLayout = QVBoxLayout()
+        templateTab.setLayout(templateLayout)
 
+        self.scriptDisplay = QTextEdit()
+        self.scriptDisplay.setReadOnly(True)
+        templateLayout.addWidget(self.scriptDisplay)
+
+        # Create and add the save button
+        saveScriptButton = QPushButton('Save template script')
+        saveScriptButton.clicked.connect(self.saveScript)
+        templateLayout.addWidget(saveScriptButton)
+
+        # Add the complete tab to the multiverseTabWidget
+        multiverseTabWidget.addTab(templateTab, "Template")
+        self.generateScript(init_template=True) # Generate the template script
+
+        # Tab 2: Plot for visualizations
+        plotTab = QWidget()
+        plotTab.setLayout(QVBoxLayout())
         self.multiverseFigure = Figure()
         self.multiverseCanvas = FigureCanvas(self.multiverseFigure)
         self.multiverseFigure.patch.set_facecolor('#E0E0E0')
-        imshowLayout.addWidget(self.multiverseCanvas)
-        multiverseTabWidget.addTab(imshowTab, "Imshow Plot")
-        rightLayout.addWidget(multiverseTabWidget)
+        plotTab.layout().addWidget(self.multiverseCanvas)
+        multiverseTabWidget.addTab(plotTab, "Multiverse Plot")
 
-        # Draw default plot (logo)
+        # Draw default plot (logo) on the canvas
         self.plotLogo(self.multiverseFigure)
         self.multiverseCanvas.draw()
+
+        # Add the tab widget to the right layout
+        rightLayout.addWidget(multiverseTabWidget)
 
         #####################
         #  Combine layouts  #
         #####################
         mainLayout = QHBoxLayout()
         mainLayout.addLayout(leftLayout, 1)
-        mainLayout.addLayout(rightLayout, 2)
+        mainLayout.addLayout(rightLayout, 1)
         multiverseLayout.addLayout(mainLayout)
 
         self.topTabWidget.addTab(multiverseTab, "Multiverse Analysis")
+
+    """
+    Multiverse functions
+    """
+    def addDecision(self):
+        decisionLayout = QHBoxLayout()
+
+        # Decision name input field
+        decisionNameInput = QLineEdit()
+        decisionNameInput.setPlaceholderText("Decision name")
+
+        # Decision options input field
+        decisionOptionsInput = QLineEdit()
+        decisionOptionsInput.setPlaceholderText("Options (comma-separated)")
+
+        # Group buttons in their own horizontal layout
+        buttonLayout = QHBoxLayout()
+        includeButton = QPushButton(' \u2714 ')
+        includeButton.clicked.connect(lambda: self.includeDecision(decisionNameInput, decisionOptionsInput))
+        removeButton = QPushButton(' \u2718 ')
+        removeButton.clicked.connect(lambda: self.removeDecision(decisionLayout))
+
+        # Add buttons to the button layout
+        buttonLayout.addWidget(includeButton, 1)
+        buttonLayout.addWidget(removeButton, 1)
+
+        # Add widgets to the main decision layout
+        decisionLayout.addWidget(decisionNameInput, 5)
+        decisionLayout.addWidget(decisionOptionsInput, 15)
+        decisionLayout.addLayout(buttonLayout, 2)
+
+        self.decisionContainer.addLayout(decisionLayout)
+
+    def includeDecision(self, nameInput, optionsInput):
+        name = nameInput.text().strip()
+        options = [option.strip() for option in optionsInput.text().split(',') if option.strip()]
+        
+        # Check if inputs are valid (e.g., name is not empty)
+        if name and options:
+            # Update the forking paths dictionary (assume it's an attribute of the class)
+            self.data.forking_paths[name] = options
+            self.generateScript()  # Call generate script to update the display
+        else:
+            QMessageBox.warning(self, "Input Error", "Please ensure a name and at least one option are provided.")
+
+    def removeDecision(self, layout):
+        for i in reversed(range(layout.count())): 
+            widget = layout.itemAt(i).widget()
+            if widget:
+                widget.deleteLater()
+        layout.deleteLater()
+
+    def generateScript(self, init_template=False):
+        # Initial placeholder template
+        if init_template:
+            script_content =  f"\"\"\"\n"
+            script_content += f"Running Multiverse analysis\n\n"
+            script_content += f"Multiverse analysis requires a Python script to be created by the user.\n"
+            script_content += f"An initial template for this can be created through the GUI, with forking paths being stored in a dict and later used through double curly braces in the template function.\n\n"
+            script_content += f"This example shows how one would create and run a multiverse analysis which will generate 3 Python scripts (universes) printing the numbers 1, 2, and 3, respectively.\n"
+            script_content += f"\"\"\"\n\n"
+
+            script_content += f"from comet.multiverse import Multiverse\n\n"
+            script_content += f"forking_paths = {{\n"
+            script_content += f"    \"numbers\": [1, 2, 3]\n"
+            script_content += f"}}\n\n"
+            script_content += f"def analysis_template():\n"
+            script_content += f"    print({{{{numbers}}}})\n\n"
+            script_content += f"multiverse = Multiverse(name=\"multiverse_example\")\n"
+            script_content += f"multiverse.create(analysis_template, forking_paths)\n" 
+            script_content += f"multiverse.summary()\n"
+            script_content += f"#multiverse.run()\n"
+        
+        # Live template, which updates while forking paths are added
+        else:
+            script_content =  f"from comet.multiverse import Multiverse\n\n"
+            script_content += f"forking_paths = {{\n"
+
+            for name, options in self.data.forking_paths.items():
+                script_content += f'    "{name}": {options},\n'
+
+            script_content += f"}}\n\n"
+            script_content += f"def analysis_template():\n"
+            script_content += f"    # The following forking paths are available for multiverse analysis:\n"
+        
+            for name, options in self.data.forking_paths.items():
+                script_content += f"    {{{{{name}}}}}\n\n" # placeholder variables are in double curly braces {{variable}}
+
+            script_content += f"multiverse = Multiverse(name=\"example_multiverse\")\n"
+            script_content += f"multiverse.create(analysis_template, forking_paths)\n"
+            script_content += f"multiverse.summary()\n"
+            script_content += f"#multiverse.run()\n"
+
+        self.scriptDisplay.setText(script_content)
+
+    def loadScript(self):
+        fileName, _ = QFileDialog.getOpenFileName(self, "Load Script", "", "Python Files (*.py);;All Files (*)")
+        if fileName:
+            self.loadedScriptDisplay.setText(f"Loaded: {fileName}")
+            self.loadedScriptPath = fileName
+
+    def saveScript(self):
+        script_text = self.scriptDisplay.toPlainText()
+        fileName, _ = QFileDialog.getSaveFileName(self, "Save Script", "", "Python Files (*.py);;All Files (*)")
+
+        if fileName:
+            # Ensure the file has the correct extension
+            if not fileName.endswith('.py'):
+                fileName += '.py'
+            
+            with open(fileName, 'w') as file:
+                file.write(script_text)
+
+    def executeScript(self):
+        if hasattr(self, 'loadedScriptPath') and self.loadedScriptPath:
+            with open(self.loadedScriptPath, "r") as file:
+                exec(file.read(), {})
+            QMessageBox.information(self, "Execution", "Script executed successfully.")
+        else:
+            QMessageBox.warning(self, "Load Script", "No script file is loaded.")
 
     """
     I/O and data related functions
@@ -913,7 +1072,7 @@ class App(QMainWindow):
 
     def saveConnectivityFile(self):
         if self.data.dfc_data is None:
-            print("No dFC data available to save.")
+            QMessageBox.warning(self, "Output Error", "No dFC data available to save.")
             return
 
         # Open a file dialog to specify where to save the file
@@ -955,8 +1114,8 @@ class App(QMainWindow):
                 savemat(filePath, data_dict)
 
             except Exception as e:
-                print(f"Error saving data: {e}")
-            
+                QMessageBox.warning(self, "Output Error", f"Error saving data: {e}")
+
         return
 
     def onTransposeChecked(self, state):
@@ -1009,7 +1168,7 @@ class App(QMainWindow):
 
     def saveGraphFile(self):
         if self.data.graph_data is None:
-            print("No graph data available to save.")
+            QMessageBox.warning(self, "Output Error", "No graph data available to save.")
             return
 
         # Open a file dialog to specify where to save the file
@@ -1051,13 +1210,13 @@ class App(QMainWindow):
                 savemat(filePath, data_dict)
             
             except Exception as e:
-                print(f"Error saving data: {e}")
+                QMessageBox.warning(self, "Output Error", f"Error saving data: {e}")
             
             return
 
     def takeCurrentData(self):
         if self.data.dfc_data is None:
-            print("No current dFC data available.")
+            QMessageBox.warning(self, "Output Error", "No current dFC data available.")
             return
         
         self.data.graph_data = self.data.dfc_data[:,:,self.currentSliderValue]
@@ -1068,65 +1227,6 @@ class App(QMainWindow):
         self.data.graph_file = f"dfC from {self.data.file_name}" #with {self.data.dfc_name} at t={self.currentSliderValue}"
         self.plotGraph()
         self.onGraphCombobox()
-
-    """
-    multiverse functions
-    """
-    def updateDecisionFields(self):
-        # First, clear existing fields in the decisionFieldsContainer layout
-        for i in reversed(range(self.decisionFieldsContainer.count())): 
-            self.decisionFieldsContainer.itemAt(i).widget().deleteLater()
-
-        # Check which decision type is selected and create corresponding input fields
-        decision_type = self.decisionTypeDropdown.currentText()
-        if decision_type == "strings" or decision_type == "numbers":
-            inputField = QLineEdit()
-            self.decisionFieldsContainer.addWidget(QLabel(f"Enter {decision_type}:"))
-            self.decisionFieldsContainer.addWidget(inputField)
-        elif decision_type == "booleans":
-            inputField = QComboBox()
-            inputField.addItems(["True", "False"])
-            self.decisionFieldsContainer.addWidget(QLabel("Select boolean value:"))
-            self.decisionFieldsContainer.addWidget(inputField)
-        elif decision_type in ["dfc_measures", "graph_measures"]:
-            # For complex types like dfc_measures, you might need multiple fields
-            nameField = QLineEdit()
-            connectivityField = QLineEdit()
-            inputDataField = QLineEdit()
-            self.decisionFieldsContainer.addWidget(QLabel("Name:"))
-            self.decisionFieldsContainer.addWidget(nameField)
-            self.decisionFieldsContainer.addWidget(QLabel("Connectivity:"))
-            self.decisionFieldsContainer.addWidget(connectivityField)
-            self.decisionFieldsContainer.addWidget(QLabel("Input Data:"))
-            self.decisionFieldsContainer.addWidget(inputDataField)
-            # Add more fields as needed for args etc.
-        # Add more decision types as needed
-
-    def addDecisionPoint(self):
-        decision_type = self.decisionTypeDropdown.currentText()
-        decision_data = {}
-
-        if decision_type == "strings" or decision_type == "numbers":
-            value = self.decisionFieldsContainer.itemAt(1).widget().text()  # Assuming the second widget is the input field
-            decision_data[decision_type] = [value]  # Wrap value in a list to mimic the structure
-        elif decision_type == "booleans":
-            value = self.decisionFieldsContainer.itemAt(1).widget().currentText()
-            decision_data[decision_type] = [value == "True"]  # Convert to boolean
-        elif decision_type in ["dfc_measures", "graph_measures"]:
-            # Assuming the first, third, and fifth widgets are the input fields
-            name = self.decisionFieldsContainer.itemAt(1).widget().text()
-            connectivity = self.decisionFieldsContainer.itemAt(3).widget().text()
-            input_data = self.decisionFieldsContainer.itemAt(5).widget().text()
-            # Collect more fields as needed and construct the decision data
-            decision_data[decision_type] = [{
-                "name": name,
-                "connectivity": connectivity,
-                "input_data": input_data,
-                # Include "args" and other fields as needed
-            }]
-
-        print("Added decision point:", decision_data)
-        # Here, instead of printing, you would add decision_data to your forking_paths structure
 
     """
     dFC/graph functions
@@ -1402,7 +1502,9 @@ class App(QMainWindow):
         time_series_label.setMinimumSize(time_series_label.sizeHint())
         labels.append(time_series_label)
         
-        self.time_series_textbox.setText(self.data.file_name)
+        self.time_series_textbox.setPlaceholderText("No data loaded yet")
+        if self.data.file_name:
+            self.time_series_textbox.setText(self.data.file_name)
         self.time_series_textbox.setEnabled(True)
 
         # Create info button for time_series
@@ -1672,7 +1774,10 @@ class App(QMainWindow):
 
                 # For the first parameter, set its value based on the data source and lock it
                 if is_first_parameter:
-                    param_widget = QLineEdit("as shown in plot" if self.data.graph_file else "")
+                    param_widget = QLineEdit()
+                    param_widget.setPlaceholderText("No data loaded yet")
+                    if self.data.graph_file:
+                        param_widget = QLineEdit("as shown in plot")
                     param_widget.setReadOnly(True)  # Make the widget read-only
                     is_first_parameter = False  # Update the flag so this block runs only for the first parameter
                 else:
@@ -1901,7 +2006,7 @@ class App(QMainWindow):
 
     def handleError(self, error):
         # Handles errors in the worker thread
-        print(f"Error occurred: {error}")
+        QMessageBox.warning(self, "Calculation Error", f"Error occurred furing calculation: {error}")
         self.calculateButton.setEnabled(True)
         self.data.clear_dfc_data()
         self.positionLabel.setText("no data available")
@@ -1983,7 +2088,7 @@ class App(QMainWindow):
 
     def handleGraphError(self, error):
         # Handles errors in the worker thread
-        print(f"Error occurred: {error}")
+        QMessageBox.warning(self, "Calculation Error", f"Error occurred furing calculation: {error}")
 
     """
     Memory functions
@@ -2013,7 +2118,7 @@ class App(QMainWindow):
         current_data = self.data.dfc_data
         
         if current_data is None:
-            print("No calculated data available for plotting")
+            QMessageBox.warning(self, "No calculated data available for plotting")
             return
 
         self.figure.clear()
@@ -2030,6 +2135,13 @@ class App(QMainWindow):
 
         ax.set_xlabel("ROI")
         ax.set_ylabel("ROI")
+
+        # If we have roi names and less than 100 ROIS, we can plot the names
+        if self.data.roi_names is not None and len(self.data.roi_names) < 100:
+            ax.set_xticks(np.arange(len(self.data.roi_names)))
+            ax.set_yticks(np.arange(len(self.data.roi_names)))
+            ax.set_xticklabels(self.data.roi_names, rotation=45, fontsize=120/len(self.data.roi_names) + 2)
+            ax.set_yticklabels(self.data.roi_names,              fontsize=120/len(self.data.roi_names) + 2)
 
         # Create the colorbar
         divider = make_axes_locatable(ax)
@@ -2313,7 +2425,7 @@ class App(QMainWindow):
         current_data = self.data.graph_data
         
         if current_data is None:
-            print("No data available for plotting")
+            QMessageBox.warning(self, "No calculated data available for plotting")
             return
 
         self.matrixFigure.clear()
