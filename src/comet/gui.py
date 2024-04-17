@@ -851,12 +851,24 @@ class App(QMainWindow):
     Multiverse functions
     """
     def addDecision(self):
+        # If a parameter layout is open when a new decision is added, we clear and hide it
+        try:
+            self.multiverseMethodsCombobox.clear()
+            self.clearMultiverseParameters(self.multiverseParameterLayout)
+
+            self.multiverseMethodsCombobox.hide()
+            self.multiverseParameterContainer.hide()
+        except:
+            pass
+        
+        # Add a new decision point
         decisionLayout = QHBoxLayout()
 
         # Create the dropdown menu
         self.categoryComboBox = QComboBox()
         self.categoryComboBox.addItems(["General", "FC", "Graph", "Other"])
         self.categoryComboBox.currentIndexChanged.connect(self.onDecisionTypeChanged)
+        self.selected_category = "General"
 
         # Decision name input field
         decisionNameInput = QLineEdit()
@@ -885,7 +897,7 @@ class App(QMainWindow):
         self.decisionContainer.addLayout(decisionLayout)
 
     def onDecisionTypeChanged(self):
-        selected_category = self.categoryComboBox.currentText()
+        self.selected_category = self.categoryComboBox.currentText()
         
         self.multiverseMethodsCombobox.clear()
         self.clearMultiverseParameters(self.multiverseParameterLayout)
@@ -893,19 +905,19 @@ class App(QMainWindow):
         self.multiverseMethodsCombobox.hide()
         self.multiverseParameterContainer.hide()
 
-        if selected_category == "General":
+        if self.selected_category == "General":
             pass
         
         else:
-            if selected_category == "FC":
+            if self.selected_category == "FC":
                 pass
 
-            elif selected_category == "Graph":
+            elif self.selected_category == "Graph":
                 # Populate combobox with Graph functions
                 for name, description in self.graphOptions.items():
                     self.multiverseMethodsCombobox.addItem(description, name)
             
-            elif selected_category == "Other":
+            elif self.selected_category == "Other":
                 pass
 
             self.multiverseMethodsCombobox.show()
@@ -944,12 +956,22 @@ class App(QMainWindow):
                 label_width = font_metrics.boundingRect(f"{name}:").width()
                 max_label_width = max(max_label_width, label_width)
 
+        # Add the first 'Name' QLineEdit before other parameters
+        name_layout = QHBoxLayout()
+        name_label = QLabel("Name:")
+        name_label.setFixedWidth(max_label_width + 20)
+        name_edit = QLineEdit()
+        name_edit.setPlaceholderText("Option label for the decision")
+        name_layout.addWidget(name_label)
+        name_layout.addWidget(name_edit)
+        self.multiverseParameterLayout.addLayout(name_layout)
+
         is_first_parameter = True  # Flag to identify the first parameter
 
         # Iterate over parameters in the function signature
         temp_widgets = {}
         for name, param in func_signature.parameters.items():
-
+        
             if name not in ['self', 'copy', 'args', 'kwargs']:  # Skip unwanted parameters
                 # Horizontal layout for each parameter
                 param_layout = QHBoxLayout()
@@ -964,7 +986,6 @@ class App(QMainWindow):
                     else:
                         param_default = "empty"
 
-
                 # Create a label for the parameter and set its fixed width
                 param_label = QLabel(f"{name}:")
                 param_label.setFixedWidth(max_label_width + 20)  # Add some padding
@@ -973,10 +994,7 @@ class App(QMainWindow):
                 # For the first parameter, set its value based on the data source and lock it
                 if is_first_parameter:
                     param_widget = QLineEdit()
-                    param_widget.setPlaceholderText("No data loaded yet")
-                    if self.data.graph_file:
-                        param_widget = QLineEdit("as shown in plot")
-                    param_widget.setReadOnly(True)  # Make the widget read-only
+                    param_widget.setPlaceholderText("Input data (name of the variable in the script)")
                     is_first_parameter = False  # Update the flag so this block runs only for the first parameter
                 else:
                     # Bool
@@ -1044,11 +1062,57 @@ class App(QMainWindow):
             
             return
 
+    def getMultiverseParameters(self):
+        # Initialize a dictionary to hold parameter names and their values
+        params_dict = {}
 
+        # Iterate over all layout items in the graphParameterLayout
+        for i in range(self.multiverseParameterLayout.count()):
+            layout_item = self.multiverseParameterLayout.itemAt(i)
+
+            # Check if the layout item is a QHBoxLayout (as each parameter is in its own QHBoxLayout)
+            if isinstance(layout_item, QHBoxLayout):
+                param_layout = layout_item.layout()
+
+                # The parameter name is in the QLabel, and the value is in the second widget (QLineEdit, QComboBox, etc.)
+                if param_layout.count() >= 2:
+                    # Extract the parameter name from the QLabel
+                    param_name_label = param_layout.itemAt(0).widget()
+                    if isinstance(param_name_label, QLabel):
+                        param_name = param_name_label.text().rstrip(':')  # Remove the colon at the end
+
+                        # Extract the parameter value from the appropriate widget type
+                        param_widget = param_layout.itemAt(1).widget()
+                        if isinstance(param_widget, QLineEdit):
+                            param_value = param_widget.text()
+                        elif isinstance(param_widget, QComboBox):
+                            param_value = param_widget.currentText()
+                        elif isinstance(param_widget, QSpinBox) or isinstance(param_widget, QDoubleSpinBox):
+                            param_value = param_widget.value()
+
+                        # Convert to appropriate boolean type (LineEdit ad ComboBox return strings))
+                        if param_value == "True":
+                            param_value = True
+                        elif param_value == "False":
+                            param_value = False
+
+                        # Add the parameter name and value to the dictionary
+                        params_dict[param_name] = param_value
+
+        # Retrieve the currently selected option in the graphAnalysisComboBox
+        current_option = self.multiverseMethodsCombobox.currentText()
+        function_name = self.reverse_graphOptions.get(current_option)
+
+        # Return the current option and its parameters
+        return current_option, function_name, params_dict
 
     def includeDecision(self, nameInput, optionsInput):
         name = nameInput.text().strip()
         options = [self.setDtypeForOption(option.strip()) for option in optionsInput.text().split(',') if option.strip()]
+
+        if self.selected_category == "Graph":
+            current_option, function_name, params_dict = self.getMultiverseParameters()
+            print(current_option, function_name, params_dict)
 
         if name and options:
             self.data.forking_paths[name] = options
