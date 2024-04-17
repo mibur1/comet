@@ -838,6 +838,11 @@ class App(QMainWindow):
     def addDecision(self):
         decisionLayout = QHBoxLayout()
 
+        # Create the dropdown menu
+        categoryComboBox = QComboBox()
+        categoryComboBox.addItems(["General", "Comet", "BCT", "Other"])
+        categoryComboBox.currentIndexChanged.connect(self.onCategoryChanged)
+
         # Decision name input field
         decisionNameInput = QLineEdit()
         decisionNameInput.setPlaceholderText("Decision name")
@@ -846,42 +851,108 @@ class App(QMainWindow):
         decisionOptionsInput = QLineEdit()
         decisionOptionsInput.setPlaceholderText("Options (comma-separated)")
 
-        # Group buttons in their own horizontal layout
-        buttonLayout = QHBoxLayout()
+        # Include button to confirm the decision
         includeButton = QPushButton(' \u2714 ')
         includeButton.clicked.connect(lambda: self.includeDecision(decisionNameInput, decisionOptionsInput))
+
+        # Remove button to delete the decision
         removeButton = QPushButton(' \u2718 ')
-        removeButton.clicked.connect(lambda: self.removeDecision(decisionLayout))
+        removeButton.clicked.connect(lambda: self.removeDecision(decisionLayout, decisionNameInput))
 
-        # Add buttons to the button layout
-        buttonLayout.addWidget(includeButton, 1)
-        buttonLayout.addWidget(removeButton, 1)
+        # Add widgets to the layout with appropriate stretch factors
+        decisionLayout.addWidget(categoryComboBox, 5)  # Less space for the dropdown
+        decisionLayout.addWidget(decisionNameInput, 6)  # More space for input fields
+        decisionLayout.addWidget(decisionOptionsInput, 13)
+        decisionLayout.addWidget(includeButton, 1)
+        decisionLayout.addWidget(removeButton, 1)
 
-        # Add widgets to the main decision layout
-        decisionLayout.addWidget(decisionNameInput, 5)
-        decisionLayout.addWidget(decisionOptionsInput, 15)
-        decisionLayout.addLayout(buttonLayout, 2)
-
+        # Add the layout to the decision container
         self.decisionContainer.addLayout(decisionLayout)
+
+    def onCategoryChanged(self, index):
+        selected_category = self.categoryComboBox.itemText(index)
+        if selected_category == "BCT":
+            # Set up the parameter layout
+            if self.graphAnalysisComboBox.currentData() is None:
+                return
+
+            func = getattr(graph, self.graphAnalysisComboBox.currentData())
+
+            # Retrieve the function signature
+            func_signature = inspect.signature(func)
+            type_hints = get_type_hints(func)
+
+            # Setup the UI based on parameters
+            for name, param in func_signature.parameters.items():
+                if name not in ['self', 'args', 'kwargs']:
+                    param_layout = QHBoxLayout()
+                    param_label = QLabel(f"{name}:")
+                    param_layout.addWidget(param_label)
+
+                    # Create widget based on type hints here similarly to your detailed setup code
+                    # Example for int
+                    if type_hints[name] == int:
+                        param_widget = QSpinBox()
+                        param_widget.setMaximum(10000)
+                        param_widget.setMinimum(-10000)
+                    # Add other types based on your detailed code
+
+                    param_layout.addWidget(param_widget)
+                    self.graphParameterLayout.addLayout(param_layout)
+
+            self.graphParameterLayout.addStretch()
+        else:
+            # Clear the layout
+            while self.graphParameterLayout.count():
+                child = self.graphParameterLayout.takeAt(0)
+                if child.widget():
+                    child.widget().deleteLater()
 
     def includeDecision(self, nameInput, optionsInput):
         name = nameInput.text().strip()
-        options = [option.strip() for option in optionsInput.text().split(',') if option.strip()]
-        
-        # Check if inputs are valid (e.g., name is not empty)
+        options = [self.parse_option(option.strip()) for option in optionsInput.text().split(',') if option.strip()]
+
         if name and options:
-            # Update the forking paths dictionary (assume it's an attribute of the class)
             self.data.forking_paths[name] = options
-            self.generateScript()  # Call generate script to update the display
+            self.generateScript()
         else:
             QMessageBox.warning(self, "Input Error", "Please ensure a name and at least one option are provided.")
 
-    def removeDecision(self, layout):
-        for i in reversed(range(layout.count())): 
+    def parse_option(self, option):
+        # Try to convert to integer
+        try:
+            return int(option)
+        except ValueError:
+            pass
+
+        # Try to convert to float
+        try:
+            return float(option)
+        except ValueError:
+            pass
+
+        # Check for boolean values
+        if option.lower() in ['true', 'false']:
+            return option.lower() == 'true'
+
+        return option
+
+    def removeDecision(self, layout, nameInput):
+
+        key = nameInput.text()
+
+        # Remove the key
+        if key in self.data.forking_paths:
+            del self.data.forking_paths[key]
+
+        # Remove the widgets
+        for i in reversed(range(layout.count())):
             widget = layout.itemAt(i).widget()
             if widget:
                 widget.deleteLater()
+        
         layout.deleteLater()
+        self.generateScript()
 
     def generateScript(self, init_template=False):
         # Initial placeholder template
@@ -917,9 +988,9 @@ class App(QMainWindow):
             script_content += f"    # The following forking paths are available for multiverse analysis:\n"
         
             for name, options in self.data.forking_paths.items():
-                script_content += f"    {{{{{name}}}}}\n\n" # placeholder variables are in double curly braces {{variable}}
+                script_content += f"    {{{{{name}}}}}\n" # placeholder variables are in double curly braces {{variable}}
 
-            script_content += f"multiverse = Multiverse(name=\"example_multiverse\")\n"
+            script_content += f"\nmultiverse = Multiverse(name=\"example_multiverse\")\n"
             script_content += f"multiverse.create(analysis_template, forking_paths)\n"
             script_content += f"multiverse.summary()\n"
             script_content += f"#multiverse.run()\n"
