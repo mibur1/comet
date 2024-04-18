@@ -756,6 +756,11 @@ class App(QMainWindow):
 
         leftLayout.addStretch()
 
+
+        #########################
+        #  Bottom left section  #
+        #########################
+
         # Perform multiverse analysis
         loadLabel = QLabel('Perform multiverse analysis:')
         leftLayout.addWidget(loadLabel)
@@ -779,6 +784,7 @@ class App(QMainWindow):
         executeButton = QPushButton('Run multiverse analysis')
         leftLayout.addWidget(executeButton)
         executeButton.clicked.connect(self.executeScript)
+
 
         ################################
         #  Right section for plotting  #
@@ -855,9 +861,15 @@ class App(QMainWindow):
         decisionOptionsInput = QLineEdit()
         decisionOptionsInput.setPlaceholderText("Options (comma-separated)")
 
+        # Collapse button to hide/show the function and parameter widgets
         collapseButton = QPushButton(" \u25B2 ")
         collapseButton.clicked.connect(lambda: self.collapseOption(collapseButton, functionComboBox, parameterContainer))
         collapseButton.hide()
+
+        # Add option button to add a new option to the decision
+        addOptionButton = QPushButton(' \u25B6 ')
+        addOptionButton.clicked.connect(lambda: self.addOption(functionComboBox, parameterContainer, decisionNameInput, decisionOptionsInput))
+        addOptionButton.hide()
 
         # Include button to confirm the decision
         includeButton = QPushButton(' \u2714 ')
@@ -868,10 +880,11 @@ class App(QMainWindow):
         removeButton.clicked.connect(lambda: self.removeDecision(decisionWidget))
 
         # Add widgets to the layout with appropriate stretch factors
-        functionLayout.addWidget(categoryComboBox, 5)
-        functionLayout.addWidget(decisionNameInput, 6)
-        functionLayout.addWidget(decisionOptionsInput, 13)
+        functionLayout.addWidget(categoryComboBox, 6)
+        functionLayout.addWidget(decisionNameInput, 7)
+        functionLayout.addWidget(decisionOptionsInput, 12)
         functionLayout.addWidget(collapseButton, 1)
+        functionLayout.addWidget(addOptionButton, 1)
         functionLayout.addWidget(includeButton, 1)
         functionLayout.addWidget(removeButton, 1)
 
@@ -886,14 +899,6 @@ class App(QMainWindow):
         parameterContainer.setLayout(parameterLayout)
         parameterContainer.hide()
 
-        actionLayout = QHBoxLayout()
-        actionLayout.addStretch(21)
-
-        addOptionButton = QPushButton('\u25B6')
-        addOptionButton.clicked.connect(lambda: self.addOption(addOptionButton))
-        actionLayout.addWidget(addOptionButton, 3)
-        addOptionButton.hide()
-
         # Connect category combo box change
         categoryComboBox.currentIndexChanged.connect(lambda _: self.onCategoryComboBoxChanged(categoryComboBox, functionComboBox, parameterContainer, addOptionButton, collapseButton))
 
@@ -901,7 +906,6 @@ class App(QMainWindow):
         mainLayout.addLayout(functionLayout)
         mainLayout.addWidget(functionComboBox)
         mainLayout.addWidget(parameterContainer)
-        mainLayout.addLayout(actionLayout)
 
         return decisionWidget
 
@@ -1079,16 +1083,17 @@ class App(QMainWindow):
         buttonLayoutIndex = layout.indexOf(buttonLayout)
         layout.insertWidget(buttonLayoutIndex, newDecisionWidget)
 
-    def getFunctionParameters(self):
-        # Initialize a dictionary to hold parameter names and their values
+    # Gets a dict with the current function parameters
+    def getFunctionParameters(self, parameterContainer):
         params_dict = {}
+        paramLayout = parameterContainer.layout()
 
-        # Iterate over all layout items in the graphParameterLayout
-        for i in range(self.multiverseParameterLayout.count()):
-            layout_item = self.multiverseParameterLayout.itemAt(i)
+        # Iterate over all layout items in the parameter layout
+        for i in range(paramLayout.count()):
+            layout_item = paramLayout.itemAt(i)
 
-            # Check if the layout item is a QHBoxLayout (as each parameter is in its own QHBoxLayout)
-            if isinstance(layout_item, QHBoxLayout):
+            # Ensure the layout item is a QHBoxLayout (each parameter is in its own QHBoxLayout)
+            if isinstance(layout_item.layout(), QHBoxLayout):
                 param_layout = layout_item.layout()
 
                 # The parameter name is in the QLabel, and the value is in the second widget (QLineEdit, QComboBox, etc.)
@@ -1107,7 +1112,7 @@ class App(QMainWindow):
                         elif isinstance(param_widget, QSpinBox) or isinstance(param_widget, QDoubleSpinBox):
                             param_value = param_widget.value()
 
-                        # Convert to appropriate boolean type (LineEdit ad ComboBox return strings))
+                        # Convert to appropriate boolean type if necessary (LineEdit and QComboBox return strings)
                         if param_value == "True":
                             param_value = True
                         elif param_value == "False":
@@ -1116,9 +1121,23 @@ class App(QMainWindow):
                         # Add the parameter name and value to the dictionary
                         params_dict[param_name] = param_value
 
-    def addOption(self):
-        pass
+        return params_dict
 
+    # Add option to a decision
+    def addOption(self, functionComboBox, parameterContainer, nameInput, optionsInput):
+        params = self.getFunctionParameters(parameterContainer)
+        func = functionComboBox.currentData()
+        option_name = params.get('Name', None)
+
+        if option_name is None:
+            QMessageBox.warning(self, "Error", "Please provide a name for the option")
+            return
+        else:
+            currentName = nameInput.text().strip()
+            currentOptions = optionsInput.text().strip()
+            self.forking_paths[currentName] = (func, params)
+    
+    # Collapse the option layout
     def collapseOption(self, collapseButton, functionComboBox, parameterContainer):
         if collapseButton.text() == " \u25B2 ":
             functionComboBox.hide()
@@ -1133,8 +1152,6 @@ class App(QMainWindow):
             return
         
         return
-
-
 
 
 
