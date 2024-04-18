@@ -740,33 +740,18 @@ class App(QMainWindow):
         loadLabel = QLabel('Create multiverse analysis template script:')
         leftLayout.addWidget(loadLabel)
 
-        # Adding forking paths
-        self.decisionContainer = QVBoxLayout() # Container for dynamic input fields
-        leftLayout.addLayout(self.decisionContainer)
-        self.addDecision()  # Initialize with one set of inputs
+        # Creating a first decision container
+        decisionWidget = self.addDecisionContainer()
+        leftLayout.addWidget(decisionWidget)
 
-        # Create the combo box for selecting functions/methods
-        self.multiverseMethodsCombobox = QComboBox()
-        leftLayout.addWidget(self.multiverseMethodsCombobox)
-
-        self.multiverseMethodsCombobox.currentIndexChanged.connect(self.setMultiverseParameters)
-        self.multiverseMethodsCombobox.hide()
-
-        self.multiverseParameterLayout = QVBoxLayout()
-        self.multiverseParameterContainer = QWidget()  # Use an instance attribute to access it later
-        self.multiverseParameterContainer.setLayout(self.multiverseParameterLayout)
-        #self.multiverseParameterContainer.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
-
-        # Container widget for multiverse functions/methods and their parameters
-        leftLayout.addWidget(self.multiverseParameterContainer)
-        self.multiverseParameterContainer.hide()
-
-        # Horizontal layout for the "add new" button
+        # Horizontal layout for add/collapse buttons
         buttonLayout = QHBoxLayout()
-        addDecisionButton = QPushButton("\u2795")
-        addDecisionButton.clicked.connect(self.addDecision)
-        buttonLayout.addWidget(addDecisionButton, 5)
-        buttonLayout.addStretch(17)
+
+        newDecisionButton = QPushButton("\u2795")
+        newDecisionButton.clicked.connect(lambda: self.addNewDecision(leftLayout, buttonLayout))
+        buttonLayout.addWidget(newDecisionButton, 5)
+        buttonLayout.addStretch(21)
+
         leftLayout.addLayout(buttonLayout)
 
         leftLayout.addStretch()
@@ -850,6 +835,291 @@ class App(QMainWindow):
     """
     Multiverse functions
     """
+    # Adds a combined container widget for all things related to creating decisions and options
+    def addDecisionContainer(self):
+        decisionWidget = QWidget()  # Widget that holds the entire container
+        mainLayout = QVBoxLayout(decisionWidget)  # Vertical layout: contains decision layout and function layout
+        mainLayout.setContentsMargins(0, 0, 0, 0) # Remove space to remove excessive space between widgets
+
+        functionLayout = QHBoxLayout()  # Controls layout for functions and properties
+
+        # Create the dropdown menu
+        categoryComboBox = QComboBox()
+        categoryComboBox.addItems(["General", "FC", "Graph", "Other"])
+
+        # Decision name input field
+        decisionNameInput = QLineEdit()
+        decisionNameInput.setPlaceholderText("Decision name")
+
+        # Decision options input field
+        decisionOptionsInput = QLineEdit()
+        decisionOptionsInput.setPlaceholderText("Options (comma-separated)")
+
+        # Include button to confirm the decision
+        includeButton = QPushButton(' \u2714 ')
+        includeButton.clicked.connect(lambda: self.includeDecision(decisionNameInput, decisionOptionsInput))
+
+        # Remove button to delete the decision
+        removeButton = QPushButton(' \u2718 ')
+        removeButton.clicked.connect(lambda: self.removeDecision(decisionWidget))
+
+        # Add widgets to the layout with appropriate stretch factors
+        functionLayout.addWidget(categoryComboBox, 5)
+        functionLayout.addWidget(decisionNameInput, 6)
+        functionLayout.addWidget(decisionOptionsInput, 13)
+        functionLayout.addWidget(includeButton, 1)
+        functionLayout.addWidget(removeButton, 1)
+
+        # Combo box for selecting specific functions or methods
+        functionComboBox = QComboBox()
+        functionComboBox.currentIndexChanged.connect(lambda _: self.updateFunctionParameters(functionComboBox, parameterContainer))
+        functionComboBox.hide()
+
+        # Parameter container widget
+        parameterContainer = QWidget()
+        parameterLayout = QVBoxLayout()
+        parameterContainer.setLayout(parameterLayout)
+        parameterContainer.hide()
+
+        # Connect category combo box change
+        categoryComboBox.currentIndexChanged.connect(lambda _: self.onCategoryComboBoxChanged(categoryComboBox, functionComboBox, parameterContainer))
+
+        actionLayout = QHBoxLayout()
+        actionLayout.addStretch(21)
+
+        addOptionButton = QPushButton('\u25B6')
+        addOptionButton.clicked.connect(lambda: self.addOption(categoryComboBox, functionComboBox, parameterContainer))
+        actionLayout.addWidget(addOptionButton, 3)
+        addOptionButton.hide()
+
+        collapseButton = QPushButton("\u25B2")
+        collapseButton.clicked.connect(lambda: self.collapseOption(categoryComboBox, functionComboBox, parameterContainer))
+        actionLayout.addWidget(collapseButton, 3)
+        collapseButton.hide()
+
+        # Adding the controls layout to the main layout
+        mainLayout.addLayout(functionLayout)
+        mainLayout.addWidget(functionComboBox)
+        mainLayout.addWidget(parameterContainer)
+
+        return decisionWidget
+
+    # Handles if the type of the decision is changed
+    def onCategoryComboBoxChanged(self, categoryComboBox, functionComboBox, parameterContainer):
+        selected_category = categoryComboBox.currentText()
+        
+        #functionComboBox.clear()
+        self.clearMultiverseParameters(parameterContainer.layout())
+
+        functionComboBox.hide()
+        parameterContainer.hide()
+
+        if selected_category != "General":
+            if selected_category == "FC":
+                pass
+            elif selected_category == "Graph":
+                for name, description in self.graphOptions.items():
+                    functionComboBox.addItem(description, name)
+            elif selected_category == "Other":
+                pass
+
+            functionComboBox.show()
+            parameterContainer.show()
+
+    # Clears the parameter layout/widgets
+    def clearMultiverseParameters(self, layout):
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+            else:
+                sublayout = item.layout()
+                if sublayout:
+                    self.clearMultiverseParameters(sublayout)
+
+    # Creates and updates all the parameter widgets based on the selected function
+    def updateFunctionParameters(self, functionComboBox, parameterContainer):
+        if functionComboBox.currentData() is None:
+            return
+
+        func = getattr(graph, functionComboBox.currentData())
+
+        # Retrieve the signature of the function
+        func_signature = inspect.signature(func)
+        type_hints = get_type_hints(func)
+
+        # Clear previous parameters
+        self.clearMultiverseParameters(parameterContainer.layout())
+
+        # Calculate the maximum label width
+        max_label_width = 0
+        font_metrics = QFontMetrics(self.font())
+        for name, param in func_signature.parameters.items():
+            if name not in ['self', 'args', 'kwargs']:  # Skip unwanted parameters
+                label_width = font_metrics.boundingRect(f"{name}:").width()
+                max_label_width = max(max_label_width, label_width)
+
+        # Add the first 'Name' QLineEdit before other parameters
+        name_layout = QHBoxLayout()
+        name_label = QLabel("Name:")
+        name_label.setFixedWidth(max_label_width + 20)
+        name_edit = QLineEdit()
+        name_edit.setPlaceholderText("Option name")
+        name_layout.addWidget(name_label)
+        name_layout.addWidget(name_edit)
+        parameterContainer.layout().addLayout(name_layout)
+
+        is_first_parameter = True  # Flag to identify the first parameter
+
+        # Iterate over parameters in the function signature
+        temp_widgets = {}
+        for name, param in func_signature.parameters.items():
+        
+            if name not in ['self', 'copy', 'args', 'kwargs']:  # Skip unwanted parameters
+                # Horizontal layout for each parameter
+                param_layout = QHBoxLayout()
+                param_type = type_hints.get(name)
+                param_default = 1 if isinstance(param.default, inspect._empty) else param.default
+                
+                if param_default == None:
+                    if param_type == bool:
+                        param_default = False
+                    elif param_type == int or param_type == float:
+                        param_default = 1
+                    else:
+                        param_default = "empty"
+
+                # Create a label for the parameter and set its fixed width
+                param_label = QLabel(f"{name}:")
+                param_label.setFixedWidth(max_label_width + 20)  # Add some padding
+                param_layout.addWidget(param_label)
+
+                # For the first parameter, set its value based on the data source and lock it
+                if is_first_parameter:
+                    param_widget = QLineEdit()
+                    param_widget.setPlaceholderText("Input data (name of the variable in the script)")
+                    is_first_parameter = False  # Update the flag so this block runs only for the first parameter
+                else:
+                    # Bool
+                    if param_type == bool:
+                        param_widget = QComboBox()
+                        param_widget.addItems(["False", "True"])
+                        param_widget.setCurrentIndex(int(param_default))
+                    # Int                  
+                    elif param_type == int:
+                        param_widget = QSpinBox()
+                        param_widget.setValue(param_default)
+                        param_widget.setMaximum(10000)
+                        param_widget.setMinimum(-10000)
+                        param_widget.setSingleStep(param_default)
+                    # Float 
+                    elif param_type == float:    
+                        param_widget = QDoubleSpinBox()
+                        if name == "threshold":
+                            param_widget.setValue(0.0)
+                        else:
+                            param_widget.setValue(param_default)
+                        param_widget.setMaximum(1.0)
+                        param_widget.setMinimum(0.0)
+                        param_widget.setSingleStep(0.01)
+                    # String
+                    elif get_origin(type_hints.get(name)) is Literal:
+                        options = type_hints.get(name).__args__ 
+                        param_widget = QComboBox()
+                        param_widget.addItems([str(option) for option in options])
+                    # Fallback
+                    else:
+                        param_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
+
+                temp_widgets[name] = (param_label, param_widget)
+                param_layout.addWidget(param_widget)
+                parameterContainer.layout().addLayout(param_layout)
+
+        # Adjust visibility based on 'type' parameter
+        type_widget = None
+        if 'type' in temp_widgets:
+            _, type_widget = temp_widgets['type']
+
+        if type_widget:
+            # Function to update parameter visibility
+            def updateVisibility():
+                selected_type = type_widget.currentText()
+                if selected_type == 'absolute':
+                    if 'threshold' in temp_widgets:
+                        temp_widgets['threshold'][0].show()
+                        temp_widgets['threshold'][1].show()
+                    if 'density' in temp_widgets:
+                        temp_widgets['density'][0].hide()
+                        temp_widgets['density'][1].hide()
+                elif selected_type == 'density':
+                    if 'threshold' in temp_widgets:
+                        temp_widgets['threshold'][0].hide()
+                        temp_widgets['threshold'][1].hide()
+                    if 'density' in temp_widgets:
+                        temp_widgets['density'][0].show()
+                        temp_widgets['density'][1].show()
+            
+            # Connect the signal from the type_widget to the updateVisibility function
+            type_widget.currentIndexChanged.connect(updateVisibility)
+            updateVisibility()
+            
+            return
+
+    # Adds a new decision widget to the layout
+    def addNewDecision(self, layout, buttonLayout):
+        newDecisionWidget = self.addDecisionContainer()
+        buttonLayoutIndex = layout.indexOf(buttonLayout)
+        layout.insertWidget(buttonLayoutIndex, newDecisionWidget)
+
+    def getFunctionParameters(self):
+        # Initialize a dictionary to hold parameter names and their values
+        params_dict = {}
+
+        # Iterate over all layout items in the graphParameterLayout
+        for i in range(self.multiverseParameterLayout.count()):
+            layout_item = self.multiverseParameterLayout.itemAt(i)
+
+            # Check if the layout item is a QHBoxLayout (as each parameter is in its own QHBoxLayout)
+            if isinstance(layout_item, QHBoxLayout):
+                param_layout = layout_item.layout()
+
+                # The parameter name is in the QLabel, and the value is in the second widget (QLineEdit, QComboBox, etc.)
+                if param_layout.count() >= 2:
+                    # Extract the parameter name from the QLabel
+                    param_name_label = param_layout.itemAt(0).widget()
+                    if isinstance(param_name_label, QLabel):
+                        param_name = param_name_label.text().rstrip(':')  # Remove the colon at the end
+
+                        # Extract the parameter value from the appropriate widget type
+                        param_widget = param_layout.itemAt(1).widget()
+                        if isinstance(param_widget, QLineEdit):
+                            param_value = param_widget.text()
+                        elif isinstance(param_widget, QComboBox):
+                            param_value = param_widget.currentText()
+                        elif isinstance(param_widget, QSpinBox) or isinstance(param_widget, QDoubleSpinBox):
+                            param_value = param_widget.value()
+
+                        # Convert to appropriate boolean type (LineEdit ad ComboBox return strings))
+                        if param_value == "True":
+                            param_value = True
+                        elif param_value == "False":
+                            param_value = False
+
+                        # Add the parameter name and value to the dictionary
+                        params_dict[param_name] = param_value
+
+    def addOption(self, categoryComboBox, functionComboBox, parameterContainer):
+        pass
+    
+    def collapseOption(self, categoryComboBox, functionComboBox, parameterContainer):
+        pass
+
+
+
+
+
+
     def addDecision(self):
         # If a parameter layout is open when a new decision is added, we clear and hide it
         try:
@@ -920,147 +1190,9 @@ class App(QMainWindow):
             elif self.selected_category == "Other":
                 pass
 
+            # Show the combobox and parameters if they were hidden
             self.multiverseMethodsCombobox.show()
             self.multiverseParameterContainer.show()
-
-    def clearMultiverseParameters(self, layout):
-        while layout.count():
-            item = layout.takeAt(0)
-            widget = item.widget()
-            if widget:
-                widget.deleteLater()
-            else:
-                sublayout = item.layout()
-                if sublayout:
-                    self.clearMultiverseParameters(sublayout)
-
-    def setMultiverseParameters(self):
-        # Clear parameters
-        self.clearMultiverseParameters(self.multiverseParameterLayout)
-        
-        # Retrieve the selected function from the graph module
-        if self.multiverseMethodsCombobox.currentData() == None:
-            return
-
-        func = getattr(graph, self.multiverseMethodsCombobox.currentData())
-        
-        # Retrieve the signature of the function
-        func_signature = inspect.signature(func)
-        type_hints = get_type_hints(func)
-
-        # Calculate the maximum label width
-        max_label_width = 0
-        font_metrics = QFontMetrics(self.font())
-        for name, param in func_signature.parameters.items():
-            if name not in ['self', 'args', 'kwargs']:  # Skip unwanted parameters
-                label_width = font_metrics.boundingRect(f"{name}:").width()
-                max_label_width = max(max_label_width, label_width)
-
-        # Add the first 'Name' QLineEdit before other parameters
-        name_layout = QHBoxLayout()
-        name_label = QLabel("Name:")
-        name_label.setFixedWidth(max_label_width + 20)
-        name_edit = QLineEdit()
-        name_edit.setPlaceholderText("Option label for the decision")
-        name_layout.addWidget(name_label)
-        name_layout.addWidget(name_edit)
-        self.multiverseParameterLayout.addLayout(name_layout)
-
-        is_first_parameter = True  # Flag to identify the first parameter
-
-        # Iterate over parameters in the function signature
-        temp_widgets = {}
-        for name, param in func_signature.parameters.items():
-        
-            if name not in ['self', 'copy', 'args', 'kwargs']:  # Skip unwanted parameters
-                # Horizontal layout for each parameter
-                param_layout = QHBoxLayout()
-                param_type = type_hints.get(name)
-                param_default = 1 if isinstance(param.default, inspect._empty) else param.default
-                
-                if param_default == None:
-                    if param_type == bool:
-                        param_default = False
-                    elif param_type == int or param_type == float:
-                        param_default = 1
-                    else:
-                        param_default = "empty"
-
-                # Create a label for the parameter and set its fixed width
-                param_label = QLabel(f"{name}:")
-                param_label.setFixedWidth(max_label_width + 20)  # Add some padding
-                param_layout.addWidget(param_label)
-
-                # For the first parameter, set its value based on the data source and lock it
-                if is_first_parameter:
-                    param_widget = QLineEdit()
-                    param_widget.setPlaceholderText("Input data (name of the variable in the script)")
-                    is_first_parameter = False  # Update the flag so this block runs only for the first parameter
-                else:
-                    # Bool
-                    if param_type == bool:
-                        param_widget = QComboBox()
-                        param_widget.addItems(["False", "True"])
-                        param_widget.setCurrentIndex(int(param_default))
-                    # Int                  
-                    elif param_type == int:
-                        param_widget = QSpinBox()
-                        param_widget.setValue(param_default)
-                        param_widget.setMaximum(10000)
-                        param_widget.setMinimum(-10000)
-                        param_widget.setSingleStep(param_default)
-                    # Float 
-                    elif param_type == float:    
-                        param_widget = QDoubleSpinBox()
-                        if name == "threshold":
-                            param_widget.setValue(0.0)
-                        else:
-                            param_widget.setValue(param_default)
-                        param_widget.setMaximum(1.0)
-                        param_widget.setMinimum(0.0)
-                        param_widget.setSingleStep(0.01)
-                    # String
-                    elif get_origin(type_hints.get(name)) is Literal:
-                        options = type_hints.get(name).__args__ 
-                        param_widget = QComboBox()
-                        param_widget.addItems([str(option) for option in options])
-                    # Fallback
-                    else:
-                        param_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
-
-                temp_widgets[name] = (param_label, param_widget)
-                param_layout.addWidget(param_widget)
-                self.multiverseParameterLayout.addLayout(param_layout)
-
-        # Adjust visibility based on 'type' parameter
-        type_widget = None
-        if 'type' in temp_widgets:
-            _, type_widget = temp_widgets['type']
-
-        if type_widget:
-            # Function to update parameter visibility
-            def updateVisibility():
-                selected_type = type_widget.currentText()
-                if selected_type == 'absolute':
-                    if 'threshold' in temp_widgets:
-                        temp_widgets['threshold'][0].show()
-                        temp_widgets['threshold'][1].show()
-                    if 'density' in temp_widgets:
-                        temp_widgets['density'][0].hide()
-                        temp_widgets['density'][1].hide()
-                elif selected_type == 'density':
-                    if 'threshold' in temp_widgets:
-                        temp_widgets['threshold'][0].hide()
-                        temp_widgets['threshold'][1].hide()
-                    if 'density' in temp_widgets:
-                        temp_widgets['density'][0].show()
-                        temp_widgets['density'][1].show()
-            
-            # Connect the signal from the type_widget to the updateVisibility function
-            type_widget.currentIndexChanged.connect(updateVisibility)
-            updateVisibility()
-            
-            return
 
     def getMultiverseParameters(self):
         # Initialize a dictionary to hold parameter names and their values
