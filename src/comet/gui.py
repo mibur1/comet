@@ -855,6 +855,10 @@ class App(QMainWindow):
         decisionOptionsInput = QLineEdit()
         decisionOptionsInput.setPlaceholderText("Options (comma-separated)")
 
+        collapseButton = QPushButton(" \u25B2 ")
+        collapseButton.clicked.connect(lambda: self.collapseOption(collapseButton, functionComboBox, parameterContainer))
+        collapseButton.hide()
+
         # Include button to confirm the decision
         includeButton = QPushButton(' \u2714 ')
         includeButton.clicked.connect(lambda: self.includeDecision(decisionNameInput, decisionOptionsInput))
@@ -867,6 +871,7 @@ class App(QMainWindow):
         functionLayout.addWidget(categoryComboBox, 5)
         functionLayout.addWidget(decisionNameInput, 6)
         functionLayout.addWidget(decisionOptionsInput, 13)
+        functionLayout.addWidget(collapseButton, 1)
         functionLayout.addWidget(includeButton, 1)
         functionLayout.addWidget(removeButton, 1)
 
@@ -881,31 +886,27 @@ class App(QMainWindow):
         parameterContainer.setLayout(parameterLayout)
         parameterContainer.hide()
 
-        # Connect category combo box change
-        categoryComboBox.currentIndexChanged.connect(lambda _: self.onCategoryComboBoxChanged(categoryComboBox, functionComboBox, parameterContainer))
-
         actionLayout = QHBoxLayout()
         actionLayout.addStretch(21)
 
         addOptionButton = QPushButton('\u25B6')
-        addOptionButton.clicked.connect(lambda: self.addOption(categoryComboBox, functionComboBox, parameterContainer))
+        addOptionButton.clicked.connect(lambda: self.addOption(addOptionButton))
         actionLayout.addWidget(addOptionButton, 3)
         addOptionButton.hide()
 
-        collapseButton = QPushButton("\u25B2")
-        collapseButton.clicked.connect(lambda: self.collapseOption(categoryComboBox, functionComboBox, parameterContainer))
-        actionLayout.addWidget(collapseButton, 3)
-        collapseButton.hide()
+        # Connect category combo box change
+        categoryComboBox.currentIndexChanged.connect(lambda _: self.onCategoryComboBoxChanged(categoryComboBox, functionComboBox, parameterContainer, addOptionButton, collapseButton))
 
         # Adding the controls layout to the main layout
         mainLayout.addLayout(functionLayout)
         mainLayout.addWidget(functionComboBox)
         mainLayout.addWidget(parameterContainer)
+        mainLayout.addLayout(actionLayout)
 
         return decisionWidget
 
     # Handles if the type of the decision is changed
-    def onCategoryComboBoxChanged(self, categoryComboBox, functionComboBox, parameterContainer):
+    def onCategoryComboBoxChanged(self, categoryComboBox, functionComboBox, parameterContainer, addOptionButton, collapseButton):
         selected_category = categoryComboBox.currentText()
         
         #functionComboBox.clear()
@@ -913,18 +914,24 @@ class App(QMainWindow):
 
         functionComboBox.hide()
         parameterContainer.hide()
+        addOptionButton.hide()
+        collapseButton.hide()
 
         if selected_category != "General":
             if selected_category == "FC":
                 pass
+            
             elif selected_category == "Graph":
                 for name, description in self.graphOptions.items():
                     functionComboBox.addItem(description, name)
+            
             elif selected_category == "Other":
                 pass
 
             functionComboBox.show()
             parameterContainer.show()
+            addOptionButton.show()
+            collapseButton.show()
 
     # Clears the parameter layout/widgets
     def clearMultiverseParameters(self, layout):
@@ -1109,12 +1116,23 @@ class App(QMainWindow):
                         # Add the parameter name and value to the dictionary
                         params_dict[param_name] = param_value
 
-    def addOption(self, categoryComboBox, functionComboBox, parameterContainer):
-        pass
-    
-    def collapseOption(self, categoryComboBox, functionComboBox, parameterContainer):
+    def addOption(self):
         pass
 
+    def collapseOption(self, collapseButton, functionComboBox, parameterContainer):
+        if collapseButton.text() == " \u25B2 ":
+            functionComboBox.hide()
+            parameterContainer.hide()
+            collapseButton.setText(" \u25BC ")
+            return
+            
+        if collapseButton.text() == " \u25BC ":
+            functionComboBox.show()
+            parameterContainer.show()
+            collapseButton.setText(" \u25B2 ")
+            return
+        
+        return
 
 
 
