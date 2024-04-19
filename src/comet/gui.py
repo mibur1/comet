@@ -917,7 +917,7 @@ class App(QMainWindow):
         selected_category = categoryComboBox.currentText()
         
         #functionComboBox.clear()
-        self.clearMultiverseParameters(parameterContainer.layout())
+        self.clearLayout(parameterContainer.layout())
 
         functionComboBox.hide()
         parameterContainer.hide()
@@ -940,18 +940,6 @@ class App(QMainWindow):
             addOptionButton.show()
             collapseButton.show()
 
-    # Clears the parameter layout/widgets
-    def clearMultiverseParameters(self, layout):
-        while layout.count():
-            item = layout.takeAt(0)
-            widget = item.widget()
-            if widget:
-                widget.deleteLater()
-            else:
-                sublayout = item.layout()
-                if sublayout:
-                    self.clearMultiverseParameters(sublayout)
-
     # Creates and updates all the parameter widgets based on the selected function
     def updateFunctionParameters(self, functionComboBox, parameterContainer):
         if functionComboBox.currentData() is None:
@@ -964,7 +952,7 @@ class App(QMainWindow):
         type_hints = get_type_hints(func)
 
         # Clear previous parameters
-        self.clearMultiverseParameters(parameterContainer.layout())
+        self.clearLayout(parameterContainer.layout())
 
         # Calculate the maximum label width
         max_label_width = 0
@@ -1264,18 +1252,6 @@ class App(QMainWindow):
             elif item.spacerItem():
                 # No need to delete spacer items as Qt does it automatically
                 pass
-
-
-    def clearMultiverseParameters(self, layout):
-        while layout.count():
-            item = layout.takeAt(0)
-            widget = item.widget()
-            if widget:
-                widget.deleteLater()
-            else:
-                sublayout = item.layout()
-                if sublayout:
-                    self.clearMultiverseParameters(sublayout)
 
     def generateScript(self, init_template=False):
         # Initial placeholder template
