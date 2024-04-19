@@ -157,6 +157,7 @@ class App(QMainWindow):
         self.currentTabIndex = 0
         self.graphStepCounter = 1
 
+        # Parameter names for the GUI
         self.param_names = {
             "self":                 "self", 
             "time_series":          "Time series",
@@ -205,6 +206,37 @@ class App(QMainWindow):
         }
         self.reverse_param_names = {v: k for k, v in self.param_names.items()}
         
+        # All availble graph analysis functions
+        self.graphOptions = {
+            "handle_negative_weights":      "PREP Negative weights",
+            "threshold":                    "PREP Threshold",
+            "binarise":                     "PREP Binarise",
+            "normalise":                    "PREP Normalise",
+            "invert":                       "PREP Invert",
+            "logtransform":                 "PREP Log-transform",
+            "symmetrise":                   "PREP Symmetrise",
+            "randomise":                    "PREP Randomise",
+            "postproc":                     "PREP Post-processing",
+            
+            "efficiency":                   "COMET Efficiency",
+            "matching_ind_und":             "COMET Matching index",
+            "small_world_propensity":       "COMET Small world propensity",
+
+            "backbone_wu":                  "BCT Backbone (weighted)",
+            "betweenness":                  "BCT Betweenness centrality",
+            "clustering_coef":              "BCT Clustering coefficient",
+            "degrees_und":                  "BCT Degrees",
+            "density_und":                  "BCT Density",
+            "eigenvector_centrality_und":   "BCT Eigenvector centrality",
+            "gateway_coef_sign":            "BCT Gateway coefficient (sign)",
+            "pagerank_centrality":          "BCT Pagerank centrality",
+            "participation_coef":           "BCT Participation coef",
+            "participation_coef_sign":      "BCT Participation coef (sign)",
+            "transitivity":                 "BCT Transitivity",
+        }
+        self.reverse_graphOptions = {v: k for k, v in self.graphOptions.items()}
+
+        # Init the UI
         self.initUI()
 
         if init_dfc_data is not None:
@@ -565,37 +597,6 @@ class App(QMainWindow):
         self.preprocessingCheckBox = QCheckBox("Preprocessing")
         self.graphCheckBox = QCheckBox("Comet")
         self.BCTCheckBox = QCheckBox("BCT")
-
-        # Populate the combo box with options
-        self.graphOptions = {
-            "handle_negative_weights":      "PREP Negative weights",
-            "threshold":                    "PREP Threshold",
-            "binarise":                     "PREP Binarise",
-            "normalise":                    "PREP Normalise",
-            "invert":                       "PREP Invert",
-            "logtransform":                 "PREP Log-transform",
-            "symmetrise":                   "PREP Symmetrise",
-            "randomise":                    "PREP Randomise",
-            "postproc":                     "PREP Post-processing",
-            
-            "efficiency":                   "COMET Efficiency",
-            "matching_ind_und":             "COMET Matching index",
-            "small_world_propensity":       "COMET Small world propensity",
-
-            "backbone_wu":                  "BCT Backbone (weighted)",
-            "betweenness":                  "BCT Betweenness centrality",
-            "clustering_coef":              "BCT Clustering coefficient",
-            "degrees_und":                  "BCT Degrees",
-            "density_und":                  "BCT Density",
-            "eigenvector_centrality_und":   "BCT Eigenvector centrality",
-            "gateway_coef_sign":            "BCT Gateway coefficient (sign)",
-            "pagerank_centrality":          "BCT Pagerank centrality",
-            "participation_coef":           "BCT Participation coef",
-            "participation_coef_sign":      "BCT Participation coef (sign)",
-            "transitivity":                 "BCT Transitivity",
-        }
- 
-        self.reverse_graphOptions = {v: k for k, v in self.graphOptions.items()}
 
         # Checkboxes for function types
         checkboxLayout = QHBoxLayout()
@@ -1124,18 +1125,48 @@ class App(QMainWindow):
         return params_dict
 
     # Add option to a decision
-    def addOption(self, functionComboBox, parameterContainer, nameInput, optionsInput):
+    def addOption(self, functionComboBox, parameterContainer, nameInputField, optionsInputField):
         params = self.getFunctionParameters(parameterContainer)
-        func = functionComboBox.currentData()
-        option_name = params.get('Name', None)
+        # Retrieve the selected function key and determine its module prefix
+        func_key = functionComboBox.currentData()
+        print(func_key)
+        if "COMET" in self.graphOptions[func_key] or "PREP" in self.graphOptions[func_key]:
+            module_prefix = "comet.graph"
+        elif "BCT" in self.graphOptions[func_key]:
+            module_prefix = "bct"
+        else:
+            QMessageBox.warning(self, "Error", "Function is not recognized")
 
-        if option_name is None:
+        # Construct the full function path
+        func = f"{module_prefix}.{func_key}"
+
+        option_name = params.get('Name', '').strip()
+        if not option_name:
             QMessageBox.warning(self, "Error", "Please provide a name for the option")
             return
-        else:
-            currentName = nameInput.text().strip()
-            currentOptions = optionsInput.text().strip()
-            self.forking_paths[currentName] = (func, params)
+
+        # Get current values from name and options input fields
+        currentName = nameInputField.text().strip()
+        currentOptions = optionsInputField.text().strip()
+
+        # Prepare the new options string by appending the new option name
+        newOptions = f"{currentOptions}, {option_name}" if currentOptions else option_name
+        optionsInputField.setText(newOptions)
+
+        # Construct the dict for the new option
+        option_dict = {
+            "name": option_name,
+            "func": func,
+            "args": {k: v for k, v in params.items() if k != 'Name'}
+        }
+
+        # Append the new option to the existing list in the data dictionary
+        if currentName not in self.data.forking_paths:
+            self.data.forking_paths[currentName] = []
+
+        self.data.forking_paths[currentName].append(option_dict)
+
+        print(self.data.forking_paths)
     
     # Collapse the option layout
     def collapseOption(self, collapseButton, functionComboBox, parameterContainer):
@@ -1152,6 +1183,41 @@ class App(QMainWindow):
             return
         
         return
+
+    # Adds decision to the script
+    def includeDecision(self, nameInput, optionsInput):
+        name = nameInput.text().strip()
+        options = [self.setDtypeForOption(option.strip()) for option in optionsInput.text().split(',') if option.strip()]
+
+        if self.selected_category == "Graph":
+            current_option, function_name, params_dict = self.getMultiverseParameters()
+            print(current_option, function_name, params_dict)
+
+        if name and options:
+            self.data.forking_paths[name] = options
+            self.generateScript()
+        else:
+            QMessageBox.warning(self, "Input Error", "Please ensure a name and at least one option are provided.")
+
+    def setDtypeForOption(self, option):
+        # Try to convert to integer
+        try:
+            return int(option)
+        except ValueError:
+            pass
+
+        # Try to convert to float
+        try:
+            return float(option)
+        except ValueError:
+            pass
+
+        # Check for boolean values
+        if option.lower() in ['true', 'false']:
+            return option.lower() == 'true'
+
+        return option
+
 
 
 
@@ -1272,39 +1338,6 @@ class App(QMainWindow):
 
         # Return the current option and its parameters
         return current_option, function_name, params_dict
-
-    def includeDecision(self, nameInput, optionsInput):
-        name = nameInput.text().strip()
-        options = [self.setDtypeForOption(option.strip()) for option in optionsInput.text().split(',') if option.strip()]
-
-        if self.selected_category == "Graph":
-            current_option, function_name, params_dict = self.getMultiverseParameters()
-            print(current_option, function_name, params_dict)
-
-        if name and options:
-            self.data.forking_paths[name] = options
-            self.generateScript()
-        else:
-            QMessageBox.warning(self, "Input Error", "Please ensure a name and at least one option are provided.")
-
-    def setDtypeForOption(self, option):
-        # Try to convert to integer
-        try:
-            return int(option)
-        except ValueError:
-            pass
-
-        # Try to convert to float
-        try:
-            return float(option)
-        except ValueError:
-            pass
-
-        # Check for boolean values
-        if option.lower() in ['true', 'false']:
-            return option.lower() == 'true'
-
-        return option
 
     def removeDecision(self, layout, nameInput):
 
