@@ -864,21 +864,17 @@ class App(QMainWindow):
 
         # Collapse button to hide/show the function and parameter widgets
         collapseButton = QPushButton(" \u25B2 ")
-        collapseButton.clicked.connect(lambda: self.collapseOption(collapseButton, functionComboBox, parameterContainer))
         collapseButton.hide()
 
         # Add option button to add a new option to the decision
         addOptionButton = QPushButton(' \u25B6 ')
-        addOptionButton.clicked.connect(lambda: self.addOption(functionComboBox, parameterContainer, decisionNameInput, decisionOptionsInput))
         addOptionButton.hide()
 
         # Include button to confirm the decision
         includeButton = QPushButton(' \u2714 ')
-        includeButton.clicked.connect(lambda: self.includeDecision(decisionNameInput, decisionOptionsInput))
 
         # Remove button to delete the decision
         removeButton = QPushButton(' \u2718 ')
-        removeButton.clicked.connect(lambda: self.removeDecision(decisionWidget))
 
         # Add widgets to the layout with appropriate stretch factors
         functionLayout.addWidget(categoryComboBox, 6)
@@ -902,6 +898,12 @@ class App(QMainWindow):
 
         # Connect category combo box change
         categoryComboBox.currentIndexChanged.connect(lambda _: self.onCategoryComboBoxChanged(categoryComboBox, functionComboBox, parameterContainer, addOptionButton, collapseButton))
+
+        # Connect the signals for the buttons, done here so all widgets are available
+        includeButton.clicked.connect(lambda: self.includeDecision(categoryComboBox, decisionNameInput, decisionOptionsInput))
+        removeButton.clicked.connect(lambda: self.removeDecision(decisionNameInput, decisionWidget))
+        collapseButton.clicked.connect(lambda: self.collapseOption(collapseButton, functionComboBox, parameterContainer))
+        addOptionButton.clicked.connect(lambda: self.addOption(functionComboBox, parameterContainer, decisionNameInput, decisionOptionsInput))
 
         # Adding the controls layout to the main layout
         mainLayout.addLayout(functionLayout)
@@ -1164,9 +1166,9 @@ class App(QMainWindow):
         if currentName not in self.data.forking_paths:
             self.data.forking_paths[currentName] = []
 
+        # Add to forking paths
         self.data.forking_paths[currentName].append(option_dict)
-
-        print(self.data.forking_paths)
+        return
     
     # Collapse the option layout
     def collapseOption(self, collapseButton, functionComboBox, parameterContainer):
@@ -1185,20 +1187,23 @@ class App(QMainWindow):
         return
 
     # Adds decision to the script
-    def includeDecision(self, nameInput, optionsInput):
+    def includeDecision(self, categoryComboBox, nameInput, optionsInput):
+        category = categoryComboBox.currentText()
         name = nameInput.text().strip()
-        options = [self.setDtypeForOption(option.strip()) for option in optionsInput.text().split(',') if option.strip()]
 
-        if self.selected_category == "Graph":
-            current_option, function_name, params_dict = self.getMultiverseParameters()
-            print(current_option, function_name, params_dict)
+        if category == "General":
+            options = [self.setDtypeForOption(option.strip()) for option in optionsInput.text().split(',') if option.strip()]
+            self.data.forking_paths[name] = options
+        else: 
+            options = self.data.forking_paths[name]
 
         if name and options:
-            self.data.forking_paths[name] = options
             self.generateScript()
         else:
             QMessageBox.warning(self, "Input Error", "Please ensure a name and at least one option are provided.")
-
+        return
+    
+    # Handles data conversion based on the input
     def setDtypeForOption(self, option):
         # Try to convert to integer
         try:
@@ -1218,143 +1223,59 @@ class App(QMainWindow):
 
         return option
 
+    def removeDecision(self, decisionNameInput, decisionWidget):
+        key = decisionNameInput.text().strip()  # Ensure whitespace is removed
 
-
-
-    def addDecision(self):
-        # If a parameter layout is open when a new decision is added, we clear and hide it
-        try:
-            self.multiverseMethodsCombobox.clear()
-            self.clearMultiverseParameters(self.multiverseParameterLayout)
-
-            self.multiverseMethodsCombobox.hide()
-            self.multiverseParameterContainer.hide()
-        except:
-            pass
-        
-        # Add a new decision point
-        decisionLayout = QHBoxLayout()
-
-        # Create the dropdown menu
-        self.categoryComboBox = QComboBox()
-        self.categoryComboBox.addItems(["General", "FC", "Graph", "Other"])
-        self.categoryComboBox.currentIndexChanged.connect(self.onDecisionTypeChanged)
-        self.selected_category = "General"
-
-        # Decision name input field
-        decisionNameInput = QLineEdit()
-        decisionNameInput.setPlaceholderText("Decision name")
-
-        # Decision options input field
-        decisionOptionsInput = QLineEdit()
-        decisionOptionsInput.setPlaceholderText("Options (comma-separated)")
-
-        # Include button to confirm the decision
-        includeButton = QPushButton(' \u2714 ')
-        includeButton.clicked.connect(lambda: self.includeDecision(decisionNameInput, decisionOptionsInput))
-
-        # Remove button to delete the decision
-        removeButton = QPushButton(' \u2718 ')
-        removeButton.clicked.connect(lambda: self.removeDecision(decisionLayout, decisionNameInput))
-
-        # Add widgets to the layout with appropriate stretch factors
-        decisionLayout.addWidget(self.categoryComboBox, 5)  # Less space for the dropdown
-        decisionLayout.addWidget(decisionNameInput, 6)  # More space for input fields
-        decisionLayout.addWidget(decisionOptionsInput, 13)
-        decisionLayout.addWidget(includeButton, 1)
-        decisionLayout.addWidget(removeButton, 1)
-
-        # Add the layout to the decision container
-        self.decisionContainer.addLayout(decisionLayout)
-
-    def onDecisionTypeChanged(self):
-        self.selected_category = self.categoryComboBox.currentText()
-        
-        self.multiverseMethodsCombobox.clear()
-        self.clearMultiverseParameters(self.multiverseParameterLayout)
-
-        self.multiverseMethodsCombobox.hide()
-        self.multiverseParameterContainer.hide()
-
-        if self.selected_category == "General":
-            pass
-        
-        else:
-            if self.selected_category == "FC":
-                pass
-
-            elif self.selected_category == "Graph":
-                # Populate combobox with Graph functions
-                for name, description in self.graphOptions.items():
-                    self.multiverseMethodsCombobox.addItem(description, name)
-            
-            elif self.selected_category == "Other":
-                pass
-
-            # Show the combobox and parameters if they were hidden
-            self.multiverseMethodsCombobox.show()
-            self.multiverseParameterContainer.show()
-
-    def getMultiverseParameters(self):
-        # Initialize a dictionary to hold parameter names and their values
-        params_dict = {}
-
-        # Iterate over all layout items in the graphParameterLayout
-        for i in range(self.multiverseParameterLayout.count()):
-            layout_item = self.multiverseParameterLayout.itemAt(i)
-
-            # Check if the layout item is a QHBoxLayout (as each parameter is in its own QHBoxLayout)
-            if isinstance(layout_item, QHBoxLayout):
-                param_layout = layout_item.layout()
-
-                # The parameter name is in the QLabel, and the value is in the second widget (QLineEdit, QComboBox, etc.)
-                if param_layout.count() >= 2:
-                    # Extract the parameter name from the QLabel
-                    param_name_label = param_layout.itemAt(0).widget()
-                    if isinstance(param_name_label, QLabel):
-                        param_name = param_name_label.text().rstrip(':')  # Remove the colon at the end
-
-                        # Extract the parameter value from the appropriate widget type
-                        param_widget = param_layout.itemAt(1).widget()
-                        if isinstance(param_widget, QLineEdit):
-                            param_value = param_widget.text()
-                        elif isinstance(param_widget, QComboBox):
-                            param_value = param_widget.currentText()
-                        elif isinstance(param_widget, QSpinBox) or isinstance(param_widget, QDoubleSpinBox):
-                            param_value = param_widget.value()
-
-                        # Convert to appropriate boolean type (LineEdit ad ComboBox return strings))
-                        if param_value == "True":
-                            param_value = True
-                        elif param_value == "False":
-                            param_value = False
-
-                        # Add the parameter name and value to the dictionary
-                        params_dict[param_name] = param_value
-
-        # Retrieve the currently selected option in the graphAnalysisComboBox
-        current_option = self.multiverseMethodsCombobox.currentText()
-        function_name = self.reverse_graphOptions.get(current_option)
-
-        # Return the current option and its parameters
-        return current_option, function_name, params_dict
-
-    def removeDecision(self, layout, nameInput):
-
-        key = nameInput.text()
-
-        # Remove the key
+        # Remove the key from data dictionary if it exists
         if key in self.data.forking_paths:
             del self.data.forking_paths[key]
 
-        # Remove the widgets
-        for i in reversed(range(layout.count())):
-            widget = layout.itemAt(i).widget()
+        # Get the parent layout to later remove the decisionWidget from it
+        parentLayout = decisionWidget.parent().layout()
+
+        # Remove all child widgets and the layout itself
+        if decisionWidget.layout() is not None:
+            layout = decisionWidget.layout()
+            while layout.count():
+                item = layout.takeAt(0)
+                if item.widget():
+                    item.widget().deleteLater()
+                elif item.layout():  # If it's a nested layout
+                    self.clearLayout(item.layout())  # A recursive function to delete nested layouts
+
+            # Finally, remove the decisionWidget itself
+            if parentLayout is not None:
+                index = parentLayout.indexOf(decisionWidget)
+                parentLayout.takeAt(index)
+                decisionWidget.deleteLater()
+
+        # Generate the updated script
+        self.generateScript()
+
+    def clearLayout(self, layout):
+        # Recursively delete all items in a layout. This method handles both widgets and sub-layouts.
+        while layout.count():
+            item = layout.takeAt(0)  # Take the first item in the layout
+            if item.widget():
+                item.widget().deleteLater()  # Delete the widget if the item is a widget
+            elif item.layout():
+                self.clearLayout(item.layout())  # Recursively clear if the item is a layout
+                item.layout().deleteLater()  # Delete the sub-layout after clearing it
+            elif item.spacerItem():
+                # No need to delete spacer items as Qt does it automatically
+                pass
+
+
+    def clearMultiverseParameters(self, layout):
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
             if widget:
                 widget.deleteLater()
-        
-        layout.deleteLater()
-        self.generateScript()
+            else:
+                sublayout = item.layout()
+                if sublayout:
+                    self.clearMultiverseParameters(sublayout)
 
     def generateScript(self, init_template=False):
         # Initial placeholder template
