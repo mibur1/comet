@@ -885,11 +885,11 @@ class App(QMainWindow):
         functionLayout.addWidget(includeButton, 1)
         functionLayout.addWidget(removeButton, 1)
 
-        # Combo box for selecting specific functions or methods
+        # Combo box for selecting specific functions or methods (will be inside the parameterContainer widget)
         functionComboBox = QComboBox()
         functionComboBox.currentIndexChanged.connect(lambda _: self.updateFunctionParameters(functionComboBox, parameterContainer))
-        functionComboBox.hide()
-
+        functionComboBox.setObjectName("functionComboBox")
+        
         # Parameter container widget
         parameterContainer = QWidget()
         parameterLayout = QVBoxLayout()
@@ -902,12 +902,11 @@ class App(QMainWindow):
         # Connect the signals for the buttons, done here so all widgets are available
         includeButton.clicked.connect(lambda: self.includeDecision(categoryComboBox, decisionNameInput, decisionOptionsInput))
         removeButton.clicked.connect(lambda: self.removeDecision(decisionNameInput, decisionWidget))
-        collapseButton.clicked.connect(lambda: self.collapseOption(collapseButton, functionComboBox, parameterContainer))
+        collapseButton.clicked.connect(lambda: self.collapseOption(collapseButton, parameterContainer))
         addOptionButton.clicked.connect(lambda: self.addOption(functionComboBox, parameterContainer, decisionNameInput, decisionOptionsInput))
 
         # Adding the controls layout to the main layout
         mainLayout.addLayout(functionLayout)
-        mainLayout.addWidget(functionComboBox)
         mainLayout.addWidget(parameterContainer)
 
         return decisionWidget
@@ -915,11 +914,9 @@ class App(QMainWindow):
     # Handles if the type of the decision is changed
     def onCategoryComboBoxChanged(self, categoryComboBox, functionComboBox, parameterContainer, addOptionButton, collapseButton, decisionOptionsInput):
         selected_category = categoryComboBox.currentText()
-        
-        #functionComboBox.clear()
         self.clearLayout(parameterContainer.layout())
-
-        functionComboBox.hide()
+        functionComboBox.clear()
+        
         parameterContainer.hide()
         addOptionButton.hide()
         collapseButton.hide()
@@ -937,14 +934,15 @@ class App(QMainWindow):
             elif selected_category == "Graph":
                 for name, description in self.graphOptions.items():
                     functionComboBox.addItem(description, name)
+
+                    parameterContainer.show()
+                    addOptionButton.show()
+                    collapseButton.show()
     
             elif selected_category == "Other":
                 pass
-
-            functionComboBox.show()
-            parameterContainer.show()
-            addOptionButton.show()
-            collapseButton.show()
+        
+        return
 
     # Creates and updates all the parameter widgets based on the selected function
     def updateFunctionParameters(self, functionComboBox, parameterContainer):
@@ -968,7 +966,15 @@ class App(QMainWindow):
                 label_width = font_metrics.boundingRect(f"{name}:").width()
                 max_label_width = max(max_label_width, label_width)
 
-        # Add the first 'Name' QLineEdit before other parameters
+        # Add the function combobox
+        func_layout = QHBoxLayout()
+        func_label = QLabel("Option:")
+        func_label.setFixedWidth(max_label_width + 20)
+        func_layout.addWidget(func_label)
+        func_layout.addWidget(functionComboBox)
+        parameterContainer.layout().addLayout(func_layout)
+
+        # Add the 'Name' QLineEdit before other parameters
         name_layout = QHBoxLayout()
         name_label = QLabel("Name:")
         name_label.setFixedWidth(max_label_width + 20)
@@ -1125,7 +1131,7 @@ class App(QMainWindow):
         params = self.getFunctionParameters(parameterContainer)
         # Retrieve the selected function key and determine its module prefix
         func_key = functionComboBox.currentData()
-        print(func_key)
+ 
         if "COMET" in self.graphOptions[func_key] or "PREP" in self.graphOptions[func_key]:
             module_prefix = "comet.graph"
         elif "BCT" in self.graphOptions[func_key]:
@@ -1165,15 +1171,13 @@ class App(QMainWindow):
         return
     
     # Collapse the option layout
-    def collapseOption(self, collapseButton, functionComboBox, parameterContainer):
+    def collapseOption(self, collapseButton, parameterContainer):
         if collapseButton.text() == " \u25B2 ":
-            functionComboBox.hide()
             parameterContainer.hide()
             collapseButton.setText(" \u25BC ")
             return
             
         if collapseButton.text() == " \u25BC ":
-            functionComboBox.show()
             parameterContainer.show()
             collapseButton.setText(" \u25B2 ")
             return
@@ -1251,7 +1255,8 @@ class App(QMainWindow):
         while layout.count():
             item = layout.takeAt(0)  # Take the first item in the layout
             if item.widget():
-                item.widget().deleteLater()  # Delete the widget if the item is a widget
+                if item.widget().objectName() != "functionComboBox":  # Ensure it's not the functionComboBox
+                    item.widget().deleteLater()  # Delete the widget if the item is a widget
             elif item.layout():
                 self.clearLayout(item.layout())  # Recursively clear if the item is a layout
                 item.layout().deleteLater()  # Delete the sub-layout after clearing it
