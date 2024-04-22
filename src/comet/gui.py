@@ -897,7 +897,7 @@ class App(QMainWindow):
         parameterContainer.hide()
 
         # Connect category combo box change
-        categoryComboBox.currentIndexChanged.connect(lambda _: self.onCategoryComboBoxChanged(categoryComboBox, functionComboBox, parameterContainer, addOptionButton, collapseButton))
+        categoryComboBox.currentIndexChanged.connect(lambda _: self.onCategoryComboBoxChanged(categoryComboBox, functionComboBox, parameterContainer, addOptionButton, collapseButton, decisionOptionsInput))
 
         # Connect the signals for the buttons, done here so all widgets are available
         includeButton.clicked.connect(lambda: self.includeDecision(categoryComboBox, decisionNameInput, decisionOptionsInput))
@@ -913,7 +913,7 @@ class App(QMainWindow):
         return decisionWidget
 
     # Handles if the type of the decision is changed
-    def onCategoryComboBoxChanged(self, categoryComboBox, functionComboBox, parameterContainer, addOptionButton, collapseButton):
+    def onCategoryComboBoxChanged(self, categoryComboBox, functionComboBox, parameterContainer, addOptionButton, collapseButton, decisionOptionsInput):
         selected_category = categoryComboBox.currentText()
         
         #functionComboBox.clear()
@@ -924,14 +924,20 @@ class App(QMainWindow):
         addOptionButton.hide()
         collapseButton.hide()
 
-        if selected_category != "General":
+        if selected_category == "General":
+            decisionOptionsInput.setPlaceholderText("Enter options, comma-separated")
+            decisionOptionsInput.setReadOnly(False)
+        else:
+            decisionOptionsInput.setPlaceholderText("Define options below")
+            decisionOptionsInput.setReadOnly(True)
+
             if selected_category == "FC":
                 pass
             
             elif selected_category == "Graph":
                 for name, description in self.graphOptions.items():
                     functionComboBox.addItem(description, name)
-            
+    
             elif selected_category == "Other":
                 pass
 
