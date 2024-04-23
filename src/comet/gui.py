@@ -206,6 +206,33 @@ class App(QMainWindow):
         }
         self.reverse_param_names = {v: k for k, v in self.param_names.items()}
         
+        # All availble connectivity methods
+        self.connectivityMethods = {
+            'SlidingWindow':                'CONT Sliding Window',
+            'Jackknife':                    'CONT Jackknife Correlation',
+            'FlexibleLeastSquares':         'CONT Flexible Least Squares',
+            'SpatialDistance':              'CONT Spatial Distance', 
+            'TemporalDerivatives':          'CONT Multiplication of Temporal Derivatives',
+            'DCC':                          'CONT Dynamic Conditional Correlation',
+            'PhaseSynchrony':               'CONT Phase Synchronization',
+            'LeiDA':                        'CONT Leading Eigenvector Dynamics',
+            'WaveletCoherence':             'CONT Wavelet Coherence',
+            'Edge_centric_connectivity':    'CONT Edge-centric Connectivity',
+            
+            'Sliding_Window_Clustr':        'STATE Sliding Window Clustering',
+            'Cap':                          'STATE Co-activation patterns',
+            'HMM_Disc':                     'STATE Discrete Hidden Markov Model',
+            'HM_Cont':                      'STATE Continuous Hidden Markov Model',
+            'Windowless':                   'STATE Windowless',
+
+            'Static_Pearson':               'STATIC Pearson Correlation',
+            'Static_Partial':               'STATIC Partial Correlation',
+            'Static_Mutual_Info':           'STATIC Mutual Information'
+        }
+
+        self.reverse_connectivityMethods = {v: k for k, v in self.connectivityMethods.items()}
+        
+        
         # All availble graph analysis functions
         self.graphOptions = {
             "handle_negative_weights":      "PREP Negative weights",
@@ -897,7 +924,7 @@ class App(QMainWindow):
         parameterContainer.hide()
 
         # Connect category combo box change
-        categoryComboBox.currentIndexChanged.connect(lambda _: self.onCategoryComboBoxChanged(categoryComboBox, functionComboBox, parameterContainer, addOptionButton, collapseButton, decisionOptionsInput))
+        categoryComboBox.currentIndexChanged.connect(lambda _: self.onCategoryComboBoxChanged(categoryComboBox, functionComboBox, parameterContainer, addOptionButton, collapseButton, decisionNameInput, decisionOptionsInput))
 
         # Connect the signals for the buttons, done here so all widgets are available
         includeButton.clicked.connect(lambda: self.includeDecision(categoryComboBox, decisionNameInput, decisionOptionsInput))
@@ -912,48 +939,89 @@ class App(QMainWindow):
         return decisionWidget
 
     # Handles if the type of the decision is changed
-    def onCategoryComboBoxChanged(self, categoryComboBox, functionComboBox, parameterContainer, addOptionButton, collapseButton, decisionOptionsInput):
+    def onCategoryComboBoxChanged(self, categoryComboBox, functionComboBox, parameterContainer, addOptionButton, collapseButton, decisionNameInput, decisionOptionsInput):
         selected_category = categoryComboBox.currentText()
         self.clearLayout(parameterContainer.layout())
+
         functionComboBox.clear()
-        
+        decisionNameInput.clear()
+        decisionOptionsInput.clear()
+
         parameterContainer.hide()
         addOptionButton.hide()
         collapseButton.hide()
 
-        if selected_category == "General":
-            decisionOptionsInput.setPlaceholderText("Enter options, comma-separated")
-            decisionOptionsInput.setReadOnly(False)
-        else:
-            decisionOptionsInput.setPlaceholderText("Define options below")
-            decisionOptionsInput.setReadOnly(True)
+        # Re-populate fields based on the last entry in forking_paths for the selected category
+        last_key, last_entry = None, None
+        if selected_category in ['FC', 'Graph']:
+            # Filter entries by prefix in "Option" within args dict
+            prefix = 'PREP' if selected_category == 'Graph' else 'CONT'
+            for key, entries in reversed(list(self.data.forking_paths.items())):
+                if isinstance(entries, list) and any(isinstance(d, dict) and 'args' in d and 'Option' in d['args'] and prefix in d['args']['Option'] for d in entries):
+                    last_key, last_entry = key, entries
+                    break
+        elif selected_category == 'General':
+            # General is simply the last key in the dictionary where value is a list of ints
+            for key, value in reversed(list(self.data.forking_paths.items())):
+                if isinstance(value, list) and all(isinstance(x, int) for x in value):
+                    last_key, last_entry = key, value
+                    break
 
-            if selected_category == "FC":
-                pass
-            
-            elif selected_category == "Graph":
-                for name, description in self.graphOptions.items():
-                    functionComboBox.addItem(description, name)
+        # Set the inputs if there was an entry found
+        if last_key:
+            decisionNameInput.setText(last_key)
+            if isinstance(last_entry, list) and all(isinstance(x, dict) for x in last_entry):
+                decisionOptionsInput.setText(', '.join(d['name'] for d in last_entry if 'name' in d))
+            elif isinstance(last_entry, list):
+                decisionOptionsInput.setText(', '.join(map(str, last_entry)))
 
-                    parameterContainer.show()
-                    addOptionButton.show()
-                    collapseButton.show()
-    
-            elif selected_category == "Other":
-                pass
-        
+        # Sets up the layout and input fields for the new category/options
+        decisionOptionsInput.setPlaceholderText("Enter options, comma-separated" if selected_category == "General" else "Define options below")
+        decisionOptionsInput.setReadOnly(selected_category != "General")
+
+        if selected_category in ["FC", "Graph"]:
+            methods = self.graphOptions if selected_category == "Graph" else self.connectivityMethods
+            for name, description in methods.items():
+                functionComboBox.addItem(description, name)
+
+            functionComboBox.show()
+            parameterContainer.show()
+            addOptionButton.show()
+            collapseButton.show()
+
+        elif selected_category == "Other":
+            # Special handling for other types, if necessary
+            pass
+
+        self.update()
+
         return
+
 
     # Creates and updates all the parameter widgets based on the selected function
     def updateFunctionParameters(self, functionComboBox, parameterContainer):
         if functionComboBox.currentData() is None:
             return
 
-        func = getattr(graph, functionComboBox.currentData())
+        func_key = functionComboBox.currentData()
+        try:
+            method_name = self.connectivityMethods[func_key]
+        except:
+            method_name = self.graphOptions[func_key]
+        prefix = method_name.strip().split(' ')[0]
 
+        if prefix == "COMET" or prefix == "PREP" or prefix == "BCT":
+            func = getattr(graph, functionComboBox.currentData())
+        elif prefix == "CONT" or prefix == "STATE" or prefix == "STATIC":
+            func = getattr(methods, functionComboBox.currentData())
+        else:
+            QMessageBox.warning(self, "Error", "Function is not recognized")
+        
         # Retrieve the signature of the function
         func_signature = inspect.signature(func)
         type_hints = get_type_hints(func)
+
+        print(func, func_signature, type_hints)
 
         # Clear previous parameters
         self.clearLayout(parameterContainer.layout())
@@ -1128,21 +1196,30 @@ class App(QMainWindow):
 
     # Add option to a decision
     def addOption(self, functionComboBox, parameterContainer, nameInputField, optionsInputField):
-        params = self.getFunctionParameters(parameterContainer)
         # Retrieve the selected function key and determine its module prefix
         func_key = functionComboBox.currentData()
- 
-        if "COMET" in self.graphOptions[func_key] or "PREP" in self.graphOptions[func_key]:
+
+        try:
+            method_name = self.connectivityMethods[func_key]
+        except:
+            method_name = self.graphOptions[func_key]
+        prefix = method_name.strip().split(' ')[0]
+
+        if prefix == "COMET" or prefix == "PREP":
             module_prefix = "comet.graph"
-        elif "BCT" in self.graphOptions[func_key]:
+        elif prefix == "BCT":
             module_prefix = "bct"
+        elif prefix == "CONT" or prefix == "STATE" or prefix == "STATIC":
+            module_prefix = "comet.methods"
         else:
             QMessageBox.warning(self, "Error", "Function is not recognized")
 
         # Construct the full function path
         func = f"{module_prefix}.{func_key}"
 
+        params = self.getFunctionParameters(parameterContainer)
         option_name = params.get('Name', '').strip()
+
         if not option_name:
             QMessageBox.warning(self, "Error", "Please provide a name for the option")
             return
