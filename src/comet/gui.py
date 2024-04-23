@@ -141,7 +141,6 @@ class DataStorage:
         return None
 
 class App(QMainWindow):
-
     """
     Initialization and GUI setup functions
     """
@@ -947,6 +946,7 @@ class App(QMainWindow):
         decisionNameInput.clear()
         decisionOptionsInput.clear()
 
+        functionComboBox.hide()
         parameterContainer.hide()
         addOptionButton.hide()
         collapseButton.hide()
@@ -990,13 +990,54 @@ class App(QMainWindow):
             collapseButton.show()
 
         elif selected_category == "Other":
-            # Special handling for other types, if necessary
-            pass
+            parameterContainer.show()
+            addOptionButton.show()
+            collapseButton.show()
+            self.otherOptionCategory(parameterContainer)
 
         self.update()
 
         return
+    
+    # Gets a dict with the current function parameters
+    def getFunctionParameters(self, parameterContainer):
+        params_dict = {}
+        paramLayout = parameterContainer.layout()
 
+        # Iterate over all layout items in the parameter layout
+        for i in range(paramLayout.count()):
+            layout_item = paramLayout.itemAt(i)
+
+            # Ensure the layout item is a QHBoxLayout (each parameter is in its own QHBoxLayout)
+            if isinstance(layout_item.layout(), QHBoxLayout):
+                param_layout = layout_item.layout()
+
+                # The parameter name is in the QLabel, and the value is in the second widget (QLineEdit, QComboBox, etc.)
+                if param_layout.count() >= 2:
+                    # Extract the parameter name from the QLabel
+                    param_name_label = param_layout.itemAt(0).widget()
+                    if isinstance(param_name_label, QLabel):
+                        param_name = param_name_label.text().rstrip(':')  # Remove the colon at the end
+
+                        # Extract the parameter value from the appropriate widget type
+                        param_widget = param_layout.itemAt(1).widget()
+                        if isinstance(param_widget, QLineEdit):
+                            param_value = param_widget.text()
+                        elif isinstance(param_widget, QComboBox):
+                            param_value = param_widget.currentText()
+                        elif isinstance(param_widget, QSpinBox) or isinstance(param_widget, QDoubleSpinBox):
+                            param_value = param_widget.value()
+
+                        # Convert to appropriate boolean type if necessary (LineEdit and QComboBox return strings)
+                        if param_value == "True":
+                            param_value = True
+                        elif param_value == "False":
+                            param_value = False
+
+                        # Add the parameter name and value to the dictionary
+                        params_dict[param_name] = param_value
+
+        return params_dict
 
     # Creates and updates all the parameter widgets based on the selected function
     def updateFunctionParameters(self, functionComboBox, parameterContainer):
@@ -1148,51 +1189,40 @@ class App(QMainWindow):
             
             return
 
+    # Adds a new option to the script
+    def otherOptionCategory(self, parameterContainer):
+        # Clear the parameter container
+        self.clearLayout(parameterContainer.layout())
+
+        # Add a single QLineEdit for the user to input the option
+        font_metrics = QFontMetrics(self.font())
+        label_width = font_metrics.boundingRect(f"Parameters:").width()
+
+        option_layout = QHBoxLayout()
+        option_label = QLabel("Function:")
+        option_label.setFixedWidth(label_width + 20)
+        option_edit = QLineEdit()
+        option_edit.setPlaceholderText("Name of the function/class (e.g. np.mean)")
+        option_layout.addWidget(option_label)
+        option_layout.addWidget(option_edit)
+        parameterContainer.layout().addLayout(option_layout)
+
+        param_layout = QHBoxLayout()
+        param_label = QLabel("Parameters:")
+        param_label.setFixedWidth(label_width + 20)
+        param_edit = QLineEdit()
+        param_edit.setPlaceholderText("Function/class parameters as dict (e.g. {'axis': 0})")
+        param_layout.addWidget(param_label)
+        param_layout.addWidget(param_edit)
+        parameterContainer.layout().addLayout(param_layout)
+
+        return  
+
     # Adds a new decision widget to the layout
     def addNewDecision(self, layout, buttonLayout):
         newDecisionWidget = self.addDecisionContainer()
         buttonLayoutIndex = layout.indexOf(buttonLayout)
         layout.insertWidget(buttonLayoutIndex, newDecisionWidget)
-
-    # Gets a dict with the current function parameters
-    def getFunctionParameters(self, parameterContainer):
-        params_dict = {}
-        paramLayout = parameterContainer.layout()
-
-        # Iterate over all layout items in the parameter layout
-        for i in range(paramLayout.count()):
-            layout_item = paramLayout.itemAt(i)
-
-            # Ensure the layout item is a QHBoxLayout (each parameter is in its own QHBoxLayout)
-            if isinstance(layout_item.layout(), QHBoxLayout):
-                param_layout = layout_item.layout()
-
-                # The parameter name is in the QLabel, and the value is in the second widget (QLineEdit, QComboBox, etc.)
-                if param_layout.count() >= 2:
-                    # Extract the parameter name from the QLabel
-                    param_name_label = param_layout.itemAt(0).widget()
-                    if isinstance(param_name_label, QLabel):
-                        param_name = param_name_label.text().rstrip(':')  # Remove the colon at the end
-
-                        # Extract the parameter value from the appropriate widget type
-                        param_widget = param_layout.itemAt(1).widget()
-                        if isinstance(param_widget, QLineEdit):
-                            param_value = param_widget.text()
-                        elif isinstance(param_widget, QComboBox):
-                            param_value = param_widget.currentText()
-                        elif isinstance(param_widget, QSpinBox) or isinstance(param_widget, QDoubleSpinBox):
-                            param_value = param_widget.value()
-
-                        # Convert to appropriate boolean type if necessary (LineEdit and QComboBox return strings)
-                        if param_value == "True":
-                            param_value = True
-                        elif param_value == "False":
-                            param_value = False
-
-                        # Add the parameter name and value to the dictionary
-                        params_dict[param_name] = param_value
-
-        return params_dict
 
     # Add option to a decision
     def addOption(self, functionComboBox, parameterContainer, nameInputField, optionsInputField):
@@ -1298,6 +1328,7 @@ class App(QMainWindow):
 
         return option
 
+    # Removes one option with each click and finally the entire decision
     def removeDecision(self, decisionNameInput, decisionWidget, optionsInputField):
         key = decisionNameInput.text().strip()
 
@@ -1318,10 +1349,10 @@ class App(QMainWindow):
                 decisionWidget.deleteLater()  # Delete the decision widget
                 optionsInputField.clear()  # Clear the options input field
 
-        # Regenerate scripts or other dependent views
         self.generateScript()
+        return
 
-
+    # Clears the entire decisionWidget layout
     def clearLayout(self, layout):
         # Recursively delete all items in a layout. This method handles both widgets and sub-layouts.
         while layout.count():
@@ -1335,7 +1366,8 @@ class App(QMainWindow):
             elif item.spacerItem():
                 # No need to delete spacer items as Qt does it automatically
                 pass
-
+    
+    # Generates the template script
     def generateScript(self, init_template=False):
         # Initial placeholder template
         if init_template:
@@ -1379,12 +1411,14 @@ class App(QMainWindow):
 
         self.scriptDisplay.setText(script_content)
 
+    # Loads a multiverse script
     def loadScript(self):
         fileName, _ = QFileDialog.getOpenFileName(self, "Load Script", "", "Python Files (*.py);;All Files (*)")
         if fileName:
             self.loadedScriptDisplay.setText(f"Loaded: {fileName}")
             self.loadedScriptPath = fileName
 
+    # Saves the current template script
     def saveScript(self):
         script_text = self.scriptDisplay.toPlainText()
         fileName, _ = QFileDialog.getSaveFileName(self, "Save Script", "", "Python Files (*.py);;All Files (*)")
@@ -1397,6 +1431,7 @@ class App(QMainWindow):
             with open(fileName, 'w') as file:
                 file.write(script_text)
 
+    # Runs the script/multiverse analysis
     def executeScript(self):
         if hasattr(self, 'loadedScriptPath') and self.loadedScriptPath:
             with open(self.loadedScriptPath, "r") as file:
@@ -1408,7 +1443,7 @@ class App(QMainWindow):
     """
     I/O and data related functions
     """
-    # dFC functions
+    # dFC tab
     def loadConnectivityFile(self):
         fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
@@ -1586,7 +1621,7 @@ class App(QMainWindow):
         self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.data.file_data.shape}")
         self.time_series_textbox.setText(self.data.file_name)
 
-    # Graph functions
+    # Graph tab
     def loadGraphFile(self):
         fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
@@ -1684,7 +1719,7 @@ class App(QMainWindow):
     """
     dFC/graph functions
     """
-    # dFC functions
+    # dFC tab
     def onMethodCombobox(self, methodName=None):
         # Clear old variables and data
         self.clearParameters(self.parameterLayout)
@@ -1894,7 +1929,7 @@ class App(QMainWindow):
         self.data.file_data = cifti.parcellate(self.data.cifti_data, atlas=atlas_name)
         self.fileNameLabel.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
 
-    # Graph functios
+    # Graph tab
     def onGraphCombobox(self):
         self.setGraphParameters()
 
@@ -1935,7 +1970,7 @@ class App(QMainWindow):
     """
     Parameters
     """
-    # dFC functions
+    # dFC tab
     def initParameters(self, class_instance):
         # Now the parameter labels and boxes are set up    
         labels = []
@@ -2176,7 +2211,7 @@ class App(QMainWindow):
                 # No need to delete spacer items; they are automatically handled by Qt
                 pass
     
-    # Graph functions
+    # Graph tab
     def setGraphParameters(self):
         # Clear parameters
         self.clearParameters(self.graphParameterLayout)
@@ -2352,7 +2387,7 @@ class App(QMainWindow):
     """
     Calculation
     """
-    # dFC functions
+    # dFC tab
     def onCalculateButton(self):
         # Check if ts_data is available
         if self.data.file_data is None:
@@ -2466,7 +2501,7 @@ class App(QMainWindow):
         self.plotLogo(self.figure)
         self.canvas.draw()
 
-    # Graph functions
+    # Graph tab
     def onAddGraphOption(self):
 
         # Start worker thread for graph calculations
@@ -2546,7 +2581,7 @@ class App(QMainWindow):
     """
     Memory functions
     """
-    # dFC functions
+    # dFC tab
     def onKeepInMemoryChecked(self, state):
         if state == 2 and self.data.dfc_data is not None:
             self.data_storage.add_data(self.data)
@@ -2566,7 +2601,7 @@ class App(QMainWindow):
     """
     Plotting functions
     """
-    # dFC functions
+    # dFC tab
     def plotConnectivity(self):
         current_data = self.data.dfc_data
         
@@ -2873,7 +2908,7 @@ class App(QMainWindow):
         self.plotConnectivity()
         self.plotDistribution()
 
-    # Graph functions
+    # Graph tab
     def plotGraph(self):
         current_data = self.data.graph_data
         
@@ -2991,7 +3026,7 @@ class App(QMainWindow):
         
         return
     
-    # Shared functions
+    # Shared tab
     def plotLogo(self, figure=None):
         with pkg_resources.path("comet.resources.img", "logo.png") as file_path:
             logo = imread(file_path)
