@@ -928,7 +928,7 @@ class App(QMainWindow):
 
         # Connect the signals for the buttons, done here so all widgets are available
         includeButton.clicked.connect(lambda: self.includeDecision(categoryComboBox, decisionNameInput, decisionOptionsInput))
-        removeButton.clicked.connect(lambda: self.removeDecision(decisionNameInput, decisionWidget))
+        removeButton.clicked.connect(lambda: self.removeDecision(decisionNameInput, decisionWidget, decisionOptionsInput))
         collapseButton.clicked.connect(lambda: self.collapseOption(collapseButton, parameterContainer))
         addOptionButton.clicked.connect(lambda: self.addOption(functionComboBox, parameterContainer, decisionNameInput, decisionOptionsInput))
 
@@ -1298,34 +1298,29 @@ class App(QMainWindow):
 
         return option
 
-    def removeDecision(self, decisionNameInput, decisionWidget):
-        key = decisionNameInput.text().strip()  # Ensure whitespace is removed
+    def removeDecision(self, decisionNameInput, decisionWidget, optionsInputField):
+        key = decisionNameInput.text().strip()
 
-        # Remove the key from data dictionary if it exists
         if key in self.data.forking_paths:
-            del self.data.forking_paths[key]
+            options = self.data.forking_paths[key]
 
-        # Get the parent layout to later remove the decisionWidget from it
-        parentLayout = decisionWidget.parent().layout()
+            # Remove the last option and update the input field
+            if options:
+                options.pop() # Remove the last option
+                options_str = ', '.join(opt['name'] if isinstance(opt, dict) else str(opt) for opt in options)
+                optionsInputField.setText(options_str) # Update the input field
 
-        # Remove all child widgets and the layout itself
-        if decisionWidget.layout() is not None:
-            layout = decisionWidget.layout()
-            while layout.count():
-                item = layout.takeAt(0)
-                if item.widget():
-                    item.widget().deleteLater()
-                elif item.layout():  # If it's a nested layout
-                    self.clearLayout(item.layout())  # A recursive function to delete nested layouts
+            # If all options are removed or there are no options, clear and delete everything
+            if not options:
+                del self.data.forking_paths[key]
+                if decisionWidget.layout():
+                    self.clearLayout(decisionWidget.layout())  # Clear all child widgets and sub-layouts
+                decisionWidget.deleteLater()  # Delete the decision widget
+                optionsInputField.clear()  # Clear the options input field
 
-            # Finally, remove the decisionWidget itself
-            if parentLayout is not None:
-                index = parentLayout.indexOf(decisionWidget)
-                parentLayout.takeAt(index)
-                decisionWidget.deleteLater()
-
-        # Generate the updated script
+        # Regenerate scripts or other dependent views
         self.generateScript()
+
 
     def clearLayout(self, layout):
         # Recursively delete all items in a layout. This method handles both widgets and sub-layouts.
