@@ -1054,15 +1054,14 @@ class App(QMainWindow):
         if prefix == "COMET" or prefix == "PREP" or prefix == "BCT":
             func = getattr(graph, functionComboBox.currentData())
         elif prefix == "CONT" or prefix == "STATE" or prefix == "STATIC":
-            func = getattr(methods, functionComboBox.currentData())
+            dfc_class_ = getattr(methods, functionComboBox.currentData())
+            func = dfc_class_.__init__
         else:
             QMessageBox.warning(self, "Error", "Function is not recognized")
         
         # Retrieve the signature of the function
         func_signature = inspect.signature(func)
         type_hints = get_type_hints(func)
-
-        print(func, func_signature, type_hints)
 
         # Clear previous parameters
         self.clearLayout(parameterContainer.layout())
@@ -1103,6 +1102,7 @@ class App(QMainWindow):
                 # Horizontal layout for each parameter
                 param_layout = QHBoxLayout()
                 param_type = type_hints.get(name)
+                print(name, param_type)
                 param_default = 1 if isinstance(param.default, inspect._empty) else param.default
                 
                 if param_default == None:
@@ -1189,7 +1189,7 @@ class App(QMainWindow):
             
             return
 
-    # Adds a new option to the script
+    # "Other" category for custom functions
     def otherOptionCategory(self, parameterContainer):
         # Clear the parameter container
         self.clearLayout(parameterContainer.layout())
