@@ -1222,4 +1222,3 @@ class Static_Mutual_Info(ConnectivityMethod):
 
         fc = self.postproc(fc)
         return fc
-    

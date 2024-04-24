@@ -370,9 +370,14 @@ class App(QMainWindow):
         self.leftLayout = QVBoxLayout()
 
         # Create button and label for file loading
-        self.fileButton = QPushButton('Load File')
+        loadLayout = QHBoxLayout()
+        self.fileButton = QPushButton('Load time series')
+        self.bidsButton = QPushButton('Load BIDS dataset')
         self.fileNameLabel = QLabel('No file loaded yet')
-        self.leftLayout.addWidget(self.fileButton)
+        
+        loadLayout.addWidget(self.fileButton)
+        loadLayout.addWidget(self.bidsButton)
+        self.leftLayout.addLayout(loadLayout)
         self.leftLayout.addWidget(self.fileNameLabel)
         self.fileButton.clicked.connect(self.loadConnectivityFile)
 
@@ -1135,7 +1140,7 @@ class App(QMainWindow):
                         param_widget.setValue(param_default)
                         param_widget.setMaximum(10000)
                         param_widget.setMinimum(-10000)
-                        param_widget.setSingleStep(param_default)
+                        param_widget.setSingleStep(1)
                     # Float 
                     elif param_type == float:    
                         param_widget = QDoubleSpinBox()
@@ -1143,9 +1148,16 @@ class App(QMainWindow):
                             param_widget.setValue(0.0)
                         else:
                             param_widget.setValue(param_default)
-                        param_widget.setMaximum(1.0)
-                        param_widget.setMinimum(0.0)
+
+                        if prefix == "COMET" or prefix == "PREP" or prefix == "BCT":
+                            param_widget.setMaximum(1.0)
+                            param_widget.setMinimum(0.0)
+                        else:
+                            param_widget.setMaximum(10000.0)
+                            param_widget.setMinimum(-10000.0)
+
                         param_widget.setSingleStep(0.01)
+
                     # String
                     elif get_origin(type_hints.get(name)) is Literal:
                         options = type_hints.get(name).__args__ 
