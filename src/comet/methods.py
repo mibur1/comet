@@ -12,6 +12,7 @@ from sklearn.metrics import mutual_info_score
 from statsmodels.stats.weightstats import DescrStatsW
 from pycwt import cwt, Morlet
 from pydfc.dfc_methods import *
+from typing import Literal
 
 from joblib import Parallel, delayed
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
@@ -75,7 +76,16 @@ class SlidingWindow(ConnectivityMethod):
         Most widely used method, which involves sliding a window over the data.
         Cavariance is estimated for each windowed section.
     '''
-    def __init__(self, time_series, windowsize=29, shape="rectangular", std=10, diagonal=0, standardize=False, fisher_z=False, tril=False):
+    def __init__(self,
+                 time_series: np.ndarray,
+                 windowsize: int = 29,
+                 shape: Literal["rectangular", "gaussian", "hamming"] = "rectangular",
+                 std: float = 10,
+                 diagonal: int = 0,
+                 standardize: bool = False,
+                 fisher_z: bool = False,
+                 tril: bool = False):
+        
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.windowsize = windowsize
         self.shape = shape
@@ -135,7 +145,14 @@ class Jackknife(ConnectivityMethod):
         correlation between covariance-based metrics undefined on a single-trial basis.
         https://doi.org/10.1016/j.neuroimage.2015.04.040
     '''
-    def __init__(self, time_series, windowsize=1, diagonal=0, standardize=False, fisher_z=False, tril=False):
+    def __init__(self,
+                 time_series: np.ndarray,
+                 windowsize: int = 1,
+                 diagonal: int = 0,
+                 standardize: bool = False,
+                 fisher_z: bool = False,
+                 tril: bool = False):
+        
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.windowsize = windowsize
 
@@ -178,7 +195,14 @@ class SpatialDistance(ConnectivityMethod):
         to temporal network theory: Applications to functional brain connectivity. 
         https://doi.org/10.1162/NETN_a_00011
     '''
-    def __init__(self, time_series, dist='euclidean', diagonal=0, standardize=False, fisher_z=True, tril=False):
+    def __init__(self,
+                 time_series: np.ndarray,
+                 dist: Literal["euclidean", "cosine", "cityblock"] = "euclidean",
+                 diagonal: int = 0,
+                 standardize: bool = False,
+                 fisher_z: bool = False,
+                 tril: bool = False):
+        
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.distance = self._distance_functions(dist)
 
@@ -226,7 +250,14 @@ class TemporalDerivatives(ConnectivityMethod):
         dynamic functional connectivity using Multiplication of Temporal Derivatives.
         https://doi.org/10.1016/j.neuroimage.2015.07.064.
     '''
-    def __init__(self, time_series, windowsize=7, diagonal=0, standardize=False, fisher_z=False, tril=False):
+    def __init__(self,
+                 time_series: np.ndarray,
+                 windowsize: int = 7,
+                 diagonal: int = 0,
+                 standardize: bool = False,
+                 fisher_z: bool = False,
+                 tril: bool = False):
+        
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.windowsize = windowsize
         
@@ -265,7 +296,16 @@ class FlexibleLeastSquares(ConnectivityMethod):
         DynamicBC: a MATLAB toolbox for dynamic brain connectome analysis. Brain connectivity, 4(10), 780-790.
         https://doi.org/10.1089/brain.2014.0253
     '''
-    def __init__(self, time_series, standardizeData=True, mu=100, num_cores=16, diagonal=0, standardize=False, fisher_z=False, tril=False):
+    def __init__(self,
+                 time_series: np.ndarray,
+                 standardizeData: bool = True,
+                 mu: float = 100,
+                 num_cores: int = 16,
+                 diagonal: int = 0,
+                 standardize: bool = False,
+                 fisher_z: bool = False,
+                 tril: bool = False):
+        
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.N_estimates = self.T
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
@@ -341,7 +381,14 @@ class PhaseSynchrony(ConnectivityMethod):
         Honari, H., Choe, A. S., & Lindquist, M. A. (2021). Evaluating phase synchronization methods in fMRI: 
         A comparison study and new approaches. NeuroImage, 228, 117704. https://doi.org/10.1016/j.neuroimage.2020.117704
     '''
-    def __init__(self, time_series, method="crp", diagonal=0, standardize=False, fisher_z=False, tril=False):
+    def __init__(self,
+                 time_series: np.ndarray,
+                 method: Literal["crp", "pcoh", "teneto"] = "crp",
+                 diagonal: int = 0,
+                 standardize: bool = False,
+                 fisher_z: bool = False,
+                 tril: bool = False):
+        
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.N_estimates = self.T
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
@@ -387,7 +434,14 @@ class LeiDA(ConnectivityMethod):
         Recurrent excursions into functionally-relevant BOLD phase-locking states. Frontiers in systems neuroscience, 14, 20.
         https://doi.org/10.3389/fnsys.2020.00020
     '''
-    def __init__(self, time_series, flip_eigenvectors=False, diagonal=0, standardize=False, fisher_z=False, tril=False):
+    def __init__(self,
+                 time_series: np.ndarray,
+                 flip_eigenvectors: bool = False,
+                 diagonal: int = 0,
+                 standardize: bool = False,
+                 fisher_z: bool = False,
+                 tril: bool = False):
+        
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
 
         self.N_estimates = self.T
@@ -431,7 +485,20 @@ class WaveletCoherence(ConnectivityMethod):
         topological descriptions of human brain dynamics. Network Neuroscience 2021; 5 (2): 549–568. 
         https://doi.org/10.1162/netn_a_00190
     '''
-    def __init__(self, time_series, method="weighted", TR=0.72, fmin=0.007, fmax=0.15, n_scales=15, drop_scales=2, drop_timepoints=50, diagonal=0, standardize=False, fisher_z=False, tril=False):
+    def __init__(self,
+                 time_series: np.ndarray,
+                 method: Literal["weighted"] = "weighted",
+                 TR: float = 0.72,
+                 fmin: float = 0.007,
+                 fmax: float = 0.15,
+                 n_scales: int = 15,
+                 drop_scales: int = 2,
+                 drop_timepoints: int = 50,
+                 diagonal: int = 0,
+                 standardize: bool = False,
+                 fisher_z: bool = False,
+                 tril: bool = False):
+        
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
 
         self.N_estimates = self.T
@@ -520,7 +587,15 @@ class DCC(ConnectivityMethod):
         https://doi.org/10.1016/j.neuroimage.2014.06.052
     '''
 
-    def __init__(self, time_series, num_cores=16, standardizeData=True, diagonal=0, standardize=False, fisher_z=False, tril=False):
+    def __init__(self,
+                 time_series: np.ndarray,
+                 num_cores: int = 16,
+                 standardizeData: bool = True,
+                 diagonal: int = 0,
+                 standardize: bool = False,
+                 fisher_z: bool = False,
+                 tril: bool = False):
+        
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
 
         self.N_estimates = self.T
@@ -729,7 +804,15 @@ class Edge_centric_connectivity(ConnectivityMethod):
     name = "CONT Edge-centric Connectivity"
     options = {}
 
-    def __init__(self, time_series, standardizeData=True, vlim=3, diagonal=0, standardize=False, fisher_z=False, tril=False):
+    def __init__(self,
+                 time_series: np.ndarray,
+                 standardizeData: bool = True,
+                 vlim: float = 3, # for plotting in the GUI, not used in the method itself
+                 diagonal: int = 0,
+                 standardize: bool = False,
+                 fisher_z: bool = False,
+                 tril: bool = False):
+        
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.standardizeData = standardizeData
     
@@ -1070,7 +1153,13 @@ class Static_Pearson(ConnectivityMethod):
     name = "STATIC Pearson Correlation"
     options = {}
 
-    def __init__(self, time_series, diagonal=0, standardize=False, fisher_z=False, tril=False):
+    def __init__(self,
+                 time_series: np.ndarray,
+                 diagonal: int = 0,
+                 standardize: bool = False,
+                 fisher_z: bool = False,
+                 tril: bool = False):
+        
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
 
     def connectivity(self):
@@ -1082,7 +1171,13 @@ class Static_Partial(ConnectivityMethod):
     name = "STATIC Partial Correlation"
     options = {}
 
-    def __init__(self, time_series, diagonal=0, standardize=False, fisher_z=False, tril=False):
+    def __init__(self,
+                 time_series: np.ndarray,
+                 diagonal: int = 0,
+                 standardize: bool = False,
+                 fisher_z: bool = False,
+                 tril: bool = False):
+        
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
 
     def connectivity(self):
@@ -1096,7 +1191,14 @@ class Static_Mutual_Info(ConnectivityMethod):
     name = "STATIC Mutual Information"
     options = {}
 
-    def __init__(self, time_series, num_bins=10, diagonal=0, standardize=False, fisher_z=False, tril=False):
+    def __init__(self, 
+                 time_series: np.ndarray,
+                 num_bins: int = 10,
+                 diagonal: int = 0,
+                 standardize: bool = False,
+                 fisher_z: bool = False,
+                 tril: bool = False):
+        
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.num_bins = num_bins
 
