@@ -1383,43 +1383,56 @@ class App(QMainWindow):
     def generateScript(self, init_template=False):
         # Initial placeholder template
         if init_template:
-            script_content =  f"\"\"\"\n"
-            script_content += f"Running Multiverse analysis\n\n"
-            script_content += f"Multiverse analysis requires a Python script to be created by the user.\n"
-            script_content += f"An initial template for this can be created through the GUI, with forking paths being stored in a dict and later used through double curly braces in the template function.\n\n"
-            script_content += f"This example shows how one would create and run a multiverse analysis which will generate 3 Python scripts (universes) printing the numbers 1, 2, and 3, respectively.\n"
-            script_content += f"\"\"\"\n\n"
+            script_content = (
+            "\"\"\"\n"
+            "Running Multiverse analysis\n"
+            "\n"
+            "Multiverse analysis requires a Python script to be created by the user.\n"
+            "An initial template for this can be created through the GUI, with forking paths being stored in a dict and later used through double curly braces in the template function.\n\n"
+            "This example shows how one would create and run a multiverse analysis which will generate 3 Python scripts (universes) printing the numbers 1, 2, and 3, respectively.\n"
+            "\"\"\"\n"
+            "\n"
+            "from comet.multiverse import Multiverse\n"
+            "\n"
+            "forking_paths = {\n"
+            "    \"numbers\": [1, 2, 3]\n"
+            "}\n"
+            "\n"
+            "def analysis_template():\n"
+            "    print({{numbers}})\n"
+            "\n"
+            "multiverse = Multiverse(name=\"multiverse_example\")\n"
+            "multiverse.create(analysis_template, forking_paths)\n"
+            "multiverse.summary()\n"
+            "#multiverse.run()\n"
+        )
 
-            script_content += f"from comet.multiverse import Multiverse\n\n"
-            script_content += f"forking_paths = {{\n"
-            script_content += f"    \"numbers\": [1, 2, 3]\n"
-            script_content += f"}}\n\n"
-            script_content += f"def analysis_template():\n"
-            script_content += f"    print({{{{numbers}}}})\n\n"
-            script_content += f"multiverse = Multiverse(name=\"multiverse_example\")\n"
-            script_content += f"multiverse.create(analysis_template, forking_paths)\n" 
-            script_content += f"multiverse.summary()\n"
-            script_content += f"#multiverse.run()\n"
-        
         # Live template, which updates while forking paths are added
         else:
-            script_content =  f"from comet.multiverse import Multiverse\n\n"
-            script_content += f"forking_paths = {{\n"
+            script_content = (
+                "from comet.multiverse import Multiverse\n"
+                "\n"
+                "forking_paths = {{\n"
+            )
 
             for name, options in self.data.forking_paths.items():
                 script_content += f'    "{name}": {options},\n'
 
-            script_content += f"}}\n\n"
-            script_content += f"def analysis_template():\n"
-            script_content += f"    # The following forking paths are available for multiverse analysis:\n"
-        
+            script_content += (
+                "}}\n\n"
+                "def analysis_template():\n"
+                "    # The following forking paths are available for multiverse analysis:\n"
+            )
+
             for name, options in self.data.forking_paths.items():
                 script_content += f"    {{{{{name}}}}}\n" # placeholder variables are in double curly braces {{variable}}
 
-            script_content += f"\nmultiverse = Multiverse(name=\"example_multiverse\")\n"
-            script_content += f"multiverse.create(analysis_template, forking_paths)\n"
-            script_content += f"multiverse.summary()\n"
-            script_content += f"#multiverse.run()\n"
+            script_content += (
+                "\nmultiverse = Multiverse(name=\"example_multiverse\")\n"
+                "multiverse.create(analysis_template, forking_paths)\n"
+                "multiverse.summary()\n"
+                "#multiverse.run()\n"
+            )
 
         self.scriptDisplay.setText(script_content)
 
