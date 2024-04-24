@@ -1,6 +1,7 @@
 import re
 import sys
 import copy
+import json
 import pickle
 import inspect
 import numpy as np
@@ -1381,51 +1382,55 @@ class App(QMainWindow):
     
     # Generates the template script
     def generateScript(self, init_template=False):
-        # Initial placeholder template
         if init_template:
             script_content = (
-            "\"\"\"\n"
-            "Running Multiverse analysis\n"
-            "\n"
-            "Multiverse analysis requires a Python script to be created by the user.\n"
-            "An initial template for this can be created through the GUI, with forking paths being stored in a dict and later used through double curly braces in the template function.\n\n"
-            "This example shows how one would create and run a multiverse analysis which will generate 3 Python scripts (universes) printing the numbers 1, 2, and 3, respectively.\n"
-            "\"\"\"\n"
-            "\n"
-            "from comet.multiverse import Multiverse\n"
-            "\n"
-            "forking_paths = {\n"
-            "    \"numbers\": [1, 2, 3]\n"
-            "}\n"
-            "\n"
-            "def analysis_template():\n"
-            "    print({{numbers}})\n"
-            "\n"
-            "multiverse = Multiverse(name=\"multiverse_example\")\n"
-            "multiverse.create(analysis_template, forking_paths)\n"
-            "multiverse.summary()\n"
-            "#multiverse.run()\n"
-        )
-
-        # Live template, which updates while forking paths are added
+                "\"\"\"\n"
+                "Running Multiverse analysis\n"
+                "\n"
+                "Multiverse analysis requires a Python script to be created by the user.\n"
+                "An initial template for this can be created through the GUI, with forking paths being stored in a dict and later used through double curly braces in the template function.\n\n"
+                "This example shows how one would create and run a multiverse analysis which will generate 3 Python scripts (universes) printing the numbers 1, 2, and 3, respectively.\n"
+                "\"\"\"\n"
+                "\n"
+                "from comet.multiverse import Multiverse\n"
+                "\n"
+                "forking_paths = {\n"
+                "    \"numbers\": [1, 2, 3]\n"
+                "}\n"
+                "\n"
+                "def analysis_template():\n"
+                "    print({{numbers}})\n"
+                "\n"
+                "multiverse = Multiverse(name=\"multiverse_example\")\n"
+                "multiverse.create(analysis_template, forking_paths)\n"
+                "multiverse.summary()\n"
+                "#multiverse.run()\n"
+            )
+        
         else:
             script_content = (
                 "from comet.multiverse import Multiverse\n"
                 "\n"
-                "forking_paths = {{\n"
+                "forking_paths = {\n"
             )
-
             for name, options in self.data.forking_paths.items():
-                script_content += f'    "{name}": {options},\n'
+                if isinstance(options, list) and all(isinstance(item, dict) for item in options):
+                    # Format as JSON only if it's a list of dictionaries
+                    formatted_options = json.dumps(options, indent=4)
+                    formatted_options = formatted_options.replace('true', 'True').replace('false', 'False').replace('null', 'None')
+                    script_content += f'    "{name}": {formatted_options},\n'
+                else:
+                    # Simple list of primitives or a single dictionary
+                    script_content += f'    "{name}": {options},\n'
 
             script_content += (
-                "}}\n\n"
+                "}\n\n"
                 "def analysis_template():\n"
                 "    # The following forking paths are available for multiverse analysis:\n"
             )
 
-            for name, options in self.data.forking_paths.items():
-                script_content += f"    {{{{{name}}}}}\n" # placeholder variables are in double curly braces {{variable}}
+            for name in self.data.forking_paths:
+                script_content += f"    {{{{{name}}}}}\n"  # placeholder variables are in double curly braces {{variable}}
 
             script_content += (
                 "\nmultiverse = Multiverse(name=\"example_multiverse\")\n"
