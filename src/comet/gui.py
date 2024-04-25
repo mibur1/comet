@@ -777,7 +777,6 @@ class App(QMainWindow):
         # Creating a first decision container
         decisionWidget = self.addDecisionContainer()
         leftLayout.addWidget(decisionWidget)
-        self.data.mv_containers.append(decisionWidget)
 
         # Horizontal layout for add/collapse buttons
         buttonLayout = QHBoxLayout()
@@ -1252,7 +1251,6 @@ class App(QMainWindow):
         newDecisionWidget = self.addDecisionContainer()
         buttonLayoutIndex = layout.indexOf(buttonLayout)
         layout.insertWidget(buttonLayoutIndex, newDecisionWidget)
-        self.data.mv_containers.append(newDecisionWidget)
 
         return
 
@@ -1370,9 +1368,7 @@ class App(QMainWindow):
                 self.clearLayout(decisionWidget.layout())
                 decisionWidget.deleteLater()
                 optionsInputField.clear()
-                # Remove from containers list
-                if decisionWidget in self.data.mv_containers:
-                    self.data.mv_containers.remove(decisionWidget)
+                self.data.mv_containers.remove(decisionWidget)
                 return
             
         if key in self.data.forking_paths:
@@ -1391,9 +1387,7 @@ class App(QMainWindow):
                     self.clearLayout(decisionWidget.layout())  # Clear all child widgets and sub-layouts
                 decisionWidget.deleteLater()  # Delete the decision widget
                 optionsInputField.clear()  # Clear the options input field
-                # Remove from containers list
-                if decisionWidget in self.data.mv_containers:
-                    self.data.mv_containers.remove(decisionWidget)
+                self.data.mv_containers.remove(decisionWidget)
 
         self.generateScript()
         return
