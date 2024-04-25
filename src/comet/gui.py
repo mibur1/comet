@@ -927,6 +927,7 @@ class App(QMainWindow):
         
         # Parameter container widget
         parameterContainer = QWidget()
+        parameterContainer.setObjectName("parameterContainer")
         parameterLayout = QVBoxLayout()
         parameterContainer.setLayout(parameterLayout)
         parameterContainer.hide()
@@ -1239,20 +1240,21 @@ class App(QMainWindow):
         return  
 
     # Adds a new decision widget to the layout
-    def addNewDecision(self, layout, buttonLayout):  
-        # Collapse all but the newest decision container
-        newest_container = self.data.mv_containers[-1] if self.data.mv_containers else None
+    def addNewDecision(self, layout, buttonLayout):
+        # Collapse all existing parameter containers before adding a new one
         for container in self.data.mv_containers:
-            if container is not newest_container:
-                collapseButton = container.findChild(QPushButton, "collapseButton")
-                if collapseButton:
-                    container.hide()
-                    collapseButton.setText(" \u25BC ")
+            parameterContainer = container.findChild(QWidget, "parameterContainer")
+            collapseButton = container.findChild(QPushButton, "collapseButton")
+            if parameterContainer and collapseButton and parameterContainer.isVisible():
+                self.collapseOption(collapseButton, parameterContainer)
 
         # Add new decision container
         newDecisionWidget = self.addDecisionContainer()
         buttonLayoutIndex = layout.indexOf(buttonLayout)
-        layout.insertWidget(buttonLayoutIndex, newDecisionWidget) # insert at the last position
+        layout.insertWidget(buttonLayoutIndex, newDecisionWidget)
+        self.data.mv_containers.append(newDecisionWidget)
+
+        return
 
     # Add option to a decision
     def addOption(self, functionComboBox, parameterContainer, nameInputField, optionsInputField):
@@ -1362,14 +1364,25 @@ class App(QMainWindow):
     def removeDecision(self, decisionNameInput, decisionWidget, optionsInputField):
         key = decisionNameInput.text().strip()
 
+        # No key means the decision widget is empty, so clear and delete everything
+        if key == "":
+            if decisionWidget.layout():
+                self.clearLayout(decisionWidget.layout())
+                decisionWidget.deleteLater()
+                optionsInputField.clear()
+                # Remove from containers list
+                if decisionWidget in self.data.mv_containers:
+                    self.data.mv_containers.remove(decisionWidget)
+                return
+            
         if key in self.data.forking_paths:
             options = self.data.forking_paths[key]
 
             # Remove the last option and update the input field
             if options:
-                options.pop() # Remove the last option
+                options.pop()  # Remove the last option
                 options_str = ', '.join(opt['name'] if isinstance(opt, dict) else str(opt) for opt in options)
-                optionsInputField.setText(options_str) # Update the input field
+                optionsInputField.setText(options_str)  # Update the input field
 
             # If all options are removed or there are no options, clear and delete everything
             if not options:
@@ -1378,6 +1391,9 @@ class App(QMainWindow):
                     self.clearLayout(decisionWidget.layout())  # Clear all child widgets and sub-layouts
                 decisionWidget.deleteLater()  # Delete the decision widget
                 optionsInputField.clear()  # Clear the options input field
+                # Remove from containers list
+                if decisionWidget in self.data.mv_containers:
+                    self.data.mv_containers.remove(decisionWidget)
 
         self.generateScript()
         return
