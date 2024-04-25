@@ -93,6 +93,7 @@ class Data:
     # Misc variables
     cifti_data:    np.ndarray = field(default=None)         # input cifti data (for .dtseries files)
     roi_names:     np.ndarray = field(default=None)         # input roi data (for .tsv files)
+    mv_containers: list       = field(default_factory=list) # decision containers for multiverse analysis
 
     def clear_dfc_data(self):
         self.dfc_params   = {}
@@ -776,6 +777,7 @@ class App(QMainWindow):
         # Creating a first decision container
         decisionWidget = self.addDecisionContainer()
         leftLayout.addWidget(decisionWidget)
+        self.data.mv_containers.append(decisionWidget)
 
         # Horizontal layout for add/collapse buttons
         buttonLayout = QHBoxLayout()
@@ -896,6 +898,7 @@ class App(QMainWindow):
 
         # Collapse button to hide/show the function and parameter widgets
         collapseButton = QPushButton(" \u25B2 ")
+        collapseButton.setObjectName("collapseButton")
         collapseButton.hide()
 
         # Add option button to add a new option to the decision
@@ -941,6 +944,9 @@ class App(QMainWindow):
         mainLayout.addLayout(functionLayout)
         mainLayout.addWidget(parameterContainer)
 
+        # Add the widget to a list so we can keep track of individual items
+        self.data.mv_containers.append(decisionWidget)
+
         return decisionWidget
 
     # Handles if the type of the decision is changed
@@ -957,6 +963,7 @@ class App(QMainWindow):
         addOptionButton.hide()
         collapseButton.hide()
 
+        """
         # Re-populate fields based on the last entry in forking_paths for the selected category
         last_key, last_entry = None, None
         if selected_category in ['FC', 'Graph']:
@@ -979,7 +986,7 @@ class App(QMainWindow):
             if isinstance(last_entry, list) and all(isinstance(x, dict) for x in last_entry):
                 decisionOptionsInput.setText(', '.join(d['name'] for d in last_entry if 'name' in d))
             elif isinstance(last_entry, list):
-                decisionOptionsInput.setText(', '.join(map(str, last_entry)))
+                decisionOptionsInput.setText(', '.join(map(str, last_entry)))"""
 
         # Sets up the layout and input fields for the new category/options
         decisionOptionsInput.setPlaceholderText("Enter options, comma-separated" if selected_category == "General" else "Define options below")
@@ -1232,10 +1239,20 @@ class App(QMainWindow):
         return  
 
     # Adds a new decision widget to the layout
-    def addNewDecision(self, layout, buttonLayout):
+    def addNewDecision(self, layout, buttonLayout):  
+        # Collapse all but the newest decision container
+        newest_container = self.data.mv_containers[-1] if self.data.mv_containers else None
+        for container in self.data.mv_containers:
+            if container is not newest_container:
+                collapseButton = container.findChild(QPushButton, "collapseButton")
+                if collapseButton:
+                    container.hide()
+                    collapseButton.setText(" \u25BC ")
+
+        # Add new decision container
         newDecisionWidget = self.addDecisionContainer()
         buttonLayoutIndex = layout.indexOf(buttonLayout)
-        layout.insertWidget(buttonLayoutIndex, newDecisionWidget)
+        layout.insertWidget(buttonLayoutIndex, newDecisionWidget) # insert at the last position
 
     # Add option to a decision
     def addOption(self, functionComboBox, parameterContainer, nameInputField, optionsInputField):
