@@ -1,5 +1,5 @@
 ## Comet - A dynamic functional connectivity toolbox for multiverse analysis
-[![DOI](src/comet/resources/img/badge.svg)](https://doi.org/10.1101/2024.01.21.576546)
+[![DOI](src/comet/resources/img/doi.svg)](https://doi.org/10.1101/2024.01.21.576546) [![PyPI](src/comet/resources/img/pypi.svg)](https://pypi.org/project/comet-toolbox/)
 
 **Important notes:**
 
