@@ -1256,6 +1256,12 @@ class App(QMainWindow):
 
     # Add option to a decision
     def addOption(self, functionComboBox, parameterContainer, nameInputField, optionsInputField):
+        # Name for the decision must be provided
+        name = nameInputField.text().strip()
+        if not name:
+            QMessageBox.warning(self, "Input Error", "Please ensure a name is provided for the decision.")
+            return
+        
         # Retrieve the selected function key and determine its module prefix
         func_key = functionComboBox.currentData()
 
@@ -1369,6 +1375,7 @@ class App(QMainWindow):
                 decisionWidget.deleteLater()
                 optionsInputField.clear()
                 self.data.mv_containers.remove(decisionWidget)
+                self.generateScript()
                 return
             
         if key in self.data.forking_paths:
@@ -1467,6 +1474,7 @@ class App(QMainWindow):
             )
 
         self.scriptDisplay.setText(script_content)
+        self.scriptDisplay.setReadOnly(True)
 
     # Loads a multiverse script
     def loadScript(self):
@@ -1474,6 +1482,15 @@ class App(QMainWindow):
         if fileName:
             self.loadedScriptDisplay.setText(f"Loaded: {fileName}")
             self.loadedScriptPath = fileName
+            
+            # Read the content of the file
+            try:
+                with open(fileName, 'r', encoding='utf-8') as file:
+                    scriptContent = file.read()
+                    self.scriptDisplay.setText(scriptContent)
+                    self.scriptDisplay.setReadOnly(False)
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to read the file: {str(e)}")
 
     # Saves the current template script
     def saveScript(self):
