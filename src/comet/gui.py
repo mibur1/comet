@@ -4,6 +4,7 @@ import copy
 import json
 import pickle
 import inspect
+import subprocess
 import numpy as np
 import pandas as pd
 import nibabel as nib
@@ -815,10 +816,9 @@ class App(QMainWindow):
         # Connect the button to the method that handles file loading
         loadScriptButton.clicked.connect(self.loadScript)
 
-        executeButton = QPushButton('Run multiverse analysis')
-        leftLayout.addWidget(executeButton)
-        executeButton.clicked.connect(self.executeScript)
-
+        runButton = QPushButton('Run multiverse analysis')
+        leftLayout.addWidget(runButton)
+        runButton.clicked.connect(self.runScript)
 
         ################################
         #  Right section for plotting  #
@@ -1506,13 +1506,18 @@ class App(QMainWindow):
                 file.write(script_text)
 
     # Runs the script/multiverse analysis
-    def executeScript(self):
+    def runScript(self):
         if hasattr(self, 'loadedScriptPath') and self.loadedScriptPath:
-            with open(self.loadedScriptPath, "r") as file:
-                exec(file.read(), {})
-            QMessageBox.information(self, "Execution", "Script executed successfully.")
+            try:
+                # Run the script
+                subprocess.run(['python', self.loadedScriptPath], check=True)
+                QMessageBox.information(self, "Multiverse Analysis", "Script ran successfully!")
+            except subprocess.CalledProcessError:
+                QMessageBox.warning(self, "Multiverse Analysis", "Script failed to run!")
+            except Exception as e:
+                QMessageBox.warning(self, "Multiverse Analysis", f"Failed to run the script!\n\n{str(e)}")
         else:
-            QMessageBox.warning(self, "Load Script", "No script file is loaded.")
+            QMessageBox.warning(self, "Multiverse Analysis", "No script was loaded to run.")
 
     """
     I/O and data related functions
