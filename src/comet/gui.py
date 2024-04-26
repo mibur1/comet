@@ -11,7 +11,7 @@ import nibabel as nib
 from scipy.io import loadmat, savemat
 from dataclasses import dataclass, field
 from importlib import resources as pkg_resources
-from typing import Any, Dict, get_type_hints, get_origin, get_args, Literal, Union
+from typing import Any, Dict, get_type_hints, get_origin, Literal
 
 # Plotting imports
 from matplotlib.image import imread
@@ -1727,6 +1727,12 @@ class App(QMainWindow):
             self.data.graph_data = None
             self.time_series_textbox.setText("Unsupported file format")
 
+        # Check if data is square
+        if self.data.graph_data.ndim != 2 or self.data.graph_data.shape[0] != self.data.graph_data.shape[1]:
+            QMessageBox.warning(self, "Data Error", "The loaded data is not a square matrix.")
+            self.data.graph_data = None
+            return
+
         self.data.graph_raw = self.data.graph_data
         self.graphFileNameLabel.setText(f"Loaded {self.data.graph_file} with shape {self.data.graph_data.shape}")
         
@@ -1791,7 +1797,7 @@ class App(QMainWindow):
         elif len(self.data.dfc_data.shape) == 2:
             self.data.graph_data = self.data.dfc_data
         else:
-            QMessageBox.warning(self, "Output Error", "DFC data seems to have the wrong shape.")
+            QMessageBox.warning(self, "Output Error", "FC data seems to have the wrong shape.")
             return
         
         self.data.graph_raw = self.data.graph_data
