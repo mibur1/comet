@@ -1511,11 +1511,11 @@ class App(QMainWindow):
             try:
                 # Run the script
                 subprocess.run(['python', self.loadedScriptPath], check=True)
-                QMessageBox.information(self, "Multiverse Analysis", "Script ran successfully!")
+                QMessageBox.information(self, "Multiverse Analysis", "Multiverse ran successfully!")
             except subprocess.CalledProcessError:
-                QMessageBox.warning(self, "Multiverse Analysis", "Script failed to run!")
+                QMessageBox.warning(self, "Multiverse Analysis", "Multiverse failed!")
             except Exception as e:
-                QMessageBox.warning(self, "Multiverse Analysis", f"Failed to run the script!\n\n{str(e)}")
+                QMessageBox.warning(self, "Multiverse Analysis", f"Multiverse failed!\n{str(e)}")
         else:
             QMessageBox.warning(self, "Multiverse Analysis", "No script was loaded to run.")
 

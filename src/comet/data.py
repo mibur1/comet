@@ -60,7 +60,10 @@ def load_timeseries(path=None, rois=None):
     else:
         raise ValueError("Unsupported file format")
     
-    return data, rois
+    if rois is not None:
+        return data, rois
+    else:
+        return data
 
 def load_example(type=None):
     """
