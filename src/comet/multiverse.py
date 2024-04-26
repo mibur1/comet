@@ -278,33 +278,23 @@ class Multiverse:
     def handle_dict(self, value):
         function_call = ""
 
-        if "connectivity" in value.keys():
-            dfc_class = value["connectivity"]
-            input_data = value["input_data"]
-            dfc_args = value["args"]
-            function_call = f"comet.methods.{dfc_class}({input_data}, **{dfc_args}).connectivity()"
-        
-        if "graph" in value.keys():
-            graph_function = value["graph"]
-            input_data = value["input_data"]
-            
-            # If we have args, we need to handle them for indviduak 
-            try:
-                graph_args = value["args"].copy()  # Copy to avoid mutating the original
+        func = value["func"]
+        args = value["args"].copy()
+        del args["Option"]
 
-                # Measures that need a community affiliation vector
-                if graph_function in("bct.participation_coef", "bct.participation_coef_sparse", "bct.participation_coef_sign", \
-                                    "bct.agreement_wei", "bct.diversity_coef_sign", "bct.gateway_coef_sign", "bct.module_degree_zscore"):
-                    ci = graph_args["ci"]
-                    del graph_args["ci"]
-                    function_call = f"{graph_function}({input_data}, ci={ci}[0], **{graph_args})"
-                # Measures that have additional numerical or string arguments
-                else:
-                    function_call = f"{graph_function}({input_data}, **{graph_args})"
-            
-            # Measures that only need an adjacency matrix as input
-            except KeyError:
-                function_call = f"{graph_function}({input_data})"
+        first_arg = next(iter(args))
+        input_data = args[first_arg]
+        del args[first_arg]
+
+        if value["func"].startswith("comet.methods"):
+            function_call = f"{func}({input_data}, **{args}).connectivity()"
+        else:
+            if "ci" in args:
+                ci = args["ci"]
+                del args["ci"]
+                function_call = f"{func}({input_data}, ci={ci}[0], **{args})"
+            else:
+                function_call = f"{func}({input_data}, **{args})"
 
         return function_call
 
