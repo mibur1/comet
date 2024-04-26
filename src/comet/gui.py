@@ -1786,7 +1786,14 @@ class App(QMainWindow):
             QMessageBox.warning(self, "Output Error", "No current dFC data available.")
             return
         
-        self.data.graph_data = self.data.dfc_data[:,:,self.currentSliderValue]
+        if len(self.data.dfc_data.shape) == 3:
+            self.data.graph_data = self.data.dfc_data[:,:,self.currentSliderValue]
+        elif len(self.data.dfc_data.shape) == 2:
+            self.data.graph_data = self.data.dfc_data
+        else:
+            QMessageBox.warning(self, "Output Error", "DFC data seems to have the wrong shape.")
+            return
+        
         self.data.graph_raw = self.data.graph_data
         
         print(f"Used current dFC data with shape {self.data.graph_data.shape}")
