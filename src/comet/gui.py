@@ -298,7 +298,7 @@ class App(QMainWindow):
         self.data.dfc_instance = init_dfc_instance
         self.data.file_name = "loaded from script"
         self.data.dfc_name = init_dfc_instance.name
-        self.data.time_series = np.array([]) # for potential saving to .mat
+        self.data.file_data = np.array([]) # for potential saving to .mat
 
         # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
         if isinstance(init_dfc_data, tuple):
@@ -319,8 +319,8 @@ class App(QMainWindow):
             self.data.dfc_state_tc = None
             self.data.dfc_edge_ts = None
         
-        # Add to data storage
-        self.data_storage.add_data(self.data)
+        # Add to data storage TOOD: this does not work yet (why? and is it even needed?)
+        #self.data_storage.add_data(self.data)
         
         # Disable the GUI elements
         self.methodComboBox.setEnabled(False)
