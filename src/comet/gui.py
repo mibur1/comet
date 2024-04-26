@@ -15,7 +15,7 @@ from typing import Any, Dict, get_type_hints, get_origin, Literal
 
 # Plotting imports
 from matplotlib.image import imread
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
