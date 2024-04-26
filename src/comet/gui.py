@@ -641,8 +641,8 @@ class App(QMainWindow):
         checkboxLayout.addStretch()
 
         # Init checkbox states
-        self.preprocessingCheckBox.setChecked(False)
-        self.graphCheckBox.setChecked(False)
+        self.preprocessingCheckBox.setChecked(True)
+        self.graphCheckBox.setChecked(True)
         self.BCTCheckBox.setChecked(True)
         leftLayout.addLayout(checkboxLayout)
             
