@@ -79,6 +79,7 @@ class SlidingWindow(ConnectivityMethod):
     def __init__(self,
                  time_series: np.ndarray,
                  windowsize: int = 29,
+                 stepsize: int = 1,
                  shape: Literal["rectangular", "gaussian", "hamming"] = "rectangular",
                  std: float = 10,
                  diagonal: int = 0,
@@ -88,10 +89,11 @@ class SlidingWindow(ConnectivityMethod):
         
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.windowsize = windowsize
+        self.stepsize = stepsize
         self.shape = shape
         self.std = std
         
-        self.N_estimates = self.T - self.windowsize + 1 # N possible estimates given the window size
+        self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1 # N possible estimates given the window and step size
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
 
         assert self.windowsize <= self.T, "windowsize is larger than time series"
@@ -104,21 +106,17 @@ class SlidingWindow(ConnectivityMethod):
             - hamming
             - TODO: rectangular convolved with gaussian
         '''
-        if self.shape == 'rectangular':
-            weights_init = np.zeros(self.T)
-            weights_init[0:self.windowsize] = np.ones(self.windowsize)
-            weights = np.array([np.roll(weights_init, i) for i in range(0, self.T + 1 - self.windowsize)])     
-        
-        if self.shape == 'gaussian':
-            weights_init = np.zeros(self.T)
-            weights_init[0:self.windowsize] = windows.gaussian(self.windowsize, self.std)
-            weights = np.array([np.roll(weights_init, i) for i in range(0, self.T + 1 - self.windowsize)])    
+        weights_init = np.zeros(self.T)
 
+        if self.shape == 'rectangular':
+            weights_init[0:self.windowsize] = np.ones(self.windowsize)   
+        if self.shape == 'gaussian':
+            weights_init[0:self.windowsize] = windows.gaussian(self.windowsize, self.std)
         if self.shape == 'hamming':
-            weights_init = np.zeros(self.T)
             weights_init[0:self.windowsize] = windows.hamming(self.windowsize)
-            weights = np.array([np.roll(weights_init, i) for i in range(0, self.T + 1 - self.windowsize)]) 
-    
+            
+        weights = np.array([np.roll(weights_init, i) for i in range(0, self.T + 1 - self.windowsize, self.stepsize)]) 
+        
         return weights
 
     def connectivity(self):
