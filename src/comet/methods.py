@@ -116,9 +116,16 @@ class SlidingWindow(ConnectivityMethod):
             weights_init[0:self.windowsize] = windows.hamming(self.windowsize)
             
         weights = np.array([np.roll(weights_init, i) for i in range(0, self.T + 1 - self.windowsize, self.stepsize)]) 
-        
+
         return weights
 
+    def centers(self):
+        '''
+        Calculate the central index of each window so dFC estimates can be related to the original time series
+        '''
+        centers = np.arange(self.windowsize // 2, self.T - self.windowsize // 2, self.stepsize)
+        return centers
+    
     def connectivity(self):
         '''
         Calculate sliding window correlation
@@ -146,6 +153,7 @@ class Jackknife(ConnectivityMethod):
     def __init__(self,
                  time_series: np.ndarray,
                  windowsize: int = 1,
+                 stepsize: int = 1,
                  diagonal: int = 0,
                  standardize: bool = False,
                  fisher_z: bool = False,
@@ -153,8 +161,9 @@ class Jackknife(ConnectivityMethod):
         
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.windowsize = windowsize
+        self.stepsize = stepsize
 
-        self.N_estimates = self.T - self.windowsize + 1 # N possible estimates given the window size
+        self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1 # N possible estimates given the window size
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
 
         assert self.windowsize <= self.T, "windowsize is larger than time series"
@@ -166,9 +175,16 @@ class Jackknife(ConnectivityMethod):
         '''
         weights_init = np.ones(self.T)
         weights_init[0:self.windowsize] = 0
-        weights = np.array([np.roll(weights_init, i) for i in range(self.N_estimates)])
+        weights = np.array([np.roll(weights_init, i) for i in range(0, self.T + 1 - self.windowsize, self.stepsize)]) 
         return weights.astype(bool)
 
+    def centers(self):
+        '''
+        Calculate the central index of each window so dFC estimates can be related to the original time series
+        '''
+        centers = np.arange(self.windowsize // 2, self.T - self.windowsize // 2, self.stepsize)
+        return centers
+    
     def connectivity(self):
         '''
         Calculate jackknife correlation
@@ -264,6 +280,13 @@ class TemporalDerivatives(ConnectivityMethod):
 
         assert self.windowsize <= self.T, "windowsize is larger than time series"
 
+    def centers(self):
+        '''
+        Calculate the central index of each window so dFC estimates can be related to the original time series
+        '''
+        centers = np.arange(self.windowsize // 2 + 1, self.T - self.windowsize // 2)
+        return centers
+    
     def connectivity(self):
         '''
         Calculate multiplication of temproral derivatives
