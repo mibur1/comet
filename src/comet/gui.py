@@ -1111,7 +1111,6 @@ class App(QMainWindow):
         # Iterate over parameters in the function signature
         temp_widgets = {}
         for name, param in func_signature.parameters.items():
-        
             if name not in ['self', 'copy', 'args', 'kwargs']:  # Skip unwanted parameters
                 # Horizontal layout for each parameter
                 param_layout = QHBoxLayout()
@@ -2071,6 +2070,7 @@ class App(QMainWindow):
         # Calculate the maximum label width (just a visual thing)
         max_label_width = 0
         init_signature = inspect.signature(class_instance.__init__)
+        type_hints = get_type_hints(class_instance.__init__)
         font_metrics = QFontMetrics(self.font())
         for param in init_signature.parameters.values():
             label_width = font_metrics.boundingRect(f"{self.param_names[param.name]}:").width()
@@ -2123,8 +2123,9 @@ class App(QMainWindow):
             # Add the atlas layout to the main parameter layout
             self.parameterLayout.addLayout(atlas_layout)
 
-        for param in init_signature.parameters.values():
+        for name, param in init_signature.parameters.items():
             if param.name not in ['self', 'time_series', 'tril', 'standardize', 'params']:
+                param_type = type_hints.get(name)
                 # Create label for parameter
                 param_label = QLabel(f"{self.param_names[param.name]}:")
                 param_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
@@ -2134,7 +2135,7 @@ class App(QMainWindow):
 
                 # Determine the widget type based on the parameter
                 # Dropdown for boolean parameters
-                if type(param.default) == bool:
+                if param_type == bool:
                     param_input_widget = QComboBox()
                     param_input_widget.addItems(["True", "False"])
                     
@@ -2143,17 +2144,17 @@ class App(QMainWindow):
                     param_input_widget.setEnabled(True)
 
                 # Dropdown for parameters with predefined options
-                elif param.name in class_instance.options:
+                elif get_origin(type_hints.get(name)) is Literal:
+                    options = type_hints.get(name).__args__ 
                     param_input_widget = QComboBox()
-                    param_input_widget.addItems(class_instance.options[param.name])
+                    param_input_widget.addItems([str(option) for option in options])
                     
-                    if param.default in class_instance.options[param.name]:
-                        default_index = param_input_widget.findText(param.default)
-                        param_input_widget.setCurrentIndex(default_index)
-                        param_input_widget.setEnabled(True)
+                    default_index = param_input_widget.findText(param.default)
+                    param_input_widget.setCurrentIndex(default_index)
+                    param_input_widget.setEnabled(True)
 
                 # Spinbox for integer parameterss
-                elif type(param.default) == int:
+                elif param_type == int:
                     param_input_widget = QSpinBox()
                     param_input_widget.setMaximum(10000)
                     param_input_widget.setMinimum(-10000)
@@ -2163,7 +2164,7 @@ class App(QMainWindow):
                     param_input_widget.setEnabled(True)
 
                 # Spinbox for float parameters
-                elif type(param.default) == float:
+                elif param_type == float:
                     param_input_widget = QDoubleSpinBox()
                     param_input_widget.setMaximum(10000.0)
                     param_input_widget.setMinimum(-10000.0)

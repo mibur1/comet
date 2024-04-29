@@ -69,8 +69,6 @@ Continuous dFC methods
 '''
 class SlidingWindow(ConnectivityMethod):
     name = "CONT Sliding Window"
-    options = {"shape": ["rectangular", "gaussian", "hamming"]}
-
     '''
     Sliding Window
         Most widely used method, which involves sliding a window over the data.
@@ -143,7 +141,6 @@ class SlidingWindow(ConnectivityMethod):
 
 class Jackknife(ConnectivityMethod):
     name = "CONT Jackknife Correlation"
-    options = {}
     '''
     Jackknife correlation:
         Richter CG, Thompson WH, Bosman CA, Fries P. A jackknife approach to quantifying single-trial 
@@ -202,7 +199,6 @@ class Jackknife(ConnectivityMethod):
 
 class SpatialDistance(ConnectivityMethod):
     name = "CONT Spatial Distance"
-    options = {"dist": ["euclidean"]}
     '''
     Spatial Distance:
         William Hedley Thompson, Per Brantefors, Peter Fransson. From static 
@@ -257,7 +253,6 @@ class SpatialDistance(ConnectivityMethod):
 
 class TemporalDerivatives(ConnectivityMethod):
     name = "CONT Multiplication of Temporal Derivatives"
-    options = {}
     '''
     Multiplication of temporal derivatives:
         Shine JM, Koyejo O, Bell PT, Gorgolewski KJ, Gilat M, Poldrack RA. Estimation of
@@ -310,7 +305,6 @@ class TemporalDerivatives(ConnectivityMethod):
 
 class FlexibleLeastSquares(ConnectivityMethod):
     name = "CONT Flexible Least Squares"
-    options = {}
     '''
     Flexible Least Squares:
         Liao, W., Wu, G. R., Xu, Q., Ji, G. J., Zhang, Z., Zang, Y. F., & Lu, G. (2014). 
@@ -396,7 +390,6 @@ class FlexibleLeastSquares(ConnectivityMethod):
 
 class PhaseSynchrony(ConnectivityMethod):
     name = "CONT Phase Synchronization"
-    options = {"method": ["crp", "pcoh", "teneto"]}
     '''
     Instantaneous Phase Synchrony:
         Honari, H., Choe, A. S., & Lindquist, M. A. (2021). Evaluating phase synchronization methods in fMRI: 
@@ -440,7 +433,6 @@ class PhaseSynchrony(ConnectivityMethod):
 
 class LeiDA(ConnectivityMethod):
     name = "CONT Leading Eigenvector Dynamics"
-    options = {}
     '''
     Leading Eigenvector Dynamics:
         Cabral, J., Vidaurre, D., Marques, P., Magalhães, R., Silva Moreira, P., Miguel Soares, J., ... & Kringelbach, M. L. (2017). 
@@ -499,7 +491,6 @@ class LeiDA(ConnectivityMethod):
 
 class WaveletCoherence(ConnectivityMethod):
     name = "CONT Wavelet Coherence"
-    options = {"method": ["weighted"]}
     '''
     Instantaneous Wavelet Coherence:
         Jacob Billings, Manish Saggar, Jaroslav Hlinka, Shella Keilholz, Giovanni Petri; Simplicial and 
@@ -600,7 +591,6 @@ class WaveletCoherence(ConnectivityMethod):
 
 class DCC(ConnectivityMethod):
     name = "CONT Dynamic Conditional Correlation"
-    options = {}
     '''
     Dynamic Conditional Correlation:
         Lindquist, M. A., Xu, Y., Nebel, M. B., & Caffo, B. S. (2014). Evaluating dynamic bivariate correlations 
@@ -823,7 +813,6 @@ class DCC(ConnectivityMethod):
 
 class Edge_centric_connectivity(ConnectivityMethod):
     name = "CONT Edge-centric Connectivity"
-    options = {}
 
     def __init__(self,
                  time_series: np.ndarray,
