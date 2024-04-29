@@ -397,7 +397,7 @@ class PhaseSynchrony(ConnectivityMethod):
     '''
     def __init__(self,
                  time_series: np.ndarray,
-                 method: Literal["crp", "pcoh", "teneto"] = "crp",
+                 method: Literal["crp", "phcoh", "teneto"] = "crp",
                  diagonal: int = 0,
                  standardize: bool = False,
                  fisher_z: bool = False,
