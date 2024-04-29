@@ -164,6 +164,7 @@ class App(QMainWindow):
             "self":                 "self", 
             "time_series":          "Time series",
             "windowsize":           "Window size",
+            "stepsize":             "Step size",
             "shape":                "Window shape",
             "std":                  "Window sigma",
             "diagonal":             "Main diagonal",
@@ -375,7 +376,7 @@ class App(QMainWindow):
         # Create button and label for file loading
         loadLayout = QHBoxLayout()
         self.fileButton = QPushButton('Load time series')
-        self.bidsButton = QPushButton('Load BIDS dataset')
+        self.bidsButton = QPushButton('Load BIDS (paceholder)')
         self.fileNameLabel = QLabel('No file loaded yet')
         
         loadLayout.addWidget(self.fileButton)
