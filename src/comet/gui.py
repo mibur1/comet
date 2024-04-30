@@ -8,6 +8,7 @@ import subprocess
 import numpy as np
 import pandas as pd
 import nibabel as nib
+from bids import BIDSLayout
 from scipy.io import loadmat, savemat
 from dataclasses import dataclass, field
 from importlib import resources as pkg_resources
@@ -376,14 +377,19 @@ class App(QMainWindow):
         # Create button and label for file loading
         loadLayout = QHBoxLayout()
         self.fileButton = QPushButton('Load time series')
-        self.bidsButton = QPushButton('Load BIDS (paceholder)')
+        self.bidsButton = QPushButton('Load BIDS (placeholder)')
         self.fileNameLabel = QLabel('No file loaded yet')
         
         loadLayout.addWidget(self.fileButton)
         loadLayout.addWidget(self.bidsButton)
         self.leftLayout.addLayout(loadLayout)
         self.leftLayout.addWidget(self.fileNameLabel)
-        self.fileButton.clicked.connect(self.loadConnectivityFile)
+        self.fileButton.clicked.connect(self.loadTS)
+        self.bidsButton.clicked.connect(self.loadBIDS)
+
+        self.subjectsDropdown = QComboBox()
+        self.leftLayout.addWidget(self.subjectsDropdown)
+        self.subjectsDropdown.hide()
 
         # Create a checkbox for reshaping the data
         self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
@@ -1523,12 +1529,14 @@ class App(QMainWindow):
     I/O and data related functions
     """
     # dFC tab
-    def loadConnectivityFile(self):
+    def loadTS(self):
         fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
         file_name = file_path.split('/')[-1]
         self.data.file_name = file_name
         self.getParameters() # Get current UI parameters
+        self.subjectsDropdown.clear()
+        self.subjectsDropdown.hide()
 
         if not file_path:
             return  # Early exit if no file is selected
@@ -1636,6 +1644,25 @@ class App(QMainWindow):
         self.calculateButton.setEnabled(True)
         self.clearMemoryButton.setEnabled(True)
         self.keepInMemoryCheckbox.setEnabled(True)
+
+    def loadBIDS(self):
+        # Open a dialog to select the BIDS directory
+        bids_folder = QFileDialog.getExistingDirectory(self, "Select BIDS Directory")
+
+        if not bids_folder:
+            return  # User canceled the selection
+
+        # Initialize a BIDS Layout
+        try:
+            self.fileNameLabel.setText(f"Loaded BIDS data from {bids_folder}")
+            self.bids_layout = BIDSLayout(bids_folder)
+            subjects = self.bids_layout.get_subjects()
+            ids = [f"sub-{subject}" for subject in subjects]
+            self.subjectsDropdown.clear()
+            self.subjectsDropdown.addItems(ids)
+            self.subjectsDropdown.show()
+        except Exception as e:
+            QMessageBox.warning(self, "Load Error", f"Failed to load BIDS data: {str(e)}")
 
     def saveConnectivityFile(self):
         if self.data.dfc_data is None:
