@@ -1,3 +1,4 @@
+import os
 import re
 import sys
 import copy
@@ -9,6 +10,7 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 from bids import BIDSLayout
+from nilearn import datasets, maskers
 from scipy.io import loadmat, savemat
 from dataclasses import dataclass, field
 from importlib import resources as pkg_resources
@@ -376,20 +378,41 @@ class App(QMainWindow):
 
         # Create button and label for file loading
         loadLayout = QHBoxLayout()
-        self.fileButton = QPushButton('Load time series')
-        self.bidsButton = QPushButton('Load BIDS (placeholder)')
+        fileButton = QPushButton('Load time series')
+        bidsButton = QPushButton('Load BIDS (placeholder)')
         self.fileNameLabel = QLabel('No file loaded yet')
-        
-        loadLayout.addWidget(self.fileButton)
-        loadLayout.addWidget(self.bidsButton)
+
+        loadLayout.addWidget(fileButton)
+        loadLayout.addWidget(bidsButton)
         self.leftLayout.addLayout(loadLayout)
         self.leftLayout.addWidget(self.fileNameLabel)
-        self.fileButton.clicked.connect(self.loadTS)
-        self.bidsButton.clicked.connect(self.loadBIDS)
+        
+        fileButton.clicked.connect(self.loadTS)
+        bidsButton.clicked.connect(self.loadBIDS)
 
+        # Subjects dropdown for BIDS data set
         self.subjectsDropdown = QComboBox()
         self.leftLayout.addWidget(self.subjectsDropdown)
         self.subjectsDropdown.hide()
+
+        # Layout for parcellation and nifti file dropdowns
+        self.parcellationLayout = QHBoxLayout()
+        
+        self.parcellationDropdown = QComboBox()
+        self.parcellationLayout.addWidget(self.parcellationDropdown)
+        atlasnames = ["aal", "allen_2011", "basc_multiscale", "craddock_2012", "destrieux_2009", "difumo", "harvard_oxford", 
+                      "juelich", "msdl", "pauli_2017", "schaefer_2018", "smith_2009", "surf_destrieux" "talairach", "yeo_2011" 
+                      "dosenbach_2010", "power_2011", "seitzman_2018"]
+        self.parcellationDropdown.addItems(atlasnames)
+        self.parcellationDropdown.hide()
+        
+        self.niftiDropdown = QComboBox()
+        self.parcellationLayout.addWidget(self.niftiDropdown)
+        
+        self.leftLayout.addLayout(self.parcellationLayout)
+        self.subjectsDropdown.hide()
+        self.parcellationDropdown.hide()
+        self.niftiDropdown.hide()
 
         # Create a checkbox for reshaping the data
         self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
@@ -1654,15 +1677,78 @@ class App(QMainWindow):
 
         # Initialize a BIDS Layout
         try:
-            self.fileNameLabel.setText(f"Loaded BIDS data from {bids_folder}")
             self.bids_layout = BIDSLayout(bids_folder)
+            
             subjects = self.bids_layout.get_subjects()
+            print(subjects)
             ids = [f"sub-{subject}" for subject in subjects]
             self.subjectsDropdown.clear()
             self.subjectsDropdown.addItems(ids)
             self.subjectsDropdown.show()
+
+            self.parcellationDropdown.show()
+
+            selected_subject = self.subjectsDropdown.currentText()
+            nifti_files = self.bids_layout.get(return_type='file', extension='nii.gz', subject=selected_subject.split('-')[-1])
+            nifti_file_ids = [os.path.basename(nifti_file) for nifti_file in nifti_files]
+            
+            self.niftiDropdown.clear()
+            self.niftiDropdown.addItems(nifti_file_ids)
+            self.niftiDropdown.show()
+
+            self.fileNameLabel.setText(f"Loaded BIDS data from {bids_folder}")
+
         except Exception as e:
             QMessageBox.warning(self, "Load Error", f"Failed to load BIDS data: {str(e)}")
+
+    def fetchAtlas(self, atlasname, atlasnames):
+        if atlasname in atlasnames:
+            if atlasname == "aal":
+                atlas = datasets.fetch_atlas_aal()
+            elif atlasname == "allen_2011":
+                atlas = datasets.fetch_atlas_allen_2011()
+            elif atlasname == "basc_multiscale":
+                atlas = datasets.fetch_atlas_basc_multiscale_2015()
+            elif atlasname == "craddock_2012":
+                atlas = datasets.fetch_atlas_craddock_2012()
+            elif atlasname == "destrieux_2009":
+                atlas = datasets.fetch_atlas_destrieux_2009()
+            elif atlasname == "difumo":
+                atlas = datasets.fetch_atlas_difumo()
+            elif atlasname == "harvard_oxford":
+                atlas = datasets.fetch_atlas_harvard_oxford()
+            elif atlasname == "juelich":
+                atlas = datasets.fetch_atlas_juelich()
+            elif atlasname == "msdl":
+                atlas = datasets.fetch_atlas_msdl()
+            elif atlasname == "pauli_2017":
+                atlas = datasets.fetch_atlas_pauli_2017()
+            elif atlasname == "schaefer_2018":
+                atlas = datasets.fetch_atlas_schaefer_2018()
+            elif atlasname == "smith_2009":
+                atlas = datasets.fetch_atlas_smith_2009()
+            elif atlasname == "surf_destrieux":
+                atlas = datasets.fetch_atlas_surf_destrieux()
+            elif atlasname == "talairach":
+                atlas = datasets.fetch_atlas_talairach()
+            elif atlasname == "yeo_2011":
+                atlas = datasets.fetch_atlas_yeo_2011()
+            elif atlasname == "dosenbach_2010":
+                atlas = datasets.fetch_coords_dosenbach_2010()
+            elif atlasname == "power_2011":
+                atlas = datasets.fetch_coords_power_2011()
+            elif atlasname == "seitzmann_2018":
+                atlas = datasets.fetch_coords_seitzman_2018()
+
+            atlas_filename = atlas["maps"]
+            labels = atlas["labels"]
+
+
+
+        else:
+            QMessageBox.warning(self, "Error", "Atlas not found")
+            return
+
 
     def saveConnectivityFile(self):
         if self.data.dfc_data is None:
