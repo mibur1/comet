@@ -390,12 +390,21 @@ class App(QMainWindow):
         fileButton.clicked.connect(self.loadTS)
         bidsButton.clicked.connect(self.loadBIDS)
 
-        # Subjects dropdown for BIDS data set
+        # Subjects and nifti layout
+        BIDSLayout = QHBoxLayout()
+        
         self.subjectsDropdown = QComboBox()
-        self.leftLayout.addWidget(self.subjectsDropdown)
+        self.subjectsDropdown.setMinimumWidth(100)
+        BIDSLayout.addWidget(self.subjectsDropdown, 1)
         self.subjectsDropdown.hide()
 
-        # Layout for parcellation and nifti file dropdowns
+        self.niftiDropdown = QComboBox()
+        BIDSLayout.addWidget(self.niftiDropdown, 4)
+        self.niftiDropdown.hide()
+
+        self.leftLayout.addLayout(BIDSLayout)
+
+        # Layout for parcellation and further maybe cleaning
         self.parcellationLayout = QHBoxLayout()
         
         self.parcellationDropdown = QComboBox()
@@ -406,13 +415,8 @@ class App(QMainWindow):
         self.parcellationDropdown.addItems(atlasnames)
         self.parcellationDropdown.hide()
         
-        self.niftiDropdown = QComboBox()
-        self.parcellationLayout.addWidget(self.niftiDropdown)
-        
         self.leftLayout.addLayout(self.parcellationLayout)
-        self.subjectsDropdown.hide()
-        self.parcellationDropdown.hide()
-        self.niftiDropdown.hide()
+        self.parcellationDropdown.hide()        
 
         # Create a checkbox for reshaping the data
         self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
@@ -620,8 +624,8 @@ class App(QMainWindow):
         #####################
         #  Combine layouts  #
         #####################
-        connectivityLayout.addLayout(self.leftLayout, 1)
-        connectivityLayout.addLayout(rightLayout, 2)
+        connectivityLayout.addLayout(self.leftLayout, 2)
+        connectivityLayout.addLayout(rightLayout, 3)
         self.topTabWidget.addTab(connectivityTab, "Connectivity Analysis")
 
     def graphTab(self):
@@ -1680,7 +1684,7 @@ class App(QMainWindow):
             self.bids_layout = BIDSLayout(bids_folder)
             
             subjects = self.bids_layout.get_subjects()
-            print(subjects)
+
             ids = [f"sub-{subject}" for subject in subjects]
             self.subjectsDropdown.clear()
             self.subjectsDropdown.addItems(ids)
@@ -3264,8 +3268,8 @@ def run(dfc_data=None, method=None):
 
     default_width = ex.width()
     default_height = ex.height()
-    new_width = int(default_width * 1.8)
-    new_height = int(default_height * 1.5)
+    new_width = int(default_width * 2.0)
+    new_height = int(default_height * 1.7)
     ex.resize(new_width, new_height)
 
     ex.show()
