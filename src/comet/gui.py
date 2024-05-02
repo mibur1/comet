@@ -1,4 +1,3 @@
-import os
 import re
 import sys
 import copy
@@ -379,7 +378,7 @@ class App(QMainWindow):
         # Create button and label for file loading
         loadLayout = QHBoxLayout()
         fileButton = QPushButton('Load time series')
-        bidsButton = QPushButton('Load BIDS (placeholder)')
+        bidsButton = QPushButton('Load BIDS')
         self.fileNameLabel = QLabel('No file loaded yet')
 
         loadLayout.addWidget(fileButton)
@@ -395,6 +394,7 @@ class App(QMainWindow):
         
         self.subjectsDropdown = QComboBox()
         self.subjectsDropdown.setMinimumWidth(100)
+        self.subjectsDropdown.currentIndexChanged.connect(self.onBIDSSubjectChanged)
         BIDSLayout.addWidget(self.subjectsDropdown, 1)
         self.subjectsDropdown.hide()
 
@@ -409,14 +409,30 @@ class App(QMainWindow):
         
         self.parcellationDropdown = QComboBox()
         self.parcellationLayout.addWidget(self.parcellationDropdown)
-        atlasnames = ["aal", "allen_2011", "basc_multiscale", "craddock_2012", "destrieux_2009", "difumo", "harvard_oxford", 
+        self.atlasnames = ["aal", "allen_2011", "basc_multiscale", "craddock_2012", "destrieux_2009", "difumo", "harvard_oxford", 
                       "juelich", "msdl", "pauli_2017", "schaefer_2018", "smith_2009", "surf_destrieux" "talairach", "yeo_2011" 
                       "dosenbach_2010", "power_2011", "seitzman_2018"]
-        self.parcellationDropdown.addItems(atlasnames)
+        self.parcellationDropdown.addItems(self.atlasnames)
         self.parcellationDropdown.hide()
         
         self.leftLayout.addLayout(self.parcellationLayout)
-        self.parcellationDropdown.hide()        
+        self.parcellationDropdown.hide()
+
+        self.calculateBIDSLayout = QHBoxLayout()
+        self.maskDropdown = QComboBox()
+        self.calculateBIDSButton = QPushButton('Extract time series')
+        self.calculateBIDSButton.clicked.connect(self.extractTimeSeries)
+
+        self.calculateBIDSLayout.addWidget(self.maskDropdown)
+        self.calculateBIDSLayout.addWidget(self.calculateBIDSButton)
+        self.leftLayout.addLayout(self.calculateBIDSLayout)
+
+        self.maskDropdown.hide()
+        self.calculateBIDSButton.hide()
+
+        self.calculateBIDStextbox = QLabel("Choose options to calculate time series data")
+        self.leftLayout.addWidget(self.calculateBIDStextbox)
+        self.calculateBIDStextbox.hide()
 
         # Create a checkbox for reshaping the data
         self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
@@ -1693,15 +1709,34 @@ class App(QMainWindow):
             self.parcellationDropdown.show()
 
             selected_subject = self.subjectsDropdown.currentText()
-            nifti_files = self.bids_layout.get(return_type='file', extension='nii.gz', subject=selected_subject.split('-')[-1])
-            pattern = r"sub-\d+_([^/]*)"
-            nifti_file_ids = [re.search(pattern, filename).group(1) if re.search(pattern, filename) else None for filename in nifti_files]
+            nifti_files = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz', subject=selected_subject.split('-')[-1])
 
+            nifti_dict = {}
+            pattern = r"sub-\d+_([^/]*)"
+            for file_path in nifti_files:
+                match = re.search(pattern, file_path)
+                if match:
+                    file_name = match.group(1)
+                    nifti_dict[file_name] = file_path
+            
             self.niftiDropdown.clear()
-            self.niftiDropdown.addItems(nifti_file_ids)
+            self.niftiDropdown.addItems(nifti_dict.keys())
             self.niftiDropdown.show()
 
+            mask_files = self.bids_layout.get(return_type='file', suffix='mask', extension='nii.gz')
+            pattern = r"^\\(.+\\)*(.+)\.(.+)$"
+            
+            mask_file_ids = [re.search(pattern, filename).group(1) if re.search(pattern, filename) else None for filename in mask_files]
+            mask_file_ids.insert(0, "Calculate mask with nilearn")
+
+            self.maskDropdown.show()
+            self.maskDropdown.clear()
+            self.maskDropdown.addItems(mask_file_ids)
+
+            self.calculateBIDSButton.show()
+
             self.fileNameLabel.setText(f"Loaded BIDS data from {bids_folder}")
+            self.calculateBIDStextbox.show()
 
         except Exception as e:
             QMessageBox.warning(self, "Load Error", f"Failed to load BIDS data: {str(e)}")
@@ -1710,50 +1745,117 @@ class App(QMainWindow):
         if atlasname in atlasnames:
             if atlasname == "aal":
                 atlas = datasets.fetch_atlas_aal()
+                return atlas["maps"], atlas["labels"]
+
             elif atlasname == "allen_2011":
                 atlas = datasets.fetch_atlas_allen_2011()
+                print(atlas.keys(), atlas["maps"])
+                return None, atlas["maps"]
+            
             elif atlasname == "basc_multiscale":
                 atlas = datasets.fetch_atlas_basc_multiscale_2015()
+            
             elif atlasname == "craddock_2012":
                 atlas = datasets.fetch_atlas_craddock_2012()
+            
             elif atlasname == "destrieux_2009":
                 atlas = datasets.fetch_atlas_destrieux_2009()
+            
             elif atlasname == "difumo":
                 atlas = datasets.fetch_atlas_difumo()
+            
             elif atlasname == "harvard_oxford":
                 atlas = datasets.fetch_atlas_harvard_oxford()
+            
             elif atlasname == "juelich":
                 atlas = datasets.fetch_atlas_juelich()
+            
             elif atlasname == "msdl":
                 atlas = datasets.fetch_atlas_msdl()
+            
             elif atlasname == "pauli_2017":
                 atlas = datasets.fetch_atlas_pauli_2017()
+            
             elif atlasname == "schaefer_2018":
                 atlas = datasets.fetch_atlas_schaefer_2018()
+            
             elif atlasname == "smith_2009":
                 atlas = datasets.fetch_atlas_smith_2009()
+            
             elif atlasname == "surf_destrieux":
                 atlas = datasets.fetch_atlas_surf_destrieux()
+            
             elif atlasname == "talairach":
                 atlas = datasets.fetch_atlas_talairach()
             elif atlasname == "yeo_2011":
                 atlas = datasets.fetch_atlas_yeo_2011()
+            
             elif atlasname == "dosenbach_2010":
                 atlas = datasets.fetch_coords_dosenbach_2010()
+            
             elif atlasname == "power_2011":
                 atlas = datasets.fetch_coords_power_2011()
+            
             elif atlasname == "seitzmann_2018":
                 atlas = datasets.fetch_coords_seitzman_2018()
-
-            atlas_filename = atlas["maps"]
-            labels = atlas["labels"]
-
-
 
         else:
             QMessageBox.warning(self, "Error", "Atlas not found")
             return
 
+    def extractTimeSeries(self):
+        self.calculateBIDStextbox.setText("Calculating time series, please wait...")
+        selected_subject = self.subjectsDropdown.currentText()
+        
+        nifti_files = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz', subject=selected_subject.split('-')[-1]) 
+        nifti_dict = {}
+        pattern = r"sub-\d+_([^/]*)"
+        
+        for file_path in nifti_files:
+            match = re.search(pattern, file_path)
+            if match:
+                file_name = match.group(1)
+                nifti_dict[file_name] = file_path
+            
+        self.niftiDropdown.clear()
+        self.niftiDropdown.addItems(nifti_dict.keys())
+        self.niftiDropdown.show()
+
+        mask_files = self.bids_layout.get(return_type='file', suffix='mask', extension='nii.gz')
+        pattern = r"^\\(.+\\)*(.+)\.(.+)$"
+        
+        mask_file_ids = [re.search(pattern, filename).group(1) if re.search(pattern, filename) else None for filename in mask_files]
+        mask_file_ids.insert(0, "Calculate mask with nilearn")
+        
+        img = nifti_dict[self.niftiDropdown.currentText()]
+        atlas, labels = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
+
+        masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize=True)
+        time_series = masker.fit_transform(img)
+        
+        self.data.file_name = f"{self.niftiDropdown.currentText()}"
+        self.data.file_data = time_series
+        self.data.roi_names = labels
+        self.calculateBIDStextbox.setText(f"Done calculating time series (shape {self.data.file_data.shape})")
+        self.transposeCheckbox.setEnabled(True)
+
+    def onBIDSSubjectChanged(self):
+        self.calculateBIDStextbox.setText("Choose options to calculate time series data")
+        selected_subject = self.subjectsDropdown.currentText()
+        
+        nifti_files = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz', subject=selected_subject.split('-')[-1]) 
+        nifti_dict = {}
+        pattern = r"sub-\d+_([^/]*)"
+        
+        for file_path in nifti_files:
+            match = re.search(pattern, file_path)
+            if match:
+                file_name = match.group(1)
+                nifti_dict[file_name] = file_path
+            
+        self.niftiDropdown.clear()
+        self.niftiDropdown.addItems(nifti_dict.keys())
+        self.niftiDropdown.show()
 
     def saveConnectivityFile(self):
         if self.data.dfc_data is None:
