@@ -410,7 +410,7 @@ class App(QMainWindow):
         self.parcellationDropdown = QComboBox()
         self.parcellationLayout.addWidget(self.parcellationDropdown)
         self.atlasnames = ["aal", "allen_2011", "basc_multiscale", "craddock_2012", "destrieux_2009", "difumo", "harvard_oxford", 
-                      "juelich", "msdl", "pauli_2017", "schaefer_2018", "smith_2009", "surf_destrieux" "talairach", "yeo_2011" 
+                      "juelich", "msdl", "pauli_2017", "schaefer_2018", "smith_2009", "surf_destrieux", "talairach", "yeo_2011", 
                       "dosenbach_2010", "power_2011", "seitzman_2018"]
         self.parcellationDropdown.addItems(self.atlasnames)
         self.parcellationDropdown.hide()
@@ -1749,56 +1749,72 @@ class App(QMainWindow):
 
             elif atlasname == "allen_2011":
                 atlas = datasets.fetch_atlas_allen_2011()
-                print(atlas.keys(), atlas["maps"])
-                return None, atlas["maps"]
+                return
             
             elif atlasname == "basc_multiscale":
-                atlas = datasets.fetch_atlas_basc_multiscale_2015()
+                atlas = datasets.fetch_atlas_basc_multiscale_2015(resolution=197)
+                return atlas["maps"], None
             
             elif atlasname == "craddock_2012":
                 atlas = datasets.fetch_atlas_craddock_2012()
+                return
             
             elif atlasname == "destrieux_2009":
                 atlas = datasets.fetch_atlas_destrieux_2009()
+                return atlas["maps"], atlas["labels"]
             
             elif atlasname == "difumo":
                 atlas = datasets.fetch_atlas_difumo()
+                return
             
             elif atlasname == "harvard_oxford":
                 atlas = datasets.fetch_atlas_harvard_oxford()
+                return
             
             elif atlasname == "juelich":
                 atlas = datasets.fetch_atlas_juelich()
+                return
             
             elif atlasname == "msdl":
                 atlas = datasets.fetch_atlas_msdl()
+                return
             
             elif atlasname == "pauli_2017":
-                atlas = datasets.fetch_atlas_pauli_2017()
+                atlas = datasets.fetch_atlas_pauli_2017(version="det")
+                return atlas["maps"], atlas["labels"]
             
             elif atlasname == "schaefer_2018":
                 atlas = datasets.fetch_atlas_schaefer_2018()
+                return atlas["maps"], atlas["labels"]
             
             elif atlasname == "smith_2009":
                 atlas = datasets.fetch_atlas_smith_2009()
+                return
             
             elif atlasname == "surf_destrieux":
                 atlas = datasets.fetch_atlas_surf_destrieux()
+                return
             
             elif atlasname == "talairach":
-                atlas = datasets.fetch_atlas_talairach()
+                atlas = datasets.fetch_atlas_talairach(level_name="hemisphere")
+                return atlas["maps"], atlas["labels"]
+            
             elif atlasname == "yeo_2011":
                 atlas = datasets.fetch_atlas_yeo_2011()
+                return atlas["thick_17"], None
             
             elif atlasname == "dosenbach_2010":
                 atlas = datasets.fetch_coords_dosenbach_2010()
+                return atlas["rois"], atlas["labels"]
             
             elif atlasname == "power_2011":
                 atlas = datasets.fetch_coords_power_2011()
-            
+                return atlas["rois"], None
+                       
             elif atlasname == "seitzmann_2018":
                 atlas = datasets.fetch_coords_seitzman_2018()
-
+                return atlas["rois"], atlas["regions"]
+            
         else:
             QMessageBox.warning(self, "Error", "Atlas not found")
             return
