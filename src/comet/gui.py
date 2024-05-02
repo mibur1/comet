@@ -1694,8 +1694,9 @@ class App(QMainWindow):
 
             selected_subject = self.subjectsDropdown.currentText()
             nifti_files = self.bids_layout.get(return_type='file', extension='nii.gz', subject=selected_subject.split('-')[-1])
-            nifti_file_ids = [os.path.basename(nifti_file) for nifti_file in nifti_files]
-            
+            pattern = r"sub-\d+_([^/]*)"
+            nifti_file_ids = [re.search(pattern, filename).group(1) if re.search(pattern, filename) else None for filename in nifti_files]
+
             self.niftiDropdown.clear()
             self.niftiDropdown.addItems(nifti_file_ids)
             self.niftiDropdown.show()
@@ -2822,14 +2823,13 @@ class App(QMainWindow):
 
         self.figure.clear()
         ax = self.figure.add_subplot(111)
+        vmax = np.max(np.abs(current_data))
 
         try:
             current_slice = current_data[:, :, self.currentSliderValue] if len(current_data.shape) == 3 else current_data
-            vmax = np.max(np.abs(current_slice))
             self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
         except:
             current_slice = current_data[:, :, 0] if len(current_data.shape) == 3 else current_data
-            vmax = np.max(np.abs(current_slice))
             self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
 
         ax.set_xlabel("ROI")
@@ -3269,7 +3269,7 @@ def run(dfc_data=None, method=None):
     default_width = ex.width()
     default_height = ex.height()
     new_width = int(default_width * 2.0)
-    new_height = int(default_height * 1.7)
+    new_height = int(default_height * 1.5)
     ex.resize(new_width, new_height)
 
     ex.show()
