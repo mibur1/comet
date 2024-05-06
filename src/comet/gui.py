@@ -1677,14 +1677,12 @@ class App(QMainWindow):
             self.niftiDropdown.clear()
             self.niftiDropdown.addItems(nifti_dict.keys())
 
-            mask_files = self.bids_layout.get(return_type='file', suffix='mask', extension='nii.gz')
-            pattern = r"^\\(.+\\)*(.+)\.(.+)$"
-            
-            mask_file_ids = [re.search(pattern, filename).group(1) if re.search(pattern, filename) else None for filename in mask_files]
-            mask_file_ids.insert(0, "Calculate mask with nilearn")
-
-            self.maskDropdown.clear()
-            self.maskDropdown.addItems(mask_file_ids)
+            #mask_files = self.bids_layout.get(return_type='file', suffix='mask', extension='nii.gz')
+            #pattern = r"^\\(.+\\)*(.+)\.(.+)$"
+            #mask_file_ids = [re.search(pattern, filename).group(1) if re.search(pattern, filename) else None for filename in mask_files]
+            #mask_file_ids.insert(0, "Calculate mask with nilearn")
+            #self.maskDropdown.clear()
+            #self.maskDropdown.addItems(mask_file_ids)
 
             self.fileNameLabel.setText(f"Loaded BIDS data from {bids_folder}")
 
@@ -1726,17 +1724,20 @@ class App(QMainWindow):
                 atlas = datasets.fetch_atlas_yeo_2011()
                 return atlas[thickness], None
             
-            elif atlasname == "Dosenbach et al. (2010)":
-                atlas = datasets.fetch_coords_dosenbach_2010()
-                return atlas["rois"], atlas["labels"]
-            
             elif atlasname == "Power et al. (2011)":
-                atlas = datasets.fetch_coords_power_2011()
-                return atlas["rois"], None
-                       
+                atlas = datasets.fetch_coords_power_2011(legacy_format=False)
+                coords = np.vstack((atlas.rois["x"], atlas.rois["y"], atlas.rois["z"])).T
+                return coords
+            
+            elif atlasname == "Dosenbach et al. (2010)":
+                atlas = datasets.fetch_coords_dosenbach_2010(legacy_format=False)
+                coords = np.vstack((atlas.rois["x"], atlas.rois["y"], atlas.rois["z"])).T
+                return coords, atlas["networks"], atlas["labels"]
+        
             elif atlasname == "Seitzmann et al. (2018)":
-                atlas = datasets.fetch_coords_seitzman_2018()
-                return atlas["rois"], atlas["regions"]
+                atlas = datasets.fetch_coords_seitzman_2018(legacy_format=False)
+                coords = np.vstack((atlas.rois["x"], atlas.rois["y"], atlas.rois["z"])).T
+                return coords, atlas["networks"], atlas["regions"]
             
         else:
             QMessageBox.warning(self, "Error", "Atlas not found")
@@ -1760,16 +1761,26 @@ class App(QMainWindow):
         self.niftiDropdown.clear()
         self.niftiDropdown.addItems(nifti_dict.keys())
 
-        mask_files = self.bids_layout.get(return_type='file', suffix='mask', extension='nii.gz')
-        pattern = r"^\\(.+\\)*(.+)\.(.+)$"
-        
-        mask_file_ids = [re.search(pattern, filename).group(1) if re.search(pattern, filename) else None for filename in mask_files]
-        mask_file_ids.insert(0, "Calculate mask with nilearn")
+        #mask_files = self.bids_layout.get(return_type='file', suffix='mask', extension='nii.gz')
+        #pattern = r"^\\(.+\\)*(.+)\.(.+)$"
+        #mask_file_ids = [re.search(pattern, filename).group(1) if re.search(pattern, filename) else None for filename in mask_files]
+        #mask_file_ids.insert(0, "Calculate mask with nilearn")
         
         img = nifti_dict[self.niftiDropdown.currentText()]
-        atlas, labels = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
+        print(img)
 
-        masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize=True)
+        if self.parcellationDropdown.currentText() in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
+            rois, networks, labels,  = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
+            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample",)
+        
+        elif self.parcellationDropdown.currentText() == "Power et al. (2011)":
+            rois = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
+            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample",)
+        
+        else:
+            atlas, labels = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
+            masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize="zscore_sample",)
+        
         time_series = masker.fit_transform(img)
         
         self.data.file_name = f"{self.niftiDropdown.currentText()}"
@@ -2303,13 +2314,13 @@ class App(QMainWindow):
         self.bidsLayout.addLayout(self.parcellationDropdownLayout)
 
         # Mask Dropdown with Label
-        self.maskDropdownLayout = QHBoxLayout()
-        self.maskLabel = QLabel("Mask File:")
-        self.maskLabel.setFixedWidth(100)
-        self.maskDropdown = QComboBox()
-        self.maskDropdownLayout.addWidget(self.maskLabel, 1)
-        self.maskDropdownLayout.addWidget(self.maskDropdown, 4)
-        self.bidsLayout.addLayout(self.maskDropdownLayout)
+        #self.maskDropdownLayout = QHBoxLayout()
+        #self.maskLabel = QLabel("Mask File:")
+        #self.maskLabel.setFixedWidth(100)
+        #self.maskDropdown = QComboBox()
+        #self.maskDropdownLayout.addWidget(self.maskLabel, 1)
+        #self.maskDropdownLayout.addWidget(self.maskDropdown, 4)
+        #self.bidsLayout.addLayout(self.maskDropdownLayout)
         
         # Time Series Calculation Button with Label
         self.calculateBIDSButton = QPushButton('Extract time series')
