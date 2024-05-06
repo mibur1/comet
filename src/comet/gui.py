@@ -1695,43 +1695,46 @@ class App(QMainWindow):
 
     def fetchAtlas(self, atlasname, atlasnames):
         if atlasname in atlasnames:
-            if atlasname == "aal":
+            if atlasname == "AAL template (SPM 12)":
                 atlas = datasets.fetch_atlas_aal()
                 return atlas["maps"], atlas["labels"]
             
-            elif atlasname == "basc_multiscale":
-                atlas = datasets.fetch_atlas_basc_multiscale_2015(resolution=197)
+            elif atlasname == "BASC multiscale":
+                resolution = int(self.parcellationOptions.currentText())
+                atlas = datasets.fetch_atlas_basc_multiscale_2015(resolution=resolution)
                 return atlas["maps"], None
                    
-            elif atlasname == "destrieux_2009":
+            elif atlasname == "Destrieux et al. (2009)":
                 atlas = datasets.fetch_atlas_destrieux_2009()
                 return atlas["maps"], atlas["labels"]
             
-            elif atlasname == "pauli_2017":
+            elif atlasname == "Pauli et al. (2017)":
                 atlas = datasets.fetch_atlas_pauli_2017(version="det")
                 return atlas["maps"], atlas["labels"]
             
-            elif atlasname == "schaefer_2018":
-                atlas = datasets.fetch_atlas_schaefer_2018()
+            elif atlasname == "Schaefer et al. (2018)":
+                n_rois = int(self.parcellationOptions.currentText())
+                atlas = datasets.fetch_atlas_schaefer_2018(n_rois=n_rois)
                 return atlas["maps"], atlas["labels"]
               
-            elif atlasname == "talairach":
+            elif atlasname == "Talairach atlas":
                 atlas = datasets.fetch_atlas_talairach(level_name="hemisphere")
                 return atlas["maps"], atlas["labels"]
             
-            elif atlasname == "yeo_2011":
+            elif atlasname == "Yeo (2011) networks":
+                thickness = str(self.parcellationOptions.currentText())
                 atlas = datasets.fetch_atlas_yeo_2011()
-                return atlas["thick_17"], None
+                return atlas[thickness], None
             
-            elif atlasname == "dosenbach_2010":
+            elif atlasname == "Dosenbach et al. (2010)":
                 atlas = datasets.fetch_coords_dosenbach_2010()
                 return atlas["rois"], atlas["labels"]
             
-            elif atlasname == "power_2011":
+            elif atlasname == "Power et al. (2011)":
                 atlas = datasets.fetch_coords_power_2011()
                 return atlas["rois"], None
                        
-            elif atlasname == "seitzmann_2018":
+            elif atlasname == "Seitzmann et al. (2018)":
                 atlas = datasets.fetch_coords_seitzman_2018()
                 return atlas["rois"], atlas["regions"]
             
@@ -1792,6 +1795,46 @@ class App(QMainWindow):
             
         self.niftiDropdown.clear()
         self.niftiDropdown.addItems(nifti_dict.keys())
+
+    def onBIDSAtlasSelected(self):
+        self.parcellationOptions.clear()
+
+        if self.parcellationDropdown.currentText() == "AAL template (SPM 12)":
+            self.parcellationOptions.addItems(["117"])
+
+        elif self.parcellationDropdown.currentText() == "BASC multiscale":
+            self.parcellationOptions.addItems(["7", "12", "20", "36", "64", "122", "197", "325", "444"])
+        
+        elif self.parcellationDropdown.currentText() == "Destrieux et al. (2009)":
+            self.parcellationOptions.addItems(["148"])
+
+        elif self.parcellationDropdown.currentText() == "Pauli et al. (2017)":
+            self.parcellationOptions.addItems(["deterministic"])
+
+        elif self.parcellationDropdown.currentText() == "Schaefer et al. (2018)":
+            self.parcellationOptions.addItems(["100", "200", "300", "400", "500", "600", "700", "800", "900", "1000"])
+
+        elif self.parcellationDropdown.currentText() == "Talairach atlas":
+            self.parcellationOptions.addItems(["hemisphere"])
+
+        elif self.parcellationDropdown.currentText() == "Yeo (2011) networks":
+            self.parcellationOptions.addItems(["thin_7", "thick_7", "thin_17", "thick_17"])
+
+        elif self.parcellationDropdown.currentText() == "Dosenbach et al. (2010)":
+            self.parcellationOptions.addItems(["160"])
+
+        elif self.parcellationDropdown.currentText() == "Power et al. (2011)":
+            self.parcellationOptions.addItems(["264"])
+        
+        elif self.parcellationDropdown.currentText() == "Seitzmann et al. (2018)":
+            self.parcellationOptions.addItems(["300"])
+
+        else:
+            QMessageBox.warning(self, "Error", "Atlas not found")
+            return
+        
+        self.parcellationOptions.show()
+        return
 
     def saveConnectivityFile(self):
         if self.data.dfc_data is None:
@@ -2248,11 +2291,15 @@ class App(QMainWindow):
         self.parcellationLabel = QLabel("Parcellation:")
         self.parcellationLabel.setFixedWidth(100)
         self.parcellationDropdown = QComboBox()
-        self.atlasnames = ["aal", "basc_multiscale", "destrieux_2009", "pauli_2017", "schaefer_2018", 
-                           "talairach", "yeo_2011", "dosenbach_2010", "power_2011", "seitzman_2018"]
+        self.parcellationOptions = QComboBox()
+        self.atlasnames = ["AAL template (SPM 12)", "BASC multiscale", "Destrieux et al. (2009)", "Pauli et al. (2017)", "Schaefer et al. (2018)", 
+                           "Talairach atlas", "Yeo (2011) networks", "Dosenbach et al. (2010)", "Power et al. (2011)", "Seitzmann et al. (2018)"]
+        self.parcellationDropdown.currentIndexChanged.connect(self.onBIDSAtlasSelected)
         self.parcellationDropdown.addItems(self.atlasnames)
+        
         self.parcellationDropdownLayout.addWidget(self.parcellationLabel, 1)
         self.parcellationDropdownLayout.addWidget(self.parcellationDropdown, 4)
+        self.parcellationDropdownLayout.addWidget(self.parcellationOptions, 2)
         self.bidsLayout.addLayout(self.parcellationDropdownLayout)
 
         # Mask Dropdown with Label
