@@ -395,7 +395,6 @@ class App(QMainWindow):
 
         # Add cleaning layout
 
-
         # Stretch to bottom
         leftLayout.addStretch()
         
@@ -1608,8 +1607,8 @@ class App(QMainWindow):
         file_name = file_path.split('/')[-1]
         self.data.file_name = file_name
         self.getParameters() # Get current UI parameters
-        self.subjectsDropdown.clear()
-        self.subjectsDropdown.hide()
+        self.subjectDropdown.clear()
+        self.subjectDropdown.hide()
 
         if not file_path:
             return  # Early exit if no file is selected
@@ -1727,44 +1726,19 @@ class App(QMainWindow):
         # Open a dialog to select the BIDS directory
         bids_folder = QFileDialog.getExistingDirectory(self, "Select BIDS Directory")
 
+        # User canceled the selection
         if not bids_folder:
-            return  # User canceled the selection
+            return
 
         # Initialize a BIDS Layout
         try:
-            self.bids_layout = BIDSLayout(bids_folder)
-            
-            subjects = self.bids_layout.get_subjects()
-            ids = [f"sub-{subject}" for subject in subjects]
-            self.subjectsDropdown.clear()
-            self.subjectsDropdown.addItems(ids)
-
-            selected_subject = self.subjectsDropdown.currentText()
-            nifti_files = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz', subject=selected_subject.split('-')[-1])
-
-            nifti_dict = {}
-            pattern = r"sub-\d+_([^/]*)"
-            for file_path in nifti_files:
-                match = re.search(pattern, file_path)
-                if match:
-                    file_name = match.group(1)
-                    nifti_dict[file_name] = file_path
-            
-            self.niftiDropdown.clear()
-            self.niftiDropdown.addItems(nifti_dict.keys())
-
-
-            self.loadConfounds(['confound1', 'confound2', 'confound3'])
-
-            #mask_files = self.bids_layout.get(return_type='file', suffix='mask', extension='nii.gz')
-            #pattern = r"^\\(.+\\)*(.+)\.(.+)$"
-            #mask_file_ids = [re.search(pattern, filename).group(1) if re.search(pattern, filename) else None for filename in mask_files]
-            #mask_file_ids.insert(0, "Calculate mask with nilearn")
-            #self.maskDropdown.clear()
-            #self.maskDropdown.addItems(mask_file_ids)
+            self.fileNameLabel.setText(f"Initializing BIDS layout, please wait...")
+            print("Getting layout...")
+            self.bids_layout = BIDSLayout(bids_folder, derivatives=True)
+            self.onBIDSSubjectChanged()
+            print("Done.")
 
             self.fileNameLabel.setText(f"Loaded BIDS data from {bids_folder}")
-
             self.bidsContainer.show()
 
         except Exception as e:
@@ -1825,27 +1799,19 @@ class App(QMainWindow):
     def extractTimeSeries(self):
         self.calculateBIDStextbox.setText("Calculating time series, please wait...")
         self.update()
-        selected_subject = self.subjectsDropdown.currentText()
-        
-        nifti_files = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz', subject=selected_subject.split('-')[-1]) 
-        nifti_dict = {}
-        pattern = r"sub-\d+_([^/]*)"
-        
-        for file_path in nifti_files:
-            match = re.search(pattern, file_path)
-            if match:
-                file_name = match.group(1)
-                nifti_dict[file_name] = file_path
-            
-        self.niftiDropdown.clear()
-        self.niftiDropdown.addItems(nifti_dict.keys())
+
+        selected_subject = self.subjectDropdown.currentText()
+        selected_task = self.taskDropdown.currentText()
+        selected_session = self.sessionDropdown.currentText()
+        selected_run = self.runDropdown.currentText()
 
         #mask_files = self.bids_layout.get(return_type='file', suffix='mask', extension='nii.gz')
         #pattern = r"^\\(.+\\)*(.+)\.(.+)$"
         #mask_file_ids = [re.search(pattern, filename).group(1) if re.search(pattern, filename) else None for filename in mask_files]
         #mask_file_ids.insert(0, "Calculate mask with nilearn")
         
-        img = nifti_dict[self.niftiDropdown.currentText()]
+        img = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz', 
+                                   subject=selected_subject.split('-')[-1], run_id=selected_run, task=selected_task, session=selected_session)
         print(img)
 
         if self.parcellationDropdown.currentText() in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
@@ -1870,21 +1836,37 @@ class App(QMainWindow):
         self.update()
 
     def onBIDSSubjectChanged(self):
+        # Get the current selected subject
+        selected_subject = self.subjectDropdown.currentText()
+
+        # Disconnect the signal to avoid recursive calls
+        self.subjectDropdown.currentIndexChanged.disconnect(self.onBIDSSubjectChanged)
+
+        # Init
         self.calculateBIDStextbox.setText("No time series data extracted yet.")
-        selected_subject = self.subjectsDropdown.currentText()
+        self.subjectDropdown.clear()
+        self.taskDropdown.clear()
+        self.runDropdown.clear()
         
-        nifti_files = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz', subject=selected_subject.split('-')[-1]) 
-        nifti_dict = {}
-        pattern = r"sub-\d+_([^/]*)"
-        
-        for file_path in nifti_files:
-            match = re.search(pattern, file_path)
-            if match:
-                file_name = match.group(1)
-                nifti_dict[file_name] = file_path
-            
-        self.niftiDropdown.clear()
-        self.niftiDropdown.addItems(nifti_dict.keys())
+        # Subjects
+        subjects = self.bids_layout.get_subjects()
+        tasks = self.bids_layout.get_tasks()
+        sessions = self.bids_layout.get_sessions()
+        runs = self.bids_layout.get_runs()
+
+        sub_id = [f"sub-{subject}" for subject in subjects]
+        run_id = [f"{run}" for run in runs]
+        self.subjectDropdown.addItems(sub_id)
+        self.taskDropdown.addItems(tasks)
+        self.sessionDropdown.addItems(sessions)
+        self.runDropdown.addItems(run_id)
+
+        # Confounds
+        self.loadConfounds(['confound1', 'confound2', 'confound3'])
+
+        # Reconnect the signal
+        self.subjectDropdown.currentIndexChanged.connect(self.onBIDSSubjectChanged)
+        return
 
     def onBIDSAtlasSelected(self):
         self.parcellationOptions.clear()
@@ -1990,6 +1972,7 @@ class App(QMainWindow):
         self.time_series_textbox.setText(self.data.file_name)
 
     def loadConfounds(self, confounds):
+        self.confoundList.clear()
         for confound in confounds:
             item = QListWidgetItem(confound)
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
@@ -2365,29 +2348,42 @@ class App(QMainWindow):
         self.bidsLayout = QVBoxLayout(self.bidsContainer)
 
         # Subjects Dropdown with Label
-        self.subjectsDropdownLayout = QHBoxLayout()
-        self.subjectsLabel = QLabel("Subject:")
-        self.subjectsLabel.setFixedWidth(100)
-        self.subjectsDropdown = QComboBox()
-        self.subjectsDropdown.currentIndexChanged.connect(self.onBIDSSubjectChanged)
-        self.subjectsDropdownLayout.addWidget(self.subjectsLabel, 1)
-        self.subjectsDropdownLayout.addWidget(self.subjectsDropdown, 4)
-        self.bidsLayout.addLayout(self.subjectsDropdownLayout)
+        self.subjectDropdownLayout = QHBoxLayout()
+        self.subjectLabel = QLabel("Subject:")
+        self.subjectLabel.setFixedWidth(100)
+        self.subjectDropdown = QComboBox()
+        self.subjectDropdown.currentIndexChanged.connect(self.onBIDSSubjectChanged)
+        self.subjectDropdownLayout.addWidget(self.subjectLabel, 1)
+        self.subjectDropdownLayout.addWidget(self.subjectDropdown, 4)
+        self.bidsLayout.addLayout(self.subjectDropdownLayout)
 
-        # Nifti Dropdown with Label
-        self.niftiDropdownLayout = QHBoxLayout()
-        self.niftiLabel = QLabel("Nifti File:")
-        self.niftiLabel.setFixedWidth(100)
-        self.niftiDropdown = QComboBox()
-        self.niftiDropdownLayout.addWidget(self.niftiLabel, 1)
-        self.niftiDropdownLayout.addWidget(self.niftiDropdown, 4)
-        self.bidsLayout.addLayout(self.niftiDropdownLayout)
+        # Task/ run dropdowns with Label
+        self.taskDropdownLayout = QHBoxLayout()
+        self.taskLabel = QLabel("Task:")
+        self.taskLabel.setFixedWidth(100)
+        self.taskDropdown = QComboBox()
+        self.sessionLabel = QLabel("Session:")
+        self.sessionLabel.setFixedWidth(65)
+        self.sessionDropdown = QComboBox()
+        self.runLabel = QLabel("Run:")
+        self.runLabel.setFixedWidth(40)
+        self.runDropdown = QComboBox()
+        
+        self.taskDropdownLayout.addWidget(self.taskLabel, 1)
+        self.taskDropdownLayout.addWidget(self.taskDropdown, 4)
+        self.taskDropdownLayout.addWidget(self.sessionLabel, 1)
+        self.taskDropdownLayout.addWidget(self.sessionDropdown, 1)
+        self.taskDropdownLayout.addWidget(self.runLabel, 1)
+        self.taskDropdownLayout.addWidget(self.runDropdown, 1)
+        self.bidsLayout.addLayout(self.taskDropdownLayout)
 
         # Parcellation Dropdown with Label
         self.parcellationDropdownLayout = QHBoxLayout()
         self.parcellationLabel = QLabel("Parcellation:")
         self.parcellationLabel.setFixedWidth(100)
         self.parcellationDropdown = QComboBox()
+        self.parcellationOptionsLabel = QLabel("Size:")
+        self.parcellationOptionsLabel.setFixedWidth(40)
         self.parcellationOptions = QComboBox()
         self.atlasnames = ["AAL template (SPM 12)", "BASC multiscale", "Destrieux et al. (2009)", "Pauli et al. (2017)", "Schaefer et al. (2018)", 
                            "Talairach atlas", "Yeo (2011) networks", "Dosenbach et al. (2010)", "Power et al. (2011)", "Seitzmann et al. (2018)"]
@@ -2396,12 +2392,13 @@ class App(QMainWindow):
         
         self.parcellationDropdownLayout.addWidget(self.parcellationLabel, 1)
         self.parcellationDropdownLayout.addWidget(self.parcellationDropdown, 4)
-        self.parcellationDropdownLayout.addWidget(self.parcellationOptions, 2)
+        self.parcellationDropdownLayout.addWidget(self.parcellationOptionsLabel, 1)
+        self.parcellationDropdownLayout.addWidget(self.parcellationOptions, 3)
         self.bidsLayout.addLayout(self.parcellationDropdownLayout)
 
         # Mask Dropdown with Label
         #self.maskDropdownLayout = QHBoxLayout()
-        #self.maskLabel = QLabel("Mask File:")
+        #self.maskLabel = QLabel("Mask:")
         #self.maskLabel.setFixedWidth(100)
         #self.maskDropdown = QComboBox()
         #self.maskDropdownLayout.addWidget(self.maskLabel, 1)
