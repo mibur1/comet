@@ -29,7 +29,7 @@ from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject
 from PyQt6.QtGui import QEnterEvent, QFontMetrics
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
     QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, \
-    QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox
+    QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QListWidget, QListWidgetItem
 
 # Comet imports and state-based dFC methods from pydfc
 from . import cifti, methods, graph
@@ -283,6 +283,7 @@ class App(QMainWindow):
         topLayout.addWidget(self.topTabWidget)
 
         # Setup the individual tabs
+        self.dataTab()
         self.connectivityTab()
         self.graphTab()
         self.multiverseTab()
@@ -365,6 +366,70 @@ class App(QMainWindow):
         
         self.setParameters(disable=True)
 
+    def dataTab(self):
+        dataTab = QWidget()
+        dataLayout = QHBoxLayout()
+        dataTab.setLayout(dataLayout)
+
+        leftLayout = QVBoxLayout()
+        rightLayout = QVBoxLayout()
+
+        ###################
+        #  Right section  #
+        ###################
+
+        # Create button and label for file loading
+        loadLayout = QHBoxLayout()
+        fileButton = QPushButton('Load single time series')
+        bidsButton = QPushButton('Load BIDS dataset')
+        self.fileNameLabel = QLabel('No data loaded yet')
+
+        loadLayout.addWidget(fileButton)
+        loadLayout.addWidget(bidsButton)
+        
+        leftLayout.addLayout(loadLayout)
+        leftLayout.addWidget(self.fileNameLabel)
+        
+        # Add BIDS layout
+        self.addBidsLayout(leftLayout)
+
+        # Add cleaning layout
+
+
+        # Stretch to bottom
+        leftLayout.addStretch()
+        
+        # Connect widgets
+        fileButton.clicked.connect(self.loadTS)
+        bidsButton.clicked.connect(self.loadBIDS)
+
+        ###################
+        #  Right section  #
+        ###################
+        rightLayout = QVBoxLayout()
+        plotTabWidget = QTabWidget()
+
+        plotTab = QWidget()
+        plotTab.setLayout(QVBoxLayout())
+        self.boldFigure = Figure()
+        self.boldCanvas = FigureCanvas(self.boldFigure)
+        self.boldFigure.patch.set_facecolor('#E0E0E0')
+        plotTab.layout().addWidget(self.boldCanvas)
+        plotTabWidget.addTab(plotTab, "Carpet Plot")
+
+        # Draw default plot (logo) on the canvas
+        self.plotLogo(self.boldFigure)
+        self.boldCanvas.draw()
+
+        rightLayout.addWidget(plotTabWidget)
+        
+        ######################
+        #  Combine sections  #
+        ######################
+        dataLayout.addLayout(leftLayout, 1)
+        dataLayout.addLayout(rightLayout, 1)
+        self.topTabWidget.addTab(dataTab, "Data Preparation")
+
     def connectivityTab(self):
         connectivityTab = QWidget()
         connectivityLayout = QHBoxLayout()
@@ -374,23 +439,7 @@ class App(QMainWindow):
         #  Left section for settings  #
         ###############################
         self.leftLayout = QVBoxLayout()
-
-        # Create button and label for file loading
-        loadLayout = QHBoxLayout()
-        fileButton = QPushButton('Load time series')
-        bidsButton = QPushButton('Load BIDS')
-        self.fileNameLabel = QLabel('No file loaded yet')
-
-        loadLayout.addWidget(fileButton)
-        loadLayout.addWidget(bidsButton)
-        self.leftLayout.addLayout(loadLayout)
-        self.leftLayout.addWidget(self.fileNameLabel)
         
-        fileButton.clicked.connect(self.loadTS)
-        bidsButton.clicked.connect(self.loadBIDS)
-
-        self.addBidsLayout()
-
         # Create a checkbox for reshaping the data
         self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
         self.leftLayout.addWidget(self.transposeCheckbox)
@@ -1528,6 +1577,30 @@ class App(QMainWindow):
     """
     I/O and data related functions
     """
+    # Data tab
+    def createCarpetPlot(self):
+        # Clear the current plot
+        self.boldFigure.clear()
+        ax = self.boldFigure.add_subplot(111)
+
+        # Plot the data
+        if self.data.file_data is not None:
+            im = ax.imshow(self.data.file_data, cmap='Grays', aspect='auto')
+            ax.set_title(f"BOLD time series")
+            ax.set_xlabel("ROI")
+            ax.set_ylabel("Time")
+
+        # Create the colorbar
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.15)
+        cbar = self.boldFigure.colorbar(im, cax=cax)
+        cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
+
+        # Adjust and draw
+        self.boldFigure.set_facecolor('#E0E0E0')
+        self.boldFigure.tight_layout()
+        self.boldCanvas.draw()
+    
     # dFC tab
     def loadTS(self):
         fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
@@ -1647,6 +1720,9 @@ class App(QMainWindow):
         self.clearMemoryButton.setEnabled(True)
         self.keepInMemoryCheckbox.setEnabled(True)
 
+        # Create carpet plot
+        self.createCarpetPlot()
+
     def loadBIDS(self):
         # Open a dialog to select the BIDS directory
         bids_folder = QFileDialog.getExistingDirectory(self, "Select BIDS Directory")
@@ -1676,6 +1752,9 @@ class App(QMainWindow):
             
             self.niftiDropdown.clear()
             self.niftiDropdown.addItems(nifti_dict.keys())
+
+
+            self.loadConfounds(['confound1', 'confound2', 'confound3'])
 
             #mask_files = self.bids_layout.get(return_type='file', suffix='mask', extension='nii.gz')
             #pattern = r"^\\(.+\\)*(.+)\.(.+)$"
@@ -1909,6 +1988,13 @@ class App(QMainWindow):
         # Update the labels
         self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.data.file_data.shape}")
         self.time_series_textbox.setText(self.data.file_name)
+
+    def loadConfounds(self, confounds):
+        for confound in confounds:
+            item = QListWidgetItem(confound)
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(Qt.CheckState.Unchecked)
+            self.confoundList.addItem(item)
 
     # Graph tab
     def loadGraphFile(self):
@@ -2273,7 +2359,7 @@ class App(QMainWindow):
     Parameters
     """
     # dFC tab
-    def addBidsLayout(self):
+    def addBidsLayout(self, leftLayout):
         # Container widget for BIDS Layout
         self.bidsContainer = QWidget()
         self.bidsLayout = QVBoxLayout(self.bidsContainer)
@@ -2321,7 +2407,19 @@ class App(QMainWindow):
         #self.maskDropdownLayout.addWidget(self.maskLabel, 1)
         #self.maskDropdownLayout.addWidget(self.maskDropdown, 4)
         #self.bidsLayout.addLayout(self.maskDropdownLayout)
-        
+
+        # Confounds layout
+        self.confoundLayout = QHBoxLayout()
+        self.confoundLabel = QLabel("Confounds:")
+        self.confoundLabel.setFixedWidth(100)
+        self.confoundList = QListWidget(self)
+        self.confoundLayout.addWidget(self.confoundLabel, 1)
+        self.confoundLayout.addWidget(self.confoundList, 4)
+        self.bidsLayout.addLayout(self.confoundLayout)
+
+        # Stretch to fill empty space
+        self.bidsLayout.addStretch()
+
         # Time Series Calculation Button with Label
         self.calculateBIDSButton = QPushButton('Extract time series')
         self.calculateBIDSButton.clicked.connect(self.extractTimeSeries)
@@ -2332,7 +2430,7 @@ class App(QMainWindow):
         self.bidsLayout.addWidget(self.calculateBIDStextbox)
 
         # Add the BIDS layout to the main layout
-        self.leftLayout.addWidget(self.bidsContainer)
+        leftLayout.addWidget(self.bidsContainer)
         self.bidsContainer.hide()
 
         return
