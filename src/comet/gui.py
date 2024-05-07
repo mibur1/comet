@@ -1811,7 +1811,7 @@ class App(QMainWindow):
         #mask_file_ids.insert(0, "Calculate mask with nilearn")
         
         img = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz', 
-                                   subject=selected_subject.split('-')[-1], run_id=selected_run, task=selected_task, session=selected_session)
+                                   subject=selected_subject.split('-')[-1], task=selected_task, run=selected_run, session=selected_session)
         print(img)
 
         if self.parcellationDropdown.currentText() in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
@@ -1846,6 +1846,7 @@ class App(QMainWindow):
         self.calculateBIDStextbox.setText("No time series data extracted yet.")
         self.subjectDropdown.clear()
         self.taskDropdown.clear()
+        self.sessionDropdown.clear()
         self.runDropdown.clear()
         
         # Subjects
@@ -1855,10 +1856,12 @@ class App(QMainWindow):
         runs = self.bids_layout.get_runs()
 
         sub_id = [f"sub-{subject}" for subject in subjects]
+        session_id = [f"{session}" for session in sessions]
         run_id = [f"{run}" for run in runs]
+        
         self.subjectDropdown.addItems(sub_id)
         self.taskDropdown.addItems(tasks)
-        self.sessionDropdown.addItems(sessions)
+        self.sessionDropdown.addItems(session_id)
         self.runDropdown.addItems(run_id)
 
         # Confounds
