@@ -1734,6 +1734,8 @@ class App(QMainWindow):
         try:
             # Initialize BIDS layout
             self.fileNameLabel.setText(f"Initializing BIDS layout, please wait...")
+            self.subjectDropdown.clear()
+            
             print("Getting BIDS layout...")
             self.bids_layout = BIDSLayout(bids_folder, derivatives=True)
 
@@ -1856,8 +1858,9 @@ class App(QMainWindow):
         self.runDropdown.setEnabled(False)
         self.parcellationDropdown.setEnabled(False)
         self.parcellationOptions.setEnabled(False)
+        self.confoundList.setEnabled(False)
 
-        self.update()
+        QApplication.processEvents()
         
         # Get data for subject
         selected_subject = self.subjectDropdown.currentText()
@@ -1880,6 +1883,14 @@ class App(QMainWindow):
         # Reconnect the signal
         self.subjectDropdown.currentIndexChanged.connect(self.onBIDSSubjectChanged)
         self.calculateBIDStextbox.setText("No time series data extracted yet.")
+
+        self.taskDropdown.setEnabled(True)
+        self.sessionDropdown.setEnabled(True)
+        self.runDropdown.setEnabled(True)
+        self.parcellationDropdown.setEnabled(True)
+        self.parcellationOptions.setEnabled(True)
+        self.confoundList.setEnabled(True)
+
         return
 
     def onBIDSAtlasSelected(self):
@@ -2980,7 +2991,6 @@ class App(QMainWindow):
 
     # Graph tab
     def onAddGraphOption(self):
-
         # Start worker thread for graph calculations
         self.workerThread = QThread()
         self.worker = Worker(self.calculateGraph, None)
