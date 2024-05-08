@@ -41,19 +41,19 @@ class Worker(QObject):
     error = pyqtSignal(str)
     result = pyqtSignal(object)
 
-    def __init__(self, calculationFunc, parameters):
+    def __init__(self, func, params):
         super().__init__()
-        self.calculationFunc = calculationFunc
-        self.parameters = parameters
+        self.func = func
+        self.params = params
 
     def run(self):
         try:
-            result = self.calculationFunc(self.parameters)
-            self.result.emit(result)  # Emit results
+            result = self.func(self.params)
+            self.result.emit(result) # Emit results
         except Exception as e:
             self.error.emit(str(e))  # Emit errors
         finally:
-            self.finished.emit()  # Notify completion
+            self.finished.emit()     # Notify completion
 
 class InfoButton(QPushButton):
     # Info button class
@@ -1733,25 +1733,40 @@ class App(QMainWindow):
         # Initialize a BIDS Layout
         try:
             # Initialize BIDS layout
-            self.fileNameLabel.setText(f"Initializing BIDS layout, please wait...")
             self.subjectDropdown.clear()
+            self.subjectDropdown.setEnabled(False)
+            QApplication.processEvents()
             
-            print("Getting BIDS layout...")
-            self.bids_layout = BIDSLayout(bids_folder, derivatives=True)
+            # Load BIDS layout in a separate thread
+            self.workerThread = QThread()
+            self.worker = Worker(self.loadBIDSThread, bids_folder)
+            self.worker.moveToThread(self.workerThread)
 
-            # Get subjects
-            subjects = self.bids_layout.get_subjects()
-            sub_id = [f"sub-{subject}" for subject in subjects]
-            self.subjectDropdown.addItems(sub_id)
-
-            self.onBIDSSubjectChanged()
-            print("Done.")
-
-            self.fileNameLabel.setText(f"Loaded BIDS data from {bids_folder}")
-            self.bidsContainer.show()
+            self.worker.finished.connect(self.workerThread.quit)
+            self.workerThread.started.connect(self.worker.run)
+            self.workerThread.start()
 
         except Exception as e:
             QMessageBox.warning(self, "Load Error", f"Failed to load BIDS data: {str(e)}")
+
+    def loadBIDSThread(self, bids_folder):
+        # Get the layout
+        self.fileNameLabel.setText(f"Initializing BIDS layout, please wait...")
+        self.bids_layout = BIDSLayout(bids_folder, derivatives=True)
+        
+        # Get subjects and update the dropdown
+        subjects = self.bids_layout.get_subjects()
+        sub_id = [f"sub-{subject}" for subject in subjects]
+        self.subjectDropdown.addItems(sub_id)
+        
+        # Update the GUI
+        self.onBIDSSubjectChanged()
+
+        # Layout loaded successfully
+        self.fileNameLabel.setText(f"Loaded BIDS data from {bids_folder}")
+        self.bidsContainer.show()
+        self.subjectDropdown.setEnabled(True)
+        return
 
     def fetchAtlas(self, atlasname, atlasnames):
         if atlasname in atlasnames:
