@@ -1732,9 +1732,16 @@ class App(QMainWindow):
 
         # Initialize a BIDS Layout
         try:
+            # Initialize BIDS layout
             self.fileNameLabel.setText(f"Initializing BIDS layout, please wait...")
-            print("Getting layout...")
+            print("Getting BIDS layout...")
             self.bids_layout = BIDSLayout(bids_folder, derivatives=True)
+
+            # Get subjects
+            subjects = self.bids_layout.get_subjects()
+            sub_id = [f"sub-{subject}" for subject in subjects]
+            self.subjectDropdown.addItems(sub_id)
+
             self.onBIDSSubjectChanged()
             print("Done.")
 
@@ -1836,30 +1843,33 @@ class App(QMainWindow):
         self.update()
 
     def onBIDSSubjectChanged(self):
-        # Get the current selected subject
-        selected_subject = self.subjectDropdown.currentText()
-
         # Disconnect the signal to avoid recursive calls
         self.subjectDropdown.currentIndexChanged.disconnect(self.onBIDSSubjectChanged)
 
-        # Init
-        self.calculateBIDStextbox.setText("No time series data extracted yet.")
-        self.subjectDropdown.clear()
+        # Clear previous information and disable inputs while loading
         self.taskDropdown.clear()
         self.sessionDropdown.clear()
         self.runDropdown.clear()
-        
-        # Subjects
-        subjects = self.bids_layout.get_subjects()
-        tasks = self.bids_layout.get_tasks()
-        sessions = self.bids_layout.get_sessions()
-        runs = self.bids_layout.get_runs()
 
-        sub_id = [f"sub-{subject}" for subject in subjects]
+        self.taskDropdown.setEnabled(False)
+        self.sessionDropdown.setEnabled(False)
+        self.runDropdown.setEnabled(False)
+        self.parcellationDropdown.setEnabled(False)
+        self.parcellationOptions.setEnabled(False)
+
+        self.update()
+        
+        # Get data for subject
+        selected_subject = self.subjectDropdown.currentText()
+        subject_id = selected_subject.split('-')[-1]
+
+        tasks = self.bids_layout.get_tasks(subject=subject_id)
+        sessions = self.bids_layout.get_sessions(subject=subject_id)
+        runs = self.bids_layout.get_runs(subject=subject_id)
+
         session_id = [f"{session}" for session in sessions]
         run_id = [f"{run}" for run in runs]
         
-        self.subjectDropdown.addItems(sub_id)
         self.taskDropdown.addItems(tasks)
         self.sessionDropdown.addItems(session_id)
         self.runDropdown.addItems(run_id)
@@ -1869,6 +1879,7 @@ class App(QMainWindow):
 
         # Reconnect the signal
         self.subjectDropdown.currentIndexChanged.connect(self.onBIDSSubjectChanged)
+        self.calculateBIDStextbox.setText("No time series data extracted yet.")
         return
 
     def onBIDSAtlasSelected(self):
