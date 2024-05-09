@@ -386,10 +386,18 @@ class App(QMainWindow):
 
         loadLayout.addWidget(fileButton)
         loadLayout.addWidget(bidsButton)
-        
+
         leftLayout.addLayout(loadLayout)
         leftLayout.addWidget(self.fileNameLabel)
         
+        # Checkbox for reshaping the data
+        self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
+        leftLayout.addWidget(self.transposeCheckbox)
+        
+        self.transposeCheckbox.stateChanged.connect(self.onTransposeChecked)
+        leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        self.transposeCheckbox.hide()
+
         # Add BIDS layout
         self.addBidsLayout(leftLayout)
 
@@ -438,16 +446,9 @@ class App(QMainWindow):
         #  Left section for settings  #
         ###############################
         self.leftLayout = QVBoxLayout()
-        
-        # Create a checkbox for reshaping the data
-        self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
-        self.leftLayout.addWidget(self.transposeCheckbox)
-        self.transposeCheckbox.setEnabled(False)
 
-        # Connect the checkbox to a method
-        self.transposeCheckbox.stateChanged.connect(self.onTransposeChecked)
-
-        # Add spacer for an empty line
+        self.fileNameLabel2 = QLabel('No time series data loaded yet')
+        self.leftLayout.addWidget(self.fileNameLabel2)
         self.leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
         # Method label and combobox
@@ -931,6 +932,7 @@ class App(QMainWindow):
     """
     Data tab
     """
+    # Time series
     def loadTS(self):
         fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
@@ -1035,13 +1037,16 @@ class App(QMainWindow):
 
             if file_path.endswith('.nii'):
                 self.fileNameLabel.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
+                self.fileNameLabel2.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
                 self.transposeCheckbox.setEnabled(False)
             else:
                 self.fileNameLabel.setText(f"Loaded {self.data.file_name} with shape {self.data.file_data.shape}")
+                self.fileNameLabel2.setText(f"Loaded {self.data.file_name} with shape {self.data.file_data.shape}")
                 self.transposeCheckbox.setEnabled(True)
         
         # Reset and enable the GUI elements
         self.bidsContainer.hide()
+        self.transposeCheckbox.show()
 
         self.methodComboBox.setEnabled(True)
         self.methodComboBox.setEnabled(True)
@@ -1052,6 +1057,26 @@ class App(QMainWindow):
         # Create carpet plot
         self.createCarpetPlot()
 
+    def onTransposeChecked(self, state):
+        if self.data.file_data is None:
+            return  # No data loaded, so do nothing
+
+        if state == Qt.CheckState.Checked:
+            # Transpose the data
+            self.data.file_data = self.data.file_data.transpose()
+        else:
+            # Transpose it back to original
+            self.data.file_data = self.data.file_data.transpose()
+
+        # Update the labels
+        self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.data.file_data.shape}")
+        self.fileNameLabel2.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.data.file_data.shape}")
+        self.time_series_textbox.setText(self.data.file_name)
+
+        # Update carpet plot
+        self.createCarpetPlot()
+
+    # BIDS
     def addBidsLayout(self, leftLayout):
         # Container widget for BIDS Layout
         self.bidsContainer = QWidget()
@@ -1192,6 +1217,7 @@ class App(QMainWindow):
         self.fileNameLabel.setText(f"Loaded BIDS data from {bids_folder}")
         self.bidsContainer.show()
         self.subjectDropdown.setEnabled(True)
+        self.subjectDropdown.show()
         return
 
     def fetchAtlas(self, atlasname, atlasnames):
@@ -1391,9 +1417,8 @@ class App(QMainWindow):
         # Plot the data
         if self.data.file_data is not None:
             im = ax.imshow(self.data.file_data, cmap='Grays', aspect='auto')
-            ax.set_title(f"BOLD time series")
-            ax.set_xlabel("ROI")
-            ax.set_ylabel("Time")
+            ax.set_xlabel("ROIs")
+            ax.set_ylabel("TRs")
 
         # Create the colorbar
         divider = make_axes_locatable(ax)
@@ -1422,20 +1447,6 @@ class App(QMainWindow):
     """
     Connectivity tab
     """
-    def onTransposeChecked(self, state):
-        if self.data.file_data is None:
-            return  # No data loaded, so do nothing
-
-        if state == Qt.CheckState.Checked:
-            # Transpose the data
-            self.data.file_data = self.data.file_data.transpose()
-        else:
-            # Transpose it back to original
-            self.data.file_data = self.data.file_data.transpose()
-
-        # Update the labels
-        self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.data.file_data.shape}")
-        self.time_series_textbox.setText(self.data.file_name)
 
     def saveConnectivityFile(self):
         if self.data.dfc_data is None:
@@ -2641,7 +2652,6 @@ class App(QMainWindow):
                     else:
                         param_default = "empty"
 
-
                 # Create a label for the parameter and set its fixed width
                 param_label = QLabel(f"{name}:")
                 param_label.setFixedWidth(max_label_width + 20)  # Add some padding
@@ -2669,7 +2679,7 @@ class App(QMainWindow):
                         param_widget.setMinimum(-10000)
                         param_widget.setSingleStep(param_default)
                     # Float 
-                    elif param_type == float:    
+                    elif param_type == float:
                         param_widget = QDoubleSpinBox()
                         if name == "threshold":
                             param_widget.setValue(0.0)
