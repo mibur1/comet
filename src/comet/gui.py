@@ -1733,8 +1733,11 @@ class App(QMainWindow):
         # Initialize a BIDS Layout
         try:
             # Initialize BIDS layout
+            self.bidsContainer.hide()
             self.subjectDropdown.clear()
             self.subjectDropdown.setEnabled(False)
+            self.fileNameLabel.setText(f"Initializing BIDS layout, please wait...")
+
             QApplication.processEvents()
             
             # Load BIDS layout in a separate thread
@@ -1744,6 +1747,7 @@ class App(QMainWindow):
 
             self.worker.finished.connect(self.workerThread.quit)
             self.workerThread.started.connect(self.worker.run)
+            self.worker.result.connect(lambda: self.onBidsResult(bids_folder))
             self.workerThread.start()
 
         except Exception as e:
@@ -1751,7 +1755,6 @@ class App(QMainWindow):
 
     def loadBIDSThread(self, bids_folder):
         # Get the layout
-        self.fileNameLabel.setText(f"Initializing BIDS layout, please wait...")
         self.bids_layout = BIDSLayout(bids_folder, derivatives=True)
         
         # Get subjects and update the dropdown
@@ -1762,6 +1765,9 @@ class App(QMainWindow):
         # Update the GUI
         self.onBIDSSubjectChanged()
 
+        return
+    
+    def onBidsResult(self, bids_folder):
         # Layout loaded successfully
         self.fileNameLabel.setText(f"Loaded BIDS data from {bids_folder}")
         self.bidsContainer.show()
@@ -2422,7 +2428,7 @@ class App(QMainWindow):
         self.parcellationLabel = QLabel("Parcellation:")
         self.parcellationLabel.setFixedWidth(100)
         self.parcellationDropdown = QComboBox()
-        self.parcellationOptionsLabel = QLabel("Size:")
+        self.parcellationOptionsLabel = QLabel("Type:")
         self.parcellationOptionsLabel.setFixedWidth(40)
         self.parcellationOptions = QComboBox()
         self.atlasnames = ["AAL template (SPM 12)", "BASC multiscale", "Destrieux et al. (2009)", "Pauli et al. (2017)", "Schaefer et al. (2018)", 
