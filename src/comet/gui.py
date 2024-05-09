@@ -927,8 +927,1971 @@ class App(QMainWindow):
 
         self.topTabWidget.addTab(multiverseTab, "Multiverse Analysis")
 
+    
     """
-    Multiverse functions
+    Data tab
+    """
+    def loadTS(self):
+        fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
+        file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
+        file_name = file_path.split('/')[-1]
+        self.data.file_name = file_name
+        self.getParameters() # Get current UI parameters
+        self.subjectDropdown.clear()
+        self.subjectDropdown.hide()
+
+        if not file_path:
+            return  # Early exit if no file is selected
+
+        if file_path.endswith('.mat'):
+            data_dict = loadmat(file_path)
+            self.data.file_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
+        
+        elif file_path.endswith('.txt'):
+            self.data.file_data = np.loadtxt(file_path)
+        
+        elif file_path.endswith('.npy'):
+            self.data.file_data = np.load(file_path)
+        
+        elif file_path.endswith('.pkl'):
+            with open(file_path, 'rb') as f:
+                self.data.file_data = pickle.load(f)
+        
+        elif file_path.endswith(".tsv"):
+            data = pd.read_csv(file_path, sep='\t', header=None, na_values='n/a')
+
+            if data.iloc[0].apply(lambda x: np.isscalar(x) and np.isreal(x)).all():
+                rois = None  # No rois found, the first row is part of the data
+            else:
+                rois = data.iloc[0]  # The first row is rois
+                data = data.iloc[1:]  # Remove the header row from the data
+
+            # Convert all data to numeric, making sure 'n/a' and other non-numeric are treated as NaN
+            data = data.apply(pd.to_numeric, errors='coerce')
+
+            # Identify entirely empty columns
+            empty_columns = data.columns[data.isna().all()]
+            
+            # Remove corresponding rois if rois exist
+            if rois is not None:
+                removed_rois = rois[empty_columns].to_list()
+                print("The following regions were empty and thus removed:", removed_rois)
+                rois = rois.drop(empty_columns)
+
+            # Remove entirely empty columns and rows
+            data = data.dropna(axis=1, how='all').dropna(axis=0, how='all')
+
+            # Convert the cleaned data back to numpy array
+            self.data.file_data = data.to_numpy()
+
+            # Update header_list if rois exist
+            self.data.roi_names = np.array(rois, dtype=object)
+        
+        elif file_path.endswith(".dtseries.nii"):
+            self.data.cifti_data = nib.load(file_path)
+            self.data.file_data = cifti.parcellate(self.data.cifti_data, atlas="glasser")
+
+        elif file_path.endswith(".ptseries.nii"):
+            data = nib.load(file_path)
+            self.data.file_data = data.get_fdata()
+
+        else:
+            self.data.file_data = None
+            self.time_series_textbox.setText("Unsupported file format")
+
+        # New data, reset slider and plot
+        self.currentSliderValue = 0
+        self.slider.setValue(0)
+        self.figure.clear()
+        self.canvas.draw()
+
+        # Set filenames depending on file type
+        if file_path.endswith('.pkl'):
+            self.fileNameLabel.setText(f"Loaded TIME_SERIES object")
+            self.time_series_textbox.setText(file_name)
+
+            self.continuousCheckBox.setEnabled(False)
+            self.continuousCheckBox.setChecked(False)
+
+            self.stateBasedCheckBox.setEnabled(True)
+            self.stateBasedCheckBox.setChecked(True)
+
+            self.staticCheckBox.setEnabled(False)
+            self.staticCheckBox.setChecked(False)
+
+            self.transposeCheckbox.setEnabled(False)
+        
+        else:
+            self.time_series_textbox.setText(file_name)
+
+            self.continuousCheckBox.setEnabled(True)
+            self.continuousCheckBox.setChecked(True)
+
+            self.stateBasedCheckBox.setEnabled(False)
+            self.stateBasedCheckBox.setChecked(False)
+
+            self.staticCheckBox.setEnabled(True)
+            self.staticCheckBox.setChecked(True)
+
+            if file_path.endswith('.nii'):
+                self.fileNameLabel.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
+                self.transposeCheckbox.setEnabled(False)
+            else:
+                self.fileNameLabel.setText(f"Loaded {self.data.file_name} with shape {self.data.file_data.shape}")
+                self.transposeCheckbox.setEnabled(True)
+        
+        # Reset and enable the GUI elements
+        self.bidsContainer.hide()
+
+        self.methodComboBox.setEnabled(True)
+        self.methodComboBox.setEnabled(True)
+        self.calculateButton.setEnabled(True)
+        self.clearMemoryButton.setEnabled(True)
+        self.keepInMemoryCheckbox.setEnabled(True)
+
+        # Create carpet plot
+        self.createCarpetPlot()
+
+    def addBidsLayout(self, leftLayout):
+        # Container widget for BIDS Layout
+        self.bidsContainer = QWidget()
+        self.bidsLayout = QVBoxLayout(self.bidsContainer)
+
+        # Subjects Dropdown with Label
+        self.subjectDropdownLayout = QHBoxLayout()
+        self.subjectLabel = QLabel("Subject:")
+        self.subjectLabel.setFixedWidth(100)
+        self.subjectDropdown = QComboBox()
+        self.subjectDropdown.currentIndexChanged.connect(self.onBIDSSubjectChanged)
+        self.subjectDropdownLayout.addWidget(self.subjectLabel, 1)
+        self.subjectDropdownLayout.addWidget(self.subjectDropdown, 4)
+        self.bidsLayout.addLayout(self.subjectDropdownLayout)
+
+        # Task/ run dropdowns with Label
+        self.taskDropdownLayout = QHBoxLayout()
+        self.taskLabel = QLabel("Task:")
+        self.taskLabel.setFixedWidth(100)
+        self.taskDropdown = QComboBox()
+        self.sessionLabel = QLabel("Session:")
+        self.sessionLabel.setFixedWidth(65)
+        self.sessionDropdown = QComboBox()
+        self.runLabel = QLabel("Run:")
+        self.runLabel.setFixedWidth(40)
+        self.runDropdown = QComboBox()
+        
+        self.taskDropdownLayout.addWidget(self.taskLabel, 1)
+        self.taskDropdownLayout.addWidget(self.taskDropdown, 4)
+        self.taskDropdownLayout.addWidget(self.sessionLabel, 1)
+        self.taskDropdownLayout.addWidget(self.sessionDropdown, 1)
+        self.taskDropdownLayout.addWidget(self.runLabel, 1)
+        self.taskDropdownLayout.addWidget(self.runDropdown, 1)
+        self.bidsLayout.addLayout(self.taskDropdownLayout)
+
+        # Parcellation Dropdown with Label
+        self.parcellationDropdownLayout = QHBoxLayout()
+        self.parcellationLabel = QLabel("Parcellation:")
+        self.parcellationLabel.setFixedWidth(100)
+        self.parcellationDropdown = QComboBox()
+        self.parcellationOptionsLabel = QLabel("Type:")
+        self.parcellationOptionsLabel.setFixedWidth(40)
+        self.parcellationOptions = QComboBox()
+        self.atlasnames = ["AAL template (SPM 12)", "BASC multiscale", "Destrieux et al. (2009)", "Pauli et al. (2017)", "Schaefer et al. (2018)", 
+                           "Talairach atlas", "Yeo (2011) networks", "Dosenbach et al. (2010)", "Power et al. (2011)", "Seitzmann et al. (2018)"]
+        self.parcellationDropdown.currentIndexChanged.connect(self.onBIDSAtlasSelected)
+        self.parcellationDropdown.addItems(self.atlasnames)
+        
+        self.parcellationDropdownLayout.addWidget(self.parcellationLabel, 1)
+        self.parcellationDropdownLayout.addWidget(self.parcellationDropdown, 4)
+        self.parcellationDropdownLayout.addWidget(self.parcellationOptionsLabel, 1)
+        self.parcellationDropdownLayout.addWidget(self.parcellationOptions, 3)
+        self.bidsLayout.addLayout(self.parcellationDropdownLayout)
+
+        # Mask Dropdown with Label
+        #self.maskDropdownLayout = QHBoxLayout()
+        #self.maskLabel = QLabel("Mask:")
+        #self.maskLabel.setFixedWidth(100)
+        #self.maskDropdown = QComboBox()
+        #self.maskDropdownLayout.addWidget(self.maskLabel, 1)
+        #self.maskDropdownLayout.addWidget(self.maskDropdown, 4)
+        #self.bidsLayout.addLayout(self.maskDropdownLayout)
+
+        # Confounds layout
+        self.confoundLayout = QHBoxLayout()
+        self.confoundLabel = QLabel("Confounds:")
+        self.confoundLabel.setFixedWidth(100)
+        self.confoundList = QListWidget(self)
+        self.confoundLayout.addWidget(self.confoundLabel, 1)
+        self.confoundLayout.addWidget(self.confoundList, 4)
+        self.bidsLayout.addLayout(self.confoundLayout)
+
+        # Stretch to fill empty space
+        self.bidsLayout.addStretch()
+
+        # Time Series Calculation Button with Label
+        self.calculateBIDSButton = QPushButton('Extract time series')
+        self.calculateBIDSButton.clicked.connect(self.extractTimeSeries)
+        self.bidsLayout.addWidget(self.calculateBIDSButton)
+
+        # Textbox for calculation status
+        self.calculateBIDStextbox = QLabel("No time series data extracted yet.")
+        self.bidsLayout.addWidget(self.calculateBIDStextbox)
+
+        # Add the BIDS layout to the main layout
+        leftLayout.addWidget(self.bidsContainer)
+        self.bidsContainer.hide()
+
+        return
+    
+    def loadBIDS(self):
+        # Open a dialog to select the BIDS directory
+        bids_folder = QFileDialog.getExistingDirectory(self, "Select BIDS Directory")
+
+        # User canceled the selection
+        if not bids_folder:
+            return
+
+        # Initialize a BIDS Layout
+        try:
+            # Initialize BIDS layout
+            self.bidsContainer.hide()
+            self.subjectDropdown.clear()
+            self.subjectDropdown.setEnabled(False)
+            self.fileNameLabel.setText(f"Initializing BIDS layout, please wait...")
+
+            QApplication.processEvents()
+            
+            # Load BIDS layout in a separate thread
+            self.workerThread = QThread()
+            self.worker = Worker(self.loadBIDSThread, bids_folder)
+            self.worker.moveToThread(self.workerThread)
+
+            self.worker.finished.connect(self.workerThread.quit)
+            self.workerThread.started.connect(self.worker.run)
+            self.worker.result.connect(lambda: self.onBidsResult(bids_folder))
+            self.workerThread.start()
+
+        except Exception as e:
+            QMessageBox.warning(self, "Load Error", f"Failed to load BIDS data: {str(e)}")
+
+    def loadBIDSThread(self, bids_folder):
+        # Get the layout
+        self.bids_layout = BIDSLayout(bids_folder, derivatives=True)
+        
+        # Get subjects and update the dropdown
+        subjects = self.bids_layout.get_subjects()
+        sub_id = [f"sub-{subject}" for subject in subjects]
+        self.subjectDropdown.addItems(sub_id)
+        
+        # Update the GUI
+        self.onBIDSSubjectChanged()
+
+        return
+    
+    def onBidsResult(self, bids_folder):
+        # Layout loaded successfully
+        self.fileNameLabel.setText(f"Loaded BIDS data from {bids_folder}")
+        self.bidsContainer.show()
+        self.subjectDropdown.setEnabled(True)
+        return
+
+    def fetchAtlas(self, atlasname, atlasnames):
+        if atlasname in atlasnames:
+            if atlasname == "AAL template (SPM 12)":
+                atlas = datasets.fetch_atlas_aal()
+                return atlas["maps"], atlas["labels"]
+            
+            elif atlasname == "BASC multiscale":
+                resolution = int(self.parcellationOptions.currentText())
+                atlas = datasets.fetch_atlas_basc_multiscale_2015(resolution=resolution)
+                return atlas["maps"], None
+                   
+            elif atlasname == "Destrieux et al. (2009)":
+                atlas = datasets.fetch_atlas_destrieux_2009()
+                return atlas["maps"], atlas["labels"]
+            
+            elif atlasname == "Pauli et al. (2017)":
+                atlas = datasets.fetch_atlas_pauli_2017(version="det")
+                return atlas["maps"], atlas["labels"]
+            
+            elif atlasname == "Schaefer et al. (2018)":
+                n_rois = int(self.parcellationOptions.currentText())
+                atlas = datasets.fetch_atlas_schaefer_2018(n_rois=n_rois)
+                return atlas["maps"], atlas["labels"]
+              
+            elif atlasname == "Talairach atlas":
+                atlas = datasets.fetch_atlas_talairach(level_name="hemisphere")
+                return atlas["maps"], atlas["labels"]
+            
+            elif atlasname == "Yeo (2011) networks":
+                thickness = str(self.parcellationOptions.currentText())
+                atlas = datasets.fetch_atlas_yeo_2011()
+                return atlas[thickness], None
+            
+            elif atlasname == "Power et al. (2011)":
+                atlas = datasets.fetch_coords_power_2011(legacy_format=False)
+                coords = np.vstack((atlas.rois["x"], atlas.rois["y"], atlas.rois["z"])).T
+                return coords
+            
+            elif atlasname == "Dosenbach et al. (2010)":
+                atlas = datasets.fetch_coords_dosenbach_2010(legacy_format=False)
+                coords = np.vstack((atlas.rois["x"], atlas.rois["y"], atlas.rois["z"])).T
+                return coords, atlas["networks"], atlas["labels"]
+        
+            elif atlasname == "Seitzmann et al. (2018)":
+                atlas = datasets.fetch_coords_seitzman_2018(legacy_format=False)
+                coords = np.vstack((atlas.rois["x"], atlas.rois["y"], atlas.rois["z"])).T
+                return coords, atlas["networks"], atlas["regions"]
+            
+        else:
+            QMessageBox.warning(self, "Error", "Atlas not found")
+            return
+
+    def extractTimeSeries(self):
+        self.calculateBIDStextbox.setText("Calculating time series, please wait...")
+        self.update()
+
+        selected_subject = self.subjectDropdown.currentText()
+        selected_task = self.taskDropdown.currentText()
+        selected_session = self.sessionDropdown.currentText()
+        selected_run = self.runDropdown.currentText()
+
+        #mask_files = self.bids_layout.get(return_type='file', suffix='mask', extension='nii.gz')
+        #pattern = r"^\\(.+\\)*(.+)\.(.+)$"
+        #mask_file_ids = [re.search(pattern, filename).group(1) if re.search(pattern, filename) else None for filename in mask_files]
+        #mask_file_ids.insert(0, "Calculate mask with nilearn")
+        
+        img = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz', 
+                                   subject=selected_subject.split('-')[-1], task=selected_task, run=selected_run, session=selected_session)
+        print(img)
+
+        if self.parcellationDropdown.currentText() in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
+            rois, networks, labels,  = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
+            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample",)
+        
+        elif self.parcellationDropdown.currentText() == "Power et al. (2011)":
+            rois = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
+            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample",)
+        
+        else:
+            atlas, labels = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
+            masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize="zscore_sample",)
+        
+        time_series = masker.fit_transform(img)
+        
+        self.data.file_name = f"{self.niftiDropdown.currentText()}"
+        self.data.file_data = time_series
+        self.data.roi_names = labels
+        self.calculateBIDStextbox.setText(f"Done calculating time series (shape {self.data.file_data.shape})")
+        self.transposeCheckbox.setEnabled(True)
+        self.update()
+
+    def onBIDSSubjectChanged(self):
+        # Disconnect the signal to avoid recursive calls
+        self.subjectDropdown.currentIndexChanged.disconnect(self.onBIDSSubjectChanged)
+
+        # Clear previous information and disable inputs while loading
+        self.taskDropdown.clear()
+        self.sessionDropdown.clear()
+        self.runDropdown.clear()
+
+        self.taskDropdown.setEnabled(False)
+        self.sessionDropdown.setEnabled(False)
+        self.runDropdown.setEnabled(False)
+        self.parcellationDropdown.setEnabled(False)
+        self.parcellationOptions.setEnabled(False)
+        self.confoundList.setEnabled(False)
+
+        QApplication.processEvents()
+        
+        # Get data for subject
+        selected_subject = self.subjectDropdown.currentText()
+        subject_id = selected_subject.split('-')[-1]
+
+        tasks = self.bids_layout.get_tasks(subject=subject_id)
+        sessions = self.bids_layout.get_sessions(subject=subject_id)
+        runs = self.bids_layout.get_runs(subject=subject_id)
+
+        session_id = [f"{session}" for session in sessions]
+        run_id = [f"{run}" for run in runs]
+        
+        self.taskDropdown.addItems(tasks)
+        self.sessionDropdown.addItems(session_id)
+        self.runDropdown.addItems(run_id)
+
+        # Confounds
+        self.loadConfounds(['confound1', 'confound2', 'confound3'])
+
+        # Reconnect the signal
+        self.subjectDropdown.currentIndexChanged.connect(self.onBIDSSubjectChanged)
+        self.calculateBIDStextbox.setText("No time series data extracted yet.")
+
+        self.taskDropdown.setEnabled(True)
+        self.sessionDropdown.setEnabled(True)
+        self.runDropdown.setEnabled(True)
+        self.parcellationDropdown.setEnabled(True)
+        self.parcellationOptions.setEnabled(True)
+        self.confoundList.setEnabled(True)
+
+        return
+
+    def onBIDSAtlasSelected(self):
+        self.parcellationOptions.clear()
+
+        if self.parcellationDropdown.currentText() == "AAL template (SPM 12)":
+            self.parcellationOptions.addItems(["117"])
+
+        elif self.parcellationDropdown.currentText() == "BASC multiscale":
+            self.parcellationOptions.addItems(["7", "12", "20", "36", "64", "122", "197", "325", "444"])
+        
+        elif self.parcellationDropdown.currentText() == "Destrieux et al. (2009)":
+            self.parcellationOptions.addItems(["148"])
+
+        elif self.parcellationDropdown.currentText() == "Pauli et al. (2017)":
+            self.parcellationOptions.addItems(["deterministic"])
+
+        elif self.parcellationDropdown.currentText() == "Schaefer et al. (2018)":
+            self.parcellationOptions.addItems(["100", "200", "300", "400", "500", "600", "700", "800", "900", "1000"])
+
+        elif self.parcellationDropdown.currentText() == "Talairach atlas":
+            self.parcellationOptions.addItems(["hemisphere"])
+
+        elif self.parcellationDropdown.currentText() == "Yeo (2011) networks":
+            self.parcellationOptions.addItems(["thin_7", "thick_7", "thin_17", "thick_17"])
+
+        elif self.parcellationDropdown.currentText() == "Dosenbach et al. (2010)":
+            self.parcellationOptions.addItems(["160"])
+
+        elif self.parcellationDropdown.currentText() == "Power et al. (2011)":
+            self.parcellationOptions.addItems(["264"])
+        
+        elif self.parcellationDropdown.currentText() == "Seitzmann et al. (2018)":
+            self.parcellationOptions.addItems(["300"])
+
+        else:
+            QMessageBox.warning(self, "Error", "Atlas not found")
+            return
+        
+        self.parcellationOptions.show()
+        return
+
+    def loadConfounds(self, confounds):
+        self.confoundList.clear()
+        for confound in confounds:
+            item = QListWidgetItem(confound)
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(Qt.CheckState.Unchecked)
+            self.confoundList.addItem(item)
+
+    # Plotting
+    def createCarpetPlot(self):
+        # Clear the current plot
+        self.boldFigure.clear()
+        ax = self.boldFigure.add_subplot(111)
+
+        # Plot the data
+        if self.data.file_data is not None:
+            im = ax.imshow(self.data.file_data, cmap='Grays', aspect='auto')
+            ax.set_title(f"BOLD time series")
+            ax.set_xlabel("ROI")
+            ax.set_ylabel("Time")
+
+        # Create the colorbar
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.15)
+        cbar = self.boldFigure.colorbar(im, cax=cax)
+        cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
+
+        # Adjust and draw
+        self.boldFigure.set_facecolor('#E0E0E0')
+        self.boldFigure.tight_layout()
+        self.boldCanvas.draw()
+
+    def plotLogo(self, figure=None):
+        with pkg_resources.path("comet.resources.img", "logo.png") as file_path:
+            logo = imread(file_path)
+
+        figure.clear()
+        ax = figure.add_subplot(111)
+        ax.set_axis_off()
+        ax.imshow(logo)
+
+        figure.set_facecolor('#f4f1f6')
+        figure.tight_layout()
+
+
+    """
+    Connectivity tab
+    """
+    def onTransposeChecked(self, state):
+        if self.data.file_data is None:
+            return  # No data loaded, so do nothing
+
+        if state == Qt.CheckState.Checked:
+            # Transpose the data
+            self.data.file_data = self.data.file_data.transpose()
+        else:
+            # Transpose it back to original
+            self.data.file_data = self.data.file_data.transpose()
+
+        # Update the labels
+        self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.data.file_data.shape}")
+        self.time_series_textbox.setText(self.data.file_name)
+
+    def saveConnectivityFile(self):
+        if self.data.dfc_data is None:
+            QMessageBox.warning(self, "Output Error", "No dFC data available to save.")
+            return
+
+        # Open a file dialog to specify where to save the file
+        filePath, _ = QFileDialog.getSaveFileName(self, "Save File", "", "MAT Files (*.mat)")
+
+        if filePath:
+            # Ensure the file has the correct extension
+            if not filePath.endswith('.mat'):
+                filePath += '.mat'
+            
+            # Save the the current data object to a .mat file
+            try:
+                data_dict = {}
+                for field in self.data.__dataclass_fields__:
+                    value = getattr(self.data, field)
+                    
+                    if isinstance(value, np.ndarray):
+                        data_dict[field] = value
+                    elif isinstance(value, dict):
+                        # Ensure all dict values are appropriately converted
+                        converted_dict = {}
+                        for k, v in value.items():
+                            if isinstance(v, np.ndarray):
+                                converted_dict[k] = v
+                            elif v is None:
+                                converted_dict[k] = np.array([])
+                                print(f"Converted None to empty array for dict key: {k}")
+                            else:
+                                converted_dict[k] = v
+                        data_dict[field] = converted_dict
+                    elif value is None:
+                        data_dict[field] = np.array([])
+                        print(f"Converted None to empty array for field: {field}")
+                    elif field == 'dfc_instance':
+                        pass
+                    else:
+                        data_dict[field] = value
+
+                savemat(filePath, data_dict)
+
+            except Exception as e:
+                QMessageBox.warning(self, "Output Error", f"Error saving data: {e}")
+
+        return
+
+    def onMethodCombobox(self, methodName=None):
+        # Clear old variables and data
+        self.clearParameters(self.parameterLayout)
+
+        # Return if no methods are available
+        if methodName == None or methodName == "Use checkboxes to get available methods":
+            return
+        
+        # Get selected connectivity method
+        self.data.dfc_instance = getattr(methods, self.class_info.get(methodName), None) # the actual class
+        self.data.dfc_name = self.class_info.get(methodName) # class name
+
+        # Create and get new parameter layout
+        #self.data.dfc_data = None
+        self.data.dfc_params = {}
+        self.initParameters(self.data.dfc_instance)
+        self.parameterLayout.addStretch(1) # Stretch to fill empty space
+        self.getParameters()
+
+        # See if some data has previously been calculated, we change the paramters to this
+        previous_data = self.data_storage.check_previous_data(self.data.dfc_name)
+        if previous_data is not None:
+            self.data = previous_data
+            self.setParameters()
+            self.slider.show()
+            self.calculatingLabel.setText(f"Loaded {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
+            print(f"Loaded {self.data.dfc_name} from memory")
+
+            # Plot the data
+            self.plotConnectivity()
+            self.plotDistribution()
+            self.plotTimeSeries()
+
+            # Update the slider
+            total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
+            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+            self.positionLabel.setText(position_text)
+            self.slider.setValue(self.slider.value())
+        
+        # If connectivity data does not exist we reset the figure and slider to prepare for a new calculation
+        # This also indicates to the user that this data was not yet calculated/saved
+        else:
+            self.figure.clear()
+            self.plotLogo(self.figure)
+            self.canvas.draw()
+            self.distributionFigure.clear()
+            self.distributionCanvas.draw()
+            self.timeSeriesFigure.clear()
+            self.timeSeriesCanvas.draw()
+
+            position_text = f"no data available"
+            self.positionLabel.setText(position_text)
+            self.slider.setValue(self.slider.value())
+            self.slider.hide()
+
+        self.update() # Update UI
+
+    def updateMethodComboBox(self):
+
+        def shouldIncludeClass(className):
+            if self.continuousCheckBox.isChecked() and className.startswith("CONT"):
+                    return True
+            if self.stateBasedCheckBox.isChecked() and className.startswith("STATE"):
+                    return True 
+            if self.staticCheckBox.isChecked() and className.startswith("STATIC"):
+                    return True
+            return False
+
+        class_mappings = {
+            'CONT': [
+                'Sliding Window', 'Jackknife Correlation', 'Flexible Least Squares', 'Spatial Distance', 
+                'Multiplication of Temporal Derivatives', 'Dynamic Conditional Correlation', 
+                'Phase Synchronization', 'Leading Eigenvector Dynamics', 'Wavelet Coherence', 'Edge-centric Connectivity'
+            ],
+            'STATE': [
+                'Sliding Window Clustering', 'Co-activation patterns', 'Discrete Hidden Markov Model', 
+                'Continuous Hidden Markov Model', 'Windowless'
+            ],
+            'STATIC': [
+                'Pearson Correlation', 'Partial Correlation', 'Mutual Information'
+            ]
+        }
+
+        # Dynamically generate the ordered classes based on available mappings
+        ordered_classes = [
+            f"{prefix} {name}" for prefix, names in class_mappings.items() for name in names
+        ]
+
+        # Generic filtering function
+        filtered_and_ordered_classes = [
+            class_name for class_name in ordered_classes
+            if shouldIncludeClass(class_name) and class_name in self.class_info
+        ]
+
+
+        # Disconnect existing connections to avoid multiple calls
+        try:
+            self.methodComboBox.currentTextChanged.disconnect(self.onMethodCombobox)
+        except TypeError:
+            pass
+
+        # Update the combobox
+        self.methodComboBox.clear()
+        self.methodComboBox.addItems(filtered_and_ordered_classes)
+
+        # Adjust combobox width
+        if self.methodComboBox.count() > 0:
+            font_metrics = QFontMetrics(self.methodComboBox.font())
+            longest_text_width = max(font_metrics.boundingRect(self.methodComboBox.itemText(i)).width() for i in range(self.methodComboBox.count()))
+            minimum_width = longest_text_width + 30
+            self.methodComboBox.setMinimumWidth(minimum_width)
+        else:
+            default_minimum_width = 300
+            self.methodComboBox.setMinimumWidth(default_minimum_width)
+
+        # Reconnect the signal
+        self.methodComboBox.currentTextChanged.connect(self.onMethodCombobox)
+
+        # Trigger the onMethodCombobox for the initial setup
+        if filtered_and_ordered_classes:
+            self.onMethodCombobox(filtered_and_ordered_classes[0])
+
+    def getInfoText(self, param, dfc_method):
+        if param == "windowsize":
+            text = "Size of the window used by the method. Should typically be an uneven number to have a center."
+        elif param == "shape":
+            text = "Shape of the windowing function."
+        elif param == "std":
+            text = "Width (sigma) of the window."
+        elif param == "diagonal":
+            text = "Values for the main diagonal of the connectivity matrix."
+        elif param == "fisher_z":
+            text = "Fisher z-transform the connectivity values."
+        elif param == "num_cores":
+            text = "Parallelize on multiple cores (highly recommended for DCC and FLS)."
+        elif param == "standardizeData":
+            text = "z-standardize the time series data."
+        elif param == "mu":
+            text = "Weighting parameter for FLS. Smaller values will produce more erratic changes in connectivity estimate."
+        elif param == "flip_eigenvectors":
+            text = "Flips the sign of the eigenvectors."
+        elif param == "dist":
+            text = "Distance function"
+        elif param == "TR":
+            text = "Repetition time of the data (in seconds)"
+        elif param == "fmin":
+            text = "Minimum wavelet frequency"
+        elif param == "fmax":
+            text = "Maximum wavelet frequency"
+        elif param == "n_scales":
+            text = "Number of wavelet scales"
+        elif param == "drop_scales":
+            text = "Drop the n largest and smalles scales to account for the cone of influence"
+        elif param == "drop_timepoints":
+            text = "Drop n first and last time points from the time series to account for the cone of influence"
+        elif param == "method" and dfc_method == "WaveletCoherence":
+            text = "Specific implementation of the method"
+        elif param == "method" and dfc_method == "PhaseSynchrony":
+            text = "Specific implementation of the method"
+        elif param == "params":
+            text = "Various parameters"
+        elif param == "coi_correction":
+            text = "Cone of influence correction"
+        elif param == "clstr_distance":
+            text = "Distance metric"
+        elif param == "num_bins":
+            text = "Number of bins for discretization"
+        elif param == "method":
+            text = "Specific type of method"
+        elif param == "n_overlap":
+            text = "Window overlap"
+        elif param == "tapered_window":
+            text = "Tapered window"
+        elif param == "n_states":
+            text = "Number of states"
+        elif param == "n_subj_clusters":
+            text = "Number of subjects"
+        elif param == "normalization":
+            text = "Normalization"
+        elif param == "clstr_distance":
+            text = "Distance measure"
+        elif param == "subject":
+            text = "Subject"
+        elif param == "Base measure":
+            text = "Base measure for the clustering"
+        elif param == "Iterations":
+            text = "Number of iterations"
+        elif param == "Sliding window":
+            text = "Sliding window method"
+        elif param == "State ratio":
+            text = "Observation/state ratio for the DHMM"
+        elif param == "vlim":
+            text = "Limit for color axis (edge time series)"
+        else:
+            text = f"TODO"
+        return text
+
+    def onAtlasSelected(self):
+        atlas_name = self.atlasComboBox.currentText()
+        atlas_map = {
+            "Glasser MMP": "glasser",
+            "Schaefer Kong 200": "schaefer_kong",
+            "Schaefer Tian 254": "schaefer_tian"
+        }
+        atlas_name = atlas_map.get(atlas_name, None)
+
+        self.data.file_data = cifti.parcellate(self.data.cifti_data, atlas=atlas_name)
+        self.fileNameLabel.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
+    
+    # Calculations
+    def onCalculateButton(self):
+        # Check if ts_data is available
+        if self.data.file_data is None:
+            self.calculatingLabel.setText(f"Error. No time series data has been loaded.")
+            return
+        
+        # Get the current parameters from the UI for the upcoming calculation
+        self.getParameters()
+    
+        # Process all pending events
+        QApplication.processEvents() 
+        
+        # Start worker thread for dFC calculations and submit for calculation
+        self.workerThread = QThread()
+        self.worker = Worker(self.calculateConnectivity, self.data.dfc_params)
+        self.worker.moveToThread(self.workerThread)
+        
+        self.worker.finished.connect(self.workerThread.quit)
+        self.worker.result.connect(self.handleResult)
+        self.worker.error.connect(self.handleError)
+
+        self.workerThread.started.connect(self.worker.run)
+        self.workerThread.start()
+        self.calculatingLabel.setText(f"Calculating {self.methodComboBox.currentText()}, please wait...")
+        self.calculateButton.setEnabled(False)
+    
+    def calculateConnectivity(self, parameters):
+        keep_in_memory = self.keepInMemoryCheckbox.isChecked()
+        
+        # Check if data already exists
+        existing_data = self.data_storage.check_for_identical_data(self.data)
+        if existing_data is not None:
+            return existing_data
+        
+        # Remove keys not allowed for calculation
+        clean_parameters = parameters.copy()
+        clean_parameters.pop('parcellation', None)
+
+        # Data does not exist, perform calculation
+        connectivity_calculator = self.data.dfc_instance(**clean_parameters)
+        result = connectivity_calculator.connectivity()
+        self.init_flag = False
+
+        # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
+        if isinstance(result, tuple):
+            self.data.dfc_data = result[0]
+            self.data.dfc_params = parameters
+            self.data.dfc_state_tc = None
+            self.data.dfc_edge_ts = result[1][0] if isinstance(result[1], tuple) else None
+
+        # Result is DFC object (pydfc methods)
+        elif isinstance(result, pydfc.dfc.DFC):
+            self.data.dfc_data = np.transpose(result.get_dFC_mat(), (1, 2, 0))
+            self.data.dfc_params = parameters
+            self.data.dfc_states = result.FCSs_
+            self.data.dfc_state_tc = result.state_TC()
+            self.data.dfc_edge_ts = None
+        
+        # Only a single matrix is returned (most cases)
+        else:
+            self.data.dfc_data = result
+            self.data.dfc_params = parameters
+            self.data.dfc_state_tc = None
+            self.data.dfc_edge_ts = None
+
+        # Store in memory if checkbox is checked
+        if keep_in_memory:
+            # Update the dictionary entry for the selected_class_name with the new data and parameters
+            self.data_storage.add_data(self.data)
+
+        print("Finished calculation.")
+        return self.data
+
+    def handleResult(self):
+        # Update the sliders and text
+        if self.data.dfc_data is not None:
+            self.calculatingLabel.setText(f"Calculated {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
+            
+            if len(self.data.dfc_data.shape) == 3:
+                self.slider.show()
+                self.rowSelector.setMaximum(self.data.dfc_data.shape[0] - 1)
+                self.colSelector.setMaximum(self.data.dfc_data.shape[1] - 1)
+                self.rowSelector.setValue(1)
+
+            # Update time label
+            total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
+            
+            if self.currentTabIndex == 0 or self.currentTabIndex == 2:
+                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+            else:
+                position_text = ""
+
+            self.positionLabel.setText(position_text)
+            self.slider.setValue(self.slider.value())
+            
+        # Plot
+        self.plotConnectivity()
+        self.plotDistribution()
+        self.plotTimeSeries()
+
+        self.calculateButton.setEnabled(True)
+        self.onTabChanged()
+        self.update()
+
+    def handleError(self, error):
+        # Handles errors in the worker thread
+        QMessageBox.warning(self, "Calculation Error", f"Error occurred furing calculation: {error}")
+        self.calculateButton.setEnabled(True)
+        self.data.clear_dfc_data()
+        self.positionLabel.setText("no data available")
+        self.plotLogo(self.figure)
+        self.canvas.draw()
+
+    # Parameters
+    def initParameters(self, class_instance):
+        # Now the parameter labels and boxes are set up    
+        labels = []
+
+        # Calculate the maximum label width (just a visual thing)
+        max_label_width = 0
+        init_signature = inspect.signature(class_instance.__init__)
+        type_hints = get_type_hints(class_instance.__init__)
+        font_metrics = QFontMetrics(self.font())
+        for param in init_signature.parameters.values():
+            label_width = font_metrics.boundingRect(f"{self.param_names[param.name]}:").width()
+            max_label_width = max(max_label_width, label_width)
+
+        # Special case for 'time_series' parameter as this is created from the loaded file
+        # Add label for time_series
+        time_series_label = QLabel("Time series:")
+        time_series_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        time_series_label.setMinimumSize(time_series_label.sizeHint())
+        labels.append(time_series_label)
+        
+        self.time_series_textbox.setPlaceholderText("No data loaded yet")
+        if self.data.file_name:
+            self.time_series_textbox.setText(self.data.file_name)
+        self.time_series_textbox.setEnabled(True)
+
+        # Create info button for time_series
+        time_series_info_text = "2D time series loaded from file. Time has to be the first dimension."
+        time_series_info_button = InfoButton(time_series_info_text)
+
+        time_series_layout = QHBoxLayout()
+        time_series_layout.addWidget(time_series_label)
+        time_series_layout.addWidget(self.time_series_textbox)
+        time_series_layout.addWidget(time_series_info_button)
+        self.parameterLayout.addLayout(time_series_layout)
+
+        # Adjust max width for aesthetics
+        max_label_width += 5
+        time_series_label.setFixedWidth(max_label_width)
+
+        # If we have a .dtseries.nii file, we need to add an atlas dropdown. This defaults to the glasser atlas
+        if self.data.file_name is not None and self.data.file_name.endswith('.dtseries.nii'):
+            atlas_label = QLabel("Parcellation:")
+            atlas_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+            atlas_label.setMinimumSize(atlas_label.sizeHint())
+            atlas_label.setFixedWidth(max_label_width)
+            labels.append(atlas_label)
+
+            # Create the info button for parcellation
+            atlas_info_button_text = "Atlas to parcellate the .dtseries.nii file."
+            atlas_info_button = InfoButton(atlas_info_button_text)
+
+            # Create layout for the atlas dropdown
+            atlas_layout = QHBoxLayout()
+            atlas_layout.addWidget(atlas_label)
+            atlas_layout.addWidget(self.atlasComboBox)
+            atlas_layout.addWidget(atlas_info_button)
+
+            # Add the atlas layout to the main parameter layout
+            self.parameterLayout.addLayout(atlas_layout)
+
+        for name, param in init_signature.parameters.items():
+            if param.name not in ['self', 'time_series', 'tril', 'standardize', 'params']:
+                param_type = type_hints.get(name)
+                # Create label for parameter
+                param_label = QLabel(f"{self.param_names[param.name]}:")
+                param_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+                param_label.setMinimumSize(param_label.sizeHint())
+                param_label.setFixedWidth(max_label_width)
+                labels.append(param_label)
+
+                # Determine the widget type based on the parameter
+                # Dropdown for boolean parameters
+                if param_type == bool:
+                    param_input_widget = QComboBox()
+                    param_input_widget.addItems(["True", "False"])
+                    
+                    default_index = param_input_widget.findText(str(param.default))
+                    param_input_widget.setCurrentIndex(default_index)
+                    param_input_widget.setEnabled(True)
+
+                # Dropdown for parameters with predefined options
+                elif get_origin(type_hints.get(name)) is Literal:
+                    options = type_hints.get(name).__args__ 
+                    param_input_widget = QComboBox()
+                    param_input_widget.addItems([str(option) for option in options])
+                    
+                    default_index = param_input_widget.findText(param.default)
+                    param_input_widget.setCurrentIndex(default_index)
+                    param_input_widget.setEnabled(True)
+
+                # Spinbox for integer parameterss
+                elif param_type == int:
+                    param_input_widget = QSpinBox()
+                    param_input_widget.setMaximum(10000)
+                    param_input_widget.setMinimum(-10000)
+                    param_input_widget.setSingleStep(1)
+
+                    param_input_widget.setValue(int(param.default) if param.default != inspect.Parameter.empty else 0)
+                    param_input_widget.setEnabled(True)
+
+                # Spinbox for float parameters
+                elif param_type == float:
+                    param_input_widget = QDoubleSpinBox()
+                    param_input_widget.setMaximum(10000.0)
+                    param_input_widget.setMinimum(-10000.0)
+                    param_input_widget.setSingleStep(0.1)
+
+                    param_input_widget.setValue(float(param.default) if param.default != inspect.Parameter.empty else 0.0)
+                    param_input_widget.setEnabled(True)
+
+                # Text field for other types of parameters
+                else:
+                    param_input_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
+                    param_input_widget.setEnabled(True)
+   
+
+                # Create info button with tooltip
+                info_text = self.getInfoText(param.name, self.data.dfc_name)
+                info_button = InfoButton(info_text)
+
+                # Create layout for label, widget, and info button
+                param_layout = QHBoxLayout()
+                param_layout.addWidget(param_label)
+                param_layout.addWidget(param_input_widget)
+                param_layout.addWidget(info_button) 
+
+                # Add the layout to the main parameter layout
+                self.parameterLayout.addLayout(param_layout)
+
+    def getParameters(self):
+        # Get the time series and parameters (from the UI) for the selected connectivity method and store them in a dictionary
+        
+        self.data.dfc_params['time_series'] = self.data.file_data # Time series data
+        
+        # Converts string to boolean, float, or retains as string if conversion is not applicable
+        def convert_value(value):
+            if value.lower() in ['true', 'false']:
+                return value.lower() == 'true'
+            try:
+                return float(value)
+            except ValueError:
+                return value
+
+        # Gets the value from the widget based on its type
+        def get_widget_value(widget):
+            if isinstance(widget, QLineEdit):
+                return widget.text()
+            elif isinstance(widget, QComboBox):
+                return widget.currentText()
+            elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
+                return widget.value()
+            return None  # Default return if widget type is not recognized
+
+        for i in range(self.parameterLayout.count()):
+            layout = self.parameterLayout.itemAt(i).layout()
+            if layout:
+                label = layout.itemAt(0).widget().text().rstrip(':')
+                if label == 'Time series':
+                    continue  # Skip 'time_series' as it's already added
+
+                widget = layout.itemAt(1).widget()
+                value = get_widget_value(widget)
+
+                if value is not None:  # Ensure there is a value before attempting to convert and store
+                    param_key = self.reverse_param_names.get(label)
+                    if param_key:  # Ensure the key exists in the reverse_param_names dictionary
+                        self.data.dfc_params[param_key] = convert_value(value) if isinstance(value, str) else value
+                    else:
+                        self.calculatingLabel.setText(f"Error: Unrecognized parameter '{label}'")
+                else:
+                    # Value could not be retrieved from the widget
+                    self.calculatingLabel.setText(f"Error: No value entered for parameter '{label}'")
+
+    def setParameters(self, disable=False):
+        # Converts value to string
+        def convert_value_to_string(value):
+            if isinstance(value, bool):
+                return 'true' if value else 'false'
+            elif isinstance(value, (int, float)):
+                return str(value)
+            else:
+                return value
+
+        # Sets the value of the widget based on its type
+        def set_widget_value(widget, value):
+            if isinstance(widget, QLineEdit):
+                widget.setText(value)
+            elif isinstance(widget, QComboBox):
+                index = widget.findText(value)
+                if index >= 0:
+                    widget.setCurrentIndex(index)
+            elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
+                widget.setValue(int(value))
+
+        # No parameters yet, return
+        if not self.data.dfc_params:
+            self.getParameters()
+            return
+
+        # Time series data has to be in the params as we run the dFC method with just these params
+        self.data.dfc_params['time_series'] = self.data.file_data
+
+        if disable:
+            self.time_series_textbox.setText(self.data.file_name)
+            self.time_series_textbox.setEnabled(False)
+
+        # Set the parameters in the UI based on the stored dictionary
+        for i in range(self.parameterLayout.count()):
+            layout = self.parameterLayout.itemAt(i).layout()
+            if layout:
+                label = layout.itemAt(0).widget().text().rstrip(':')
+                if label == 'Time series':
+                    continue  # Skip 'time_series' as it's already set
+
+                param_key = self.reverse_param_names.get(label)
+                if param_key:  # Ensure the key exists in the reverse_param_names dictionary
+                    value = self.data.dfc_params.get(param_key)
+                    if value is not None:  # Ensure there is a value before attempting to convert and set
+                        widget = layout.itemAt(1).widget()
+                        set_widget_value(widget, convert_value_to_string(value))
+                        if disable:
+                            widget.setEnabled(False)
+                    else:
+                        # Value could not be retrieved from the dictionary
+                        self.calculatingLabel.setText(f"Error: No value entered for parameter '{label}'")
+                else:
+                    self.calculatingLabel.setText(f"Error: Unrecognized parameter '{label}'")
+
+    def clearParameters(self, layout):
+        while layout.count():
+            item = layout.takeAt(0)  # Take the first item from the layout
+            if item.widget():  # If the item is a widget
+                widget = item.widget()
+                if widget is not None and widget is not self.time_series_textbox and widget is not self.atlasComboBox: # do not clear time series textbox and atlas combobox
+                    widget.deleteLater()  # Schedule the widget for deletion
+            elif item.layout():  # If the item is a layout
+                self.clearParameters(item.layout())  # Recursively clear the layout
+                item.layout().deleteLater()  # Delete the layout itself
+            elif item.spacerItem():  # If the item is a spacer
+                # No need to delete spacer items; they are automatically handled by Qt
+                pass
+   
+    # Memory
+    def onKeepInMemoryChecked(self, state):
+        if state == 2 and self.data.dfc_data is not None:
+            self.data_storage.add_data(self.data)
+                
+    def onClearMemory(self):
+        self.data_storage = DataStorage()
+        
+        self.figure.clear()
+        self.canvas.draw()
+        self.distributionFigure.clear()
+        self.distributionCanvas.draw()
+
+        self.calculatingLabel.setText(f"Cleared memory")
+        print("Cleared memory")
+        return
+
+    # Plotting
+    def plotConnectivity(self):
+        current_data = self.data.dfc_data
+        
+        if current_data is None:
+            QMessageBox.warning(self, "No calculated data available for plotting")
+            return
+
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        vmax = np.max(np.abs(current_data))
+
+        try:
+            current_slice = current_data[:, :, self.currentSliderValue] if len(current_data.shape) == 3 else current_data
+            self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+        except:
+            current_slice = current_data[:, :, 0] if len(current_data.shape) == 3 else current_data
+            self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+
+        ax.set_xlabel("ROI")
+        ax.set_ylabel("ROI")
+
+        # If we have roi names and less than 100 ROIS, we can plot the names
+        if self.data.roi_names is not None and len(self.data.roi_names) < 100:
+            ax.set_xticks(np.arange(len(self.data.roi_names)))
+            ax.set_yticks(np.arange(len(self.data.roi_names)))
+            ax.set_xticklabels(self.data.roi_names, rotation=45, fontsize=120/len(self.data.roi_names) + 2)
+            ax.set_yticklabels(self.data.roi_names,              fontsize=120/len(self.data.roi_names) + 2)
+
+        # Create the colorbar
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.15)
+        cbar = self.figure.colorbar(self.im, cax=cax)
+        cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
+
+        self.slider.setMaximum(current_data.shape[2] - 1 if len(current_data.shape) == 3 else 0)
+    
+        self.figure.set_facecolor('#E0E0E0')
+        self.figure.tight_layout()
+        self.canvas.draw()
+
+    def plotTimeSeries(self):
+        current_data = self.data.dfc_data
+
+        # Get dimensions of the data
+        if current_data is not None and current_data.ndim == 3:
+            self.rowSelector.setMaximum(current_data.shape[0] - 1)
+            self.colSelector.setMaximum(current_data.shape[1] - 1)
+
+        row = self.rowSelector.value()
+        col = self.colSelector.value()
+        self.rowSelector.show()
+        self.colSelector.show()
+
+        if current_data is not None and row < current_data.shape[0] and col < current_data.shape[1] and self.data.dfc_edge_ts is None and self.data.dfc_state_tc is None:    
+            self.timeSeriesFigure.clear()
+            ax = self.timeSeriesFigure.add_subplot(111)
+            time_series = current_data[row, col, :] if len(current_data.shape) == 3 else current_data[row, col]
+            ax.set_title(f"dFC time course between region {row} and {col}.")
+            ax.set_xlabel("time (TRs)")
+            ax.set_ylabel("dFC strength")
+            ax.plot(time_series)
+
+        elif self.data.dfc_state_tc is not None:
+            self.timeSeriesFigure.clear()
+
+            time_series = self.data.dfc_state_tc
+            num_states = len(self.data.dfc_states)
+
+            # Setup the gridspec layout
+            gs = gridspec.GridSpec(3, num_states, self.timeSeriesFigure, height_ratios=[1, 0.5, 1])
+
+            # Hite selectors
+            self.rowSelector.hide()
+            self.colSelector.hide()
+
+            # Plotting the state time course across all columns
+            ax_time_series = self.timeSeriesFigure.add_subplot(gs[0, :])
+            ax_time_series.plot(time_series)
+            ax_time_series.set_ylabel("State")
+            ax_time_series.set_title("State time course")
+            ax_time_series.set_xlabel("Time (TRs)")
+
+            # Plot the individual states
+            for col, (state, matrix) in enumerate(self.data.dfc_states.items()):
+                ax_state = self.timeSeriesFigure.add_subplot(gs[2, col])
+                ax_state.imshow(matrix, cmap='coolwarm', aspect=1)
+                ax_state.set_title(f"State {col+1}")
+                ax_state.set_xticks([])
+                ax_state.set_yticks([]) 
+
+        elif self.data.dfc_edge_ts is not None:
+            self.timeSeriesFigure.clear()
+            gs = gridspec.GridSpec(3, 1, self.timeSeriesFigure, height_ratios=[2, 0.5, 1]) # GridSpec with 3 rows and 1 column
+
+            # The first subplot occupies the 1st row
+            ax1 = self.timeSeriesFigure.add_subplot(gs[:1, 0])
+            ax1.imshow(self.data.dfc_edge_ts.T, cmap='coolwarm', aspect='auto', vmin=-1*self.data.dfc_params["vlim"], vmax=self.data.dfc_params["vlim"])
+            ax1.set_title("Edge time series")
+            ax1.set_xlabel("Time (TRs)")
+            ax1.set_ylabel("Edges")
+
+            # The second subplot occupies the 3rd row
+            ax2 = self.timeSeriesFigure.add_subplot(gs[2, 0])
+            mean_edge_values = np.mean(self.data.dfc_edge_ts.T, axis=0)
+            ax2.plot(mean_edge_values)
+            ax2.set_xlim(0, len(mean_edge_values) - 1)
+            ax2.set_title("Mean time series")
+            ax2.set_xlabel("Time (TRs)")
+            ax2.set_ylabel("Mean Edge Value")
+        
+        else:
+            # Clear the plot if the data is not available
+            self.timeSeriesFigure.clear()
+
+        self.timeSeriesFigure.set_facecolor('#E0E0E0')
+        self.timeSeriesFigure.tight_layout()
+        self.timeSeriesCanvas.draw()
+
+        return
+
+    def plotDistribution(self):
+        current_data = self.data.dfc_data
+
+        if current_data is None or not hasattr(self, 'distributionFigure'):
+            self.distributionFigure.clear()
+            return
+
+        # Clear the current distribution plot
+        self.distributionFigure.clear()
+
+        # Assuming you want to plot the distribution of values in the current slice
+        current_slice = current_data[:, :, self.slider.value()] if len(current_data.shape) == 3 else current_data
+        ax = self.distributionFigure.add_subplot(111)
+        ax.hist(current_slice.flatten(), bins=50)  # number of bins
+        ax.set_xlabel("dFC values")
+        ax.set_ylabel("frequency")
+
+        self.distributionFigure.set_facecolor('#E0E0E0')
+        self.distributionFigure.tight_layout()
+        self.distributionCanvas.draw()
+
+        return
+
+    def updateTimeSeriesPlot(self, center):
+        if self.data.dfc_data is None:
+            return
+
+        max_index = self.data.dfc_data.shape[2] - 1 if len(self.data.dfc_data.shape) == 3 else 0
+        width = 101
+
+        # Determine if we should show the entire series or a window
+        if center == 0 or center == max_index:
+            start = 0
+            end = max_index
+        else:
+            start = max(0, center - width // 2)
+            end = min(max_index, center + width // 2)
+
+        row = self.rowSelector.value()
+        col = self.colSelector.value()
+        time_series_slice = self.dfc_data['data'][row, col, start:end]
+
+        self.timeSeriesFigure.clear()
+        ax = self.timeSeriesFigure.add_subplot(111)
+        ax.plot(range(start, end), time_series_slice)
+        
+        self.timeSeriesFigure.tight_layout()
+        self.timeSeriesCanvas.draw()
+        
+        return
+
+    def onTabChanged(self):
+        self.currentTabIndex = self.tabWidget.currentIndex()
+        # index 0: Connectivity plot
+        # index 1: Time series plot
+        # index 2: Distribution plot
+        # index 3: Graph analysis
+
+        if self.data.dfc_data is None:
+            self.plotLogo(self.figure)
+            self.canvas.draw()
+            self.distributionFigure.clear()
+            self.distributionCanvas.draw()
+            self.timeSeriesFigure.clear()
+            self.timeSeriesCanvas.draw()
+            self.backLargeButton.hide()
+            self.backButton.hide()
+            self.forwardButton.hide()
+            self.forwardLargeButton.hide()
+            self.slider.hide()
+            position_text = ""
+            return
+        
+        if self.currentTabIndex == 0 or self.currentTabIndex == 2:
+            self.slider.show()
+            self.slider.setValue(self.currentSliderValue)
+            self.backLargeButton.show()
+            self.backButton.show()
+            self.forwardButton.show()
+            self.forwardLargeButton.show()
+
+            if self.data.dfc_data is not None:
+                total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
+                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+            else:
+                position_text = "no data available"
+
+            self.positionLabel.setText(position_text)
+
+        elif self.currentTabIndex == 1:
+            self.backLargeButton.hide()
+            self.backButton.hide()
+            self.forwardButton.hide()
+            self.forwardLargeButton.hide()
+            
+            # If we have nothing to scroll though, hide some GUI elements
+            if len(self.data.dfc_data.shape) == 2 or self.data.dfc_edge_ts is not None or self.data.dfc_state_tc is not None:
+                position_text = ""
+                self.slider.hide()
+                
+                # Disable brain area selector widgets
+                for i in range(self.timeSeriesSelectorLayout.count()):    
+                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
+                    if widget is not None:
+                        widget.setVisible(False)
+
+            else:
+                self.slider.hide()
+                position_text = ""
+                #position_text = f"Use the slider to zoom in and scroll through the time series"
+                
+                # Enable brain area selector widgets
+                for i in range(self.timeSeriesSelectorLayout.count()):    
+                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
+                    if widget is not None:
+                        widget.setVisible(True)
+
+            # We have a static measure
+            if len(self.data.dfc_data.shape) == 2 and self.data.dfc_edge_ts is None and self.data.dfc_state_tc is None:
+                self.timeSeriesFigure.clear()
+                self.timeSeriesCanvas.draw()
+
+                # Disable brain area selector widgets
+                for i in range(self.timeSeriesSelectorLayout.count()):    
+                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
+                    if widget is not None:
+                        widget.setVisible(False)
+                        
+        if self.currentTabIndex == 3:
+            self.backLargeButton.hide()
+            self.backButton.hide()
+            self.forwardButton.hide()
+            self.forwardLargeButton.hide()
+            self.slider.hide()
+            position_text = ""
+            
+        self.positionLabel.setText(position_text)
+        self.update()
+
+    def onSliderValueChanged(self, value):
+        # Ensure there is data to work with
+        if self.data.dfc_data is None or self.im is None:
+            return
+        
+        if self.currentTabIndex == 0 or self.currentTabIndex == 2:
+            # Get and update the data of the imshow object
+            self.currentSliderValue = value
+            data = self.data.dfc_data
+            self.im.set_data(data[:, :, value]) if len(data.shape) == 3 else self.im.set_data(data)
+
+            vlim = np.max(np.abs(data[:, :, value])) if len(data.shape) == 3 else np.max(np.abs(data))
+            self.im.set_clim(-vlim, vlim)
+
+            # Redraw the canvas
+            self.canvas.draw()
+            self.plotDistribution()
+
+            total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
+            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+            self.positionLabel.setText(position_text)
+
+    def onSliderButtonClicked(self):
+        # Clicking a button moves the slider by x steps
+        button = self.sender()
+        delta = 0
+
+        if button == self.backButton:
+            delta = -1
+
+        if button == self.forwardButton:
+            delta = 1
+
+        if button == self.backLargeButton:
+            delta = -10
+
+        if button == self.forwardLargeButton:
+            delta = 10
+
+        self.currentSliderValue = max(0, min(self.slider.value() + delta, self.slider.maximum()))
+        self.slider.setValue(self.currentSliderValue)
+        self.slider.update()
+        
+        self.plotConnectivity()
+        self.plotDistribution()
+
+
+    """
+    Graph tab functions
+    """
+    def loadGraphFile(self):
+        fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
+        file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
+        file_name = file_path.split('/')[-1]
+        self.data.graph_file = file_name
+
+        if not file_path:
+            return  # Early exit if no file is selected
+
+        if file_path.endswith('.mat'):
+            data_dict = loadmat(file_path)
+            try:
+                self.data.graph_data = data_dict["graph_data"] # Try to load graph_data (saving files with comet will create this field)
+            except:
+                self.data.graph_data = data_dict[list(data_dict.keys())[-1]] # Else get the last item in the file (which is the data if there is only one field)
+
+        elif file_path.endswith('.txt'):
+            self.data.graph_data = np.loadtxt(file_path)
+        
+        elif file_path.endswith('.npy'):
+            self.data.graph_data = np.load(file_path)
+      
+        else:
+            self.data.graph_data = None
+            self.time_series_textbox.setText("Unsupported file format")
+
+        # Check if data is square
+        if self.data.graph_data.ndim != 2 or self.data.graph_data.shape[0] != self.data.graph_data.shape[1]:
+            QMessageBox.warning(self, "Data Error", "The loaded data is not a square matrix.")
+            self.data.graph_data = None
+            return
+
+        self.data.graph_raw = self.data.graph_data
+        self.graphFileNameLabel.setText(f"Loaded {self.data.graph_file} with shape {self.data.graph_data.shape}")
+        
+        self.plotGraph()
+        self.onGraphCombobox()
+
+    def saveGraphFile(self):
+        if self.data.graph_data is None:
+            QMessageBox.warning(self, "Output Error", "No graph data available to save.")
+            return
+
+        # Open a file dialog to specify where to save the file
+        filePath, _ = QFileDialog.getSaveFileName(self, "Save File", "", "MAT Files (*.mat)")
+
+        if filePath:
+            # Ensure the file has the correct extension
+            if not filePath.endswith('.mat'):
+                filePath += '.mat'
+            
+            # Save the the current data object to a .mat file
+            try:
+                data_dict = {}
+                for field in [f for f in self.data.__dataclass_fields__ if f.startswith('graph_')]:
+                    value = getattr(self.data, field)
+                    
+                    if isinstance(value, np.ndarray):
+                        data_dict[field] = value
+                    elif isinstance(value, dict):
+                        # Ensure all dict values are appropriately converted
+                        converted_dict = {}
+                        for k, v in value.items():
+                            if isinstance(v, np.ndarray):
+                                converted_dict[k] = v
+                            elif v is None:
+                                converted_dict[k] = np.array([])
+                                print(f"Converted None to empty array for dict key: {k}")
+                            else:
+                                converted_dict[k] = v
+                        data_dict[field] = converted_dict
+                    elif value is None:
+                        data_dict[field] = np.array([])
+                        print(f"Converted None to empty array for field: {field}")
+                    elif field == 'dfc_instance':
+                        pass
+                    else:
+                        data_dict[field] = value
+
+                savemat(filePath, data_dict)
+            
+            except Exception as e:
+                QMessageBox.warning(self, "Output Error", f"Error saving data: {e}")
+            
+            return
+
+    def takeCurrentData(self):
+        if self.data.dfc_data is None:
+            QMessageBox.warning(self, "Output Error", "No current dFC data available.")
+            return
+        
+        if len(self.data.dfc_data.shape) == 3:
+            self.data.graph_data = self.data.dfc_data[:,:,self.currentSliderValue]
+        elif len(self.data.dfc_data.shape) == 2:
+            self.data.graph_data = self.data.dfc_data
+        else:
+            QMessageBox.warning(self, "Output Error", "FC data seems to have the wrong shape.")
+            return
+        
+        self.data.graph_raw = self.data.graph_data
+        
+        print(f"Used current dFC data with shape {self.data.graph_data.shape}")
+        self.graphFileNameLabel.setText(f"Used current dFC data with shape {self.data.graph_data.shape}")
+        self.data.graph_file = f"dfC from {self.data.file_name}" #with {self.data.dfc_name} at t={self.currentSliderValue}"
+        self.plotGraph()
+        self.onGraphCombobox()
+
+    def onGraphCombobox(self):
+        self.setGraphParameters()
+
+    def updateGraphComboBox(self):
+        def shouldIncludeFunc(funcName):
+            if self.preprocessingCheckBox.isChecked() and funcName.startswith("PREP"):
+                return True
+            if self.graphCheckBox.isChecked() and funcName.startswith("COMET"):
+                return True
+            if self.BCTCheckBox.isChecked() and funcName.startswith("BCT"):
+                return True
+            return False
+
+        # Disconnect existing connections to avoid multiple calls
+        try:
+            self.graphAnalysisComboBox.currentTextChanged.disconnect(self.onGraphCombobox)
+        except TypeError:
+            pass
+
+        # Clear the combobox
+        self.graphAnalysisComboBox.clear()
+
+        # Filter options based on the checkboxes
+        filtered_options = {name: desc for name, desc in self.graphOptions.items() if shouldIncludeFunc(desc)}
+
+        for analysis_function, pretty_name in filtered_options.items():
+            self.graphAnalysisComboBox.addItem(pretty_name, analysis_function)
+
+        # Reconnect the signal
+        self.graphAnalysisComboBox.currentTextChanged.connect(self.onGraphCombobox)
+
+        # Trigger the onGraphCombobox for the initial setup if there are any options
+        if filtered_options:
+            self.onGraphCombobox()
+
+        return
+
+    # Calculations
+    def onAddGraphOption(self):
+        # Start worker thread for graph calculations
+        self.workerThread = QThread()
+        self.worker = Worker(self.calculateGraph, None)
+        self.worker.moveToThread(self.workerThread)
+
+        self.worker.finished.connect(self.workerThread.quit)
+        self.worker.result.connect(self.handleGraphResult)  # Ensure you have a slot to handle results
+        self.worker.error.connect(self.handleGraphError)  # And error handling
+
+        self.workerThread.started.connect(self.worker.run)
+        self.workerThread.start()
+
+    def calculateGraph(self, unused):
+        option, params = self.getGraphOptions()
+
+        # Get the function
+        func_name = self.reverse_graphOptions[option]
+        func = getattr(graph, func_name)
+
+        option_name = re.sub(r'^\S+\s+', '', option) # regex to remove the PREP/GRAPH part
+        self.optionsTextbox.append(f"{self.graphStepCounter}. {option_name}: calculating, please wait...")
+
+        first_param_name = next(iter(params))
+        graph_params = {first_param_name: self.data.graph_data}
+        graph_params.update({k: v for k, v in params.items() if k != first_param_name})
+
+        graph_data = func(**graph_params)
+        return f'graph_{option.split()[0].lower()}', graph_data, option_name, graph_params
+
+    def handleGraphResult(self, result):
+        output = result[0]
+        data   = result[1]
+        option = result[2]
+        params = result[3]
+
+        print(f"Finished calculation for {option}, output data: {type(data)}.")
+
+        # Update self.data.graph_data or self.data.graph_out based on the result
+        if output == 'graph_prep':
+            self.data.graph_data = data
+            self.plotGraph()
+        else:
+            self.data.graph_out = data
+            self.plotMeasure(option)
+
+        # Output step and options to textbox, remove unused parameters
+        if option == 'Threshold':
+            if params.get('type') == 'absolute':
+                filtered_params = {k: v for k, v in params.items() if k != 'density'}
+            elif params.get('type') == 'density':
+                filtered_params = {k: v for k, v in params.items() if k != 'threshold'}
+        else:
+            filtered_params = params
+
+        filtered_params = {k: v for k, v in list(filtered_params.items())[1:]}
+
+        # Update the textbox with the current step and options
+        current_text = self.optionsTextbox.toPlainText()
+        lines = current_text.split('\n')
+
+        if len(lines) > 1:
+            lines[-1] = f"{self.graphStepCounter}. {option}: {filtered_params}"
+        else:
+            lines = [f"{self.graphStepCounter}. {option}: {filtered_params}"]
+
+        updated_text = '\n'.join(lines)
+        self.optionsTextbox.setPlainText(updated_text)
+
+        self.graphStepCounter += 1
+
+    def handleGraphError(self, error):
+        # Handles errors in the worker thread
+        QMessageBox.warning(self, "Calculation Error", f"Error occurred furing calculation: {error}")
+
+    # Parameters
+    def setGraphParameters(self):
+        # Clear parameters
+        self.clearParameters(self.graphParameterLayout)
+        
+        # Retrieve the selected function from the graph module
+        if self.graphAnalysisComboBox.currentData() == None:
+            return
+
+        func = getattr(graph, self.graphAnalysisComboBox.currentData())
+        
+        # Retrieve the signature of the function
+        func_signature = inspect.signature(func)
+        type_hints = get_type_hints(func)
+
+        # Calculate the maximum label width
+        max_label_width = 0
+        font_metrics = QFontMetrics(self.font())
+        for name, param in func_signature.parameters.items():
+            if name not in ['self', 'args', 'kwargs']:  # Skip unwanted parameters
+                label_width = font_metrics.boundingRect(f"{name}:").width()
+                max_label_width = max(max_label_width, label_width)
+
+        is_first_parameter = True  # Flag to identify the first parameter
+
+        # Iterate over parameters in the function signature
+        temp_widgets = {}
+        for name, param in func_signature.parameters.items():
+
+            if name not in ['self', 'copy', 'args', 'kwargs']:  # Skip unwanted parameters
+                # Horizontal layout for each parameter
+                param_layout = QHBoxLayout()
+                param_type = type_hints.get(name)
+                param_default = 1 if isinstance(param.default, inspect._empty) else param.default
+                
+                if param_default == None:
+                    if param_type == bool:
+                        param_default = False
+                    elif param_type == int or param_type == float:
+                        param_default = 1
+                    else:
+                        param_default = "empty"
+
+
+                # Create a label for the parameter and set its fixed width
+                param_label = QLabel(f"{name}:")
+                param_label.setFixedWidth(max_label_width + 20)  # Add some padding
+                param_layout.addWidget(param_label)
+
+                # For the first parameter, set its value based on the data source and lock it
+                if is_first_parameter:
+                    param_widget = QLineEdit()
+                    param_widget.setPlaceholderText("No data loaded yet")
+                    if self.data.graph_file:
+                        param_widget = QLineEdit("as shown in plot")
+                    param_widget.setReadOnly(True)  # Make the widget read-only
+                    is_first_parameter = False  # Update the flag so this block runs only for the first parameter
+                else:
+                    # Bool
+                    if param_type == bool:
+                        param_widget = QComboBox()
+                        param_widget.addItems(["False", "True"])
+                        param_widget.setCurrentIndex(int(param_default))
+                    # Int                  
+                    elif param_type == int:
+                        param_widget = QSpinBox()
+                        param_widget.setValue(param_default)
+                        param_widget.setMaximum(10000)
+                        param_widget.setMinimum(-10000)
+                        param_widget.setSingleStep(param_default)
+                    # Float 
+                    elif param_type == float:    
+                        param_widget = QDoubleSpinBox()
+                        if name == "threshold":
+                            param_widget.setValue(0.0)
+                        else:
+                            param_widget.setValue(param_default)
+                        param_widget.setMaximum(1.0)
+                        param_widget.setMinimum(0.0)
+                        param_widget.setSingleStep(0.01)
+                    # String
+                    elif get_origin(type_hints.get(name)) is Literal:
+                        options = type_hints.get(name).__args__ 
+                        param_widget = QComboBox()
+                        param_widget.addItems([str(option) for option in options])
+                    # Fallback
+                    else:
+                        param_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
+
+                temp_widgets[name] = (param_label, param_widget)
+                param_layout.addWidget(param_widget)
+                self.graphParameterLayout.addLayout(param_layout)
+
+        # Adjust visibility based on 'type' parameter
+        type_widget = None
+        if 'type' in temp_widgets:
+            _, type_widget = temp_widgets['type']
+
+        if type_widget:
+            # Function to update parameter visibility
+            def updateVisibility():
+                selected_type = type_widget.currentText()
+                if selected_type == 'absolute':
+                    if 'threshold' in temp_widgets:
+                        temp_widgets['threshold'][0].show()
+                        temp_widgets['threshold'][1].show()
+                    if 'density' in temp_widgets:
+                        temp_widgets['density'][0].hide()
+                        temp_widgets['density'][1].hide()
+                elif selected_type == 'density':
+                    if 'threshold' in temp_widgets:
+                        temp_widgets['threshold'][0].hide()
+                        temp_widgets['threshold'][1].hide()
+                    if 'density' in temp_widgets:
+                        temp_widgets['density'][0].show()
+                        temp_widgets['density'][1].show()
+            
+            # Connect the signal from the type_widget to the updateVisibility function
+            type_widget.currentIndexChanged.connect(updateVisibility)
+            updateVisibility()
+
+        self.graphParameterLayout.addStretch()
+
+    def getGraphOptions(self):
+        # Initialize a dictionary to hold parameter names and their values
+        params_dict = {}
+
+        # Iterate over all layout items in the graphParameterLayout
+        for i in range(self.graphParameterLayout.count()):
+            layout_item = self.graphParameterLayout.itemAt(i)
+
+            # Check if the layout item is a QHBoxLayout (as each parameter is in its own QHBoxLayout)
+            if isinstance(layout_item, QHBoxLayout):
+                param_layout = layout_item.layout()
+
+                # The parameter name is in the QLabel, and the value is in the second widget (QLineEdit, QComboBox, etc.)
+                if param_layout.count() >= 2:
+                    # Extract the parameter name from the QLabel
+                    param_name_label = param_layout.itemAt(0).widget()
+                    if isinstance(param_name_label, QLabel):
+                        param_name = param_name_label.text().rstrip(':')  # Remove the colon at the end
+
+                        # Extract the parameter value from the appropriate widget type
+                        param_widget = param_layout.itemAt(1).widget()
+                        if isinstance(param_widget, QLineEdit):
+                            param_value = param_widget.text()
+                        elif isinstance(param_widget, QComboBox):
+                            param_value = param_widget.currentText()
+                        elif isinstance(param_widget, QSpinBox) or isinstance(param_widget, QDoubleSpinBox):
+                            param_value = param_widget.value()
+
+                        # Convert to appropriate boolean type (LineEdit ad ComboBox return strings))
+                        if param_value == "True":
+                            param_value = True
+                        elif param_value == "False":
+                            param_value = False
+
+                        # Add the parameter name and value to the dictionary
+                        params_dict[param_name] = param_value
+
+        # Retrieve the currently selected option in the graphAnalysisComboBox
+        current_option = self.graphAnalysisComboBox.currentText()
+
+        # Return the current option and its parameters
+        return current_option, params_dict
+
+    def onClearGraphOptions(self):
+        self.data.graph_data = self.data.graph_raw
+        self.plotGraph()
+        self.optionsTextbox.clear()
+        self.graphTextbox.clear()
+        self.graphStepCounter = 1
+
+    # Plotting
+    def plotGraph(self):
+        current_data = self.data.graph_data
+        
+        if current_data is None:
+            QMessageBox.warning(self, "No calculated data available for plotting")
+            return
+
+        self.matrixFigure.clear()
+        ax = self.matrixFigure.add_subplot(111)
+
+        vmax = np.max(np.abs(current_data))
+        self.im = ax.imshow(current_data, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+        ax.set_xlabel("ROI")
+        ax.set_ylabel("ROI")
+
+        # Create the colorbar
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.15)
+        cbar = self.matrixFigure.colorbar(self.im, cax=cax)
+        cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
+    
+        self.matrixFigure.set_facecolor('#E0E0E0')
+        self.matrixFigure.tight_layout()
+        self.matrixCanvas.draw()
+
+    def plotMeasure(self, measure):
+        self.graphFigure.clear()
+        ax = self.graphFigure.add_subplot(111)
+        
+        # Check type of the graph output data
+        if isinstance(self.data.graph_out, (np.ndarray, np.float64)):
+            if self.data.graph_out.ndim == 0:
+                # If graph_out is a single value (0D array)
+                self.graphTextbox.append(f"{measure}: {self.data.graph_out.item()}")
+            elif self.data.graph_out.ndim == 1:
+                # For a 1D array, plot a vertical lollipop plot
+                ax.stem(self.data.graph_out, linefmt="#19232d", markerfmt='o', basefmt=" ")
+                ax.set_xlabel("ROI")
+                ax.set_ylabel(measure)
+
+                # Calculate mean and variance, and update the textbox
+                mean_val = np.mean(self.data.graph_out)
+                var_val = np.var(self.data.graph_out)
+                self.graphTextbox.append(f"{measure} (mean: {mean_val:.2f}, variance: {var_val:.2f})")
+            
+            elif self.data.graph_out.ndim == 2:
+                # For a 2D array, use imshow
+                vmax = np.max(np.abs(self.data.graph_out))
+                im = ax.imshow(self.data.graph_out, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+
+                # Create the colorbar
+                divider = make_axes_locatable(ax)
+                cax = divider.append_axes("right", size="5%", pad=0.15)
+                self.graphFigure.colorbar(im, cax=cax).ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
+            else:
+                self.graphTextbox.append("3D graph data not currently supported for plotting.")
+        
+        elif isinstance(self.data.graph_out, dict):
+            # Setup data for output
+            output_string = f"{measure}: "
+            output_arrays = []
+            for key, value in self.data.graph_out.items():
+                if isinstance(value, (int, float)):
+                    output_string += f"{key}: {value:.2f}, "
+                    self.plotLogo(self.graphFigure)
+
+                elif isinstance(value, np.ndarray):
+                    output_arrays.append((key, value))
+
+            # Print the output string
+            self.graphTextbox.append(output_string.strip(', '))  # Remove the trailing comma
+
+            # Plot the output arrays
+            if output_arrays:
+                self.graphFigure.clear()
+                n_subplots = len(output_arrays)
+
+                for i, (key, value) in enumerate(output_arrays):
+                    ax = self.graphFigure.add_subplot(1, n_subplots, i + 1)
+                    vmax = np.max(np.abs(value))
+                    if value.ndim == 1:
+                        # For a 1D vector, plot a vertical lollipop plot
+                        ax.stem(value, linefmt="#19232d", markerfmt='o', basefmt=" ")
+                        ax.set_xlabel("ROI")
+                        ax.set_ylabel(measure)
+
+                        # Calculate mean and variance, and update the textbox
+                        mean_val = np.mean(value)
+                        var_val = np.var(value)
+                        self.graphTextbox.append(f"{measure} (mean: {mean_val:.2f}, variance: {var_val:.2f})")
+                        
+                    elif value.ndim == 2:
+                        # For a 2D array, use imshow
+                        im = ax.imshow(value, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+                        ax.set_title(key)
+    
+                        # Create the colorbar
+                        divider = make_axes_locatable(ax)
+                        cax = divider.append_axes("right", size="5%", pad=0.15)
+                        cbar = self.graphFigure.colorbar(im, cax=cax)
+                        cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
+  
+                    else:
+                        self.graphTextbox.append("Graph output data is not in expected format.")
+
+                    ax.set_title(key)
+        
+        else:
+            self.graphTextbox.append("Graph output data is not in expected format.")
+
+        # Draw the plot
+        self.graphFigure.set_facecolor('#E0E0E0')
+        self.graphFigure.tight_layout()
+        self.graphCanvas.draw()
+        
+        return
+    
+
+    """
+    Multiverse tab
     """
     # Adds a combined container widget for all things related to creating decisions and options
     def addDecisionContainer(self):
@@ -1573,1978 +3536,6 @@ class App(QMainWindow):
         else:
             QMessageBox.warning(self, "Multiverse Analysis", "No script was loaded to run.")
 
-    """
-    I/O and data related functions
-    """
-    # Data tab
-    def createCarpetPlot(self):
-        # Clear the current plot
-        self.boldFigure.clear()
-        ax = self.boldFigure.add_subplot(111)
-
-        # Plot the data
-        if self.data.file_data is not None:
-            im = ax.imshow(self.data.file_data, cmap='Grays', aspect='auto')
-            ax.set_title(f"BOLD time series")
-            ax.set_xlabel("ROI")
-            ax.set_ylabel("Time")
-
-        # Create the colorbar
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.15)
-        cbar = self.boldFigure.colorbar(im, cax=cax)
-        cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
-
-        # Adjust and draw
-        self.boldFigure.set_facecolor('#E0E0E0')
-        self.boldFigure.tight_layout()
-        self.boldCanvas.draw()
-    
-    # dFC tab
-    def loadTS(self):
-        fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
-        file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
-        file_name = file_path.split('/')[-1]
-        self.data.file_name = file_name
-        self.getParameters() # Get current UI parameters
-        self.subjectDropdown.clear()
-        self.subjectDropdown.hide()
-
-        if not file_path:
-            return  # Early exit if no file is selected
-
-        if file_path.endswith('.mat'):
-            data_dict = loadmat(file_path)
-            self.data.file_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
-        
-        elif file_path.endswith('.txt'):
-            self.data.file_data = np.loadtxt(file_path)
-        
-        elif file_path.endswith('.npy'):
-            self.data.file_data = np.load(file_path)
-        
-        elif file_path.endswith('.pkl'):
-            with open(file_path, 'rb') as f:
-                self.data.file_data = pickle.load(f)
-        
-        elif file_path.endswith(".tsv"):
-            data = pd.read_csv(file_path, sep='\t', header=None, na_values='n/a')
-
-            if data.iloc[0].apply(lambda x: np.isscalar(x) and np.isreal(x)).all():
-                rois = None  # No rois found, the first row is part of the data
-            else:
-                rois = data.iloc[0]  # The first row is rois
-                data = data.iloc[1:]  # Remove the header row from the data
-
-            # Convert all data to numeric, making sure 'n/a' and other non-numeric are treated as NaN
-            data = data.apply(pd.to_numeric, errors='coerce')
-
-            # Identify entirely empty columns
-            empty_columns = data.columns[data.isna().all()]
-            
-            # Remove corresponding rois if rois exist
-            if rois is not None:
-                removed_rois = rois[empty_columns].to_list()
-                print("The following regions were empty and thus removed:", removed_rois)
-                rois = rois.drop(empty_columns)
-
-            # Remove entirely empty columns and rows
-            data = data.dropna(axis=1, how='all').dropna(axis=0, how='all')
-
-            # Convert the cleaned data back to numpy array
-            self.data.file_data = data.to_numpy()
-
-            # Update header_list if rois exist
-            self.data.roi_names = np.array(rois, dtype=object)
-        
-        elif file_path.endswith(".dtseries.nii"):
-            self.data.cifti_data = nib.load(file_path)
-            self.data.file_data = cifti.parcellate(self.data.cifti_data, atlas="glasser")
-
-        elif file_path.endswith(".ptseries.nii"):
-            data = nib.load(file_path)
-            self.data.file_data = data.get_fdata()
-
-        else:
-            self.data.file_data = None
-            self.time_series_textbox.setText("Unsupported file format")
-
-        # New data, reset slider and plot
-        self.currentSliderValue = 0
-        self.slider.setValue(0)
-        self.figure.clear()
-        self.canvas.draw()
-
-        # Set filenames depending on file type
-        if file_path.endswith('.pkl'):
-            self.fileNameLabel.setText(f"Loaded TIME_SERIES object")
-            self.time_series_textbox.setText(file_name)
-
-            self.continuousCheckBox.setEnabled(False)
-            self.continuousCheckBox.setChecked(False)
-
-            self.stateBasedCheckBox.setEnabled(True)
-            self.stateBasedCheckBox.setChecked(True)
-
-            self.staticCheckBox.setEnabled(False)
-            self.staticCheckBox.setChecked(False)
-
-            self.transposeCheckbox.setEnabled(False)
-        
-        else:
-            self.time_series_textbox.setText(file_name)
-
-            self.continuousCheckBox.setEnabled(True)
-            self.continuousCheckBox.setChecked(True)
-
-            self.stateBasedCheckBox.setEnabled(False)
-            self.stateBasedCheckBox.setChecked(False)
-
-            self.staticCheckBox.setEnabled(True)
-            self.staticCheckBox.setChecked(True)
-
-            if file_path.endswith('.nii'):
-                self.fileNameLabel.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
-                self.transposeCheckbox.setEnabled(False)
-            else:
-                self.fileNameLabel.setText(f"Loaded {self.data.file_name} with shape {self.data.file_data.shape}")
-                self.transposeCheckbox.setEnabled(True)
-        
-        # Reset and enable the GUI elements
-        self.bidsContainer.hide()
-
-        self.methodComboBox.setEnabled(True)
-        self.methodComboBox.setEnabled(True)
-        self.calculateButton.setEnabled(True)
-        self.clearMemoryButton.setEnabled(True)
-        self.keepInMemoryCheckbox.setEnabled(True)
-
-        # Create carpet plot
-        self.createCarpetPlot()
-
-    def loadBIDS(self):
-        # Open a dialog to select the BIDS directory
-        bids_folder = QFileDialog.getExistingDirectory(self, "Select BIDS Directory")
-
-        # User canceled the selection
-        if not bids_folder:
-            return
-
-        # Initialize a BIDS Layout
-        try:
-            # Initialize BIDS layout
-            self.bidsContainer.hide()
-            self.subjectDropdown.clear()
-            self.subjectDropdown.setEnabled(False)
-            self.fileNameLabel.setText(f"Initializing BIDS layout, please wait...")
-
-            QApplication.processEvents()
-            
-            # Load BIDS layout in a separate thread
-            self.workerThread = QThread()
-            self.worker = Worker(self.loadBIDSThread, bids_folder)
-            self.worker.moveToThread(self.workerThread)
-
-            self.worker.finished.connect(self.workerThread.quit)
-            self.workerThread.started.connect(self.worker.run)
-            self.worker.result.connect(lambda: self.onBidsResult(bids_folder))
-            self.workerThread.start()
-
-        except Exception as e:
-            QMessageBox.warning(self, "Load Error", f"Failed to load BIDS data: {str(e)}")
-
-    def loadBIDSThread(self, bids_folder):
-        # Get the layout
-        self.bids_layout = BIDSLayout(bids_folder, derivatives=True)
-        
-        # Get subjects and update the dropdown
-        subjects = self.bids_layout.get_subjects()
-        sub_id = [f"sub-{subject}" for subject in subjects]
-        self.subjectDropdown.addItems(sub_id)
-        
-        # Update the GUI
-        self.onBIDSSubjectChanged()
-
-        return
-    
-    def onBidsResult(self, bids_folder):
-        # Layout loaded successfully
-        self.fileNameLabel.setText(f"Loaded BIDS data from {bids_folder}")
-        self.bidsContainer.show()
-        self.subjectDropdown.setEnabled(True)
-        return
-
-    def fetchAtlas(self, atlasname, atlasnames):
-        if atlasname in atlasnames:
-            if atlasname == "AAL template (SPM 12)":
-                atlas = datasets.fetch_atlas_aal()
-                return atlas["maps"], atlas["labels"]
-            
-            elif atlasname == "BASC multiscale":
-                resolution = int(self.parcellationOptions.currentText())
-                atlas = datasets.fetch_atlas_basc_multiscale_2015(resolution=resolution)
-                return atlas["maps"], None
-                   
-            elif atlasname == "Destrieux et al. (2009)":
-                atlas = datasets.fetch_atlas_destrieux_2009()
-                return atlas["maps"], atlas["labels"]
-            
-            elif atlasname == "Pauli et al. (2017)":
-                atlas = datasets.fetch_atlas_pauli_2017(version="det")
-                return atlas["maps"], atlas["labels"]
-            
-            elif atlasname == "Schaefer et al. (2018)":
-                n_rois = int(self.parcellationOptions.currentText())
-                atlas = datasets.fetch_atlas_schaefer_2018(n_rois=n_rois)
-                return atlas["maps"], atlas["labels"]
-              
-            elif atlasname == "Talairach atlas":
-                atlas = datasets.fetch_atlas_talairach(level_name="hemisphere")
-                return atlas["maps"], atlas["labels"]
-            
-            elif atlasname == "Yeo (2011) networks":
-                thickness = str(self.parcellationOptions.currentText())
-                atlas = datasets.fetch_atlas_yeo_2011()
-                return atlas[thickness], None
-            
-            elif atlasname == "Power et al. (2011)":
-                atlas = datasets.fetch_coords_power_2011(legacy_format=False)
-                coords = np.vstack((atlas.rois["x"], atlas.rois["y"], atlas.rois["z"])).T
-                return coords
-            
-            elif atlasname == "Dosenbach et al. (2010)":
-                atlas = datasets.fetch_coords_dosenbach_2010(legacy_format=False)
-                coords = np.vstack((atlas.rois["x"], atlas.rois["y"], atlas.rois["z"])).T
-                return coords, atlas["networks"], atlas["labels"]
-        
-            elif atlasname == "Seitzmann et al. (2018)":
-                atlas = datasets.fetch_coords_seitzman_2018(legacy_format=False)
-                coords = np.vstack((atlas.rois["x"], atlas.rois["y"], atlas.rois["z"])).T
-                return coords, atlas["networks"], atlas["regions"]
-            
-        else:
-            QMessageBox.warning(self, "Error", "Atlas not found")
-            return
-
-    def extractTimeSeries(self):
-        self.calculateBIDStextbox.setText("Calculating time series, please wait...")
-        self.update()
-
-        selected_subject = self.subjectDropdown.currentText()
-        selected_task = self.taskDropdown.currentText()
-        selected_session = self.sessionDropdown.currentText()
-        selected_run = self.runDropdown.currentText()
-
-        #mask_files = self.bids_layout.get(return_type='file', suffix='mask', extension='nii.gz')
-        #pattern = r"^\\(.+\\)*(.+)\.(.+)$"
-        #mask_file_ids = [re.search(pattern, filename).group(1) if re.search(pattern, filename) else None for filename in mask_files]
-        #mask_file_ids.insert(0, "Calculate mask with nilearn")
-        
-        img = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz', 
-                                   subject=selected_subject.split('-')[-1], task=selected_task, run=selected_run, session=selected_session)
-        print(img)
-
-        if self.parcellationDropdown.currentText() in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
-            rois, networks, labels,  = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
-            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample",)
-        
-        elif self.parcellationDropdown.currentText() == "Power et al. (2011)":
-            rois = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
-            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample",)
-        
-        else:
-            atlas, labels = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
-            masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize="zscore_sample",)
-        
-        time_series = masker.fit_transform(img)
-        
-        self.data.file_name = f"{self.niftiDropdown.currentText()}"
-        self.data.file_data = time_series
-        self.data.roi_names = labels
-        self.calculateBIDStextbox.setText(f"Done calculating time series (shape {self.data.file_data.shape})")
-        self.transposeCheckbox.setEnabled(True)
-        self.update()
-
-    def onBIDSSubjectChanged(self):
-        # Disconnect the signal to avoid recursive calls
-        self.subjectDropdown.currentIndexChanged.disconnect(self.onBIDSSubjectChanged)
-
-        # Clear previous information and disable inputs while loading
-        self.taskDropdown.clear()
-        self.sessionDropdown.clear()
-        self.runDropdown.clear()
-
-        self.taskDropdown.setEnabled(False)
-        self.sessionDropdown.setEnabled(False)
-        self.runDropdown.setEnabled(False)
-        self.parcellationDropdown.setEnabled(False)
-        self.parcellationOptions.setEnabled(False)
-        self.confoundList.setEnabled(False)
-
-        QApplication.processEvents()
-        
-        # Get data for subject
-        selected_subject = self.subjectDropdown.currentText()
-        subject_id = selected_subject.split('-')[-1]
-
-        tasks = self.bids_layout.get_tasks(subject=subject_id)
-        sessions = self.bids_layout.get_sessions(subject=subject_id)
-        runs = self.bids_layout.get_runs(subject=subject_id)
-
-        session_id = [f"{session}" for session in sessions]
-        run_id = [f"{run}" for run in runs]
-        
-        self.taskDropdown.addItems(tasks)
-        self.sessionDropdown.addItems(session_id)
-        self.runDropdown.addItems(run_id)
-
-        # Confounds
-        self.loadConfounds(['confound1', 'confound2', 'confound3'])
-
-        # Reconnect the signal
-        self.subjectDropdown.currentIndexChanged.connect(self.onBIDSSubjectChanged)
-        self.calculateBIDStextbox.setText("No time series data extracted yet.")
-
-        self.taskDropdown.setEnabled(True)
-        self.sessionDropdown.setEnabled(True)
-        self.runDropdown.setEnabled(True)
-        self.parcellationDropdown.setEnabled(True)
-        self.parcellationOptions.setEnabled(True)
-        self.confoundList.setEnabled(True)
-
-        return
-
-    def onBIDSAtlasSelected(self):
-        self.parcellationOptions.clear()
-
-        if self.parcellationDropdown.currentText() == "AAL template (SPM 12)":
-            self.parcellationOptions.addItems(["117"])
-
-        elif self.parcellationDropdown.currentText() == "BASC multiscale":
-            self.parcellationOptions.addItems(["7", "12", "20", "36", "64", "122", "197", "325", "444"])
-        
-        elif self.parcellationDropdown.currentText() == "Destrieux et al. (2009)":
-            self.parcellationOptions.addItems(["148"])
-
-        elif self.parcellationDropdown.currentText() == "Pauli et al. (2017)":
-            self.parcellationOptions.addItems(["deterministic"])
-
-        elif self.parcellationDropdown.currentText() == "Schaefer et al. (2018)":
-            self.parcellationOptions.addItems(["100", "200", "300", "400", "500", "600", "700", "800", "900", "1000"])
-
-        elif self.parcellationDropdown.currentText() == "Talairach atlas":
-            self.parcellationOptions.addItems(["hemisphere"])
-
-        elif self.parcellationDropdown.currentText() == "Yeo (2011) networks":
-            self.parcellationOptions.addItems(["thin_7", "thick_7", "thin_17", "thick_17"])
-
-        elif self.parcellationDropdown.currentText() == "Dosenbach et al. (2010)":
-            self.parcellationOptions.addItems(["160"])
-
-        elif self.parcellationDropdown.currentText() == "Power et al. (2011)":
-            self.parcellationOptions.addItems(["264"])
-        
-        elif self.parcellationDropdown.currentText() == "Seitzmann et al. (2018)":
-            self.parcellationOptions.addItems(["300"])
-
-        else:
-            QMessageBox.warning(self, "Error", "Atlas not found")
-            return
-        
-        self.parcellationOptions.show()
-        return
-
-    def saveConnectivityFile(self):
-        if self.data.dfc_data is None:
-            QMessageBox.warning(self, "Output Error", "No dFC data available to save.")
-            return
-
-        # Open a file dialog to specify where to save the file
-        filePath, _ = QFileDialog.getSaveFileName(self, "Save File", "", "MAT Files (*.mat)")
-
-        if filePath:
-            # Ensure the file has the correct extension
-            if not filePath.endswith('.mat'):
-                filePath += '.mat'
-            
-            # Save the the current data object to a .mat file
-            try:
-                data_dict = {}
-                for field in self.data.__dataclass_fields__:
-                    value = getattr(self.data, field)
-                    
-                    if isinstance(value, np.ndarray):
-                        data_dict[field] = value
-                    elif isinstance(value, dict):
-                        # Ensure all dict values are appropriately converted
-                        converted_dict = {}
-                        for k, v in value.items():
-                            if isinstance(v, np.ndarray):
-                                converted_dict[k] = v
-                            elif v is None:
-                                converted_dict[k] = np.array([])
-                                print(f"Converted None to empty array for dict key: {k}")
-                            else:
-                                converted_dict[k] = v
-                        data_dict[field] = converted_dict
-                    elif value is None:
-                        data_dict[field] = np.array([])
-                        print(f"Converted None to empty array for field: {field}")
-                    elif field == 'dfc_instance':
-                        pass
-                    else:
-                        data_dict[field] = value
-
-                savemat(filePath, data_dict)
-
-            except Exception as e:
-                QMessageBox.warning(self, "Output Error", f"Error saving data: {e}")
-
-        return
-
-    def onTransposeChecked(self, state):
-        if self.data.file_data is None:
-            return  # No data loaded, so do nothing
-
-        if state == Qt.CheckState.Checked:
-            # Transpose the data
-            self.data.file_data = self.data.file_data.transpose()
-        else:
-            # Transpose it back to original
-            self.data.file_data = self.data.file_data.transpose()
-
-        # Update the labels
-        self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.data.file_data.shape}")
-        self.time_series_textbox.setText(self.data.file_name)
-
-    def loadConfounds(self, confounds):
-        self.confoundList.clear()
-        for confound in confounds:
-            item = QListWidgetItem(confound)
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-            item.setCheckState(Qt.CheckState.Unchecked)
-            self.confoundList.addItem(item)
-
-    # Graph tab
-    def loadGraphFile(self):
-        fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
-        file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
-        file_name = file_path.split('/')[-1]
-        self.data.graph_file = file_name
-
-        if not file_path:
-            return  # Early exit if no file is selected
-
-        if file_path.endswith('.mat'):
-            data_dict = loadmat(file_path)
-            try:
-                self.data.graph_data = data_dict["graph_data"] # Try to load graph_data (saving files with comet will create this field)
-            except:
-                self.data.graph_data = data_dict[list(data_dict.keys())[-1]] # Else get the last item in the file (which is the data if there is only one field)
-
-        elif file_path.endswith('.txt'):
-            self.data.graph_data = np.loadtxt(file_path)
-        
-        elif file_path.endswith('.npy'):
-            self.data.graph_data = np.load(file_path)
-      
-        else:
-            self.data.graph_data = None
-            self.time_series_textbox.setText("Unsupported file format")
-
-        # Check if data is square
-        if self.data.graph_data.ndim != 2 or self.data.graph_data.shape[0] != self.data.graph_data.shape[1]:
-            QMessageBox.warning(self, "Data Error", "The loaded data is not a square matrix.")
-            self.data.graph_data = None
-            return
-
-        self.data.graph_raw = self.data.graph_data
-        self.graphFileNameLabel.setText(f"Loaded {self.data.graph_file} with shape {self.data.graph_data.shape}")
-        
-        self.plotGraph()
-        self.onGraphCombobox()
-
-    def saveGraphFile(self):
-        if self.data.graph_data is None:
-            QMessageBox.warning(self, "Output Error", "No graph data available to save.")
-            return
-
-        # Open a file dialog to specify where to save the file
-        filePath, _ = QFileDialog.getSaveFileName(self, "Save File", "", "MAT Files (*.mat)")
-
-        if filePath:
-            # Ensure the file has the correct extension
-            if not filePath.endswith('.mat'):
-                filePath += '.mat'
-            
-            # Save the the current data object to a .mat file
-            try:
-                data_dict = {}
-                for field in [f for f in self.data.__dataclass_fields__ if f.startswith('graph_')]:
-                    value = getattr(self.data, field)
-                    
-                    if isinstance(value, np.ndarray):
-                        data_dict[field] = value
-                    elif isinstance(value, dict):
-                        # Ensure all dict values are appropriately converted
-                        converted_dict = {}
-                        for k, v in value.items():
-                            if isinstance(v, np.ndarray):
-                                converted_dict[k] = v
-                            elif v is None:
-                                converted_dict[k] = np.array([])
-                                print(f"Converted None to empty array for dict key: {k}")
-                            else:
-                                converted_dict[k] = v
-                        data_dict[field] = converted_dict
-                    elif value is None:
-                        data_dict[field] = np.array([])
-                        print(f"Converted None to empty array for field: {field}")
-                    elif field == 'dfc_instance':
-                        pass
-                    else:
-                        data_dict[field] = value
-
-                savemat(filePath, data_dict)
-            
-            except Exception as e:
-                QMessageBox.warning(self, "Output Error", f"Error saving data: {e}")
-            
-            return
-
-    def takeCurrentData(self):
-        if self.data.dfc_data is None:
-            QMessageBox.warning(self, "Output Error", "No current dFC data available.")
-            return
-        
-        if len(self.data.dfc_data.shape) == 3:
-            self.data.graph_data = self.data.dfc_data[:,:,self.currentSliderValue]
-        elif len(self.data.dfc_data.shape) == 2:
-            self.data.graph_data = self.data.dfc_data
-        else:
-            QMessageBox.warning(self, "Output Error", "FC data seems to have the wrong shape.")
-            return
-        
-        self.data.graph_raw = self.data.graph_data
-        
-        print(f"Used current dFC data with shape {self.data.graph_data.shape}")
-        self.graphFileNameLabel.setText(f"Used current dFC data with shape {self.data.graph_data.shape}")
-        self.data.graph_file = f"dfC from {self.data.file_name}" #with {self.data.dfc_name} at t={self.currentSliderValue}"
-        self.plotGraph()
-        self.onGraphCombobox()
-
-    """
-    dFC/graph functions
-    """
-    # dFC tab
-    def onMethodCombobox(self, methodName=None):
-        # Clear old variables and data
-        self.clearParameters(self.parameterLayout)
-
-        # Return if no methods are available
-        if methodName == None or methodName == "Use checkboxes to get available methods":
-            return
-        
-        # Get selected connectivity method
-        self.data.dfc_instance = getattr(methods, self.class_info.get(methodName), None) # the actual class
-        self.data.dfc_name = self.class_info.get(methodName) # class name
-
-        # Create and get new parameter layout
-        #self.data.dfc_data = None
-        self.data.dfc_params = {}
-        self.initParameters(self.data.dfc_instance)
-        self.parameterLayout.addStretch(1) # Stretch to fill empty space
-        self.getParameters()
-
-        # See if some data has previously been calculated, we change the paramters to this
-        previous_data = self.data_storage.check_previous_data(self.data.dfc_name)
-        if previous_data is not None:
-            self.data = previous_data
-            self.setParameters()
-            self.slider.show()
-            self.calculatingLabel.setText(f"Loaded {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
-            print(f"Loaded {self.data.dfc_name} from memory")
-
-            # Plot the data
-            self.plotConnectivity()
-            self.plotDistribution()
-            self.plotTimeSeries()
-
-            # Update the slider
-            total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
-            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
-            self.positionLabel.setText(position_text)
-            self.slider.setValue(self.slider.value())
-        
-        # If connectivity data does not exist we reset the figure and slider to prepare for a new calculation
-        # This also indicates to the user that this data was not yet calculated/saved
-        else:
-            self.figure.clear()
-            self.plotLogo(self.figure)
-            self.canvas.draw()
-            self.distributionFigure.clear()
-            self.distributionCanvas.draw()
-            self.timeSeriesFigure.clear()
-            self.timeSeriesCanvas.draw()
-
-            position_text = f"no data available"
-            self.positionLabel.setText(position_text)
-            self.slider.setValue(self.slider.value())
-            self.slider.hide()
-
-        self.update() # Update UI
-
-    def updateMethodComboBox(self):
-
-        def shouldIncludeClass(className):
-            if self.continuousCheckBox.isChecked() and className.startswith("CONT"):
-                    return True
-            if self.stateBasedCheckBox.isChecked() and className.startswith("STATE"):
-                    return True 
-            if self.staticCheckBox.isChecked() and className.startswith("STATIC"):
-                    return True
-            return False
-
-        class_mappings = {
-            'CONT': [
-                'Sliding Window', 'Jackknife Correlation', 'Flexible Least Squares', 'Spatial Distance', 
-                'Multiplication of Temporal Derivatives', 'Dynamic Conditional Correlation', 
-                'Phase Synchronization', 'Leading Eigenvector Dynamics', 'Wavelet Coherence', 'Edge-centric Connectivity'
-            ],
-            'STATE': [
-                'Sliding Window Clustering', 'Co-activation patterns', 'Discrete Hidden Markov Model', 
-                'Continuous Hidden Markov Model', 'Windowless'
-            ],
-            'STATIC': [
-                'Pearson Correlation', 'Partial Correlation', 'Mutual Information'
-            ]
-        }
-
-        # Dynamically generate the ordered classes based on available mappings
-        ordered_classes = [
-            f"{prefix} {name}" for prefix, names in class_mappings.items() for name in names
-        ]
-
-        # Generic filtering function
-        filtered_and_ordered_classes = [
-            class_name for class_name in ordered_classes
-            if shouldIncludeClass(class_name) and class_name in self.class_info
-        ]
-
-
-        # Disconnect existing connections to avoid multiple calls
-        try:
-            self.methodComboBox.currentTextChanged.disconnect(self.onMethodCombobox)
-        except TypeError:
-            pass
-
-        # Update the combobox
-        self.methodComboBox.clear()
-        self.methodComboBox.addItems(filtered_and_ordered_classes)
-
-        # Adjust combobox width
-        if self.methodComboBox.count() > 0:
-            font_metrics = QFontMetrics(self.methodComboBox.font())
-            longest_text_width = max(font_metrics.boundingRect(self.methodComboBox.itemText(i)).width() for i in range(self.methodComboBox.count()))
-            minimum_width = longest_text_width + 30
-            self.methodComboBox.setMinimumWidth(minimum_width)
-        else:
-            default_minimum_width = 300
-            self.methodComboBox.setMinimumWidth(default_minimum_width)
-
-        # Reconnect the signal
-        self.methodComboBox.currentTextChanged.connect(self.onMethodCombobox)
-
-        # Trigger the onMethodCombobox for the initial setup
-        if filtered_and_ordered_classes:
-            self.onMethodCombobox(filtered_and_ordered_classes[0])
-
-    def getInfoText(self, param, dfc_method):
-        if param == "windowsize":
-            text = "Size of the window used by the method. Should typically be an uneven number to have a center."
-        elif param == "shape":
-            text = "Shape of the windowing function."
-        elif param == "std":
-            text = "Width (sigma) of the window."
-        elif param == "diagonal":
-            text = "Values for the main diagonal of the connectivity matrix."
-        elif param == "fisher_z":
-            text = "Fisher z-transform the connectivity values."
-        elif param == "num_cores":
-            text = "Parallelize on multiple cores (highly recommended for DCC and FLS)."
-        elif param == "standardizeData":
-            text = "z-standardize the time series data."
-        elif param == "mu":
-            text = "Weighting parameter for FLS. Smaller values will produce more erratic changes in connectivity estimate."
-        elif param == "flip_eigenvectors":
-            text = "Flips the sign of the eigenvectors."
-        elif param == "dist":
-            text = "Distance function"
-        elif param == "TR":
-            text = "Repetition time of the data (in seconds)"
-        elif param == "fmin":
-            text = "Minimum wavelet frequency"
-        elif param == "fmax":
-            text = "Maximum wavelet frequency"
-        elif param == "n_scales":
-            text = "Number of wavelet scales"
-        elif param == "drop_scales":
-            text = "Drop the n largest and smalles scales to account for the cone of influence"
-        elif param == "drop_timepoints":
-            text = "Drop n first and last time points from the time series to account for the cone of influence"
-        elif param == "method" and dfc_method == "WaveletCoherence":
-            text = "Specific implementation of the method"
-        elif param == "method" and dfc_method == "PhaseSynchrony":
-            text = "Specific implementation of the method"
-        elif param == "params":
-            text = "Various parameters"
-        elif param == "coi_correction":
-            text = "Cone of influence correction"
-        elif param == "clstr_distance":
-            text = "Distance metric"
-        elif param == "num_bins":
-            text = "Number of bins for discretization"
-        elif param == "method":
-            text = "Specific type of method"
-        elif param == "n_overlap":
-            text = "Window overlap"
-        elif param == "tapered_window":
-            text = "Tapered window"
-        elif param == "n_states":
-            text = "Number of states"
-        elif param == "n_subj_clusters":
-            text = "Number of subjects"
-        elif param == "normalization":
-            text = "Normalization"
-        elif param == "clstr_distance":
-            text = "Distance measure"
-        elif param == "subject":
-            text = "Subject"
-        elif param == "Base measure":
-            text = "Base measure for the clustering"
-        elif param == "Iterations":
-            text = "Number of iterations"
-        elif param == "Sliding window":
-            text = "Sliding window method"
-        elif param == "State ratio":
-            text = "Observation/state ratio for the DHMM"
-        elif param == "vlim":
-            text = "Limit for color axis (edge time series)"
-        else:
-            text = f"TODO"
-        return text
-
-    def onAtlasSelected(self):
-        atlas_name = self.atlasComboBox.currentText()
-        atlas_map = {
-            "Glasser MMP": "glasser",
-            "Schaefer Kong 200": "schaefer_kong",
-            "Schaefer Tian 254": "schaefer_tian"
-        }
-        atlas_name = atlas_map.get(atlas_name, None)
-
-        self.data.file_data = cifti.parcellate(self.data.cifti_data, atlas=atlas_name)
-        self.fileNameLabel.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
-
-    # Graph tab
-    def onGraphCombobox(self):
-        self.setGraphParameters()
-
-    def updateGraphComboBox(self):
-        def shouldIncludeFunc(funcName):
-            if self.preprocessingCheckBox.isChecked() and funcName.startswith("PREP"):
-                return True
-            if self.graphCheckBox.isChecked() and funcName.startswith("COMET"):
-                return True
-            if self.BCTCheckBox.isChecked() and funcName.startswith("BCT"):
-                return True
-            return False
-
-        # Disconnect existing connections to avoid multiple calls
-        try:
-            self.graphAnalysisComboBox.currentTextChanged.disconnect(self.onGraphCombobox)
-        except TypeError:
-            pass
-
-        # Clear the combobox
-        self.graphAnalysisComboBox.clear()
-
-        # Filter options based on the checkboxes
-        filtered_options = {name: desc for name, desc in self.graphOptions.items() if shouldIncludeFunc(desc)}
-
-        for analysis_function, pretty_name in filtered_options.items():
-            self.graphAnalysisComboBox.addItem(pretty_name, analysis_function)
-
-        # Reconnect the signal
-        self.graphAnalysisComboBox.currentTextChanged.connect(self.onGraphCombobox)
-
-        # Trigger the onGraphCombobox for the initial setup if there are any options
-        if filtered_options:
-            self.onGraphCombobox()
-
-        return
-
-    """
-    Parameters
-    """
-    # dFC tab
-    def addBidsLayout(self, leftLayout):
-        # Container widget for BIDS Layout
-        self.bidsContainer = QWidget()
-        self.bidsLayout = QVBoxLayout(self.bidsContainer)
-
-        # Subjects Dropdown with Label
-        self.subjectDropdownLayout = QHBoxLayout()
-        self.subjectLabel = QLabel("Subject:")
-        self.subjectLabel.setFixedWidth(100)
-        self.subjectDropdown = QComboBox()
-        self.subjectDropdown.currentIndexChanged.connect(self.onBIDSSubjectChanged)
-        self.subjectDropdownLayout.addWidget(self.subjectLabel, 1)
-        self.subjectDropdownLayout.addWidget(self.subjectDropdown, 4)
-        self.bidsLayout.addLayout(self.subjectDropdownLayout)
-
-        # Task/ run dropdowns with Label
-        self.taskDropdownLayout = QHBoxLayout()
-        self.taskLabel = QLabel("Task:")
-        self.taskLabel.setFixedWidth(100)
-        self.taskDropdown = QComboBox()
-        self.sessionLabel = QLabel("Session:")
-        self.sessionLabel.setFixedWidth(65)
-        self.sessionDropdown = QComboBox()
-        self.runLabel = QLabel("Run:")
-        self.runLabel.setFixedWidth(40)
-        self.runDropdown = QComboBox()
-        
-        self.taskDropdownLayout.addWidget(self.taskLabel, 1)
-        self.taskDropdownLayout.addWidget(self.taskDropdown, 4)
-        self.taskDropdownLayout.addWidget(self.sessionLabel, 1)
-        self.taskDropdownLayout.addWidget(self.sessionDropdown, 1)
-        self.taskDropdownLayout.addWidget(self.runLabel, 1)
-        self.taskDropdownLayout.addWidget(self.runDropdown, 1)
-        self.bidsLayout.addLayout(self.taskDropdownLayout)
-
-        # Parcellation Dropdown with Label
-        self.parcellationDropdownLayout = QHBoxLayout()
-        self.parcellationLabel = QLabel("Parcellation:")
-        self.parcellationLabel.setFixedWidth(100)
-        self.parcellationDropdown = QComboBox()
-        self.parcellationOptionsLabel = QLabel("Type:")
-        self.parcellationOptionsLabel.setFixedWidth(40)
-        self.parcellationOptions = QComboBox()
-        self.atlasnames = ["AAL template (SPM 12)", "BASC multiscale", "Destrieux et al. (2009)", "Pauli et al. (2017)", "Schaefer et al. (2018)", 
-                           "Talairach atlas", "Yeo (2011) networks", "Dosenbach et al. (2010)", "Power et al. (2011)", "Seitzmann et al. (2018)"]
-        self.parcellationDropdown.currentIndexChanged.connect(self.onBIDSAtlasSelected)
-        self.parcellationDropdown.addItems(self.atlasnames)
-        
-        self.parcellationDropdownLayout.addWidget(self.parcellationLabel, 1)
-        self.parcellationDropdownLayout.addWidget(self.parcellationDropdown, 4)
-        self.parcellationDropdownLayout.addWidget(self.parcellationOptionsLabel, 1)
-        self.parcellationDropdownLayout.addWidget(self.parcellationOptions, 3)
-        self.bidsLayout.addLayout(self.parcellationDropdownLayout)
-
-        # Mask Dropdown with Label
-        #self.maskDropdownLayout = QHBoxLayout()
-        #self.maskLabel = QLabel("Mask:")
-        #self.maskLabel.setFixedWidth(100)
-        #self.maskDropdown = QComboBox()
-        #self.maskDropdownLayout.addWidget(self.maskLabel, 1)
-        #self.maskDropdownLayout.addWidget(self.maskDropdown, 4)
-        #self.bidsLayout.addLayout(self.maskDropdownLayout)
-
-        # Confounds layout
-        self.confoundLayout = QHBoxLayout()
-        self.confoundLabel = QLabel("Confounds:")
-        self.confoundLabel.setFixedWidth(100)
-        self.confoundList = QListWidget(self)
-        self.confoundLayout.addWidget(self.confoundLabel, 1)
-        self.confoundLayout.addWidget(self.confoundList, 4)
-        self.bidsLayout.addLayout(self.confoundLayout)
-
-        # Stretch to fill empty space
-        self.bidsLayout.addStretch()
-
-        # Time Series Calculation Button with Label
-        self.calculateBIDSButton = QPushButton('Extract time series')
-        self.calculateBIDSButton.clicked.connect(self.extractTimeSeries)
-        self.bidsLayout.addWidget(self.calculateBIDSButton)
-
-        # Textbox for calculation status
-        self.calculateBIDStextbox = QLabel("No time series data extracted yet.")
-        self.bidsLayout.addWidget(self.calculateBIDStextbox)
-
-        # Add the BIDS layout to the main layout
-        leftLayout.addWidget(self.bidsContainer)
-        self.bidsContainer.hide()
-
-        return
-
-    def initParameters(self, class_instance):
-        # Now the parameter labels and boxes are set up    
-        labels = []
-
-        # Calculate the maximum label width (just a visual thing)
-        max_label_width = 0
-        init_signature = inspect.signature(class_instance.__init__)
-        type_hints = get_type_hints(class_instance.__init__)
-        font_metrics = QFontMetrics(self.font())
-        for param in init_signature.parameters.values():
-            label_width = font_metrics.boundingRect(f"{self.param_names[param.name]}:").width()
-            max_label_width = max(max_label_width, label_width)
-
-        # Special case for 'time_series' parameter as this is created from the loaded file
-        # Add label for time_series
-        time_series_label = QLabel("Time series:")
-        time_series_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        time_series_label.setMinimumSize(time_series_label.sizeHint())
-        labels.append(time_series_label)
-        
-        self.time_series_textbox.setPlaceholderText("No data loaded yet")
-        if self.data.file_name:
-            self.time_series_textbox.setText(self.data.file_name)
-        self.time_series_textbox.setEnabled(True)
-
-        # Create info button for time_series
-        time_series_info_text = "2D time series loaded from file. Time has to be the first dimension."
-        time_series_info_button = InfoButton(time_series_info_text)
-
-        time_series_layout = QHBoxLayout()
-        time_series_layout.addWidget(time_series_label)
-        time_series_layout.addWidget(self.time_series_textbox)
-        time_series_layout.addWidget(time_series_info_button)
-        self.parameterLayout.addLayout(time_series_layout)
-
-        # Adjust max width for aesthetics
-        max_label_width += 5
-        time_series_label.setFixedWidth(max_label_width)
-
-        # If we have a .dtseries.nii file, we need to add an atlas dropdown. This defaults to the glasser atlas
-        if self.data.file_name is not None and self.data.file_name.endswith('.dtseries.nii'):
-            atlas_label = QLabel("Parcellation:")
-            atlas_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-            atlas_label.setMinimumSize(atlas_label.sizeHint())
-            atlas_label.setFixedWidth(max_label_width)
-            labels.append(atlas_label)
-
-            # Create the info button for parcellation
-            atlas_info_button_text = "Atlas to parcellate the .dtseries.nii file."
-            atlas_info_button = InfoButton(atlas_info_button_text)
-
-            # Create layout for the atlas dropdown
-            atlas_layout = QHBoxLayout()
-            atlas_layout.addWidget(atlas_label)
-            atlas_layout.addWidget(self.atlasComboBox)
-            atlas_layout.addWidget(atlas_info_button)
-
-            # Add the atlas layout to the main parameter layout
-            self.parameterLayout.addLayout(atlas_layout)
-
-        for name, param in init_signature.parameters.items():
-            if param.name not in ['self', 'time_series', 'tril', 'standardize', 'params']:
-                param_type = type_hints.get(name)
-                # Create label for parameter
-                param_label = QLabel(f"{self.param_names[param.name]}:")
-                param_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-                param_label.setMinimumSize(param_label.sizeHint())
-                param_label.setFixedWidth(max_label_width)
-                labels.append(param_label)
-
-                # Determine the widget type based on the parameter
-                # Dropdown for boolean parameters
-                if param_type == bool:
-                    param_input_widget = QComboBox()
-                    param_input_widget.addItems(["True", "False"])
-                    
-                    default_index = param_input_widget.findText(str(param.default))
-                    param_input_widget.setCurrentIndex(default_index)
-                    param_input_widget.setEnabled(True)
-
-                # Dropdown for parameters with predefined options
-                elif get_origin(type_hints.get(name)) is Literal:
-                    options = type_hints.get(name).__args__ 
-                    param_input_widget = QComboBox()
-                    param_input_widget.addItems([str(option) for option in options])
-                    
-                    default_index = param_input_widget.findText(param.default)
-                    param_input_widget.setCurrentIndex(default_index)
-                    param_input_widget.setEnabled(True)
-
-                # Spinbox for integer parameterss
-                elif param_type == int:
-                    param_input_widget = QSpinBox()
-                    param_input_widget.setMaximum(10000)
-                    param_input_widget.setMinimum(-10000)
-                    param_input_widget.setSingleStep(1)
-
-                    param_input_widget.setValue(int(param.default) if param.default != inspect.Parameter.empty else 0)
-                    param_input_widget.setEnabled(True)
-
-                # Spinbox for float parameters
-                elif param_type == float:
-                    param_input_widget = QDoubleSpinBox()
-                    param_input_widget.setMaximum(10000.0)
-                    param_input_widget.setMinimum(-10000.0)
-                    param_input_widget.setSingleStep(0.1)
-
-                    param_input_widget.setValue(float(param.default) if param.default != inspect.Parameter.empty else 0.0)
-                    param_input_widget.setEnabled(True)
-
-                # Text field for other types of parameters
-                else:
-                    param_input_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
-                    param_input_widget.setEnabled(True)
-   
-
-                # Create info button with tooltip
-                info_text = self.getInfoText(param.name, self.data.dfc_name)
-                info_button = InfoButton(info_text)
-
-                # Create layout for label, widget, and info button
-                param_layout = QHBoxLayout()
-                param_layout.addWidget(param_label)
-                param_layout.addWidget(param_input_widget)
-                param_layout.addWidget(info_button) 
-
-                # Add the layout to the main parameter layout
-                self.parameterLayout.addLayout(param_layout)
-
-    def getParameters(self):
-        # Get the time series and parameters (from the UI) for the selected connectivity method and store them in a dictionary
-        
-        self.data.dfc_params['time_series'] = self.data.file_data # Time series data
-        
-        # Converts string to boolean, float, or retains as string if conversion is not applicable
-        def convert_value(value):
-            if value.lower() in ['true', 'false']:
-                return value.lower() == 'true'
-            try:
-                return float(value)
-            except ValueError:
-                return value
-
-        # Gets the value from the widget based on its type
-        def get_widget_value(widget):
-            if isinstance(widget, QLineEdit):
-                return widget.text()
-            elif isinstance(widget, QComboBox):
-                return widget.currentText()
-            elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
-                return widget.value()
-            return None  # Default return if widget type is not recognized
-
-        for i in range(self.parameterLayout.count()):
-            layout = self.parameterLayout.itemAt(i).layout()
-            if layout:
-                label = layout.itemAt(0).widget().text().rstrip(':')
-                if label == 'Time series':
-                    continue  # Skip 'time_series' as it's already added
-
-                widget = layout.itemAt(1).widget()
-                value = get_widget_value(widget)
-
-                if value is not None:  # Ensure there is a value before attempting to convert and store
-                    param_key = self.reverse_param_names.get(label)
-                    if param_key:  # Ensure the key exists in the reverse_param_names dictionary
-                        self.data.dfc_params[param_key] = convert_value(value) if isinstance(value, str) else value
-                    else:
-                        self.calculatingLabel.setText(f"Error: Unrecognized parameter '{label}'")
-                else:
-                    # Value could not be retrieved from the widget
-                    self.calculatingLabel.setText(f"Error: No value entered for parameter '{label}'")
-
-    def setParameters(self, disable=False):
-        # Converts value to string
-        def convert_value_to_string(value):
-            if isinstance(value, bool):
-                return 'true' if value else 'false'
-            elif isinstance(value, (int, float)):
-                return str(value)
-            else:
-                return value
-
-        # Sets the value of the widget based on its type
-        def set_widget_value(widget, value):
-            if isinstance(widget, QLineEdit):
-                widget.setText(value)
-            elif isinstance(widget, QComboBox):
-                index = widget.findText(value)
-                if index >= 0:
-                    widget.setCurrentIndex(index)
-            elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
-                widget.setValue(int(value))
-
-        # No parameters yet, return
-        if not self.data.dfc_params:
-            self.getParameters()
-            return
-
-        # Time series data has to be in the params as we run the dFC method with just these params
-        self.data.dfc_params['time_series'] = self.data.file_data
-
-        if disable:
-            self.time_series_textbox.setText(self.data.file_name)
-            self.time_series_textbox.setEnabled(False)
-
-        # Set the parameters in the UI based on the stored dictionary
-        for i in range(self.parameterLayout.count()):
-            layout = self.parameterLayout.itemAt(i).layout()
-            if layout:
-                label = layout.itemAt(0).widget().text().rstrip(':')
-                if label == 'Time series':
-                    continue  # Skip 'time_series' as it's already set
-
-                param_key = self.reverse_param_names.get(label)
-                if param_key:  # Ensure the key exists in the reverse_param_names dictionary
-                    value = self.data.dfc_params.get(param_key)
-                    if value is not None:  # Ensure there is a value before attempting to convert and set
-                        widget = layout.itemAt(1).widget()
-                        set_widget_value(widget, convert_value_to_string(value))
-                        if disable:
-                            widget.setEnabled(False)
-                    else:
-                        # Value could not be retrieved from the dictionary
-                        self.calculatingLabel.setText(f"Error: No value entered for parameter '{label}'")
-                else:
-                    self.calculatingLabel.setText(f"Error: Unrecognized parameter '{label}'")
-
-    def clearParameters(self, layout):
-        while layout.count():
-            item = layout.takeAt(0)  # Take the first item from the layout
-            if item.widget():  # If the item is a widget
-                widget = item.widget()
-                if widget is not None and widget is not self.time_series_textbox and widget is not self.atlasComboBox: # do not clear time series textbox and atlas combobox
-                    widget.deleteLater()  # Schedule the widget for deletion
-            elif item.layout():  # If the item is a layout
-                self.clearParameters(item.layout())  # Recursively clear the layout
-                item.layout().deleteLater()  # Delete the layout itself
-            elif item.spacerItem():  # If the item is a spacer
-                # No need to delete spacer items; they are automatically handled by Qt
-                pass
-    
-    # Graph tab
-    def setGraphParameters(self):
-        # Clear parameters
-        self.clearParameters(self.graphParameterLayout)
-        
-        # Retrieve the selected function from the graph module
-        if self.graphAnalysisComboBox.currentData() == None:
-            return
-
-        func = getattr(graph, self.graphAnalysisComboBox.currentData())
-        
-        # Retrieve the signature of the function
-        func_signature = inspect.signature(func)
-        type_hints = get_type_hints(func)
-
-        # Calculate the maximum label width
-        max_label_width = 0
-        font_metrics = QFontMetrics(self.font())
-        for name, param in func_signature.parameters.items():
-            if name not in ['self', 'args', 'kwargs']:  # Skip unwanted parameters
-                label_width = font_metrics.boundingRect(f"{name}:").width()
-                max_label_width = max(max_label_width, label_width)
-
-        is_first_parameter = True  # Flag to identify the first parameter
-
-        # Iterate over parameters in the function signature
-        temp_widgets = {}
-        for name, param in func_signature.parameters.items():
-
-            if name not in ['self', 'copy', 'args', 'kwargs']:  # Skip unwanted parameters
-                # Horizontal layout for each parameter
-                param_layout = QHBoxLayout()
-                param_type = type_hints.get(name)
-                param_default = 1 if isinstance(param.default, inspect._empty) else param.default
-                
-                if param_default == None:
-                    if param_type == bool:
-                        param_default = False
-                    elif param_type == int or param_type == float:
-                        param_default = 1
-                    else:
-                        param_default = "empty"
-
-
-                # Create a label for the parameter and set its fixed width
-                param_label = QLabel(f"{name}:")
-                param_label.setFixedWidth(max_label_width + 20)  # Add some padding
-                param_layout.addWidget(param_label)
-
-                # For the first parameter, set its value based on the data source and lock it
-                if is_first_parameter:
-                    param_widget = QLineEdit()
-                    param_widget.setPlaceholderText("No data loaded yet")
-                    if self.data.graph_file:
-                        param_widget = QLineEdit("as shown in plot")
-                    param_widget.setReadOnly(True)  # Make the widget read-only
-                    is_first_parameter = False  # Update the flag so this block runs only for the first parameter
-                else:
-                    # Bool
-                    if param_type == bool:
-                        param_widget = QComboBox()
-                        param_widget.addItems(["False", "True"])
-                        param_widget.setCurrentIndex(int(param_default))
-                    # Int                  
-                    elif param_type == int:
-                        param_widget = QSpinBox()
-                        param_widget.setValue(param_default)
-                        param_widget.setMaximum(10000)
-                        param_widget.setMinimum(-10000)
-                        param_widget.setSingleStep(param_default)
-                    # Float 
-                    elif param_type == float:    
-                        param_widget = QDoubleSpinBox()
-                        if name == "threshold":
-                            param_widget.setValue(0.0)
-                        else:
-                            param_widget.setValue(param_default)
-                        param_widget.setMaximum(1.0)
-                        param_widget.setMinimum(0.0)
-                        param_widget.setSingleStep(0.01)
-                    # String
-                    elif get_origin(type_hints.get(name)) is Literal:
-                        options = type_hints.get(name).__args__ 
-                        param_widget = QComboBox()
-                        param_widget.addItems([str(option) for option in options])
-                    # Fallback
-                    else:
-                        param_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
-
-                temp_widgets[name] = (param_label, param_widget)
-                param_layout.addWidget(param_widget)
-                self.graphParameterLayout.addLayout(param_layout)
-
-        # Adjust visibility based on 'type' parameter
-        type_widget = None
-        if 'type' in temp_widgets:
-            _, type_widget = temp_widgets['type']
-
-        if type_widget:
-            # Function to update parameter visibility
-            def updateVisibility():
-                selected_type = type_widget.currentText()
-                if selected_type == 'absolute':
-                    if 'threshold' in temp_widgets:
-                        temp_widgets['threshold'][0].show()
-                        temp_widgets['threshold'][1].show()
-                    if 'density' in temp_widgets:
-                        temp_widgets['density'][0].hide()
-                        temp_widgets['density'][1].hide()
-                elif selected_type == 'density':
-                    if 'threshold' in temp_widgets:
-                        temp_widgets['threshold'][0].hide()
-                        temp_widgets['threshold'][1].hide()
-                    if 'density' in temp_widgets:
-                        temp_widgets['density'][0].show()
-                        temp_widgets['density'][1].show()
-            
-            # Connect the signal from the type_widget to the updateVisibility function
-            type_widget.currentIndexChanged.connect(updateVisibility)
-            updateVisibility()
-
-        self.graphParameterLayout.addStretch()
-
-    def getGraphOptions(self):
-        # Initialize a dictionary to hold parameter names and their values
-        params_dict = {}
-
-        # Iterate over all layout items in the graphParameterLayout
-        for i in range(self.graphParameterLayout.count()):
-            layout_item = self.graphParameterLayout.itemAt(i)
-
-            # Check if the layout item is a QHBoxLayout (as each parameter is in its own QHBoxLayout)
-            if isinstance(layout_item, QHBoxLayout):
-                param_layout = layout_item.layout()
-
-                # The parameter name is in the QLabel, and the value is in the second widget (QLineEdit, QComboBox, etc.)
-                if param_layout.count() >= 2:
-                    # Extract the parameter name from the QLabel
-                    param_name_label = param_layout.itemAt(0).widget()
-                    if isinstance(param_name_label, QLabel):
-                        param_name = param_name_label.text().rstrip(':')  # Remove the colon at the end
-
-                        # Extract the parameter value from the appropriate widget type
-                        param_widget = param_layout.itemAt(1).widget()
-                        if isinstance(param_widget, QLineEdit):
-                            param_value = param_widget.text()
-                        elif isinstance(param_widget, QComboBox):
-                            param_value = param_widget.currentText()
-                        elif isinstance(param_widget, QSpinBox) or isinstance(param_widget, QDoubleSpinBox):
-                            param_value = param_widget.value()
-
-                        # Convert to appropriate boolean type (LineEdit ad ComboBox return strings))
-                        if param_value == "True":
-                            param_value = True
-                        elif param_value == "False":
-                            param_value = False
-
-                        # Add the parameter name and value to the dictionary
-                        params_dict[param_name] = param_value
-
-        # Retrieve the currently selected option in the graphAnalysisComboBox
-        current_option = self.graphAnalysisComboBox.currentText()
-
-        # Return the current option and its parameters
-        return current_option, params_dict
-
-    def onClearGraphOptions(self):
-        self.data.graph_data = self.data.graph_raw
-        self.plotGraph()
-        self.optionsTextbox.clear()
-        self.graphTextbox.clear()
-        self.graphStepCounter = 1
-
-    """
-    Calculation
-    """
-    # dFC tab
-    def onCalculateButton(self):
-        # Check if ts_data is available
-        if self.data.file_data is None:
-            self.calculatingLabel.setText(f"Error. No time series data has been loaded.")
-            return
-        
-        # Get the current parameters from the UI for the upcoming calculation
-        self.getParameters()
-    
-        # Process all pending events
-        QApplication.processEvents() 
-        
-        # Start worker thread for dFC calculations and submit for calculation
-        self.workerThread = QThread()
-        self.worker = Worker(self.calculateConnectivity, self.data.dfc_params)
-        self.worker.moveToThread(self.workerThread)
-        
-        self.worker.finished.connect(self.workerThread.quit)
-        self.worker.result.connect(self.handleResult)
-        self.worker.error.connect(self.handleError)
-
-        self.workerThread.started.connect(self.worker.run)
-        self.workerThread.start()
-        self.calculatingLabel.setText(f"Calculating {self.methodComboBox.currentText()}, please wait...")
-        self.calculateButton.setEnabled(False)
-    
-    def calculateConnectivity(self, parameters):
-        keep_in_memory = self.keepInMemoryCheckbox.isChecked()
-        
-        # Check if data already exists
-        existing_data = self.data_storage.check_for_identical_data(self.data)
-        if existing_data is not None:
-            return existing_data
-        
-        # Remove keys not allowed for calculation
-        clean_parameters = parameters.copy()
-        clean_parameters.pop('parcellation', None)
-
-        # Data does not exist, perform calculation
-        connectivity_calculator = self.data.dfc_instance(**clean_parameters)
-        result = connectivity_calculator.connectivity()
-        self.init_flag = False
-
-        # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
-        if isinstance(result, tuple):
-            self.data.dfc_data = result[0]
-            self.data.dfc_params = parameters
-            self.data.dfc_state_tc = None
-            self.data.dfc_edge_ts = result[1][0] if isinstance(result[1], tuple) else None
-
-        # Result is DFC object (pydfc methods)
-        elif isinstance(result, pydfc.dfc.DFC):
-            self.data.dfc_data = np.transpose(result.get_dFC_mat(), (1, 2, 0))
-            self.data.dfc_params = parameters
-            self.data.dfc_states = result.FCSs_
-            self.data.dfc_state_tc = result.state_TC()
-            self.data.dfc_edge_ts = None
-        
-        # Only a single matrix is returned (most cases)
-        else:
-            self.data.dfc_data = result
-            self.data.dfc_params = parameters
-            self.data.dfc_state_tc = None
-            self.data.dfc_edge_ts = None
-
-        # Store in memory if checkbox is checked
-        if keep_in_memory:
-            # Update the dictionary entry for the selected_class_name with the new data and parameters
-            self.data_storage.add_data(self.data)
-
-        print("Finished calculation.")
-        return self.data
-
-    def handleResult(self):
-        # Update the sliders and text
-        if self.data.dfc_data is not None:
-            self.calculatingLabel.setText(f"Calculated {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
-            
-            if len(self.data.dfc_data.shape) == 3:
-                self.slider.show()
-                self.rowSelector.setMaximum(self.data.dfc_data.shape[0] - 1)
-                self.colSelector.setMaximum(self.data.dfc_data.shape[1] - 1)
-                self.rowSelector.setValue(1)
-
-            # Update time label
-            total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
-            
-            if self.currentTabIndex == 0 or self.currentTabIndex == 2:
-                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
-            else:
-                position_text = ""
-
-            self.positionLabel.setText(position_text)
-            self.slider.setValue(self.slider.value())
-            
-        # Plot
-        self.plotConnectivity()
-        self.plotDistribution()
-        self.plotTimeSeries()
-
-        self.calculateButton.setEnabled(True)
-        self.onTabChanged()
-        self.update()
-
-    def handleError(self, error):
-        # Handles errors in the worker thread
-        QMessageBox.warning(self, "Calculation Error", f"Error occurred furing calculation: {error}")
-        self.calculateButton.setEnabled(True)
-        self.data.clear_dfc_data()
-        self.positionLabel.setText("no data available")
-        self.plotLogo(self.figure)
-        self.canvas.draw()
-
-    # Graph tab
-    def onAddGraphOption(self):
-        # Start worker thread for graph calculations
-        self.workerThread = QThread()
-        self.worker = Worker(self.calculateGraph, None)
-        self.worker.moveToThread(self.workerThread)
-
-        self.worker.finished.connect(self.workerThread.quit)
-        self.worker.result.connect(self.handleGraphResult)  # Ensure you have a slot to handle results
-        self.worker.error.connect(self.handleGraphError)  # And error handling
-
-        self.workerThread.started.connect(self.worker.run)
-        self.workerThread.start()
-
-    def calculateGraph(self, unused):
-        option, params = self.getGraphOptions()
-
-        # Get the function
-        func_name = self.reverse_graphOptions[option]
-        func = getattr(graph, func_name)
-
-        option_name = re.sub(r'^\S+\s+', '', option) # regex to remove the PREP/GRAPH part
-        self.optionsTextbox.append(f"{self.graphStepCounter}. {option_name}: calculating, please wait...")
-
-        first_param_name = next(iter(params))
-        graph_params = {first_param_name: self.data.graph_data}
-        graph_params.update({k: v for k, v in params.items() if k != first_param_name})
-
-        graph_data = func(**graph_params)
-        return f'graph_{option.split()[0].lower()}', graph_data, option_name, graph_params
-
-    def handleGraphResult(self, result):
-        output = result[0]
-        data   = result[1]
-        option = result[2]
-        params = result[3]
-
-        print(f"Finished calculation for {option}, output data: {type(data)}.")
-
-        # Update self.data.graph_data or self.data.graph_out based on the result
-        if output == 'graph_prep':
-            self.data.graph_data = data
-            self.plotGraph()
-        else:
-            self.data.graph_out = data
-            self.plotMeasure(option)
-
-        # Output step and options to textbox, remove unused parameters
-        if option == 'Threshold':
-            if params.get('type') == 'absolute':
-                filtered_params = {k: v for k, v in params.items() if k != 'density'}
-            elif params.get('type') == 'density':
-                filtered_params = {k: v for k, v in params.items() if k != 'threshold'}
-        else:
-            filtered_params = params
-
-        filtered_params = {k: v for k, v in list(filtered_params.items())[1:]}
-
-        # Update the textbox with the current step and options
-        current_text = self.optionsTextbox.toPlainText()
-        lines = current_text.split('\n')
-
-        if len(lines) > 1:
-            lines[-1] = f"{self.graphStepCounter}. {option}: {filtered_params}"
-        else:
-            lines = [f"{self.graphStepCounter}. {option}: {filtered_params}"]
-
-        updated_text = '\n'.join(lines)
-        self.optionsTextbox.setPlainText(updated_text)
-
-        self.graphStepCounter += 1
-
-    def handleGraphError(self, error):
-        # Handles errors in the worker thread
-        QMessageBox.warning(self, "Calculation Error", f"Error occurred furing calculation: {error}")
-
-    """
-    Memory functions
-    """
-    # dFC tab
-    def onKeepInMemoryChecked(self, state):
-        if state == 2 and self.data.dfc_data is not None:
-            self.data_storage.add_data(self.data)
-                
-    def onClearMemory(self):
-        self.data_storage = DataStorage()
-        
-        self.figure.clear()
-        self.canvas.draw()
-        self.distributionFigure.clear()
-        self.distributionCanvas.draw()
-
-        self.calculatingLabel.setText(f"Cleared memory")
-        print("Cleared memory")
-        return
-
-    """
-    Plotting functions
-    """
-    # dFC tab
-    def plotConnectivity(self):
-        current_data = self.data.dfc_data
-        
-        if current_data is None:
-            QMessageBox.warning(self, "No calculated data available for plotting")
-            return
-
-        self.figure.clear()
-        ax = self.figure.add_subplot(111)
-        vmax = np.max(np.abs(current_data))
-
-        try:
-            current_slice = current_data[:, :, self.currentSliderValue] if len(current_data.shape) == 3 else current_data
-            self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
-        except:
-            current_slice = current_data[:, :, 0] if len(current_data.shape) == 3 else current_data
-            self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
-
-        ax.set_xlabel("ROI")
-        ax.set_ylabel("ROI")
-
-        # If we have roi names and less than 100 ROIS, we can plot the names
-        if self.data.roi_names is not None and len(self.data.roi_names) < 100:
-            ax.set_xticks(np.arange(len(self.data.roi_names)))
-            ax.set_yticks(np.arange(len(self.data.roi_names)))
-            ax.set_xticklabels(self.data.roi_names, rotation=45, fontsize=120/len(self.data.roi_names) + 2)
-            ax.set_yticklabels(self.data.roi_names,              fontsize=120/len(self.data.roi_names) + 2)
-
-        # Create the colorbar
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.15)
-        cbar = self.figure.colorbar(self.im, cax=cax)
-        cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
-
-        self.slider.setMaximum(current_data.shape[2] - 1 if len(current_data.shape) == 3 else 0)
-    
-        self.figure.set_facecolor('#E0E0E0')
-        self.figure.tight_layout()
-        self.canvas.draw()
-
-    def plotTimeSeries(self):
-        current_data = self.data.dfc_data
-
-        # Get dimensions of the data
-        if current_data is not None and current_data.ndim == 3:
-            self.rowSelector.setMaximum(current_data.shape[0] - 1)
-            self.colSelector.setMaximum(current_data.shape[1] - 1)
-
-        row = self.rowSelector.value()
-        col = self.colSelector.value()
-        self.rowSelector.show()
-        self.colSelector.show()
-
-        if current_data is not None and row < current_data.shape[0] and col < current_data.shape[1] and self.data.dfc_edge_ts is None and self.data.dfc_state_tc is None:    
-            self.timeSeriesFigure.clear()
-            ax = self.timeSeriesFigure.add_subplot(111)
-            time_series = current_data[row, col, :] if len(current_data.shape) == 3 else current_data[row, col]
-            ax.set_title(f"dFC time course between region {row} and {col}.")
-            ax.set_xlabel("time (TRs)")
-            ax.set_ylabel("dFC strength")
-            ax.plot(time_series)
-
-        elif self.data.dfc_state_tc is not None:
-            self.timeSeriesFigure.clear()
-
-            time_series = self.data.dfc_state_tc
-            num_states = len(self.data.dfc_states)
-
-            # Setup the gridspec layout
-            gs = gridspec.GridSpec(3, num_states, self.timeSeriesFigure, height_ratios=[1, 0.5, 1])
-
-            # Hite selectors
-            self.rowSelector.hide()
-            self.colSelector.hide()
-
-            # Plotting the state time course across all columns
-            ax_time_series = self.timeSeriesFigure.add_subplot(gs[0, :])
-            ax_time_series.plot(time_series)
-            ax_time_series.set_ylabel("State")
-            ax_time_series.set_title("State time course")
-            ax_time_series.set_xlabel("Time (TRs)")
-
-            # Plot the individual states
-            for col, (state, matrix) in enumerate(self.data.dfc_states.items()):
-                ax_state = self.timeSeriesFigure.add_subplot(gs[2, col])
-                ax_state.imshow(matrix, cmap='coolwarm', aspect=1)
-                ax_state.set_title(f"State {col+1}")
-                ax_state.set_xticks([])
-                ax_state.set_yticks([]) 
-
-        elif self.data.dfc_edge_ts is not None:
-            self.timeSeriesFigure.clear()
-            gs = gridspec.GridSpec(3, 1, self.timeSeriesFigure, height_ratios=[2, 0.5, 1]) # GridSpec with 3 rows and 1 column
-
-            # The first subplot occupies the 1st row
-            ax1 = self.timeSeriesFigure.add_subplot(gs[:1, 0])
-            ax1.imshow(self.data.dfc_edge_ts.T, cmap='coolwarm', aspect='auto', vmin=-1*self.data.dfc_params["vlim"], vmax=self.data.dfc_params["vlim"])
-            ax1.set_title("Edge time series")
-            ax1.set_xlabel("Time (TRs)")
-            ax1.set_ylabel("Edges")
-
-            # The second subplot occupies the 3rd row
-            ax2 = self.timeSeriesFigure.add_subplot(gs[2, 0])
-            mean_edge_values = np.mean(self.data.dfc_edge_ts.T, axis=0)
-            ax2.plot(mean_edge_values)
-            ax2.set_xlim(0, len(mean_edge_values) - 1)
-            ax2.set_title("Mean time series")
-            ax2.set_xlabel("Time (TRs)")
-            ax2.set_ylabel("Mean Edge Value")
-        
-        else:
-            # Clear the plot if the data is not available
-            self.timeSeriesFigure.clear()
-
-        self.timeSeriesFigure.set_facecolor('#E0E0E0')
-        self.timeSeriesFigure.tight_layout()
-        self.timeSeriesCanvas.draw()
-
-        return
-
-    def plotDistribution(self):
-        current_data = self.data.dfc_data
-
-        if current_data is None or not hasattr(self, 'distributionFigure'):
-            self.distributionFigure.clear()
-            return
-
-        # Clear the current distribution plot
-        self.distributionFigure.clear()
-
-        # Assuming you want to plot the distribution of values in the current slice
-        current_slice = current_data[:, :, self.slider.value()] if len(current_data.shape) == 3 else current_data
-        ax = self.distributionFigure.add_subplot(111)
-        ax.hist(current_slice.flatten(), bins=50)  # number of bins
-        ax.set_xlabel("dFC values")
-        ax.set_ylabel("frequency")
-
-        self.distributionFigure.set_facecolor('#E0E0E0')
-        self.distributionFigure.tight_layout()
-        self.distributionCanvas.draw()
-
-        return
-
-    def updateTimeSeriesPlot(self, center):
-        if self.data.dfc_data is None:
-            return
-
-        max_index = self.data.dfc_data.shape[2] - 1 if len(self.data.dfc_data.shape) == 3 else 0
-        width = 101
-
-        # Determine if we should show the entire series or a window
-        if center == 0 or center == max_index:
-            start = 0
-            end = max_index
-        else:
-            start = max(0, center - width // 2)
-            end = min(max_index, center + width // 2)
-
-        row = self.rowSelector.value()
-        col = self.colSelector.value()
-        time_series_slice = self.dfc_data['data'][row, col, start:end]
-
-        self.timeSeriesFigure.clear()
-        ax = self.timeSeriesFigure.add_subplot(111)
-        ax.plot(range(start, end), time_series_slice)
-        
-        self.timeSeriesFigure.tight_layout()
-        self.timeSeriesCanvas.draw()
-        
-        return
-
-    def onTabChanged(self):
-        self.currentTabIndex = self.tabWidget.currentIndex()
-        # index 0: Connectivity plot
-        # index 1: Time series plot
-        # index 2: Distribution plot
-        # index 3: Graph analysis
-
-        if self.data.dfc_data is None:
-            self.plotLogo(self.figure)
-            self.canvas.draw()
-            self.distributionFigure.clear()
-            self.distributionCanvas.draw()
-            self.timeSeriesFigure.clear()
-            self.timeSeriesCanvas.draw()
-            self.backLargeButton.hide()
-            self.backButton.hide()
-            self.forwardButton.hide()
-            self.forwardLargeButton.hide()
-            self.slider.hide()
-            position_text = ""
-            return
-        
-        if self.currentTabIndex == 0 or self.currentTabIndex == 2:
-            self.slider.show()
-            self.slider.setValue(self.currentSliderValue)
-            self.backLargeButton.show()
-            self.backButton.show()
-            self.forwardButton.show()
-            self.forwardLargeButton.show()
-
-            if self.data.dfc_data is not None:
-                total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
-                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
-            else:
-                position_text = "no data available"
-
-            self.positionLabel.setText(position_text)
-
-        elif self.currentTabIndex == 1:
-            self.backLargeButton.hide()
-            self.backButton.hide()
-            self.forwardButton.hide()
-            self.forwardLargeButton.hide()
-            
-            # If we have nothing to scroll though, hide some GUI elements
-            if len(self.data.dfc_data.shape) == 2 or self.data.dfc_edge_ts is not None or self.data.dfc_state_tc is not None:
-                position_text = ""
-                self.slider.hide()
-                
-                # Disable brain area selector widgets
-                for i in range(self.timeSeriesSelectorLayout.count()):    
-                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
-                    if widget is not None:
-                        widget.setVisible(False)
-
-            else:
-                self.slider.hide()
-                position_text = ""
-                #position_text = f"Use the slider to zoom in and scroll through the time series"
-                
-                # Enable brain area selector widgets
-                for i in range(self.timeSeriesSelectorLayout.count()):    
-                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
-                    if widget is not None:
-                        widget.setVisible(True)
-
-            # We have a static measure
-            if len(self.data.dfc_data.shape) == 2 and self.data.dfc_edge_ts is None and self.data.dfc_state_tc is None:
-                self.timeSeriesFigure.clear()
-                self.timeSeriesCanvas.draw()
-
-                # Disable brain area selector widgets
-                for i in range(self.timeSeriesSelectorLayout.count()):    
-                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
-                    if widget is not None:
-                        widget.setVisible(False)
-                        
-        if self.currentTabIndex == 3:
-            self.backLargeButton.hide()
-            self.backButton.hide()
-            self.forwardButton.hide()
-            self.forwardLargeButton.hide()
-            self.slider.hide()
-            position_text = ""
-            
-        self.positionLabel.setText(position_text)
-        self.update()
-
-    def onSliderValueChanged(self, value):
-        # Ensure there is data to work with
-        if self.data.dfc_data is None or self.im is None:
-            return
-        
-        if self.currentTabIndex == 0 or self.currentTabIndex == 2:
-            # Get and update the data of the imshow object
-            self.currentSliderValue = value
-            data = self.data.dfc_data
-            self.im.set_data(data[:, :, value]) if len(data.shape) == 3 else self.im.set_data(data)
-
-            vlim = np.max(np.abs(data[:, :, value])) if len(data.shape) == 3 else np.max(np.abs(data))
-            self.im.set_clim(-vlim, vlim)
-
-            # Redraw the canvas
-            self.canvas.draw()
-            self.plotDistribution()
-
-            total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
-            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
-            self.positionLabel.setText(position_text)
-
-    def onSliderButtonClicked(self):
-        # Clicking a button moves the slider by x steps
-        button = self.sender()
-        delta = 0
-
-        if button == self.backButton:
-            delta = -1
-
-        if button == self.forwardButton:
-            delta = 1
-
-        if button == self.backLargeButton:
-            delta = -10
-
-        if button == self.forwardLargeButton:
-            delta = 10
-
-        self.currentSliderValue = max(0, min(self.slider.value() + delta, self.slider.maximum()))
-        self.slider.setValue(self.currentSliderValue)
-        self.slider.update()
-        
-        self.plotConnectivity()
-        self.plotDistribution()
-
-    # Graph tab
-    def plotGraph(self):
-        current_data = self.data.graph_data
-        
-        if current_data is None:
-            QMessageBox.warning(self, "No calculated data available for plotting")
-            return
-
-        self.matrixFigure.clear()
-        ax = self.matrixFigure.add_subplot(111)
-
-        vmax = np.max(np.abs(current_data))
-        self.im = ax.imshow(current_data, cmap='coolwarm', vmin=-vmax, vmax=vmax)
-        ax.set_xlabel("ROI")
-        ax.set_ylabel("ROI")
-
-        # Create the colorbar
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.15)
-        cbar = self.matrixFigure.colorbar(self.im, cax=cax)
-        cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
-    
-        self.matrixFigure.set_facecolor('#E0E0E0')
-        self.matrixFigure.tight_layout()
-        self.matrixCanvas.draw()
-
-    def plotMeasure(self, measure):
-        self.graphFigure.clear()
-        ax = self.graphFigure.add_subplot(111)
-        
-        # Check type of the graph output data
-        if isinstance(self.data.graph_out, (np.ndarray, np.float64)):
-            if self.data.graph_out.ndim == 0:
-                # If graph_out is a single value (0D array)
-                self.graphTextbox.append(f"{measure}: {self.data.graph_out.item()}")
-            elif self.data.graph_out.ndim == 1:
-                # For a 1D array, plot a vertical lollipop plot
-                ax.stem(self.data.graph_out, linefmt="#19232d", markerfmt='o', basefmt=" ")
-                ax.set_xlabel("ROI")
-                ax.set_ylabel(measure)
-
-                # Calculate mean and variance, and update the textbox
-                mean_val = np.mean(self.data.graph_out)
-                var_val = np.var(self.data.graph_out)
-                self.graphTextbox.append(f"{measure} (mean: {mean_val:.2f}, variance: {var_val:.2f})")
-            
-            elif self.data.graph_out.ndim == 2:
-                # For a 2D array, use imshow
-                vmax = np.max(np.abs(self.data.graph_out))
-                im = ax.imshow(self.data.graph_out, cmap='coolwarm', vmin=-vmax, vmax=vmax)
-
-                # Create the colorbar
-                divider = make_axes_locatable(ax)
-                cax = divider.append_axes("right", size="5%", pad=0.15)
-                self.graphFigure.colorbar(im, cax=cax).ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
-            else:
-                self.graphTextbox.append("3D graph data not currently supported for plotting.")
-        
-        elif isinstance(self.data.graph_out, dict):
-            # Setup data for output
-            output_string = f"{measure}: "
-            output_arrays = []
-            for key, value in self.data.graph_out.items():
-                if isinstance(value, (int, float)):
-                    output_string += f"{key}: {value:.2f}, "
-                    self.plotLogo(self.graphFigure)
-
-                elif isinstance(value, np.ndarray):
-                    output_arrays.append((key, value))
-
-            # Print the output string
-            self.graphTextbox.append(output_string.strip(', '))  # Remove the trailing comma
-
-            # Plot the output arrays
-            if output_arrays:
-                self.graphFigure.clear()
-                n_subplots = len(output_arrays)
-
-                for i, (key, value) in enumerate(output_arrays):
-                    ax = self.graphFigure.add_subplot(1, n_subplots, i + 1)
-                    vmax = np.max(np.abs(value))
-                    if value.ndim == 1:
-                        # For a 1D vector, plot a vertical lollipop plot
-                        ax.stem(value, linefmt="#19232d", markerfmt='o', basefmt=" ")
-                        ax.set_xlabel("ROI")
-                        ax.set_ylabel(measure)
-
-                        # Calculate mean and variance, and update the textbox
-                        mean_val = np.mean(value)
-                        var_val = np.var(value)
-                        self.graphTextbox.append(f"{measure} (mean: {mean_val:.2f}, variance: {var_val:.2f})")
-                        
-                    elif value.ndim == 2:
-                        # For a 2D array, use imshow
-                        im = ax.imshow(value, cmap='coolwarm', vmin=-vmax, vmax=vmax)
-                        ax.set_title(key)
-    
-                        # Create the colorbar
-                        divider = make_axes_locatable(ax)
-                        cax = divider.append_axes("right", size="5%", pad=0.15)
-                        cbar = self.graphFigure.colorbar(im, cax=cax)
-                        cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
-  
-                    else:
-                        self.graphTextbox.append("Graph output data is not in expected format.")
-
-                    ax.set_title(key)
-        
-        else:
-            self.graphTextbox.append("Graph output data is not in expected format.")
-
-        # Draw the plot
-        self.graphFigure.set_facecolor('#E0E0E0')
-        self.graphFigure.tight_layout()
-        self.graphCanvas.draw()
-        
-        return
-    
-    # Shared tab
-    def plotLogo(self, figure=None):
-        with pkg_resources.path("comet.resources.img", "logo.png") as file_path:
-            logo = imread(file_path)
-
-        figure.clear()
-        ax = figure.add_subplot(111)
-        ax.set_axis_off()
-        ax.imshow(logo)
-
-        figure.set_facecolor('#f4f1f6')
-        figure.tight_layout()
 
 """
 Run the application
