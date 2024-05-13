@@ -1273,8 +1273,9 @@ class App(QMainWindow):
             return
 
     def extractTimeSeries(self):
+        print("Calculating time series, please wait...")
         self.calculateBIDStextbox.setText("Calculating time series, please wait...")
-        self.update()
+        QApplication.processEvents()
 
         selected_subject = self.subjectDropdown.currentText()
         selected_task = self.taskDropdown.currentText()
@@ -1287,8 +1288,8 @@ class App(QMainWindow):
         #mask_file_ids.insert(0, "Calculate mask with nilearn")
         
         img = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz', 
-                                   subject=selected_subject.split('-')[-1], task=selected_task, run=selected_run, session=selected_session)
-        print(img)
+                                   subject=selected_subject.split('-')[-1], task=selected_task, run=selected_run, session=selected_session, space='MNI152NLin2009cAsym')
+        img = img[0] # result is a list of a single path, we get rid of the list
 
         if self.parcellationDropdown.currentText() in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
             rois, networks, labels,  = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
@@ -1304,12 +1305,15 @@ class App(QMainWindow):
         
         time_series = masker.fit_transform(img)
         
-        self.data.file_name = f"{self.niftiDropdown.currentText()}"
+        self.data.file_name = img.split('/')[-1]
         self.data.file_data = time_series
         self.data.roi_names = labels
-        self.calculateBIDStextbox.setText(f"Done calculating time series (shape {self.data.file_data.shape})")
+        self.calculateBIDStextbox.setText(f"Done calculating time series (shape {self.data.file_data.shape})\nFile: {self.data.file_name}")
         self.transposeCheckbox.setEnabled(True)
-        self.update()
+        
+        # Plot the time series
+        self.createCarpetPlot()
+        return
 
     def onBIDSSubjectChanged(self):
         # Disconnect the signal to avoid recursive calls
@@ -1447,7 +1451,6 @@ class App(QMainWindow):
     """
     Connectivity tab
     """
-
     def saveConnectivityFile(self):
         if self.data.dfc_data is None:
             QMessageBox.warning(self, "Output Error", "No dFC data available to save.")
