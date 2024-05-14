@@ -7,13 +7,16 @@ import inspect
 import subprocess
 import numpy as np
 import pandas as pd
-import nibabel as nib
-from bids import BIDSLayout
-from nilearn import datasets, maskers
 from scipy.io import loadmat, savemat
 from dataclasses import dataclass, field
 from importlib import resources as pkg_resources
 from typing import Any, Dict, get_type_hints, get_origin, Literal
+
+# Data imports
+import nibabel as nib
+from bids import BIDSLayout
+from nilearn import datasets, maskers
+from nilearn.interfaces.fmriprep import load_confounds_strategy
 
 # Plotting imports
 from matplotlib.image import imread
@@ -29,7 +32,7 @@ from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject
 from PyQt6.QtGui import QEnterEvent, QFontMetrics
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
     QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, \
-    QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QListWidget, QListWidgetItem
+    QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QGroupBox
 
 # Comet imports and state-based dFC methods from pydfc
 from . import cifti, methods, graph
@@ -400,8 +403,6 @@ class App(QMainWindow):
 
         # Add BIDS layout
         self.addBidsLayout(leftLayout)
-
-        # Add cleaning layout
 
         # Stretch to bottom
         leftLayout.addStretch()
@@ -1078,9 +1079,15 @@ class App(QMainWindow):
 
     # BIDS
     def addBidsLayout(self, leftLayout):
-        # Container widget for BIDS Layout
+        ##########################
+        # Main container widget
         self.bidsContainer = QWidget()
         self.bidsLayout = QVBoxLayout(self.bidsContainer)
+
+        ##########################
+        # File selection container
+        self.fileContainer = QGroupBox("File selection")
+        self.fileLayout = QVBoxLayout(self.fileContainer)
 
         # Subjects Dropdown with Label
         self.subjectDropdownLayout = QHBoxLayout()
@@ -1090,9 +1097,9 @@ class App(QMainWindow):
         self.subjectDropdown.currentIndexChanged.connect(self.onBIDSSubjectChanged)
         self.subjectDropdownLayout.addWidget(self.subjectLabel, 1)
         self.subjectDropdownLayout.addWidget(self.subjectDropdown, 4)
-        self.bidsLayout.addLayout(self.subjectDropdownLayout)
+        self.fileLayout.addLayout(self.subjectDropdownLayout)
 
-        # Task/ run dropdowns with Label
+        # Task/run dropdowns with Label
         self.taskDropdownLayout = QHBoxLayout()
         self.taskLabel = QLabel("Task:")
         self.taskLabel.setFixedWidth(100)
@@ -1110,7 +1117,7 @@ class App(QMainWindow):
         self.taskDropdownLayout.addWidget(self.sessionDropdown, 1)
         self.taskDropdownLayout.addWidget(self.runLabel, 1)
         self.taskDropdownLayout.addWidget(self.runDropdown, 1)
-        self.bidsLayout.addLayout(self.taskDropdownLayout)
+        self.fileLayout.addLayout(self.taskDropdownLayout)
 
         # Parcellation Dropdown with Label
         self.parcellationDropdownLayout = QHBoxLayout()
@@ -1129,30 +1136,26 @@ class App(QMainWindow):
         self.parcellationDropdownLayout.addWidget(self.parcellationDropdown, 4)
         self.parcellationDropdownLayout.addWidget(self.parcellationOptionsLabel, 1)
         self.parcellationDropdownLayout.addWidget(self.parcellationOptions, 3)
-        self.bidsLayout.addLayout(self.parcellationDropdownLayout)
+        self.fileLayout.addLayout(self.parcellationDropdownLayout)
 
-        # Mask Dropdown with Label
-        #self.maskDropdownLayout = QHBoxLayout()
-        #self.maskLabel = QLabel("Mask:")
-        #self.maskLabel.setFixedWidth(100)
-        #self.maskDropdown = QComboBox()
-        #self.maskDropdownLayout.addWidget(self.maskLabel, 1)
-        #self.maskDropdownLayout.addWidget(self.maskDropdown, 4)
-        #self.bidsLayout.addLayout(self.maskDropdownLayout)
-
-        # Confounds layout
-        self.confoundLayout = QHBoxLayout()
-        self.confoundLabel = QLabel("Confounds:")
-        self.confoundLabel.setFixedWidth(100)
-        self.confoundList = QListWidget(self)
-        self.confoundLayout.addWidget(self.confoundLabel, 1)
-        self.confoundLayout.addWidget(self.confoundList, 4)
-        self.bidsLayout.addLayout(self.confoundLayout)
+        ##############################
+        # Confound selection container
+        confoundsContainer = QGroupBox("Confounds")
+        confoundsLayout = QVBoxLayout(confoundsContainer)
+        confoundsStrategyWidget = self.loadConfounds()
+        confoundsLayout.addWidget(confoundsStrategyWidget)
+        
+        ####################
+        # Combine containers
+        self.bidsLayout.addWidget(self.fileContainer)
+        self.bidsLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        self.bidsLayout.addWidget(confoundsContainer)
 
         # Stretch to fill empty space
         self.bidsLayout.addStretch()
 
-        # Time Series Calculation Button with Label
+        ####################
+        # Calculation button
         self.calculateBIDSButton = QPushButton('Extract time series')
         self.calculateBIDSButton.clicked.connect(self.extractTimeSeries)
         self.bidsLayout.addWidget(self.calculateBIDSButton)
@@ -1282,33 +1285,31 @@ class App(QMainWindow):
         selected_session = self.sessionDropdown.currentText()
         selected_run = self.runDropdown.currentText()
 
-        #mask_files = self.bids_layout.get(return_type='file', suffix='mask', extension='nii.gz')
-        #pattern = r"^\\(.+\\)*(.+)\.(.+)$"
-        #mask_file_ids = [re.search(pattern, filename).group(1) if re.search(pattern, filename) else None for filename in mask_files]
-        #mask_file_ids.insert(0, "Calculate mask with nilearn")
-        
         img = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz', 
                                    subject=selected_subject.split('-')[-1], task=selected_task, run=selected_run, session=selected_session, space='MNI152NLin2009cAsym')
         img = img[0] # result is a list of a single path, we get rid of the list
+        
+        # Get the confounds and mask
+        confounds, sample_mask = load_confounds_strategy(img, strategy='simple')
 
         if self.parcellationDropdown.currentText() in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
             rois, networks, labels,  = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
-            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample",)
+            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", confounds=confounds, mask_img=sample_mask)
         
         elif self.parcellationDropdown.currentText() == "Power et al. (2011)":
             rois = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
-            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample",)
+            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", confounds=confounds, mask_img=sample_mask)
         
         else:
             atlas, labels = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
-            masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize="zscore_sample",)
+            masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize="zscore_sample", confounds=confounds, mask_img=sample_mask)
         
         time_series = masker.fit_transform(img)
         
         self.data.file_name = img.split('/')[-1]
         self.data.file_data = time_series
         self.data.roi_names = labels
-        self.calculateBIDStextbox.setText(f"Done calculating time series (shape {self.data.file_data.shape})\nFile: {self.data.file_name}")
+        self.calculateBIDStextbox.setText(f"Done calculating time series. Shape: {self.data.file_data.shape}\nFile: {self.data.file_name}")
         self.transposeCheckbox.setEnabled(True)
         
         # Plot the time series
@@ -1329,7 +1330,6 @@ class App(QMainWindow):
         self.runDropdown.setEnabled(False)
         self.parcellationDropdown.setEnabled(False)
         self.parcellationOptions.setEnabled(False)
-        self.confoundList.setEnabled(False)
 
         QApplication.processEvents()
         
@@ -1348,9 +1348,6 @@ class App(QMainWindow):
         self.sessionDropdown.addItems(session_id)
         self.runDropdown.addItems(run_id)
 
-        # Confounds
-        self.loadConfounds(['confound1', 'confound2', 'confound3'])
-
         # Reconnect the signal
         self.subjectDropdown.currentIndexChanged.connect(self.onBIDSSubjectChanged)
         self.calculateBIDStextbox.setText("No time series data extracted yet.")
@@ -1360,7 +1357,6 @@ class App(QMainWindow):
         self.runDropdown.setEnabled(True)
         self.parcellationDropdown.setEnabled(True)
         self.parcellationOptions.setEnabled(True)
-        self.confoundList.setEnabled(True)
 
         return
 
@@ -1404,13 +1400,55 @@ class App(QMainWindow):
         self.parcellationOptions.show()
         return
 
-    def loadConfounds(self, confounds):
-        self.confoundList.clear()
-        for confound in confounds:
-            item = QListWidgetItem(confound)
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-            item.setCheckState(Qt.CheckState.Unchecked)
-            self.confoundList.addItem(item)
+    def loadConfounds(self):
+        confoundsWidget = QWidget()
+        layout = QVBoxLayout(confoundsWidget)
+        
+        # Retrieve the function signature
+        sig = inspect.signature(load_confounds_strategy)
+        type_hints = get_type_hints(load_confounds_strategy)
+
+        for name, param in sig.parameters.items():
+            param_type = type_hints.get(name)
+            default = param.default if param.default != inspect.Parameter.empty else None
+            
+            # Create a horizontal layout for the label and the input widget
+            h_layout = QHBoxLayout()
+            label = QLabel(f"{name}:")
+            label.setFixedWidth(125)
+            h_layout.addWidget(label)
+            
+            # Determine widget based on the type hint
+            if param_type in [int, float]:
+                if param_type is int:
+                    input_widget = QSpinBox()
+                elif param_type is float:
+                    input_widget = QDoubleSpinBox()
+                
+                if default is not None:
+                    input_widget.setValue(default)
+
+            elif param_type is bool:
+                input_widget = QCheckBox()
+                input_widget.setChecked(default if default is not None else False)
+
+            elif param_type is str:
+                input_widget = QLineEdit()
+                if default is not None:
+                    input_widget.setText(default)
+
+            elif hasattr(param_type, '__origin__') and param_type.__origin__ is list:
+                input_widget = QComboBox()
+                if default:
+                    input_widget.addItems(default)
+
+            else:
+                input_widget = QLineEdit()  # Fallback widget
+
+            h_layout.addWidget(input_widget)
+            layout.addLayout(h_layout)
+
+        return confoundsWidget
 
     # Plotting
     def createCarpetPlot(self):
