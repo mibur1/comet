@@ -1404,47 +1404,45 @@ class App(QMainWindow):
         confoundsWidget = QWidget()
         layout = QVBoxLayout(confoundsWidget)
         
-        # Retrieve the function signature
-        sig = inspect.signature(load_confounds_strategy)
-        type_hints = get_type_hints(load_confounds_strategy)
+        confound_options = {"img_file":             self.data.file_name,
+                            "strategy":             ["motion", "high_pass", "wm_csf", "global_signal", "compcor", "ica_aroma", "scrub", "non_steady_state"],
+                            "motion":               ["basic", "power2", "derivatives", "full"],
+                            "wm_csf":               ["basic", "power2", "derivatives", "full"],
+                            "global_signal":        ["basic", "power2", "derivatives", "full"],
+                            "scrub":                5,
+                            "fd_threshold":         0.5,
+                            "std_dvars_threshold":  1.5,
+                            "compcor":              ["anat_combined", "anat_separated", "temporal", "temporal_anat_combined", "temporal_anat_separated"],
+                            "n_compcor":            ["all", "1", "2", "3", "TODO"],
+                            "ica_aroma":            ["full", "basic"],
+                            "demean":               ["True", "False"]
+        }
 
-        for name, param in sig.parameters.items():
-            param_type = type_hints.get(name)
-            default = param.default if param.default != inspect.Parameter.empty else None
-            
-            # Create a horizontal layout for the label and the input widget
+        for key, param in confound_options.items():
             h_layout = QHBoxLayout()
-            label = QLabel(f"{name}:")
+            label = QLabel(f"{key}:")
             label.setFixedWidth(125)
             h_layout.addWidget(label)
             
-            # Determine widget based on the type hint
-            if param_type in [int, float]:
-                if param_type is int:
-                    input_widget = QSpinBox()
-                elif param_type is float:
-                    input_widget = QDoubleSpinBox()
-                
-                if default is not None:
-                    input_widget.setValue(default)
-
-            elif param_type is bool:
-                input_widget = QCheckBox()
-                input_widget.setChecked(default if default is not None else False)
-
-            elif param_type is str:
-                input_widget = QLineEdit()
-                if default is not None:
-                    input_widget.setText(default)
-
-            elif hasattr(param_type, '__origin__') and param_type.__origin__ is list:
+            if type(param) == list:
                 input_widget = QComboBox()
-                if default:
-                    input_widget.addItems(default)
+                input_widget.addItems(param)
 
+            elif type(param) == int:
+                input_widget = QSpinBox()
+                input_widget.setRange(0, 999)
+                input_widget.setValue(param)
+            elif type(param) == float:
+                input_widget = QDoubleSpinBox()
+                input_widget.setRange(0.0, 999.0)
+                input_widget.setValue(param)
+            elif type(param) == str:
+                input_widget = QTextEdit()
+                input_widget.setText(param)
+                input_widget.setEnabled(False)
             else:
-                input_widget = QLineEdit()  # Fallback widget
-
+                input_widget = QLineEdit()
+            
             h_layout.addWidget(input_widget)
             layout.addLayout(h_layout)
 
