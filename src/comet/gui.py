@@ -16,7 +16,7 @@ from typing import Any, Dict, get_type_hints, get_origin, Literal
 import nibabel as nib
 from bids import BIDSLayout
 from nilearn import datasets, maskers
-from nilearn.interfaces.fmriprep import load_confounds_strategy
+from nilearn.interfaces.fmriprep import load_confounds
 
 # Plotting imports
 from matplotlib.image import imread
@@ -147,6 +147,34 @@ class DataStorage:
             if data_obj.dfc_name == methodName and data_obj.dfc_data is not None:
                 return copy.deepcopy(data_obj) # IMPORTANT: deep copy
         return None
+
+class CompcorSpinBox(QSpinBox):
+    def __init__(self, parent=None):
+        super(CompcorSpinBox, self).__init__(parent)
+        self.all_selected = False
+        self.setSpecialValueText("all")
+        self.setRange(0, 999)
+        self.valueChanged.connect(self.check_all)
+
+    def check_all(self, value):
+        if value == 0:
+            self.all_selected = True
+        else:
+            self.all_selected = False
+
+    def value(self):
+        if self.all_selected:
+            return "all"
+        else:
+            return super(CompcorSpinBox, self).value()
+
+    def set_value(self, value):
+        if value == "all":
+            self.setValue(0)
+            self.all_selected = True
+        else:
+            self.setValue(value)
+            self.all_selected = False
 
 class App(QMainWindow):
     """
@@ -1275,11 +1303,7 @@ class App(QMainWindow):
             QMessageBox.warning(self, "Error", "Atlas not found")
             return
 
-    def extractTimeSeries(self):
-        print("Calculating time series, please wait...")
-        self.calculateBIDStextbox.setText("Calculating time series, please wait...")
-        QApplication.processEvents()
-
+    def getNifti(self):
         selected_subject = self.subjectDropdown.currentText()
         selected_task = self.taskDropdown.currentText()
         selected_session = self.sessionDropdown.currentText()
@@ -1287,10 +1311,21 @@ class App(QMainWindow):
 
         img = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz', 
                                    subject=selected_subject.split('-')[-1], task=selected_task, run=selected_run, session=selected_session, space='MNI152NLin2009cAsym')
-        img = img[0] # result is a list of a single path, we get rid of the list
         
-        # Get the confounds and mask
-        confounds, sample_mask = load_confounds_strategy(img, strategy='simple')
+        # Set the file name
+        self.data.file_name = img[0] # result is a list of a single path, we get rid of the list
+        return 
+
+    def extractTimeSeries(self):
+        print("Calculating time series, please wait...")
+        self.calculateBIDStextbox.setText("Calculating time series, please wait...")
+        QApplication.processEvents()
+
+        # Get img and confounds
+        img = self.data.file_name
+        confounds, sample_mask = load_confounds(img,)
+        confounds = None
+        sample_mask = None
 
         if self.parcellationDropdown.currentText() in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
             rois, networks, labels,  = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
@@ -1304,12 +1339,13 @@ class App(QMainWindow):
             atlas, labels = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
             masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize="zscore_sample", confounds=confounds, mask_img=sample_mask)
         
+        # Extract time series
         time_series = masker.fit_transform(img)
         
-        self.data.file_name = img.split('/')[-1]
+        # Set data and gui elements
         self.data.file_data = time_series
         self.data.roi_names = labels
-        self.calculateBIDStextbox.setText(f"Done calculating time series. Shape: {self.data.file_data.shape}\nFile: {self.data.file_name}")
+        self.calculateBIDStextbox.setText(f"Done calculating time series. Shape: {self.data.file_data.shape}\nFile: {self.data.file_name.split('/')[-1]}")
         self.transposeCheckbox.setEnabled(True)
         
         # Plot the time series
@@ -1352,12 +1388,14 @@ class App(QMainWindow):
         self.subjectDropdown.currentIndexChanged.connect(self.onBIDSSubjectChanged)
         self.calculateBIDStextbox.setText("No time series data extracted yet.")
 
+        # Set GUI elements
         self.taskDropdown.setEnabled(True)
         self.sessionDropdown.setEnabled(True)
         self.runDropdown.setEnabled(True)
         self.parcellationDropdown.setEnabled(True)
         self.parcellationOptions.setEnabled(True)
 
+        self.getNifti() # get currently selected image
         return
 
     def onBIDSAtlasSelected(self):
@@ -1404,8 +1442,7 @@ class App(QMainWindow):
         confoundsWidget = QWidget()
         layout = QVBoxLayout(confoundsWidget)
         
-        confound_options = {"img_file":             self.data.file_name,
-                            "strategy":             ["motion", "high_pass", "wm_csf", "global_signal", "compcor", "ica_aroma", "scrub", "non_steady_state"],
+        confound_options = {"strategy":             ["motion", "high_pass", "wm_csf", "global_signal", "compcor", "ica_aroma", "scrub", "non_steady_state"],
                             "motion":               ["basic", "power2", "derivatives", "full"],
                             "wm_csf":               ["basic", "power2", "derivatives", "full"],
                             "global_signal":        ["basic", "power2", "derivatives", "full"],
@@ -1413,7 +1450,7 @@ class App(QMainWindow):
                             "fd_threshold":         0.5,
                             "std_dvars_threshold":  1.5,
                             "compcor":              ["anat_combined", "anat_separated", "temporal", "temporal_anat_combined", "temporal_anat_separated"],
-                            "n_compcor":            ["all", "1", "2", "3", "TODO"],
+                            "n_compcor":            ["all"],
                             "ica_aroma":            ["full", "basic"],
                             "demean":               ["True", "False"]
         }
@@ -1424,28 +1461,36 @@ class App(QMainWindow):
             label.setFixedWidth(125)
             h_layout.addWidget(label)
             
-            if type(param) == list:
-                input_widget = QComboBox()
-                input_widget.addItems(param)
-
-            elif type(param) == int:
-                input_widget = QSpinBox()
-                input_widget.setRange(0, 999)
-                input_widget.setValue(param)
-            elif type(param) == float:
-                input_widget = QDoubleSpinBox()
-                input_widget.setRange(0.0, 999.0)
-                input_widget.setValue(param)
-            elif type(param) == str:
-                input_widget = QTextEdit()
-                input_widget.setText(param)
-                input_widget.setEnabled(False)
+            # Special case
+            if key == "n_compcor":
+                input_widget = CompcorSpinBox()
+            elif key == "strategy":
+                # TODO Create list with checkboxes
+                pass
+            # Normal parameters with options from confound_options dict
             else:
-                input_widget = QLineEdit()
+                if type(param) == list:
+                    input_widget = QComboBox()
+                    input_widget.addItems(param)
+                elif type(param) == int:
+                    input_widget = QSpinBox()
+                    input_widget.setRange(0, 999)
+                    input_widget.setValue(param)
+                elif type(param) == float:
+                    input_widget = QDoubleSpinBox()
+                    input_widget.setRange(0.0, 999.0)
+                    input_widget.setValue(param)
+                elif type(param) == str:
+                    input_widget = QTextEdit()
+                    input_widget.setText(param)
+                    input_widget.setEnabled(False)
+                
+                else:
+                    input_widget = QLineEdit("ERROR: Unsupported type")
             
             h_layout.addWidget(input_widget)
             layout.addLayout(h_layout)
-
+            
         return confoundsWidget
 
     # Plotting
