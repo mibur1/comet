@@ -1323,12 +1323,28 @@ class App(QMainWindow):
         # Nifti file
         img = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz', 
                                    subject=selected_subject.split('-')[-1], task=selected_task, run=selected_run, session=selected_session, space='MNI152NLin2009cAsym')
-        self.data.file_name = img[0] # result is a list of a single path, we get rid of the list
         
+        # result is a list of a single path, we get rid of the list
+        if img:
+            self.data.file_name = img[0]
+        else:
+            self.data.file_name = None
+
         # Mask file
         mask = self.bids_layout.get(return_type='file', suffix='mask', extension='nii.gz', 
                                    subject=selected_subject.split('-')[-1], task=selected_task, run=selected_run, session=selected_session, space='MNI152NLin2009cAsym')
-        self.mask_name = mask[0]
+        if mask:
+            self.mask_name = mask[0]
+        else:
+            self.mask_name = None
+
+        # AROMA file
+        aroma = self.bids_layout.get(subject=selected_subject.split('-')[-1], session=selected_session, task=selected_task, run=selected_run, suffix='bold', desc='smoothAROMAnonaggr', extension='nii.gz', return_type='file')
+        if aroma:
+            self.aroma_file = aroma[0]
+        else:
+            self.aroma_file = None
+            self.strategy_checkboxes["ica_aroma"].setEnabled(False)
 
         return 
 
@@ -1413,7 +1429,7 @@ class App(QMainWindow):
         if current_session in session_ids:
             self.sessionDropdown.setCurrentText(current_session)
 
-        # 3. Available runs for the selected subject, sessions, and task
+        # 4. Available runs for the selected subject, sessions, and task
         runs = self.bids_layout.get_runs(subject=subject_id, session=current_session, task=current_task)
         current_run = self.runDropdown.currentText() if (self.runDropdown.count() > 0 and self.runDropdown.currentText() in runs) else str(runs[0])
         run_ids = [f"{run}" for run in runs]
@@ -1422,6 +1438,14 @@ class App(QMainWindow):
         self.runDropdown.addItems(run_ids)
         if current_run in run_ids:
             self.runDropdown.setCurrentText(current_run)
+
+        # 5. ICA-AROMA files
+        aroma_files = self.bids_layout.get(subject=subject_id, session=current_session, task=current_task, suffix='bold', desc='smoothAROMAnonaggr', extension='nii.gz', return_type='file')
+        if aroma_files:
+            self.aroma_file = aroma_files[0]
+        else:
+            self.aroma_file = None
+
         """
         End of hierarchical scan selection
         """
@@ -1583,6 +1607,10 @@ class App(QMainWindow):
                     self.showCleaningLayout(self.layouts[strategy])
                 else:
                     self.hideCleaningLayout(self.layouts[strategy])
+
+            # Compcor requires highpass
+            if self.strategy_checkboxes["compcor"].isChecked():
+                self.strategy_checkboxes["high_pass"].setChecked(True)
 
         # Handle special cases for scrub and compcor
         if "scrub" in self.strategy_checkboxes and self.strategy_checkboxes["scrub"].isChecked():
