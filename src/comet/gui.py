@@ -76,6 +76,7 @@ class Data:
     # File variables
     file_name:     str        = field(default=None)         # data file name
     file_data:     np.ndarray = field(default=None)         # input time series data  
+    sample_mask:   np.ndarray = field(default=None)         # mask for time series data
 
     # DFC variables
     dfc_instance:  Any        = field(default=None)         # instance of the dFC class
@@ -1122,7 +1123,6 @@ class App(QMainWindow):
         self.subjectLabel = QLabel("Subject:")
         self.subjectLabel.setFixedWidth(100)
         self.subjectDropdown = QComboBox()
-        self.subjectDropdown.currentIndexChanged.connect(self.onBIDSSubjectChanged)
         self.subjectDropdownLayout.addWidget(self.subjectLabel, 1)
         self.subjectDropdownLayout.addWidget(self.subjectDropdown, 4)
         self.fileLayout.addLayout(self.subjectDropdownLayout)
@@ -1157,7 +1157,6 @@ class App(QMainWindow):
         self.parcellationOptions = QComboBox()
         self.atlasnames = ["AAL template (SPM 12)", "BASC multiscale", "Destrieux et al. (2009)", "Pauli et al. (2017)", "Schaefer et al. (2018)", 
                            "Talairach atlas", "Yeo (2011) networks", "Dosenbach et al. (2010)", "Power et al. (2011)", "Seitzmann et al. (2018)"]
-        self.parcellationDropdown.currentIndexChanged.connect(self.onBIDSAtlasSelected)
         self.parcellationDropdown.addItems(self.atlasnames)
         
         self.parcellationDropdownLayout.addWidget(self.parcellationLabel, 1)
@@ -1165,6 +1164,15 @@ class App(QMainWindow):
         self.parcellationDropdownLayout.addWidget(self.parcellationOptionsLabel, 1)
         self.parcellationDropdownLayout.addWidget(self.parcellationOptions, 3)
         self.fileLayout.addLayout(self.parcellationDropdownLayout)
+
+
+        # Connect dropdown changes to handler function
+        self.subjectDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
+        self.taskDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
+        self.sessionDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
+        self.runDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
+        self.parcellationDropdown.currentIndexChanged.connect(self.onBIDSAtlasSelected)
+        self.parcellationOptions.currentIndexChanged.connect(self.onBIDSLayoutChanged)
 
         ##############################
         # Confound selection container
@@ -1239,7 +1247,7 @@ class App(QMainWindow):
         self.subjectDropdown.addItems(sub_id)
         
         # Update the GUI
-        self.onBIDSSubjectChanged()
+        self.onBIDSLayoutChanged()
 
         return
     
@@ -1309,11 +1317,16 @@ class App(QMainWindow):
         selected_session = self.sessionDropdown.currentText()
         selected_run = self.runDropdown.currentText()
 
+        # Nifti file
         img = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz', 
                                    subject=selected_subject.split('-')[-1], task=selected_task, run=selected_run, session=selected_session, space='MNI152NLin2009cAsym')
-        
-        # Set the file name
         self.data.file_name = img[0] # result is a list of a single path, we get rid of the list
+        
+        # Mask file
+        mask = self.bids_layout.get(return_type='file', suffix='mask', extension='nii.gz', 
+                                   subject=selected_subject.split('-')[-1], task=selected_task, run=selected_run, session=selected_session, space='MNI152NLin2009cAsym')
+        self.mask_name = mask[0]
+
         return 
 
     def extractTimeSeries(self):
@@ -1324,43 +1337,45 @@ class App(QMainWindow):
         # Get img and confounds
         img = self.data.file_name
         args = self.collectCleaningArguments()
-        print(args)
         confounds, sample_mask = load_confounds(img, **args)
 
         if self.parcellationDropdown.currentText() in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
             rois, networks, labels,  = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
-            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", confounds=confounds, mask_img=sample_mask)
+            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", confounds=confounds, mask_img=self.mask_name)
         
         elif self.parcellationDropdown.currentText() == "Power et al. (2011)":
             rois = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
-            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", confounds=confounds, mask_img=sample_mask)
+            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", confounds=confounds, mask_img=self.mask_name)
         
         else:
             atlas, labels = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
-            masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize="zscore_sample", confounds=confounds, mask_img=sample_mask)
+            masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize="zscore_sample", confounds=confounds, mask_img=self.mask_name)
         
         # Extract time series
         time_series = masker.fit_transform(img)
         
         # Set data and gui elements
         self.data.file_data = time_series
+        self.data.sample_mask = sample_mask
         self.data.roi_names = labels
         self.calculateBIDStextbox.setText(f"Done calculating time series. Shape: {self.data.file_data.shape}\nFile: {self.data.file_name.split('/')[-1]}")
+        print(f"Done calculating time series. Shape: {self.data.file_data.shape}\nFile: {self.data.file_name.split('/')[-1]}")
         self.transposeCheckbox.setEnabled(True)
         
         # Plot the time series
         self.createCarpetPlot()
         return
 
-    def onBIDSSubjectChanged(self):
+    def onBIDSLayoutChanged(self):
         # Disconnect the signal to avoid recursive calls
-        self.subjectDropdown.currentIndexChanged.disconnect(self.onBIDSSubjectChanged)
+        self.subjectDropdown.currentIndexChanged.disconnect(self.onBIDSLayoutChanged)
+        self.taskDropdown.currentIndexChanged.disconnect(self.onBIDSLayoutChanged)
+        self.sessionDropdown.currentIndexChanged.disconnect(self.onBIDSLayoutChanged)
+        self.runDropdown.currentIndexChanged.disconnect(self.onBIDSLayoutChanged)
+        self.parcellationDropdown.currentIndexChanged.disconnect(self.onBIDSAtlasSelected)
+        self.parcellationOptions.currentIndexChanged.disconnect(self.onBIDSLayoutChanged)
 
-        # Clear previous information and disable inputs while loading
-        self.taskDropdown.clear()
-        self.sessionDropdown.clear()
-        self.runDropdown.clear()
-
+        # Disable inputs while loading
         self.taskDropdown.setEnabled(False)
         self.sessionDropdown.setEnabled(False)
         self.runDropdown.setEnabled(False)
@@ -1369,34 +1384,63 @@ class App(QMainWindow):
 
         QApplication.processEvents()
         
-        # Get data for subject
+        """
+        The following lines of code get the evailable scans in an hierarchical way
+        A full subjects list was previously initialized and doesnt change. Depending on the chosen task, the available sessions and runs are updated.
+        """
+        # 1. Get selected subject and sessions
         selected_subject = self.subjectDropdown.currentText()
         subject_id = selected_subject.split('-')[-1]
 
+        # 2. Available tasks for the selected subject
         tasks = self.bids_layout.get_tasks(subject=subject_id)
-        sessions = self.bids_layout.get_sessions(subject=subject_id)
-        runs = self.bids_layout.get_runs(subject=subject_id)
+        current_task = self.taskDropdown.currentText() if self.taskDropdown.count() > 0 else tasks[0]
 
-        session_id = [f"{session}" for session in sessions]
-        run_id = [f"{run}" for run in runs]
-        
+        self.taskDropdown.clear()
         self.taskDropdown.addItems(tasks)
-        self.sessionDropdown.addItems(session_id)
-        self.runDropdown.addItems(run_id)
+        if current_task in tasks:
+            self.taskDropdown.setCurrentText(current_task)
+        
+        # 3. Available sessions for the selected subject and task
+        sessions = self.bids_layout.get_sessions(subject=subject_id, task=current_task)
+        current_session = self.sessionDropdown.currentText() if (self.sessionDropdown.count() > 0 and self.sessionDropdown.currentText() in sessions) else str(sessions[0])
+        session_ids = [f"{session}" for session in sessions]
 
-        # Reconnect the signal
-        self.subjectDropdown.currentIndexChanged.connect(self.onBIDSSubjectChanged)
-        self.calculateBIDStextbox.setText("No time series data extracted yet.")
+        self.sessionDropdown.clear()
+        self.sessionDropdown.addItems(session_ids)
+        if current_session in session_ids:
+            self.sessionDropdown.setCurrentText(current_session)
 
-        # Set GUI elements
+        # 3. Available runs for the selected subject, sessions, and task
+        runs = self.bids_layout.get_runs(subject=subject_id, session=current_session, task=current_task)
+        current_run = self.runDropdown.currentText() if (self.runDropdown.count() > 0 and self.runDropdown.currentText() in runs) else str(runs[0])
+        run_ids = [f"{run}" for run in runs]
+
+        self.runDropdown.clear()
+        self.runDropdown.addItems(run_ids)
+        if current_run in run_ids:
+            self.runDropdown.setCurrentText(current_run)
+        """
+        End of hierarchical scan selection
+        """
+
+        # Enable GUI elements
         self.taskDropdown.setEnabled(True)
         self.sessionDropdown.setEnabled(True)
         self.runDropdown.setEnabled(True)
         self.parcellationDropdown.setEnabled(True)
         self.parcellationOptions.setEnabled(True)
 
-        self.getNifti() # get currently selected image
-        return
+        self.getNifti()  # get currently selected image
+        self.calculateBIDStextbox.setText("No time series data extracted yet.")
+
+        # Reconnect the signals
+        self.subjectDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
+        self.taskDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
+        self.sessionDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
+        self.runDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
+        self.parcellationDropdown.currentIndexChanged.connect(self.onBIDSAtlasSelected)
+        self.parcellationOptions.currentIndexChanged.connect(self.onBIDSLayoutChanged)
 
     def onBIDSAtlasSelected(self):
         self.parcellationOptions.clear()
@@ -1455,7 +1499,6 @@ class App(QMainWindow):
             "std_dvars_threshold": 1.5,
         }
 
-        self.dynamic_options = {}
         self.layouts = {}  # Dictionary to hold the layouts for each strategy
 
         for key, param in self.confound_options.items():
@@ -1519,7 +1562,7 @@ class App(QMainWindow):
             
             # Store the layout in the dictionary
             self.layouts[key] = h_layout
-            if key != "strategy" and key != "demean":
+            if key != "strategy":
                 self.hideCleaningLayout(h_layout)  # Initially hide all options except 'demean'
             layout.addLayout(h_layout)
 
@@ -1569,13 +1612,12 @@ class App(QMainWindow):
     def collectCleaningArguments(self):
         strategy_list = []
         for strategy, checkbox in self.strategy_checkboxes.items():
-            if checkbox.isChecked():
+            if checkbox.isChecked() and strategy != "demean":
                 strategy_list.append(strategy)
 
         args = {}
         args["strategy"] = strategy_list
-
-        # Comment: high_pass and non_steady_state don't need to be specified as long as they are in the strategy list
+        
         for strategy in strategy_list:
             if strategy == "motion":
                 args[strategy] = self.layouts[strategy].itemAt(1).widget().currentText()
@@ -1592,10 +1634,10 @@ class App(QMainWindow):
                 args[strategy] = self.layouts[strategy].itemAt(1).widget().value()
                 args["fd_threshold"] = self.layouts["fd_threshold"].itemAt(1).widget().value()
                 args["std_dvars_threshold"] = self.layouts["std_dvars_threshold"].itemAt(1).widget().value()
-            elif strategy == "demean":
-                args[strategy] = True if self.layouts[strategy].itemAt(1).widget().isChecked() else False
 
-        print(args)
+        # Demean is not a strategy, but a separate option
+        args["demean"] = True if self.strategy_checkboxes["demean"].isChecked() else False
+
         return args
     
     # Plotting
@@ -1604,9 +1646,14 @@ class App(QMainWindow):
         self.boldFigure.clear()
         ax = self.boldFigure.add_subplot(111)
 
-        # Plot the data
         if self.data.file_data is not None:
-            im = ax.imshow(self.data.file_data, cmap='Grays', aspect='auto')
+            if self.data.sample_mask is not None:
+                ts = self.data.file_data[self.data.sample_mask]
+            else:
+                ts = self.data.file_data
+            
+            # Plot the data
+            im = ax.imshow(ts, cmap='Grays', aspect='auto')
             ax.set_xlabel("ROIs")
             ax.set_ylabel("TRs")
 
