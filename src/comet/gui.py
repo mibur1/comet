@@ -31,7 +31,7 @@ import qdarkstyle
 from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject
 from PyQt6.QtGui import QEnterEvent, QFontMetrics
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
-    QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, \
+    QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, QGridLayout, \
     QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QGroupBox
 
 # Comet imports and state-based dFC methods from pydfc
@@ -162,7 +162,7 @@ class CompcorSpinBox(QSpinBox):
         else:
             self.all_selected = False
 
-    def value(self):
+    def get_value(self):
         if self.all_selected:
             return "all"
         else:
@@ -1168,7 +1168,7 @@ class App(QMainWindow):
 
         ##############################
         # Confound selection container
-        confoundsContainer = QGroupBox("Confounds")
+        confoundsContainer = QGroupBox("Cleaning options")
         confoundsLayout = QVBoxLayout(confoundsContainer)
         confoundsStrategyWidget = self.loadConfounds()
         confoundsLayout.addWidget(confoundsStrategyWidget)
@@ -1323,9 +1323,9 @@ class App(QMainWindow):
 
         # Get img and confounds
         img = self.data.file_name
-        confounds, sample_mask = load_confounds(img,)
-        confounds = None
-        sample_mask = None
+        args = self.collectCleaningArguments()
+        print(args)
+        confounds, sample_mask = load_confounds(img, **args)
 
         if self.parcellationDropdown.currentText() in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
             rois, networks, labels,  = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
@@ -1442,57 +1442,162 @@ class App(QMainWindow):
         confoundsWidget = QWidget()
         layout = QVBoxLayout(confoundsWidget)
         
-        confound_options = {"strategy":             ["motion", "high_pass", "wm_csf", "global_signal", "compcor", "ica_aroma", "scrub", "non_steady_state"],
-                            "motion":               ["basic", "power2", "derivatives", "full"],
-                            "wm_csf":               ["basic", "power2", "derivatives", "full"],
-                            "global_signal":        ["basic", "power2", "derivatives", "full"],
-                            "scrub":                5,
-                            "fd_threshold":         0.5,
-                            "std_dvars_threshold":  1.5,
-                            "compcor":              ["anat_combined", "anat_separated", "temporal", "temporal_anat_combined", "temporal_anat_separated"],
-                            "n_compcor":            ["all"],
-                            "ica_aroma":            ["full", "basic"],
-                            "demean":               ["True", "False"]
+        self.confound_options = {
+            "strategy": ["motion", "wm_csf", "compcor", "global_signal", "high_pass", "ica_aroma", "scrub", "demean"],
+            "motion": ["full", "basic", "power2", "derivatives"],
+            "wm_csf": ["basic", "power2", "derivatives", "full"],
+            "compcor": ["anat_combined", "anat_separated", "temporal", "temporal_anat_combined", "temporal_anat_separated"],
+            "n_compcor": ["all"],
+            "global_signal": ["basic", "power2", "derivatives", "full"],
+            "ica_aroma": ["full", "basic"],
+            "scrub": 5,
+            "fd_threshold": 0.5,
+            "std_dvars_threshold": 1.5,
         }
 
-        for key, param in confound_options.items():
+        self.dynamic_options = {}
+        self.layouts = {}  # Dictionary to hold the layouts for each strategy
+
+        for key, param in self.confound_options.items():
             h_layout = QHBoxLayout()
             label = QLabel(f"{key}:")
-            label.setFixedWidth(125)
+            label.setFixedWidth(145)
             h_layout.addWidget(label)
             
-            # Special case
+            # Special cases
             if key == "n_compcor":
                 input_widget = CompcorSpinBox()
+                input_widget.setObjectName(f"{key}_input")
+                h_layout.addWidget(input_widget)
+                h_layout.setObjectName("compcor")
+            elif key in ["fd_threshold", "std_dvars_threshold"]:
+                input_widget = QDoubleSpinBox() if isinstance(param, float) else QSpinBox()
+                input_widget.setRange(0.0 if isinstance(param, float) else 0, 999.0 if isinstance(param, float) else 999)
+                input_widget.setValue(param)
+                input_widget.setObjectName(f"{key}_input")
+                h_layout.addWidget(input_widget)
+                h_layout.setObjectName("scrub")
             elif key == "strategy":
-                # TODO Create list with checkboxes
-                pass
-            # Normal parameters with options from confound_options dict
+                strategy_group = QGroupBox()
+                strategy_layout = QGridLayout(strategy_group)
+                self.strategy_checkboxes = {}
+                row, col = 0, 0
+                for strategy in param:
+                    checkbox = QCheckBox(strategy)
+                    checkbox.setObjectName(strategy)
+                    checkbox.stateChanged.connect(self.updateCleaningOptions)
+                    self.strategy_checkboxes[strategy] = checkbox
+                    strategy_layout.addWidget(checkbox, row, col)
+                    col += 1
+                    if col == 4:  # Move to the next row after 4 columns
+                        col = 0
+                        row += 1
+                h_layout.addWidget(strategy_group)
+                input_widget = None
             else:
-                if type(param) == list:
+                if isinstance(param, list):
                     input_widget = QComboBox()
                     input_widget.addItems(param)
-                elif type(param) == int:
+                elif isinstance(param, int):
                     input_widget = QSpinBox()
                     input_widget.setRange(0, 999)
                     input_widget.setValue(param)
-                elif type(param) == float:
+                elif isinstance(param, float):
                     input_widget = QDoubleSpinBox()
                     input_widget.setRange(0.0, 999.0)
                     input_widget.setValue(param)
-                elif type(param) == str:
+                elif isinstance(param, str):
                     input_widget = QTextEdit()
                     input_widget.setText(param)
                     input_widget.setEnabled(False)
-                
                 else:
                     input_widget = QLineEdit("ERROR: Unsupported type")
+
+                h_layout.setObjectName(key)
+                if input_widget is not None:
+                    h_layout.addWidget(input_widget)
             
-            h_layout.addWidget(input_widget)
+            # Store the layout in the dictionary
+            self.layouts[key] = h_layout
+            if key != "strategy" and key != "demean":
+                self.hideCleaningLayout(h_layout)  # Initially hide all options except 'demean'
             layout.addLayout(h_layout)
-            
+
+        self.dynamic_container = QWidget()
+        self.dynamic_layout = QVBoxLayout(self.dynamic_container)
+        layout.addWidget(self.dynamic_container)
+
         return confoundsWidget
 
+    def updateCleaningOptions(self):
+        for strategy, checkbox in self.strategy_checkboxes.items():
+            if strategy in self.layouts:
+                if checkbox.isChecked():
+                    self.showCleaningLayout(self.layouts[strategy])
+                else:
+                    self.hideCleaningLayout(self.layouts[strategy])
+
+        # Handle special cases for scrub and compcor
+        if "scrub" in self.strategy_checkboxes and self.strategy_checkboxes["scrub"].isChecked():
+            self.showCleaningLayout(self.layouts["fd_threshold"])
+            self.showCleaningLayout(self.layouts["std_dvars_threshold"])
+        else:
+            self.hideCleaningLayout(self.layouts["fd_threshold"])
+            self.hideCleaningLayout(self.layouts["std_dvars_threshold"])
+
+        if "compcor" in self.strategy_checkboxes and self.strategy_checkboxes["compcor"].isChecked():
+            self.showCleaningLayout(self.layouts["n_compcor"])
+        else:
+            self.hideCleaningLayout(self.layouts["n_compcor"])
+
+    def showCleaningLayout(self, layout):
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            if item.widget():
+                item.widget().show()
+            elif item.layout():
+                self.showLayout(item.layout())
+
+    def hideCleaningLayout(self, layout):
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            if item.widget():
+                item.widget().hide()
+            elif item.layout():
+                self.hideLayout(item.layout())
+
+    def collectCleaningArguments(self):
+        strategy_list = []
+        for strategy, checkbox in self.strategy_checkboxes.items():
+            if checkbox.isChecked():
+                strategy_list.append(strategy)
+
+        args = {}
+        args["strategy"] = strategy_list
+
+        # Comment: high_pass and non_steady_state don't need to be specified as long as they are in the strategy list
+        for strategy in strategy_list:
+            if strategy == "motion":
+                args[strategy] = self.layouts[strategy].itemAt(1).widget().currentText()
+            elif strategy == "wm_csf":
+                args[strategy] = self.layouts[strategy].itemAt(1).widget().currentText()
+            elif strategy == "compcor":
+                args[strategy] = self.layouts[strategy].itemAt(1).widget().currentText()
+                args["n_compcor"] = self.layouts["n_compcor"].itemAt(1).widget().get_value()
+            elif strategy == "global_signal":
+                args[strategy] = self.layouts[strategy].itemAt(1).widget().currentText()
+            elif strategy == "ica_aroma":
+                args[strategy] = self.layouts[strategy].itemAt(1).widget().currentText()
+            elif strategy == "scrub":
+                args[strategy] = self.layouts[strategy].itemAt(1).widget().value()
+                args["fd_threshold"] = self.layouts["fd_threshold"].itemAt(1).widget().value()
+                args["std_dvars_threshold"] = self.layouts["std_dvars_threshold"].itemAt(1).widget().value()
+            elif strategy == "demean":
+                args[strategy] = True if self.layouts[strategy].itemAt(1).widget().isChecked() else False
+
+        print(args)
+        return args
+    
     # Plotting
     def createCarpetPlot(self):
         # Clear the current plot
@@ -3649,7 +3754,7 @@ def run(dfc_data=None, method=None):
 
     default_width = ex.width()
     default_height = ex.height()
-    new_width = int(default_width * 2.0)
+    new_width = int(default_width * 2.1)
     new_height = int(default_height * 1.5)
     ex.resize(new_width, new_height)
 
