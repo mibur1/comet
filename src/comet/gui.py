@@ -7,6 +7,7 @@ import inspect
 import subprocess
 import numpy as np
 import pandas as pd
+
 from scipy.io import loadmat, savemat
 from dataclasses import dataclass, field
 from importlib import resources as pkg_resources
@@ -19,6 +20,7 @@ from nilearn import datasets, maskers
 from nilearn.interfaces.fmriprep import load_confounds
 
 # Plotting imports
+from matplotlib.pyplot import cm
 from matplotlib.image import imread
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -1248,6 +1250,7 @@ class App(QMainWindow):
         
         # Update the GUI
         self.onBIDSLayoutChanged()
+        self.onBIDSAtlasSelected()
 
         return
     
@@ -1341,18 +1344,18 @@ class App(QMainWindow):
 
         if self.parcellationDropdown.currentText() in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
             rois, networks, labels,  = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
-            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", confounds=confounds, mask_img=self.mask_name)
+            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", mask_img=self.mask_name)
         
         elif self.parcellationDropdown.currentText() == "Power et al. (2011)":
             rois = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
-            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", confounds=confounds, mask_img=self.mask_name)
+            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", mask_img=self.mask_name)
         
         else:
             atlas, labels = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
-            masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize="zscore_sample", confounds=confounds, mask_img=self.mask_name)
+            masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize="zscore_sample", mask_img=self.mask_name)
         
         # Extract time series
-        time_series = masker.fit_transform(img)
+        time_series = masker.fit_transform(img, confounds=confounds)
         
         # Set data and gui elements
         self.data.file_data = time_series
@@ -1372,7 +1375,6 @@ class App(QMainWindow):
         self.taskDropdown.currentIndexChanged.disconnect(self.onBIDSLayoutChanged)
         self.sessionDropdown.currentIndexChanged.disconnect(self.onBIDSLayoutChanged)
         self.runDropdown.currentIndexChanged.disconnect(self.onBIDSLayoutChanged)
-        self.parcellationDropdown.currentIndexChanged.disconnect(self.onBIDSAtlasSelected)
         self.parcellationOptions.currentIndexChanged.disconnect(self.onBIDSLayoutChanged)
 
         # Disable inputs while loading
@@ -1383,7 +1385,7 @@ class App(QMainWindow):
         self.parcellationOptions.setEnabled(False)
 
         QApplication.processEvents()
-        
+    
         """
         The following lines of code get the evailable scans in an hierarchical way
         A full subjects list was previously initialized and doesnt change. Depending on the chosen task, the available sessions and runs are updated.
@@ -1439,8 +1441,9 @@ class App(QMainWindow):
         self.taskDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
         self.sessionDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
         self.runDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
-        self.parcellationDropdown.currentIndexChanged.connect(self.onBIDSAtlasSelected)
         self.parcellationOptions.currentIndexChanged.connect(self.onBIDSLayoutChanged)
+
+        return
 
     def onBIDSAtlasSelected(self):
         self.parcellationOptions.clear()
@@ -1514,9 +1517,10 @@ class App(QMainWindow):
                 h_layout.addWidget(input_widget)
                 h_layout.setObjectName("compcor")
             elif key in ["fd_threshold", "std_dvars_threshold"]:
-                input_widget = QDoubleSpinBox() if isinstance(param, float) else QSpinBox()
-                input_widget.setRange(0.0 if isinstance(param, float) else 0, 999.0 if isinstance(param, float) else 999)
+                input_widget = QDoubleSpinBox()
+                input_widget.setRange(0.0, 999.0)
                 input_widget.setValue(param)
+                input_widget.setSingleStep(0.1)
                 input_widget.setObjectName(f"{key}_input")
                 h_layout.addWidget(input_widget)
                 h_layout.setObjectName("scrub")
@@ -1615,9 +1619,24 @@ class App(QMainWindow):
             if checkbox.isChecked() and strategy != "demean":
                 strategy_list.append(strategy)
 
-        args = {}
+        args = {
+            "strategy": None,
+            "motion": None,
+            "wm_csf": None,
+            "compcor": None,
+            "n_compcor": None,
+            "global_signal": None,
+            "ica_aroma": None,
+            "scrub": None,
+            "fd_threshold": None,
+            "std_dvars_threshold": None,
+            "demean": None,
+        }
+
+        # Get the selected strategies
         args["strategy"] = strategy_list
         
+        # Set specific options for each strategy
         for strategy in strategy_list:
             if strategy == "motion":
                 args[strategy] = self.layouts[strategy].itemAt(1).widget().currentText()
@@ -1647,13 +1666,23 @@ class App(QMainWindow):
         ax = self.boldFigure.add_subplot(111)
 
         if self.data.file_data is not None:
+            ts = np.copy(self.data.file_data)
+            
             if self.data.sample_mask is not None:
-                ts = self.data.file_data[self.data.sample_mask]
-            else:
-                ts = self.data.file_data
+                # Create a mask of the same shape as ts and set the values to 0 where sample_mask is False
+                mask = np.ones(ts.shape, dtype=bool)
+                mask[self.data.sample_mask] = False
+                ts[mask] = 0
+            
+            # Create a custom colormap
+            cmap = cm.gray
+            cmap.set_bad(color='red')  # Set color for masked/invalid data points
+            
+            # Mask the data array where sample_mask is False
+            masked_ts = np.ma.masked_where(mask, ts)
             
             # Plot the data
-            im = ax.imshow(ts, cmap='Grays', aspect='auto')
+            im = ax.imshow(masked_ts, cmap=cmap, aspect='auto')
             ax.set_xlabel("ROIs")
             ax.set_ylabel("TRs")
 
