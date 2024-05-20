@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from importlib import resources as pkg_resources
 from typing import Any, Dict, get_type_hints, get_origin, Literal
 
-# Data imports
+# BIDS data imports
 import nibabel as nib
 from bids import BIDSLayout
 from nilearn import datasets, maskers
