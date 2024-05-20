@@ -1187,9 +1187,6 @@ class App(QMainWindow):
         self.bidsLayout.addWidget(self.fileContainer)
         self.bidsLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
         self.bidsLayout.addWidget(confoundsContainer)
-
-        # Stretch to fill empty space
-        # NOT WORKING
         self.bidsLayout.addStretch()
 
         ####################
@@ -1502,6 +1499,40 @@ class App(QMainWindow):
             "std_dvars_threshold": 1.5,
         }
 
+        cleaning_info = {
+            "motion": "Type of confounds extracted from head motion estimates\n\
+                - basic: translation/rotation (6 parameters)\n\
+                - power2: translation/rotation + quadratic terms (12 parameters)\n\
+                - derivatives: translation/rotation + derivatives (12 parameters)\n\
+                - full: translation/rotation + derivatives + quadratic terms + power2d derivatives (24 parameters)",
+            "wm_csf": "Type of confounds extracted from masks of white matter and cerebrospinal fluids\n\
+                - basic: the averages in each mask (2 parameters)\n\
+                - power2: averages and quadratic terms (4 parameters)\n\
+                - derivatives: averages and derivatives (4 parameters)\n\
+                - full: averages + derivatives + quadratic terms + power2d derivatives (8 parameters)",
+            "compcor": "Type of confounds extracted from a component based noise correction method\n\
+                - anat_combined: noise components calculated using a white matter and CSF combined anatomical mask\n\
+                - anat_separated: noise components calculated using white matter mask and CSF mask compcor separately; two sets of scores are concatenated\n\
+                - temporal: noise components calculated using temporal compcor\n\
+                - temporal_anat_combined: components of temporal and anat_combined\n\
+                - temporal_anat_separated:  components of temporal and anat_separated",
+            "n_compcor": "The number of noise components to be extracted.\n\
+                - acompcor_combined=False, and/or compcor=full: the number of components per mask.\n\
+                - all: all components (50% variance explained by fMRIPrep defaults)",
+            "global_signal": "Type of confounds xtracted from the global signal\n\
+                - basic: just the global signal (1 parameter)\n\
+                - power2: global signal and quadratic term (2 parameters)\n\
+                - derivatives: global signal and derivative (2 parameters)\n\
+                - full: global signal + derivatives + quadratic terms + power2d derivatives (4 parameters)",
+            "ica_aroma": "ICA-AROMA denoising\n\
+                - full: use fMRIPrep output ~desc-smoothAROMAnonaggr_bold.nii.gz\n\
+                - basic use noise independent components only.",
+            "scrub": "Lenght of segment to remove around time frames with excessive motion.",
+            "fd_threshold": "Framewise displacement threshold for scrub in mm.",
+            "std_dvars_threshold": "Standardized DVARS threshold for scrub.\n\
+             DVARS is the root mean squared intensity difference of volume N to volume N+1"
+        }
+
         self.layouts = {}  # Dictionary to hold the layouts for each strategy
 
         for key, param in self.confound_options.items():
@@ -1509,6 +1540,11 @@ class App(QMainWindow):
             label = QLabel(f"{key}:")
             label.setFixedWidth(145)
             h_layout.addWidget(label)
+
+            # Info button content
+            if key != "strategy":
+                info_text = cleaning_info[key]
+                info_button = InfoButton(info_text)
             
             # Special cases
             if key == "n_compcor":
@@ -1516,6 +1552,8 @@ class App(QMainWindow):
                 input_widget.setObjectName(f"{key}_input")
                 h_layout.addWidget(input_widget)
                 h_layout.setObjectName("compcor")
+                h_layout.addWidget(info_button) 
+            
             elif key in ["fd_threshold", "std_dvars_threshold"]:
                 input_widget = QDoubleSpinBox()
                 input_widget.setRange(0.0, 999.0)
@@ -1524,6 +1562,8 @@ class App(QMainWindow):
                 input_widget.setObjectName(f"{key}_input")
                 h_layout.addWidget(input_widget)
                 h_layout.setObjectName("scrub")
+                h_layout.addWidget(info_button) 
+            
             elif key == "strategy":
                 strategy_group = QGroupBox()
                 strategy_layout = QGridLayout(strategy_group)
@@ -1536,15 +1576,17 @@ class App(QMainWindow):
                     self.strategy_checkboxes[strategy] = checkbox
                     strategy_layout.addWidget(checkbox, row, col)
                     col += 1
-                    if col == 4:  # Move to the next row after 4 columns
+                    if col == 4:
                         col = 0
                         row += 1
                 h_layout.addWidget(strategy_group)
                 input_widget = None
+            
             else:
                 if isinstance(param, list):
                     input_widget = QComboBox()
                     input_widget.addItems(param)
+                
                 elif isinstance(param, int):
                     input_widget = QSpinBox()
                     input_widget.setRange(0, 999)
@@ -1563,11 +1605,12 @@ class App(QMainWindow):
                 h_layout.setObjectName(key)
                 if input_widget is not None:
                     h_layout.addWidget(input_widget)
+                h_layout.addWidget(info_button) 
             
             # Store the layout in the dictionary
             self.layouts[key] = h_layout
             if key != "strategy":
-                self.hideCleaningLayout(h_layout)  # Initially hide all options except 'demean'
+                self.hideCleaningLayout(h_layout)  # Initially hide all options except "strategy"
             layout.addLayout(h_layout)
 
         self.dynamic_container = QWidget()
