@@ -408,37 +408,35 @@ class App(QMainWindow):
         leftLayout = QVBoxLayout()
         rightLayout = QVBoxLayout()
 
-        ###################
-        #  Right section  #
-        ###################
+        ##################
+        #  Left section  #
+        ##################
 
         # Create button and label for file loading
-        loadLayout = QHBoxLayout()
+        loadLayout = QVBoxLayout()
+        loadLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        buttonLayout = QHBoxLayout()
+        
         fileButton = QPushButton('Load single time series')
         bidsButton = QPushButton('Load BIDS dataset')
-        self.fileNameLabel = QLabel('No data loaded yet')
-
-        loadLayout.addWidget(fileButton)
-        loadLayout.addWidget(bidsButton)
-
-        leftLayout.addLayout(loadLayout)
-        leftLayout.addWidget(self.fileNameLabel)
-        
-        # Checkbox for reshaping the data
+        self.fileNameLabel = QLabel('No data loaded yet.')
         self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
-        leftLayout.addWidget(self.transposeCheckbox)
-        
-        self.transposeCheckbox.stateChanged.connect(self.onTransposeChecked)
-        leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
         self.transposeCheckbox.hide()
+        
+        buttonLayout.addWidget(fileButton)
+        buttonLayout.addWidget(bidsButton)
 
+        loadLayout.addLayout(buttonLayout)
+        loadLayout.addWidget(self.fileNameLabel)
+        loadLayout.addWidget(self.transposeCheckbox)
+        
+        leftLayout.addLayout(loadLayout)
+        
         # Add BIDS layout
         self.addBidsLayout(leftLayout)
 
-        # Stretch to bottom
-        leftLayout.addStretch()
-        
         # Connect widgets
+        self.transposeCheckbox.stateChanged.connect(self.onTransposeChecked)
         fileButton.clicked.connect(self.loadTS)
         bidsButton.clicked.connect(self.loadBIDS)
 
@@ -843,8 +841,8 @@ class App(QMainWindow):
         #  Combine layouts  #
         #####################
         mainLayout = QHBoxLayout()
-        mainLayout.addLayout(leftLayout, 1)
-        mainLayout.addLayout(rightLayout, 2)
+        mainLayout.addLayout(leftLayout, 2)
+        mainLayout.addLayout(rightLayout, 3)
         graphLayout.addLayout(mainLayout)
 
         # Add the tab to the top level tab widget
@@ -970,6 +968,7 @@ class App(QMainWindow):
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
         file_name = file_path.split('/')[-1]
         self.data.file_name = file_name
+        self.data.sample_mask = None
         self.getParameters() # Get current UI parameters
         self.subjectDropdown.clear()
         self.subjectDropdown.hide()
@@ -1190,6 +1189,7 @@ class App(QMainWindow):
         self.bidsLayout.addWidget(confoundsContainer)
 
         # Stretch to fill empty space
+        # NOT WORKING
         self.bidsLayout.addStretch()
 
         ####################
@@ -1234,6 +1234,7 @@ class App(QMainWindow):
             self.worker.finished.connect(self.workerThread.quit)
             self.workerThread.started.connect(self.worker.run)
             self.worker.result.connect(lambda: self.onBidsResult(bids_folder))
+            self.worker.error.connect(self.onBidsError)
             self.workerThread.start()
 
         except Exception as e:
@@ -1260,6 +1261,12 @@ class App(QMainWindow):
         self.bidsContainer.show()
         self.subjectDropdown.setEnabled(True)
         self.subjectDropdown.show()
+        return
+
+    def onBidsError(self, error):
+        self.fileNameLabel.setText("Failed to load BIDS data, please try again.")
+        QMessageBox.warning(self, "Failed to load BIDS data", f"Error when loading BIDS: {error}")
+
         return
 
     def fetchAtlas(self, atlasname, atlasnames):
@@ -1348,43 +1355,6 @@ class App(QMainWindow):
 
         return 
 
-    def extractTimeSeries(self):
-        print("Calculating time series, please wait...")
-        self.calculateBIDStextbox.setText("Calculating time series, please wait...")
-        QApplication.processEvents()
-
-        # Get img and confounds
-        img = self.data.file_name
-        args = self.collectCleaningArguments()
-        confounds, sample_mask = load_confounds(img, **args)
-
-        if self.parcellationDropdown.currentText() in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
-            rois, networks, labels,  = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
-            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", mask_img=self.mask_name)
-        
-        elif self.parcellationDropdown.currentText() == "Power et al. (2011)":
-            rois = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
-            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", mask_img=self.mask_name)
-        
-        else:
-            atlas, labels = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
-            masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize="zscore_sample", mask_img=self.mask_name)
-        
-        # Extract time series
-        time_series = masker.fit_transform(img, confounds=confounds)
-        
-        # Set data and gui elements
-        self.data.file_data = time_series
-        self.data.sample_mask = sample_mask
-        self.data.roi_names = labels
-        self.calculateBIDStextbox.setText(f"Done calculating time series. Shape: {self.data.file_data.shape}\nFile: {self.data.file_name.split('/')[-1]}")
-        print(f"Done calculating time series. Shape: {self.data.file_data.shape}\nFile: {self.data.file_name.split('/')[-1]}")
-        self.transposeCheckbox.setEnabled(True)
-        
-        # Plot the time series
-        self.createCarpetPlot()
-        return
-
     def onBIDSLayoutChanged(self):
         # Disconnect the signal to avoid recursive calls
         self.subjectDropdown.currentIndexChanged.disconnect(self.onBIDSLayoutChanged)
@@ -1406,58 +1376,64 @@ class App(QMainWindow):
         The following lines of code get the evailable scans in an hierarchical way
         A full subjects list was previously initialized and doesnt change. Depending on the chosen task, the available sessions and runs are updated.
         """
-        # 1. Get selected subject and sessions
-        selected_subject = self.subjectDropdown.currentText()
-        subject_id = selected_subject.split('-')[-1]
+        try:
+            # 1. Get selected subject and sessions
+            selected_subject = self.subjectDropdown.currentText()
+            subject_id = selected_subject.split('-')[-1]
 
-        # 2. Available tasks for the selected subject
-        tasks = self.bids_layout.get_tasks(subject=subject_id)
-        current_task = self.taskDropdown.currentText() if self.taskDropdown.count() > 0 else tasks[0]
+            # 2. Available tasks for the selected subject
+            tasks = self.bids_layout.get_tasks(subject=subject_id)
+            current_task = self.taskDropdown.currentText() if self.taskDropdown.count() > 0 else tasks[0]
 
-        self.taskDropdown.clear()
-        self.taskDropdown.addItems(tasks)
-        if current_task in tasks:
-            self.taskDropdown.setCurrentText(current_task)
+            self.taskDropdown.clear()
+            self.taskDropdown.addItems(tasks)
+            if current_task in tasks:
+                self.taskDropdown.setCurrentText(current_task)
+            
+            # 3. Available sessions for the selected subject and task
+            sessions = self.bids_layout.get_sessions(subject=subject_id, task=current_task)
+            current_session = self.sessionDropdown.currentText() if (self.sessionDropdown.count() > 0 and self.sessionDropdown.currentText() in sessions) else str(sessions[0])
+            session_ids = [f"{session}" for session in sessions]
+
+            self.sessionDropdown.clear()
+            self.sessionDropdown.addItems(session_ids)
+            if current_session in session_ids:
+                self.sessionDropdown.setCurrentText(current_session)
+
+            # 4. Available runs for the selected subject, sessions, and task
+            runs = self.bids_layout.get_runs(subject=subject_id, session=current_session, task=current_task)
+            current_run = self.runDropdown.currentText() if (self.runDropdown.count() > 0 and self.runDropdown.currentText() in runs) else str(runs[0])
+            run_ids = [f"{run}" for run in runs]
+
+            self.runDropdown.clear()
+            self.runDropdown.addItems(run_ids)
+            if current_run in run_ids:
+                self.runDropdown.setCurrentText(current_run)
+
+            # 5. ICA-AROMA files
+            aroma_files = self.bids_layout.get(subject=subject_id, session=current_session, task=current_task, suffix='bold', desc='smoothAROMAnonaggr', extension='nii.gz', return_type='file')
+            if aroma_files:
+                self.aroma_file = aroma_files[0]
+            else:
+                self.aroma_file = None
+            
+            # 6. Get the corresponding nifti file
+            self.getNifti()  # get currently selected image
         
-        # 3. Available sessions for the selected subject and task
-        sessions = self.bids_layout.get_sessions(subject=subject_id, task=current_task)
-        current_session = self.sessionDropdown.currentText() if (self.sessionDropdown.count() > 0 and self.sessionDropdown.currentText() in sessions) else str(sessions[0])
-        session_ids = [f"{session}" for session in sessions]
-
-        self.sessionDropdown.clear()
-        self.sessionDropdown.addItems(session_ids)
-        if current_session in session_ids:
-            self.sessionDropdown.setCurrentText(current_session)
-
-        # 4. Available runs for the selected subject, sessions, and task
-        runs = self.bids_layout.get_runs(subject=subject_id, session=current_session, task=current_task)
-        current_run = self.runDropdown.currentText() if (self.runDropdown.count() > 0 and self.runDropdown.currentText() in runs) else str(runs[0])
-        run_ids = [f"{run}" for run in runs]
-
-        self.runDropdown.clear()
-        self.runDropdown.addItems(run_ids)
-        if current_run in run_ids:
-            self.runDropdown.setCurrentText(current_run)
-
-        # 5. ICA-AROMA files
-        aroma_files = self.bids_layout.get(subject=subject_id, session=current_session, task=current_task, suffix='bold', desc='smoothAROMAnonaggr', extension='nii.gz', return_type='file')
-        if aroma_files:
-            self.aroma_file = aroma_files[0]
-        else:
-            self.aroma_file = None
-
+        except Exception as e:
+            print(f"Error when updating BIDS layout: {str(e)}")
+            print("TODO: This might not a problem, but it should be handled properly.")
+        
         """
         End of hierarchical scan selection
         """
-
         # Enable GUI elements
         self.taskDropdown.setEnabled(True)
         self.sessionDropdown.setEnabled(True)
         self.runDropdown.setEnabled(True)
         self.parcellationDropdown.setEnabled(True)
         self.parcellationOptions.setEnabled(True)
-
-        self.getNifti()  # get currently selected image
+        
         self.calculateBIDStextbox.setText("No time series data extracted yet.")
 
         # Reconnect the signals
@@ -1608,7 +1584,7 @@ class App(QMainWindow):
                 else:
                     self.hideCleaningLayout(self.layouts[strategy])
 
-            # Compcor requires highpass
+            # Compcor requires high pass
             if self.strategy_checkboxes["compcor"].isChecked():
                 self.strategy_checkboxes["high_pass"].setChecked(True)
 
@@ -1686,33 +1662,97 @@ class App(QMainWindow):
         args["demean"] = True if self.strategy_checkboxes["demean"].isChecked() else False
 
         return args
+
+    # Time series extraction and cleaning    
+    def extractTimeSeries(self):
+        print("Calculating time series, please wait...")
+        self.calculateBIDStextbox.setText("Calculating time series, please wait...")
+        QApplication.processEvents()
+
+        # Load BIDS layout in a separate thread
+        self.workerThread = QThread()
+        self.worker = Worker(self.extractTimeSeriesThread, self.data.file_name)
+        self.worker.moveToThread(self.workerThread)
+
+        self.worker.finished.connect(self.workerThread.quit)
+        self.workerThread.started.connect(self.worker.run)
+        self.worker.result.connect(self.handleExtractResult)
+        self.worker.error.connect(self.handleExtractError)
+        self.workerThread.start()
+        
+        return
+
+    def extractTimeSeriesThread(self, img_path):
+        args = self.collectCleaningArguments()
+        confounds, sample_mask = load_confounds(img_path, **args)
+
+        if self.parcellationDropdown.currentText() in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
+            rois, networks, labels,  = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
+            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", mask_img=self.mask_name)
+        
+        elif self.parcellationDropdown.currentText() == "Power et al. (2011)":
+            rois = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
+            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", mask_img=self.mask_name)
+        
+        else:
+            atlas, labels = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
+            masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize="zscore_sample", mask_img=self.mask_name)
+        
+        # Extract time series
+        time_series = masker.fit_transform(img_path, confounds=confounds)
+        
+        # Set data and gui elements
+        self.data.file_data = time_series
+        self.data.sample_mask = sample_mask
+        self.data.roi_names = labels
+
+        return
+
+    def handleExtractResult(self):
+        self.calculateBIDStextbox.setText(f"Done calculating time series. Shape: {self.data.file_data.shape}\nFile: {self.data.file_name.split('/')[-1]}")
+        print(f"Done calculating time series. Shape: {self.data.file_data.shape}\nFile: {self.data.file_name.split('/')[-1]}")
+        self.fileNameLabel2.setText(f"Time series with shape {self.data.file_data.shape}, ready for dFC calculation.")
+        
+        self.transposeCheckbox.setEnabled(True)
+        
+        #Plot
+        self.createCarpetPlot()
+        
+        return
     
+    def handleExtractError(self, error):
+        # Handles errors in the worker thread
+        self.calculateBIDStextbox.setText(f"Error when extracting time series, please try again.")
+        QMessageBox.warning(self, "Error when extracting time series", f"Error when extracting time series: {error}")
+
+        return
+
     # Plotting
     def createCarpetPlot(self):
         # Clear the current plot
         self.boldFigure.clear()
         ax = self.boldFigure.add_subplot(111)
+        ts = np.copy(self.data.file_data)
+        cmap = cm.gray
 
-        if self.data.file_data is not None:
-            ts = np.copy(self.data.file_data)
-            
-            if self.data.sample_mask is not None:
-                # Create a mask of the same shape as ts and set the values to 0 where sample_mask is False
-                mask = np.ones(ts.shape, dtype=bool)
-                mask[self.data.sample_mask] = False
-                ts[mask] = 0
-            
+        if self.data.sample_mask is not None:
+            # We have data with missing scans (non-steady states or scrubbing)
+            # Create a mask of the same shape as ts and set the values to 0 where sample_mask is False
+            mask = np.ones(ts.shape, dtype=bool)
+            mask[self.data.sample_mask] = False
+            ts[mask] = 0
+        
             # Create a custom colormap
             cmap = cm.gray
             cmap.set_bad(color='red')  # Set color for masked/invalid data points
             
             # Mask the data array where sample_mask is False
-            masked_ts = np.ma.masked_where(mask, ts)
-            
-            # Plot the data
-            im = ax.imshow(masked_ts, cmap=cmap, aspect='auto')
-            ax.set_xlabel("ROIs")
-            ax.set_ylabel("TRs")
+            ts = np.ma.masked_where(mask, ts)
+        
+        # Plot the data
+        im = ax.imshow(ts, cmap=cmap, aspect='auto') 
+        ax.set_xlabel("ROIs")
+        ax.set_ylabel("TRs")
 
         # Create the colorbar
         divider = make_axes_locatable(ax)
@@ -3858,8 +3898,8 @@ def run(dfc_data=None, method=None):
 
     default_width = ex.width()
     default_height = ex.height()
-    new_width = int(default_width * 2.1)
-    new_height = int(default_height * 1.5)
+    new_width = int(default_width * 2.0)
+    new_height = int(default_height * 1.6)
     ex.resize(new_width, new_height)
 
     ex.show()
