@@ -420,6 +420,18 @@ class App(QMainWindow):
         fileButton = QPushButton('Load single time series')
         bidsButton = QPushButton('Load BIDS dataset')
         self.fileNameLabel = QLabel('No data loaded yet.')
+        
+        self.pydfc_subjectDropdownContainer = QWidget()
+        self.pydfc_subjectDropdownLayout = QHBoxLayout()
+        self.pydfc_subjectLabel = QLabel("Available subjects:")
+        self.pydfc_subjectLabel.setFixedWidth(140)
+        self.pydfc_subjectDropdown = QComboBox()
+        self.pydfc_subjectDropdownLayout.addWidget(self.pydfc_subjectLabel)
+        self.pydfc_subjectDropdownLayout.addWidget(self.pydfc_subjectDropdown)
+        self.pydfc_subjectDropdownContainer.setLayout(self.pydfc_subjectDropdownLayout)
+        self.pydfc_subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
+        self.pydfc_subjectDropdownContainer.hide()
+
         self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
         self.transposeCheckbox.hide()
         
@@ -428,6 +440,7 @@ class App(QMainWindow):
 
         loadLayout.addLayout(buttonLayout)
         loadLayout.addWidget(self.fileNameLabel)
+        loadLayout.addWidget(self.pydfc_subjectDropdownContainer)
         loadLayout.addWidget(self.transposeCheckbox)
         
         leftLayout.addLayout(loadLayout)
@@ -969,7 +982,7 @@ class App(QMainWindow):
         file_name = file_path.split('/')[-1]
         self.data.file_name = file_name
         self.data.sample_mask = None
-        self.getParameters() # Get current UI parameters
+        #self.getParameters()
         self.subjectDropdown.clear()
         self.subjectDropdown.hide()
 
@@ -989,6 +1002,16 @@ class App(QMainWindow):
         elif file_path.endswith('.pkl'):
             with open(file_path, 'rb') as f:
                 self.data.file_data = pickle.load(f)
+
+                if type(self.data.file_data) == pydfc.time_series.TIME_SERIES:
+                    # Transpose the data
+                    for subject in self.data.file_data.data_dict.keys():
+                        self.data.file_data.data_dict[subject]["data"] = self.data.file_data.data_dict[subject]["data"].T
+
+                    print("Loaded TIME_SERIES object")
+                    self.pydfc_subjectDropdown.clear()
+                    self.pydfc_subjectDropdown.addItems(self.data.file_data.data_dict.keys())
+                    self.pydfc_subjectDropdownContainer.show()
         
         elif file_path.endswith(".tsv"):
             data = pd.read_csv(file_path, sep='\t', header=None, na_values='n/a')
@@ -1052,7 +1075,7 @@ class App(QMainWindow):
             self.staticCheckBox.setEnabled(False)
             self.staticCheckBox.setChecked(False)
 
-            self.transposeCheckbox.setEnabled(False)
+            self.transposeCheckbox.setEnabled(True)
         
         else:
             self.time_series_textbox.setText(file_name)
@@ -1094,18 +1117,32 @@ class App(QMainWindow):
 
         if state == Qt.CheckState.Checked:
             # Transpose the data
-            self.data.file_data = self.data.file_data.transpose()
+            if type(self.data.file_data) == pydfc.time_series.TIME_SERIES:
+                    for subject in self.data.file_data.data_dict.keys():
+                        self.data.file_data.data_dict[subject]["data"] = self.data.file_data.data_dict[subject]["data"].T
+            else:
+                self.data.file_data = self.data.file_data.transpose()
         else:
             # Transpose it back to original
-            self.data.file_data = self.data.file_data.transpose()
+            if type(self.data.file_data) == pydfc.time_series.TIME_SERIES:
+                    # Transpose the data
+                    for subject in self.data.file_data.data_dict.keys():
+                        self.data.file_data.data_dict[subject]["data"] = self.data.file_data.data_dict[subject]["data"].T
+            else:
+                self.data.file_data = self.data.file_data.transpose()
 
         # Update the labels
-        self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.data.file_data.shape}")
-        self.fileNameLabel2.setText(f"Loaded {self.time_series_textbox.text()} with shape: {self.data.file_data.shape}")
+        shape = self.data.file_data.data_dict[list(self.data.file_data.data_dict.keys())[0]]["data"].shape if type(self.data.file_data) == pydfc.time_series.TIME_SERIES else self.data.file_data.shape
+        self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {shape}")
+        self.fileNameLabel2.setText(f"Loaded {self.time_series_textbox.text()} with shape: {shape}")
         self.time_series_textbox.setText(self.data.file_name)
 
         # Update carpet plot
         self.createCarpetPlot()
+
+    def onSubjectChanged(self):
+        self.createCarpetPlot()
+        return
 
     # BIDS
     def addBidsLayout(self, leftLayout):
@@ -1778,7 +1815,11 @@ class App(QMainWindow):
         ts = np.copy(self.data.file_data)
         cmap = cm.gray
 
-        if self.data.sample_mask is not None:
+        if type(self.data.file_data) == pydfc.time_series.TIME_SERIES:
+            current_subject = self.pydfc_subjectDropdown.currentText()
+            ts = self.data.file_data.data_dict[current_subject]["data"]
+
+        elif self.data.sample_mask is not None:
             # We have data with missing scans (non-steady states or scrubbing)
             # Create a mask of the same shape as ts and set the values to 0 where sample_mask is False
             mask = np.ones(ts.shape, dtype=bool)
