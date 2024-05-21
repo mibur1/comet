@@ -981,10 +981,15 @@ class App(QMainWindow):
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
         file_name = file_path.split('/')[-1]
         self.data.file_name = file_name
+        self.data.file_data = None
         self.data.sample_mask = None
-        #self.getParameters()
+        
         self.subjectDropdown.clear()
         self.subjectDropdown.hide()
+
+        self.pydfc_subjectDropdown.currentIndexChanged.disconnect(self.onSubjectChanged)
+        self.pydfc_subjectDropdown.clear()
+        self.pydfc_subjectDropdownContainer.hide()
 
         if not file_path:
             return  # Early exit if no file is selected
@@ -1009,10 +1014,10 @@ class App(QMainWindow):
                         self.data.file_data.data_dict[subject]["data"] = self.data.file_data.data_dict[subject]["data"].T
 
                     print("Loaded TIME_SERIES object")
-                    self.pydfc_subjectDropdown.clear()
                     self.pydfc_subjectDropdown.addItems(self.data.file_data.data_dict.keys())
                     self.pydfc_subjectDropdownContainer.show()
-        
+                    self.pydfc_subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
+                            
         elif file_path.endswith(".tsv"):
             data = pd.read_csv(file_path, sep='\t', header=None, na_values='n/a')
 
