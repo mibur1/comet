@@ -846,11 +846,14 @@ State based dFC methods. Basically wrapper functions to bring methods from https
 '''
 class Sliding_Window(BaseDFCMethod):
     name = "CONT Sliding Window (pydfc)"
-    options = {"clstr_distance": ["euclidean"]}
     '''
     Sliding Window
     '''
-    def __init__(self, time_series, **params):
+    def __init__(self, 
+                 time_series: np.ndarray,
+                 clstr_distance: Literal["euclidean"] = "euclidean",
+                 **params):
+        
         self.time_series = time_series
         self.logs_ = ''
         self.TPM = []
@@ -882,12 +885,15 @@ class Sliding_Window(BaseDFCMethod):
     
 class Time_Freq(BaseDFCMethod):
     name = "CONT Time-frequency (pydfc)"
-    options = {}
-
     '''
     Time-Frequency
     '''
-    def __init__(self, time_series, num_cores=8, coi_correction=True, **params):
+    def __init__(self, 
+                 time_series: np.ndarray, 
+                 num_cores: int = 8, 
+                 coi_correction: bool = True, 
+                 **params):
+        
         self.time_series = time_series
         self.logs_ = ''
         self.TPM = []
@@ -918,12 +924,17 @@ class Time_Freq(BaseDFCMethod):
     
 class Cap(BaseDFCMethod):
     name = "STATE Co-activation patterns"
-    options = {}
-
     '''
     Co-activation patterns
     '''
-    def __init__(self, time_series, subject=0, n_states=5, n_subj_clusters=5, normalization=True, **params):
+    def __init__(self, 
+                 time_series: np.ndarray, 
+                 subject: int = 0,
+                 n_states: int = 5, 
+                 n_subj_clusters: int = 5, 
+                 normalization: bool = True, 
+                 **params):
+        
         self.time_series = time_series
         self.logs_ = ''
         self.FCS_ = []
@@ -959,12 +970,20 @@ class Cap(BaseDFCMethod):
     
 class Sliding_Window_Clustr(BaseDFCMethod):
     name = "STATE Sliding Window Clustering"
-    options = {"clstr_distance": ["euclidean", "manhattan"], }
-
     '''
     Sliding Window Clustering
     '''
-    def __init__(self, time_series, subject=0, windowsize=44, n_overlap=0.5, tapered_window=True, n_states=5, n_subj_clusters=5, normalization=True, clstr_distance="euclidean"):
+    def __init__(self, 
+                 time_series: np.ndarray, 
+                 subject: int = 0, 
+                 windowsize: int = 44, 
+                 n_overlap: float = 0.5, 
+                 tapered_window: bool = True, 
+                 n_states: int = 5, 
+                 n_subj_clusters: int = 5, 
+                 normalization: bool = True, 
+                 clstr_distance: Literal["euclidean", "manhattan"] = "euclidean"):
+        
         self.time_series = time_series   
     
         assert clstr_distance=='euclidean' or clstr_distance=='manhattan', \
@@ -1015,12 +1034,17 @@ class Sliding_Window_Clustr(BaseDFCMethod):
     
 class Hmm_Cont(BaseDFCMethod):
     name = "STATE Continuous Hidden Markov Model"
-    options = {}
-
     '''
     Continuous Hidden Markov Model
     '''
-    def __init__(self, time_series, subject=0, n_states=5, iterations=20, normalization=True, **params):
+    def __init__(self,
+                 time_series: np.ndarray,
+                 subject: int = 0,
+                 n_states: int = 5,
+                 iterations: int = 20,
+                 normalization: bool = True,
+                 **params):
+        
         self.time_series = time_series
 
         self.logs_ = ''
@@ -1058,12 +1082,24 @@ class Hmm_Cont(BaseDFCMethod):
     
 class Hmm_Disc(BaseDFCMethod):
     name = "STATE Discrete Hidden Markov Model"
-    options = {"clstr_base_measure": ["SlidingWindow"], "sw_method": ["pear_corr"]}
-
     '''
     Discrete Hidden Markov Model
     '''
-    def __init__(self, time_series, subject=0, windowsize=44, n_overlap=0.5, clstr_base_measure="SlidingWindow", sw_method="pear_corr", tapered_window=True, iterations= 20, dhmm_obs_state_ratio=16/24, n_states=5, n_subj_clusters=5, normalization=True, **params):
+    def __init__(self,
+                 time_series: np.ndarray,
+                 subject: int = 0,
+                 windowsize: int = 44,
+                 n_overlap: float = 0.5,
+                 clstr_base_measure: Literal["SlidingWindow"] = "SlidingWindow",
+                 sw_method: Literal["pear_corr"] = "pear_corr",
+                 tapered_window: bool = True,
+                 iterations: int = 20,
+                 dhmm_obs_state_ratio: float = 16/24,
+                 n_states: int = 5,
+                 n_subj_clusters: int = 5,
+                 normalization: bool = True,
+                 **params):
+        
         self.time_series = time_series
 
         self.logs_ = ''
@@ -1115,12 +1151,17 @@ class Hmm_Disc(BaseDFCMethod):
     
 class Windowless(BaseDFCMethod):
     name = "STATE Windowless"
-    options = {}
-
     '''
     Windowless
     '''
-    def __init__(self, time_series, subject=0, n_states=5, n_subj_clusters=5, normalization=True, **params):
+    def __init__(self,
+                 time_series: np.ndarray,
+                 subject: int = 0,
+                 n_states: int = 5,
+                 n_subj_clusters: int = 5,
+                 normalization: bool = True,
+                 **params):
+        
         self.time_series = time_series
 
         self.logs_ = ''
