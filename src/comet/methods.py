@@ -12,6 +12,7 @@ from sklearn.metrics import mutual_info_score
 from statsmodels.stats.weightstats import DescrStatsW
 from pycwt import cwt, Morlet
 from pydfc.dfc_methods import *
+from pydfc import time_series
 from typing import Literal
 
 from joblib import Parallel, delayed
@@ -849,8 +850,8 @@ class Sliding_Window(BaseDFCMethod):
     '''
     Sliding Window
     '''
-    def __init__(self, 
-                 time_series: np.ndarray,
+    def __init__(self,
+                 time_series: time_series.TIME_SERIES,
                  clstr_distance: Literal["euclidean"] = "euclidean",
                  **params):
         
@@ -888,10 +889,10 @@ class Time_Freq(BaseDFCMethod):
     '''
     Time-Frequency
     '''
-    def __init__(self, 
-                 time_series: np.ndarray, 
-                 num_cores: int = 8, 
-                 coi_correction: bool = True, 
+    def __init__(self,
+                 time_series: time_series.TIME_SERIES,
+                 num_cores: int = 8,
+                 coi_correction: bool = True,
                  **params):
         
         self.time_series = time_series
@@ -927,12 +928,12 @@ class Cap(BaseDFCMethod):
     '''
     Co-activation patterns
     '''
-    def __init__(self, 
-                 time_series: np.ndarray, 
+    def __init__(self,
+                 time_series: time_series.TIME_SERIES,
                  subject: int = 0,
-                 n_states: int = 5, 
-                 n_subj_clusters: int = 5, 
-                 normalization: bool = True, 
+                 n_states: int = 5,
+                 n_subj_clusters: int = 5,
+                 normalization: bool = True,
                  **params):
         
         self.time_series = time_series
@@ -973,15 +974,15 @@ class Sliding_Window_Clustr(BaseDFCMethod):
     '''
     Sliding Window Clustering
     '''
-    def __init__(self, 
-                 time_series: np.ndarray, 
-                 subject: int = 0, 
-                 windowsize: int = 44, 
-                 n_overlap: float = 0.5, 
-                 tapered_window: bool = True, 
-                 n_states: int = 5, 
-                 n_subj_clusters: int = 5, 
-                 normalization: bool = True, 
+    def __init__(self,
+                 time_series: time_series.TIME_SERIES,
+                 subject: int = 0,
+                 windowsize: int = 44,
+                 n_overlap: float = 0.5,
+                 tapered_window: bool = True,
+                 n_states: int = 5,
+                 n_subj_clusters: int = 5,
+                 normalization: bool = True,
                  clstr_distance: Literal["euclidean", "manhattan"] = "euclidean"):
         
         self.time_series = time_series   
@@ -1038,7 +1039,7 @@ class Hmm_Cont(BaseDFCMethod):
     Continuous Hidden Markov Model
     '''
     def __init__(self,
-                 time_series: np.ndarray,
+                 time_series: time_series.TIME_SERIES,
                  subject: int = 0,
                  n_states: int = 5,
                  iterations: int = 20,
@@ -1086,7 +1087,7 @@ class Hmm_Disc(BaseDFCMethod):
     Discrete Hidden Markov Model
     '''
     def __init__(self,
-                 time_series: np.ndarray,
+                 time_series: time_series.TIME_SERIES,
                  subject: int = 0,
                  windowsize: int = 44,
                  n_overlap: float = 0.5,
@@ -1155,7 +1156,7 @@ class Windowless(BaseDFCMethod):
     Windowless
     '''
     def __init__(self,
-                 time_series: np.ndarray,
+                 time_series: time_series.TIME_SERIES,
                  subject: int = 0,
                  n_states: int = 5,
                  n_subj_clusters: int = 5,

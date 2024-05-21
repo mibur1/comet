@@ -1009,15 +1009,11 @@ class App(QMainWindow):
                 self.data.file_data = pickle.load(f)
 
                 if type(self.data.file_data) == pydfc.time_series.TIME_SERIES:
-                    # Transpose the data
-                    for subject in self.data.file_data.data_dict.keys():
-                        self.data.file_data.data_dict[subject]["data"] = self.data.file_data.data_dict[subject]["data"].T
-
                     print("Loaded TIME_SERIES object")
                     self.pydfc_subjectDropdown.addItems(self.data.file_data.data_dict.keys())
                     self.pydfc_subjectDropdownContainer.show()
                     self.pydfc_subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
-                            
+
         elif file_path.endswith(".tsv"):
             data = pd.read_csv(file_path, sep='\t', header=None, na_values='n/a')
 
@@ -1069,6 +1065,8 @@ class App(QMainWindow):
         # Set filenames depending on file type
         if file_path.endswith('.pkl'):
             self.fileNameLabel.setText(f"Loaded TIME_SERIES object")
+            #shape = list(self.data.file_data.data_dict.keys())[0]["data"].shape
+            #self.fileNameLabel2.setText(f"Loaded and parcellated {self.data.file_name} with shape {shape}")
             self.time_series_textbox.setText(file_name)
 
             self.continuousCheckBox.setEnabled(False)
@@ -1822,7 +1820,7 @@ class App(QMainWindow):
 
         if type(self.data.file_data) == pydfc.time_series.TIME_SERIES:
             current_subject = self.pydfc_subjectDropdown.currentText()
-            ts = self.data.file_data.data_dict[current_subject]["data"]
+            ts = self.data.file_data.data_dict[current_subject]["data"].T
 
         elif self.data.sample_mask is not None:
             # We have data with missing scans (non-steady states or scrubbing)
@@ -2234,7 +2232,7 @@ class App(QMainWindow):
 
     def handleError(self, error):
         # Handles errors in the worker thread
-        QMessageBox.warning(self, "Calculation Error", f"Error occurred furing calculation: {error}")
+        QMessageBox.warning(self, "Calculation Error", f"Error occurred during calculation: {error}")
         self.calculateButton.setEnabled(True)
         self.data.clear_dfc_data()
         self.positionLabel.setText("no data available")
@@ -3029,7 +3027,7 @@ class App(QMainWindow):
 
     def handleGraphError(self, error):
         # Handles errors in the worker thread
-        QMessageBox.warning(self, "Calculation Error", f"Error occurred furing calculation: {error}")
+        QMessageBox.warning(self, "Calculation Error", f"Error occurred during calculation: {error}")
 
     # Parameters
     def setGraphParameters(self):
