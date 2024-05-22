@@ -979,6 +979,11 @@ class App(QMainWindow):
     def loadTS(self):
         fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
+
+        if not file_path:
+            QMessageBox.warning(self, "Load Error", f"No valid file selected.")
+            return  # Early exit if no file is selected
+
         file_name = file_path.split('/')[-1]
         self.data.file_name = file_name
         self.data.file_data = None
@@ -990,9 +995,6 @@ class App(QMainWindow):
         self.pydfc_subjectDropdown.currentIndexChanged.disconnect(self.onSubjectChanged)
         self.pydfc_subjectDropdown.clear()
         self.pydfc_subjectDropdownContainer.hide()
-
-        if not file_path:
-            return  # Early exit if no file is selected
 
         if file_path.endswith('.mat'):
             data_dict = loadmat(file_path)
@@ -1065,8 +1067,8 @@ class App(QMainWindow):
         # Set filenames depending on file type
         if file_path.endswith('.pkl'):
             self.fileNameLabel.setText(f"Loaded TIME_SERIES object")
-            #shape = list(self.data.file_data.data_dict.keys())[0]["data"].shape
-            #self.fileNameLabel2.setText(f"Loaded and parcellated {self.data.file_name} with shape {shape}")
+            shape = self.data.file_data.data_dict[list(self.data.file_data.data_dict.keys())[0]]["data"].shape
+            self.fileNameLabel2.setText(f"Loaded and parcellated {self.data.file_name} with shape {shape}")
             self.time_series_textbox.setText(file_name)
 
             self.continuousCheckBox.setEnabled(False)
@@ -1148,6 +1150,53 @@ class App(QMainWindow):
         return
 
     # BIDS
+    def loadBIDS(self):
+        # Open a dialog to select the BIDS directory
+        bids_folder = QFileDialog.getExistingDirectory(self, "Select BIDS Directory")
+
+        # User canceled the selection
+        if not bids_folder:
+            return
+
+        # Initialize a BIDS Layout
+        try:
+            # Initialize BIDS layout
+            self.bidsContainer.hide()
+            self.subjectDropdown.clear()
+            self.subjectDropdown.setEnabled(False)
+            self.fileNameLabel.setText(f"Initializing BIDS layout, please wait...")
+
+            QApplication.processEvents()
+            
+            # Load BIDS layout in a separate thread
+            self.workerThread = QThread()
+            self.worker = Worker(self.loadBIDSThread, bids_folder)
+            self.worker.moveToThread(self.workerThread)
+
+            self.worker.finished.connect(self.workerThread.quit)
+            self.workerThread.started.connect(self.worker.run)
+            self.worker.result.connect(lambda: self.onBidsResult(bids_folder))
+            self.worker.error.connect(self.onBidsError)
+            self.workerThread.start()
+
+        except Exception as e:
+            QMessageBox.warning(self, "Load Error", f"Failed to load BIDS data: {str(e)}")
+
+    def loadBIDSThread(self, bids_folder):
+        # Get the layout
+        self.bids_layout = BIDSLayout(bids_folder, derivatives=True)
+        
+        # Get subjects and update the dropdown
+        subjects = self.bids_layout.get_subjects()
+        sub_id = [f"sub-{subject}" for subject in subjects]
+        self.subjectDropdown.addItems(sub_id)
+        
+        # Update the GUI
+        self.onBIDSLayoutChanged()
+        self.onBIDSAtlasSelected()
+
+        return
+
     def addBidsLayout(self, leftLayout):
         ##########################
         # Main container widget
@@ -1242,53 +1291,6 @@ class App(QMainWindow):
         # Add the BIDS layout to the main layout
         leftLayout.addWidget(self.bidsContainer)
         self.bidsContainer.hide()
-
-        return
-    
-    def loadBIDS(self):
-        # Open a dialog to select the BIDS directory
-        bids_folder = QFileDialog.getExistingDirectory(self, "Select BIDS Directory")
-
-        # User canceled the selection
-        if not bids_folder:
-            return
-
-        # Initialize a BIDS Layout
-        try:
-            # Initialize BIDS layout
-            self.bidsContainer.hide()
-            self.subjectDropdown.clear()
-            self.subjectDropdown.setEnabled(False)
-            self.fileNameLabel.setText(f"Initializing BIDS layout, please wait...")
-
-            QApplication.processEvents()
-            
-            # Load BIDS layout in a separate thread
-            self.workerThread = QThread()
-            self.worker = Worker(self.loadBIDSThread, bids_folder)
-            self.worker.moveToThread(self.workerThread)
-
-            self.worker.finished.connect(self.workerThread.quit)
-            self.workerThread.started.connect(self.worker.run)
-            self.worker.result.connect(lambda: self.onBidsResult(bids_folder))
-            self.worker.error.connect(self.onBidsError)
-            self.workerThread.start()
-
-        except Exception as e:
-            QMessageBox.warning(self, "Load Error", f"Failed to load BIDS data: {str(e)}")
-
-    def loadBIDSThread(self, bids_folder):
-        # Get the layout
-        self.bids_layout = BIDSLayout(bids_folder, derivatives=True)
-        
-        # Get subjects and update the dropdown
-        subjects = self.bids_layout.get_subjects()
-        sub_id = [f"sub-{subject}" for subject in subjects]
-        self.subjectDropdown.addItems(sub_id)
-        
-        # Update the GUI
-        self.onBIDSLayoutChanged()
-        self.onBIDSAtlasSelected()
 
         return
     
