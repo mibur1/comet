@@ -1,7 +1,7 @@
 import os
 import re
 import sys
-import pickle
+import dill
 import numpy as np
 import pandas as pd
 from nilearn import signal
@@ -18,9 +18,9 @@ def load_timeseries(path=None, rois=None):
     if path is None:
         raise ValueError("Please provide a path to the time series data")
     
-    if path.endswith(".pkl"):
+    if path.endswith(".dill"):
         with open(path, 'rb') as file:
-            data = pickle.load(file)
+            data = dill.load(file)
     elif path.endswith(".txt"):
         data = np.loadtxt(path)
     elif path.endswith(".npy"):
@@ -69,10 +69,10 @@ def load_example(type=None):
     """
     Load simulated time series data with two randomly changing connectivity states
     """
-    if type == "pkl":
-        with pkg_resources.path("comet.resources", "simulation.pkl") as file_path:
+    if type == "dill":
+        with pkg_resources.path("comet.resources", "simulation.dill") as file_path:
             with open(file_path, 'rb') as file:
-                data = pickle.load(file)
+                data = dill.load(file)
     else:
         with pkg_resources.path("comet.resources", "simulation.txt") as file_path:
             data = np.loadtxt(file_path)
@@ -90,7 +90,7 @@ def load_single_state():
 
 def save_results(data=None, universe=None):
     """
-    Save all kinds of results as .pkl file
+    Save all kinds of results as .dill file
     """
     calling_script_dir = os.getcwd() if in_notebook else os.path.dirname(sys.path[0])
     
@@ -102,10 +102,10 @@ def save_results(data=None, universe=None):
     if not os.path.exists(savedir):
         os.makedirs(savedir)
     
-    # Save as pkl file
-    filepath = savedir + f"/universe_{universe_number}.pkl"
+    # Save as dill file
+    filepath = savedir + f"/universe_{universe_number}.dill"
     with open(filepath, 'wb') as f:
-        pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+        dill.dump(data, f, protocol=dill.HIGHEST_PROTOCOL)
 
 def clean(time_series, runs=None, detrend=False, confounds=None, standardize=False, standardize_confounds=True, filter='butterworth', low_pass=None, high_pass=None, t_r=0.72, ensure_finite=False):
     """

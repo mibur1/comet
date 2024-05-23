@@ -2,7 +2,7 @@ import os
 import sys
 import csv
 import glob
-import pickle
+import dill
 import inspect
 import itertools
 import subprocess
@@ -18,7 +18,7 @@ from matplotlib import lines as mlines
 from matplotlib import patches as mpatches
 from joblib import Parallel, delayed
 
-def in_notebook(self):
+def in_notebook():
         try:
             from IPython import get_ipython
             if 'IPKernelApp' not in get_ipython().config:
@@ -79,8 +79,8 @@ class Multiverse:
         self.create_csv(results_dir, valid_universes, keys)
 
         # Save forking paths
-        with open(f"{results_dir}/forking_paths.pkl", "wb") as file:
-            pickle.dump(forking_paths, file)
+        with open(f"{results_dir}/forking_paths.dill", "wb") as file:
+            dill.dump(forking_paths, file)
 
     # Run all (or individual) universes
     def run(self, path=None, universe_number=None, parallel=1):
@@ -345,12 +345,12 @@ class Multiverse:
             sorted_combined = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
             
         else:
-            print(f"Getting {measure} from .pkl files")
-            with open(f"{results_path}/forking_paths.pkl", "rb") as file:
-                forking_paths = pickle.load(file)
+            print(f"Getting {measure} from .dill files")
+            with open(f"{results_path}/forking_paths.dill", "rb") as file:
+                forking_paths = dill.load(file)
 
-            # Construct the search pattern to match files of the format 'universe_X.pkl'
-            pattern = os.path.join(results_path, "universe_*.pkl")
+            # Construct the search pattern to match files of the format 'universe_X.dill'
+            pattern = os.path.join(results_path, "universe_*.dill")
             results_files = glob.glob(pattern)
 
             # Load and match universes to their summaries
@@ -361,7 +361,7 @@ class Multiverse:
 
                 # Load the universe data
                 with open(filename, "rb") as file:
-                    universe_data[universe] = pickle.load(file)
+                    universe_data[universe] = dill.load(file)
 
             # Create a list of tuples (universe_data, corresponding_row_in_summary)
             universes_with_summary = []
