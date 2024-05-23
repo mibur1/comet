@@ -40,7 +40,7 @@ def handle_negative_weights(W: np.ndarray,
     return W
 
 def threshold(W: np.ndarray, 
-              type: Literal["absolute", "density"] = "absolute", 
+              type: Literal["density", "absolute"] = "density", 
               threshold: float = None, 
               density: float = None, 
               copy: bool = True) -> np.ndarray:
@@ -452,7 +452,7 @@ def efficiency_wei(Gw: np.ndarray,
                 # symmetrized adjacency vector
                 sa = A[u, V] + A[V, u].T
                 denom = np.sum(sa)**2 - np.sum(sa * sa)
-                # print numer,denom
+
                 E[u] = numer / denom  # local efficiency
     else:
         e = distance_wei(Gl, inv=True)
