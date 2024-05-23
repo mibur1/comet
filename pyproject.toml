@@ -22,6 +22,7 @@ dependencies = [
   "matplotlib >=3.8.2",
   "nibabel >=5.1.0",
   "pandas >=2.1.3",
+  "dill >=0.3.7",
   "pycwt >=0.4.0b0",
   "bctpy >=0.6.1",
   "joblib >=1.3.2",
