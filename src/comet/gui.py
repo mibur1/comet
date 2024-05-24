@@ -2,7 +2,7 @@ import re
 import sys
 import copy
 import json
-import dill
+import pickle
 import inspect
 import subprocess
 import numpy as np
@@ -977,7 +977,7 @@ class App(QMainWindow):
     """
     # Time series
     def loadTS(self):
-        fileFilter = "All Supported Files (*.mat *.txt *.npy *.dill *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Dill files (*.dill);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
+        fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
 
         if not file_path:
@@ -1006,9 +1006,9 @@ class App(QMainWindow):
         elif file_path.endswith('.npy'):
             self.data.file_data = np.load(file_path)
         
-        elif file_path.endswith('.dill'):
+        elif file_path.endswith('.pkl'):
             with open(file_path, 'rb') as f:
-                self.data.file_data = dill.load(f)
+                self.data.file_data = pickle.load(f)
 
                 if type(self.data.file_data) == pydfc.time_series.TIME_SERIES:
                     print("Loaded TIME_SERIES object")
@@ -1065,7 +1065,7 @@ class App(QMainWindow):
         self.canvas.draw()
 
         # Set filenames depending on file type
-        if file_path.endswith('.dill'):
+        if file_path.endswith('.pkl'):
             self.fileNameLabel.setText(f"Loaded TIME_SERIES object")
             shape = self.data.file_data.data_dict[list(self.data.file_data.data_dict.keys())[0]]["data"].shape
             self.fileNameLabel2.setText(f"Loaded and parcellated {self.data.file_name} with shape {shape}")
@@ -2812,7 +2812,7 @@ class App(QMainWindow):
     Graph tab functions
     """
     def loadGraphFile(self):
-        fileFilter = "All Supported Files (*.mat *.txt *.npy *.dill *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Dill files (*.dill);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
+        fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
         file_name = file_path.split('/')[-1]
         self.data.graph_file = file_name

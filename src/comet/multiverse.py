@@ -345,12 +345,12 @@ class Multiverse:
             sorted_combined = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
             
         else:
-            print(f"Getting {measure} from .dill files")
-            with open(f"{results_path}/forking_paths.dill", "rb") as file:
+            print(f"Getting {measure} from .pkl files")
+            with open(f"{results_path}/forking_paths.pkl", "rb") as file:
                 forking_paths = dill.load(file)
 
-            # Construct the search pattern to match files of the format 'universe_X.dill'
-            pattern = os.path.join(results_path, "universe_*.dill")
+            # Construct the search pattern to match files of the format 'universe_X.pkl'
+            pattern = os.path.join(results_path, "universe_*.pkl")
             results_files = glob.glob(pattern)
 
             # Load and match universes to their summaries
