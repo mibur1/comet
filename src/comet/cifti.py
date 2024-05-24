@@ -3,7 +3,14 @@ import numpy as np
 import nibabel as nib
 nib.imageglobals.logger.setLevel(40)
 from scipy.io import loadmat
-import importlib.resources as pkg_resources
+
+try:
+    if sys.version_info >= (3, 7):
+        import importlib.resources as pkg_resources
+    else:
+        import importlib_resources as pkg_resources
+except ImportError:
+    raise ImportError("Please install importlib_resources for Python versions below 3.7")
 
 def parcellate(dtseries, atlas="glasser", method=np.mean, standardize=True):
     """
