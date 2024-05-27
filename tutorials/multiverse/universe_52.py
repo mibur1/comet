@@ -21,7 +21,7 @@ labels = data_sim[3] # trial labels (connectivity state)
 # Preprocessing. Phase-based methods require band-pass filtering, amplitude-based methods require high-pass filtering.
 ts_bp = comet.data.clean(ts_sim, confounds=None, t_r=0.72, detrend=True, standardize=False, high_pass=0.03, low_pass=0.07) # band pass (narrow-band signal for Hilbert transform)
 ts_hp = comet.data.clean(ts_sim, confounds=None, t_r=0.72, detrend=True, standardize=False, high_pass=0.01)                # high pass (for amplitude based methods)
-dfc_ts = comet.methods.PhaseSynchrony(ts_bp, **{'method': 'crp'}).connectivity() # estimate dFC
+dfc_ts = comet.methods.PhaseSynchrony(ts_hp, **{'method': 'crp'}).connectivity() # estimate dFC
    
 #######################################
 # 3. SEGMENT DATA (DECISION: DELAY) 
