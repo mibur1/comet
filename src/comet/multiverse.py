@@ -280,7 +280,9 @@ class Multiverse:
 
         func = value["func"]
         args = value["args"].copy()
-        del args["Option"]
+        
+        if "Option" in args:
+            del args["Option"]
 
         first_arg = next(iter(args))
         input_data = args[first_arg]

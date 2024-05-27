@@ -37,7 +37,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout,
     QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QGroupBox
 
 # Comet imports and state-based dFC methods from pydfc
-from . import cifti, methods, graph
+from . import data_cifti, methods, graph
 import pydfc
 
 class Worker(QObject):
@@ -1048,7 +1048,7 @@ class App(QMainWindow):
         
         elif file_path.endswith(".dtseries.nii"):
             self.data.cifti_data = nib.load(file_path)
-            self.data.file_data = cifti.parcellate(self.data.cifti_data, atlas="glasser")
+            self.data.file_data = data_cifti.parcellate(self.data.cifti_data, atlas="glasser")
 
         elif file_path.endswith(".ptseries.nii"):
             data = nib.load(file_path)
@@ -2124,7 +2124,7 @@ class App(QMainWindow):
         }
         atlas_name = atlas_map.get(atlas_name, None)
 
-        self.data.file_data = cifti.parcellate(self.data.cifti_data, atlas=atlas_name)
+        self.data.file_data = data_cifti.parcellate(self.data.cifti_data, atlas=atlas_name)
         self.fileNameLabel.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
     
     # Calculations

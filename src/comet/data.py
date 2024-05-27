@@ -68,7 +68,7 @@ def load_example(type=None):
     """
     Load simulated time series data with two randomly changing connectivity states
     """
-    if type == "pickle":
+    if type == "pkl":
         with pkg_resources.path("comet.resources", "simulation.pkl") as file_path:
             with open(file_path, 'rb') as file:
                 data = pickle.load(file)

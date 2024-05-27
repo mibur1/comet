@@ -555,6 +555,7 @@ def small_world_sigma(G: np.ndarray,
 
     C = transitivity(G)
     L = avg_shortest_path(G)
+
     Cr = np.mean(randMetrics["C"])
     Lr = np.mean(randMetrics["L"])
 
@@ -833,8 +834,7 @@ def participation_coef_sign(CIJ: np.ndarray,
     res_dict = {"Nodal participation coefficient from positive weights": res[0], "Nodal participation coefficient from negative weights": res[1]}
     return res_dict
 
-"""
-def rich_club(CIJ: np.ndarray,
+"""def rich_club(CIJ: np.ndarray,
                  weighted: bool=True,
                  klevel: int = None) -> np.ndarray:
     res = bct.rich_club_wu(CIJ, klevel) if weighted else bct.rich_club_bu(CIJ, klevel)
@@ -843,8 +843,8 @@ def rich_club(CIJ: np.ndarray,
     res_dict = {"Rich club coefficient vectors (weighted)": res} if weighted else {"Rich club coefficient vectors (binary)": res}
     return res_dict"""
 
-def transitivity(CIJ: np.ndarray,
+"""def transitivity(CIJ: np.ndarray,
                  weighted: bool=True) -> float:
     res = bct.transitivity_wu(CIJ) if weighted else bct.transitivity_bu(CIJ)
     res_dict = {"Global transitivity (weighted)": res} if weighted else {"Global transitivity (binary)": res}
-    return res_dict
+    return res_dict"""
