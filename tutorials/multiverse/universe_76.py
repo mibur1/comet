@@ -10,7 +10,7 @@ from joblib import Parallel, delayed
 
 #####################################
 # 1. LOAD DATA AND EXTRACT PARAMETERS
-data_sim = comet.data.load_example(type="pkl")
+data_sim = comet.data.load_example(ftype="pkl")
 ts_sim = data_sim[0] # time series data
 time = data_sim[1]   # time in seconds
 onsets = data_sim[2] # trial onsets in seconds
@@ -22,9 +22,9 @@ labels = data_sim[3] # trial labels (connectivity state)
 ts_bp = comet.data.clean(ts_sim, confounds=None, t_r=0.72, detrend=True, standardize=False, high_pass=0.03, low_pass=0.07) # band pass (narrow-band signal for Hilbert transform)
 ts_hp = comet.data.clean(ts_sim, confounds=None, t_r=0.72, detrend=True, standardize=False, high_pass=0.01)                # high pass (for amplitude based methods)
 dfc_ts = comet.methods.DCC(ts_hp, **{'num_cores': 8}).connectivity() # estimate dFC
-   
+
 #######################################
-# 3. SEGMENT DATA (DECISION: DELAY) 
+# 3. SEGMENT DATA (DECISION: DELAY)
 segments = []
 for i in onsets:
     segment = [i+j+10 for j in range(0, 10)]
@@ -65,7 +65,7 @@ def compute_graph_measures(t, features, index, density, bin):
     W = comet.graph.handle_negative_weights(W, type="absolute")
     W = comet.graph.threshold(W, type="density", density=density)
     W = comet.graph.postproc(W)
-    
+
     ci, q = bct.community_louvain(W)
     participation = bct.participation_coef(W, ci, degree="undirected")
     clustering = bct.clustering_coef_bu(W) if bin else bct.clustering_coef_wu(W)
@@ -92,7 +92,7 @@ labels = behaviour
 
 # Initialize the SVC
 svc = SVC(kernel='rbf')
-    
+
 # Perform 5-fold cross-validation
 accuracy = []
 skf = StratifiedKFold(n_splits=5)
