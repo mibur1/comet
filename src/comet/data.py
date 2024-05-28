@@ -16,7 +16,7 @@ def load_timeseries(path=None, rois=None):
     """
     if path is None:
         raise ValueError("Please provide a path to the time series data")
-    
+
     if path.endswith(".pkl"):
         with open(path, 'rb') as file:
             data = pickle.load(file)
@@ -40,7 +40,7 @@ def load_timeseries(path=None, rois=None):
 
         # Identify entirely empty columns
         empty_columns = data.columns[data.isna().all()]
-        
+
         # Remove corresponding rois if rois exist
         if rois is not None:
             removed_rois = rois[empty_columns].to_list()
@@ -58,24 +58,24 @@ def load_timeseries(path=None, rois=None):
 
     else:
         raise ValueError("Unsupported file format")
-    
+
     if rois is not None:
         return data, rois
     else:
         return data
 
-def load_example(type=None):
+def load_example(ftype=None):
     """
     Load simulated time series data with two randomly changing connectivity states
     """
-    if type == "pkl":
+    if ftype == "pkl":
         with importlib_resources.path("comet.resources", "simulation.pkl") as file_path:
             with open(file_path, 'rb') as file:
                 data = pickle.load(file)
     else:
         with importlib_resources.path("comet.resources", "simulation.txt") as file_path:
             data = np.loadtxt(file_path)
-    
+
     return data
 
 def load_single_state():
@@ -84,7 +84,7 @@ def load_single_state():
     """
     with importlib_resources.path("comet.resources", "single_state.txt") as file_path:
         data = np.loadtxt(file_path)
-    
+
     return data
 
 def save_results(data=None, universe=None):
@@ -92,7 +92,7 @@ def save_results(data=None, universe=None):
     Save all kinds of results as .pkl file
     """
     calling_script_dir = os.getcwd() if in_notebook else os.path.dirname(sys.path[0])
-    
+
     # A bit of regex to get the universe number from the filename
     match = re.search(r'universe_(\d+).py', universe)
     universe_number = int(match.group(1))
@@ -100,14 +100,16 @@ def save_results(data=None, universe=None):
     savedir = calling_script_dir + "/universes/results"
     if not os.path.exists(savedir):
         os.makedirs(savedir)
-    
+
     # Save as pkl file
     filepath = savedir + f"/universe_{universe_number}.pkl"
     with open(filepath, 'wb') as f:
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-def clean(time_series, runs=None, detrend=False, confounds=None, standardize=False, standardize_confounds=True, filter='butterworth', low_pass=None, high_pass=None, t_r=0.72, ensure_finite=False):
+def clean(time_series, runs=None, detrend=False, confounds=None, standardize=False, standardize_confounds=True, \
+          filter='butterworth', low_pass=None, high_pass=None, t_r=0.72, ensure_finite=False):
     """
     Standard nilearn cleaning of the time series
     """
-    return signal.clean(time_series, detrend=detrend, confounds=confounds, standardize=standardize, standardize_confounds=standardize_confounds, filter=filter, low_pass=low_pass, high_pass=high_pass, t_r=t_r, ensure_finite=ensure_finite)
+    return signal.clean(time_series, detrend=detrend, confounds=confounds, standardize=standardize, standardize_confounds=standardize_confounds, \
+                        filter=filter, low_pass=low_pass, high_pass=high_pass, t_r=t_r, ensure_finite=ensure_finite)

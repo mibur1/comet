@@ -19,8 +19,8 @@ def parcellate(dtseries, atlas="glasser", method=np.mean, standardize=True):
         idx = np.where(medial_mask == 0)[0]
 
         # prepare idices and insert them into the HCP data
-        for i in range(len(idx)):
-            idx[i] = idx[i] - i
+        for i, value in enumerate(idx):
+            idx[i] = value - i
 
         cortical_vertices = 59412 # HCP data has 59412 cortical vertices
         ts = ts[:,:cortical_vertices]
@@ -30,7 +30,7 @@ def parcellate(dtseries, atlas="glasser", method=np.mean, standardize=True):
     # TODO: Check if it should be done somewhere else
     if standardize:
         ts = stdize(ts)
-    
+
     # Parcellation
     n = np.sum(keys!=0)
     ts_parc = np.zeros((len(ts), n), dtype=ts.dtype)
@@ -48,7 +48,8 @@ def prepare_atlas(atlas_name, debug=False):
     Prepare a cifti 2 atlas to be used in parcellation
     """
     if atlas_name == "glasser":
-        with importlib_resources.path("comet.resources.atlas", "Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors_with_Atlas_ROIs2.32k_fs_LR.dlabel.nii") as path:
+        with importlib_resources.path("comet.resources.atlas", "Q1-Q6_RelatedValidation210.CorticalAreas_dil_\
+                                      Final_Final_Areas_Group_Colors_with_Atlas_ROIs2.32k_fs_LR.dlabel.nii") as path:
             atlas = nib.load(path)
     elif atlas_name == "schaefer_kong":
         with importlib_resources.path("comet.resources.atlas", "Schaefer2018_200Parcels_Kong2022_17Networks_order.dlabel.nii") as path:
@@ -58,7 +59,7 @@ def prepare_atlas(atlas_name, debug=False):
             atlas = nib.load(path)
     else:
         sys.exit("Atlas must be any of glasser, schaefer_kong, or schaefer_tian")
-    
+
     # Usually for dlabel.nii files we have the following header stucture
     #       axis 0: LabelAxis
     #       axix 1: BrainModelAxis
@@ -69,8 +70,8 @@ def prepare_atlas(atlas_name, debug=False):
 
     if debug:
         brainmodelAxis = atlas.header.get_axis(1)
-        for idx, (name, slice, bm) in enumerate(brainmodelAxis.iter_structures()):
-            print(idx, str(name), slice)
+        for idx, (name, _slice, _bm) in enumerate(brainmodelAxis.iter_structures()):
+            print(idx, str(name), _slice, _bm)
 
     index_map = atlas.header.get_index_map(0)
     named_map=list(index_map.named_maps)[0]
@@ -80,13 +81,13 @@ def prepare_atlas(atlas_name, debug=False):
     rgba = []
 
     # Iterate over label_table and get relevat values
-    for i in range(len(named_map.label_table)):
-        roi = named_map.label_table[i]
+    for _, roi in enumerate(named_map.label_table):
         labels.append(roi.label)
         rgba.append(roi.rgba)
         keys.append(roi.key)
+
     keys = np.asarray(keys)
-    
+
     return (rois, keys, labels, rgba)
 
 def get_fdata(dtseries):

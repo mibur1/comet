@@ -19,6 +19,7 @@ from joblib import Parallel, delayed
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["OMP_NUM_THREADS"] = "1"
 
+
 '''
 Abstract class template for all dynamic functional connectivity methods
 Abstract methods need to be overriden in the child classes
@@ -42,18 +43,18 @@ class ConnectivityMethod(metaclass=ABCMeta):
         if self.fisher_z:
             R_mat = np.clip(R_mat, -1 + np.finfo(float).eps, 1 - np.finfo(float).eps)
             R_mat = np.arctanh(R_mat)
-        
+
         # z-standardize
         if self.standardize and len(R_mat.shape) == 3:
             R_mat = zscore(R_mat, axis=2)
-        
+
         # Set main diagonal
         if len(R_mat.shape) == 3:
             for estimate in range(R_mat.shape[2]):
                 np.fill_diagonal(R_mat[:,:, estimate], self.diagonal)
         else:
             np.fill_diagonal(R_mat, self.diagonal)
-        
+
         # Get lower triangle to save space
         if self.tril:
             if len(R_mat.shape) == 3:
@@ -64,6 +65,7 @@ class ConnectivityMethod(metaclass=ABCMeta):
                 R_mat = R_mat[mask]
 
         return R_mat
+
 
 '''
 Continuous dFC methods
@@ -85,13 +87,13 @@ class SlidingWindow(ConnectivityMethod):
                  standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
-        
+
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.windowsize = windowsize
         self.stepsize = stepsize
         self.shape = shape
         self.std = std
-        
+
         self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1 # N possible estimates given the window and step size
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
 
@@ -109,13 +111,13 @@ class SlidingWindow(ConnectivityMethod):
         weights_init = np.zeros(self.T)
 
         if self.shape == 'rectangular':
-            weights_init[0:self.windowsize] = np.ones(self.windowsize)   
+            weights_init[0:self.windowsize] = np.ones(self.windowsize)
         if self.shape == 'gaussian':
             weights_init[0:self.windowsize] = windows.gaussian(self.windowsize, self.std)
         if self.shape == 'hamming':
             weights_init[0:self.windowsize] = windows.hamming(self.windowsize)
-            
-        weights = np.array([np.roll(weights_init, i) for i in range(0, self.T + 1 - self.windowsize, self.stepsize)]) 
+
+        weights = np.array([np.roll(weights_init, i) for i in range(0, self.T + 1 - self.windowsize, self.stepsize)])
 
         return weights
 
@@ -125,14 +127,14 @@ class SlidingWindow(ConnectivityMethod):
         '''
         centers = np.arange(self.windowsize // 2, self.T - self.windowsize // 2, self.stepsize)
         return centers
-    
+
     def connectivity(self):
         '''
         Calculate sliding window correlation
         '''
         print("Calculating Sliding Window Correlation, please wait...")
         weights = self._weights()
-        self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan) 
+        self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
 
         for estimate in range(self.N_estimates):
             self.R_mat[:,:,estimate] = DescrStatsW(self.time_series, weights[estimate, :]).corrcoef
@@ -145,7 +147,7 @@ class Jackknife(ConnectivityMethod):
     name = "CONT Jackknife Correlation"
     '''
     Jackknife correlation:
-        Richter CG, Thompson WH, Bosman CA, Fries P. A jackknife approach to quantifying single-trial 
+        Richter CG, Thompson WH, Bosman CA, Fries P. A jackknife approach to quantifying single-trial
         correlation between covariance-based metrics undefined on a single-trial basis.
         https://doi.org/10.1016/j.neuroimage.2015.04.040
     '''
@@ -157,7 +159,7 @@ class Jackknife(ConnectivityMethod):
                  standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
-        
+
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.windowsize = windowsize
         self.stepsize = stepsize
@@ -167,7 +169,7 @@ class Jackknife(ConnectivityMethod):
 
         if not self.windowsize <= self.T:
             raise ValueError("windowsize is larger than time series")
-    
+
     def _weights(self):
         '''
         Create logical weight vectors for jackknife correlation
@@ -175,7 +177,7 @@ class Jackknife(ConnectivityMethod):
         '''
         weights_init = np.ones(self.T)
         weights_init[0:self.windowsize] = 0
-        weights = np.array([np.roll(weights_init, i) for i in range(0, self.T + 1 - self.windowsize, self.stepsize)]) 
+        weights = np.array([np.roll(weights_init, i) for i in range(0, self.T + 1 - self.windowsize, self.stepsize)])
         return weights.astype(bool)
 
     def centers(self):
@@ -184,7 +186,7 @@ class Jackknife(ConnectivityMethod):
         '''
         centers = np.arange(self.windowsize // 2, self.T - self.windowsize // 2, self.stepsize)
         return centers
-    
+
     def connectivity(self):
         '''
         Calculate jackknife correlation
@@ -195,7 +197,7 @@ class Jackknife(ConnectivityMethod):
         for estimate in range(self.N_estimates):
             ts_jackknife = self.time_series[weights[estimate,:],:]
             self.R_mat[:,:,estimate] = np.corrcoef(ts_jackknife.T) * -1 # correlation estimation and sign inversion
-        
+
         self.R_mat = self.postproc(self.R_mat)
 
         return self.R_mat
@@ -204,8 +206,8 @@ class SpatialDistance(ConnectivityMethod):
     name = "CONT Spatial Distance"
     '''
     Spatial Distance:
-        William Hedley Thompson, Per Brantefors, Peter Fransson. From static 
-        to temporal network theory: Applications to functional brain connectivity. 
+        William Hedley Thompson, Per Brantefors, Peter Fransson. From static
+        to temporal network theory: Applications to functional brain connectivity.
         https://doi.org/10.1162/NETN_a_00011
     '''
     def __init__(self,
@@ -215,19 +217,19 @@ class SpatialDistance(ConnectivityMethod):
                  standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
-        
+
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.distance = self._distance_functions(dist)
 
         self.N_estimates = self.T
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
-    
+
     def _distance_functions(self, dist):
         options = {'euclidean': distance.euclidean,
                    'cosine'   : distance.cosine,
                    'cityblock': distance.cityblock}
         return options[dist]
-    
+
     def _weights(self):
         '''
         Calculate adjacency matrix for spatial distance
@@ -249,7 +251,7 @@ class SpatialDistance(ConnectivityMethod):
 
         for estimate in range(self.N_estimates):
             self.R_mat[:,:,estimate] = DescrStatsW(self.time_series, weights[estimate, :]).corrcoef
-        
+
         self.R_mat = self.postproc(self.R_mat)
 
         return self.R_mat
@@ -269,10 +271,10 @@ class TemporalDerivatives(ConnectivityMethod):
                  standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
-        
+
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.windowsize = windowsize
-        
+
         self.N_estimates = self.T - self.windowsize
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
 
@@ -285,7 +287,7 @@ class TemporalDerivatives(ConnectivityMethod):
         '''
         centers = np.arange(self.windowsize // 2 + 1, self.T - self.windowsize // 2)
         return centers
-    
+
     def connectivity(self):
         '''
         Calculate multiplication of temproral derivatives
@@ -298,7 +300,7 @@ class TemporalDerivatives(ConnectivityMethod):
         # Convolve with rectangular kernel for smoothing
         kernel = np.ones(self.windowsize) / self.windowsize
         smooth_coupling = np.full((self.P * self.P, self.N_estimates), np.nan)
-        
+
         for i in range(self.P * self.P):
             smooth_coupling[i,:] = np.convolve(coupling[i,:], kernel, mode='valid')
 
@@ -311,7 +313,7 @@ class FlexibleLeastSquares(ConnectivityMethod):
     name = "CONT Flexible Least Squares"
     '''
     Flexible Least Squares:
-        Liao, W., Wu, G. R., Xu, Q., Ji, G. J., Zhang, Z., Zang, Y. F., & Lu, G. (2014). 
+        Liao, W., Wu, G. R., Xu, Q., Ji, G. J., Zhang, Z., Zang, Y. F., & Lu, G. (2014).
         DynamicBC: a MATLAB toolbox for dynamic brain connectome analysis. Brain connectivity, 4(10), 780-790.
         https://doi.org/10.1089/brain.2014.0253
     '''
@@ -324,7 +326,7 @@ class FlexibleLeastSquares(ConnectivityMethod):
                  standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
-        
+
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.N_estimates = self.T
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
@@ -360,7 +362,7 @@ class FlexibleLeastSquares(ConnectivityMethod):
         betas = np.reshape(betas, (K, N)).T
 
         return betas.squeeze()
-    
+
     def _calculateBetasForPair(self, i):
         beta_i = np.zeros((self.P, self.T))
         for j in range(self.P):
@@ -380,7 +382,7 @@ class FlexibleLeastSquares(ConnectivityMethod):
 
         # FLS beta estimation
         results = Parallel(n_jobs=self.num_cores)(delayed(self._calculateBetasForPair)(i) for i in tqdm(range(self.P)))
-        
+
         for i, beta_i in results:
             beta[i, :, :] = beta_i
 
@@ -396,7 +398,7 @@ class PhaseSynchrony(ConnectivityMethod):
     name = "CONT Phase Synchronization"
     '''
     Instantaneous Phase Synchrony:
-        Honari, H., Choe, A. S., & Lindquist, M. A. (2021). Evaluating phase synchronization methods in fMRI: 
+        Honari, H., Choe, A. S., & Lindquist, M. A. (2021). Evaluating phase synchronization methods in fMRI:
         A comparison study and new approaches. NeuroImage, 228, 117704. https://doi.org/10.1016/j.neuroimage.2020.117704
     '''
     def __init__(self,
@@ -406,7 +408,7 @@ class PhaseSynchrony(ConnectivityMethod):
                  standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
-        
+
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.N_estimates = self.T
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
@@ -420,7 +422,7 @@ class PhaseSynchrony(ConnectivityMethod):
         print("Calculating Phase Synchronization, please wait...")
         analytic_signal = hilbert(self.time_series.transpose())
         instantaneous_phase = np.angle(analytic_signal)
-        
+
         ips = np.full((self.P,self.P, self.N_estimates), np.nan)
         for i in range(self.P):
             for j in range(self.P):
@@ -430,7 +432,7 @@ class PhaseSynchrony(ConnectivityMethod):
                     ips[i, j, :] = 1 - np.abs(np.sin(instantaneous_phase[i] - instantaneous_phase[j])) # phase coherence
                 if self.method == "teneto":
                     ips[i, j, :] = 1 - np.sin(np.abs(instantaneous_phase[i] - instantaneous_phase[j])/2) # teneto implementation
-                
+
 
         self.R_mat = self.postproc(ips)
         return self.R_mat
@@ -439,15 +441,15 @@ class LeiDA(ConnectivityMethod):
     name = "CONT Leading Eigenvector Dynamics"
     '''
     Leading Eigenvector Dynamics:
-        Cabral, J., Vidaurre, D., Marques, P., Magalhães, R., Silva Moreira, P., Miguel Soares, J., ... & Kringelbach, M. L. (2017). 
-        Cognitive performance in healthy older adults relates to spontaneous switching between states of functional connectivity during rest. 
+        Cabral, J., Vidaurre, D., Marques, P., Magalhães, R., Silva Moreira, P., Miguel Soares, J., ... & Kringelbach, M. L. (2017).
+        Cognitive performance in healthy older adults relates to spontaneous switching between states of functional connectivity during rest.
         Scientific reports, 7(1), 5135. https://doi.org/10.1038/s41598-017-05425-7
-        
-        Olsen, A. S., Lykkebo-Valløe, A., Ozenne, B., Madsen, M. K., Stenbæk, D. S., Armand, S., ... & Fisher, P. M. (2022). Psilocybin modulation 
+
+        Olsen, A. S., Lykkebo-Valløe, A., Ozenne, B., Madsen, M. K., Stenbæk, D. S., Armand, S., ... & Fisher, P. M. (2022). Psilocybin modulation
         of time-varying functional connectivity is associated with plasma psilocin and subjective effects. Neuroimage, 264, 119716.
         https://doi.org/10.1016/j.neuroimage.2022.119716
 
-        Vohryzek, J., Deco, G., Cessac, B., Kringelbach, M. L., & Cabral, J. (2020). Ghost attractors in spontaneous brain activity: 
+        Vohryzek, J., Deco, G., Cessac, B., Kringelbach, M. L., & Cabral, J. (2020). Ghost attractors in spontaneous brain activity:
         Recurrent excursions into functionally-relevant BOLD phase-locking states. Frontiers in systems neuroscience, 14, 20.
         https://doi.org/10.3389/fnsys.2020.00020
     '''
@@ -458,7 +460,7 @@ class LeiDA(ConnectivityMethod):
                  standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
-        
+
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
 
         self.N_estimates = self.T
@@ -497,8 +499,8 @@ class WaveletCoherence(ConnectivityMethod):
     name = "CONT Wavelet Coherence"
     '''
     Instantaneous Wavelet Coherence:
-        Jacob Billings, Manish Saggar, Jaroslav Hlinka, Shella Keilholz, Giovanni Petri; Simplicial and 
-        topological descriptions of human brain dynamics. Network Neuroscience 2021; 5 (2): 549–568. 
+        Jacob Billings, Manish Saggar, Jaroslav Hlinka, Shella Keilholz, Giovanni Petri; Simplicial and
+        topological descriptions of human brain dynamics. Network Neuroscience 2021; 5 (2): 549–568.
         https://doi.org/10.1162/netn_a_00190
     '''
     def __init__(self,
@@ -514,7 +516,7 @@ class WaveletCoherence(ConnectivityMethod):
                  standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
-        
+
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
 
         self.N_estimates = self.T
@@ -532,7 +534,7 @@ class WaveletCoherence(ConnectivityMethod):
         # Time series dimensions
         P = self.time_series.shape[1]
         T = self.time_series.shape[0]
-        
+
         # Initial parameters
         dt = self.TR # TR of the data
         s0 = 1 / self.fmax # Smallest scale of the wavelet
@@ -542,7 +544,7 @@ class WaveletCoherence(ConnectivityMethod):
 
         iwc = np.full((P, P, J+1, T), np.nan) # resulting wavelet coherence matrices
         dfc = np.full((P, P, T), np.nan) # resulting dfc matrices (weighted average of iwc across scales)
-        
+
         W_list = []
         S_list = []
         for i in range(P):
@@ -565,7 +567,7 @@ class WaveletCoherence(ConnectivityMethod):
                 W2 = W_list[j]
                 S1 = S_list[i]
                 S2 = S_list[j]
-                
+
                 # Calculate wavelet coherence
                 W12 = W1 * np.conj(W2)
                 S12 = mother_wavelet.smooth(W12 / scales, dt, dj, s1)
@@ -574,12 +576,12 @@ class WaveletCoherence(ConnectivityMethod):
                 iwc[j,i,:,:] = WCT
 
                 if self.method == "weighted":
-                # Calculate DFC as weighted average using cross wavelet power 
+                # Calculate DFC as weighted average using cross wavelet power
                     CWP = np.abs(W1 * np.conj(W2)) # cross wavelet power
                     CWP = CWP[self.drop_scales:-self.drop_scales, self.drop_timepoints:-self.drop_timepoints] # drop outer scales and outer time points
                     WCT = WCT[self.drop_scales:-self.drop_scales, self.drop_timepoints:-self.drop_timepoints] # drop outer scales and outer time points
                     cross_power = CWP / np.sum(CWP, axis=0) # normalize
-                    
+
                     dfc[i, j, self.drop_timepoints:-self.drop_timepoints] = 1 - (cross_power * WCT).sum(axis=0) # dfc as in eq. 1
                     dfc[j, i, self.drop_timepoints:-self.drop_timepoints] = 1 - (cross_power * WCT).sum(axis=0) # dfc as in eq. 1
                 else:
@@ -587,9 +589,9 @@ class WaveletCoherence(ConnectivityMethod):
 
         # Get rid of empty time points
         dfc = dfc[:,:, self.drop_timepoints:-self.drop_timepoints]
-        
+
         dfc = self.postproc(dfc)
-        
+
         #return iwc, dfc
         return dfc
 
@@ -597,7 +599,7 @@ class DCC(ConnectivityMethod):
     name = "CONT Dynamic Conditional Correlation"
     '''
     Dynamic Conditional Correlation:
-        Lindquist, M. A., Xu, Y., Nebel, M. B., & Caffo, B. S. (2014). Evaluating dynamic bivariate correlations 
+        Lindquist, M. A., Xu, Y., Nebel, M. B., & Caffo, B. S. (2014). Evaluating dynamic bivariate correlations
         in resting-state fMRI: a comparison study and a new approach. NeuroImage, 101, 531-546.
         https://doi.org/10.1016/j.neuroimage.2014.06.052
     '''
@@ -610,7 +612,7 @@ class DCC(ConnectivityMethod):
                  standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
-        
+
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
 
         self.N_estimates = self.T
@@ -636,7 +638,7 @@ class DCC(ConnectivityMethod):
         T = len(data)
         h = np.zeros_like(data)
         h[0] = np.mean(data ** 2)
-        
+
         output = 0
         eps = 1e-15
         for t in range(1,T):
@@ -675,7 +677,7 @@ class DCC(ConnectivityMethod):
             d[t+1] = theta[0] + theta[1] * r[t] ** 2 + theta[2] * d[t]
 
         epsilon[T-1] = r[T-1] / np.sqrt(d[T-1])
-        
+
         return epsilon, d
 
     def _epsilonToR(self, epsilon, theta):
@@ -735,20 +737,20 @@ class DCC(ConnectivityMethod):
             R = np.diag(1/np.sqrt(np.diag(Q))) @ Q @ np.diag(1/np.sqrt(np.diag(Q)))
 
         return output
-    
+
     def _compute_garch(self, n):
         ts_n = np.ascontiguousarray(self.time_series[:, n])
-        constraints = {'type': 'ineq', 'fun': lambda x: np.array([1 - x[0] - x[1] - x[2], x[0], x[1], x[2]])} 
+        constraints = {'type': 'ineq', 'fun': lambda x: np.array([1 - x[0] - x[1] - x[2], x[0], x[1], x[2]])}
         bounds = ((0, 1), (0, 1), (0, 1))
         theta0 = (0.25, 0.25, 0.25)
         res = minimize(self._loglikelihood_garch11, theta0, args=(ts_n), constraints=constraints, bounds=bounds)
-        
+
         ep, d = self._rToEpsilon(ts_n, res.x)
         return res.x, ep, d
-    
+
     def connectivity(self):
         """DCC algorithm
-        
+
         Parameters
         ----------
         theta : T-by-N matrix
@@ -756,9 +758,9 @@ class DCC(ConnectivityMethod):
 
         Returns
         -------
-        H : N*N*T matrix 
+        H : N*N*T matrix
             estimated dynamic conditional covariance matrices
-        R : N*N*T matrix 
+        R : N*N*T matrix
             estimated dynamic conditional correlation matrices
         Theta : N*3 matrix
             GARCH(1,1) parameters
@@ -785,14 +787,14 @@ class DCC(ConnectivityMethod):
             Theta[n, :] = theta
             epsilon[:, n] = ep
             D[:, n] = d
-            
+
         # Estimate parameter X for dynamic correlation matrix
-        constraints = {'type': 'ineq', 'fun': lambda x: np.array([1 - x[0] - x[1], x[0], x[1]])}  
+        constraints = {'type': 'ineq', 'fun': lambda x: np.array([1 - x[0] - x[1], x[0], x[1]])}
         bounds = ((0, 1), (0, 1))
         x0 = (0.25, 0.25)
 
         for attempt in range(5):
-            try: 
+            try:
                 res = minimize(lambda x: self._LcOriginal(epsilon, x), x0, constraints=constraints, bounds=bounds)
                 break
             except:
@@ -804,14 +806,14 @@ class DCC(ConnectivityMethod):
 
         # Time-varying conditional correlation matrices
         R = self._epsilonToR(epsilon, X)
-        
+
         # Time-varying conditional covariance matrices
         for t in tqdm(range(T)):
             H[:,:,t] = np.diag(np.sqrt(D[t,:])) @ R[:,:,t] @ np.diag(np.sqrt(D[t,:]))
 
 
         R = self.postproc(R)
-        
+
         #return H, R, Theta, X
         return R
 
@@ -826,25 +828,26 @@ class Edge_centric_connectivity(ConnectivityMethod):
                  standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
-        
+
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.standardizeData = standardizeData
-    
+
     def connectivity(self):
-        
+
         z = zscore(self.time_series, axis=0, ddof=1) if self.standardizeData else self.time_series
         u, v = np.triu_indices(self.time_series.shape[1], k=1)
         a = np.multiply(z[:, u], z[:, v]) # edge time series
- 
+
         b = a.T @ a # inner product
         c = np.sqrt(np.diag(b)) # Square root of the diagonal elements (variance) to normalize
         d = np.outer(c, c) ## Create the normalization matrix
         dfc = b / d # Element-wise division to get the correlation matrix
-        
+
         dfc = self.postproc(dfc)
 
         return dfc, (a, u, v)
-    
+
+
 '''
 State based dFC methods. Basically wrapper functions to bring methods from https://github.com/neurodatascience/dFC/ into the Comet framework
 '''
@@ -857,7 +860,7 @@ class Sliding_Window(BaseDFCMethod):
                  time_series: time_series.TIME_SERIES,
                  clstr_distance: Literal["euclidean"] = "euclidean",
                  **params):
-        
+
         self.time_series = time_series
         self.logs_ = ''
         self.TPM = []
@@ -886,7 +889,7 @@ class Sliding_Window(BaseDFCMethod):
         measure = SLIDING_WINDOW(**self.params)
         dFC = measure.estimate_dFC(time_series=self.time_series)
         return dFC
-    
+
 class Time_Freq(BaseDFCMethod):
     name = "CONT Time-frequency (pydfc)"
     '''
@@ -897,7 +900,7 @@ class Time_Freq(BaseDFCMethod):
                  num_cores: int = 8,
                  coi_correction: bool = True,
                  **params):
-        
+
         self.time_series = time_series
         self.logs_ = ''
         self.TPM = []
@@ -915,7 +918,7 @@ class Time_Freq(BaseDFCMethod):
                 self.params[params_name] = params[params_name]
             else:
                 self.params[params_name] = None
-        
+
         self.params['measure_name'] = 'Time-Freq'
         self.params['is_state_based'] = False
         self.params['coi_correction'] = coi_correction
@@ -925,7 +928,7 @@ class Time_Freq(BaseDFCMethod):
         measure = TIME_FREQ(**self.params)
         dFC = measure.estimate_dFC(time_series=self.time_series)
         return dFC
-    
+
 class Cap(BaseDFCMethod):
     name = "STATE Co-activation patterns"
     '''
@@ -938,7 +941,7 @@ class Cap(BaseDFCMethod):
                  n_subj_clusters: int = 5,
                  normalization: bool = True,
                  **params):
-        
+
         self.time_series = time_series
         self.logs_ = ''
         self.FCS_ = []
@@ -971,7 +974,7 @@ class Cap(BaseDFCMethod):
         measure.estimate_FCS(time_series=self.time_series)
         dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
         return dFC
-    
+
 class Sliding_Window_Clustr(BaseDFCMethod):
     name = "STATE Sliding Window Clustering"
     '''
@@ -987,9 +990,9 @@ class Sliding_Window_Clustr(BaseDFCMethod):
                  n_subj_clusters: int = 5,
                  normalization: bool = True,
                  clstr_distance: Literal["euclidean", "manhattan"] = "euclidean"):
-        
-        self.time_series = time_series   
-    
+
+        self.time_series = time_series
+
         if not clstr_distance=='euclidean' or clstr_distance=='manhattan':
             raise ValueError("Clustering distance not recognized. It must be either euclidean or manhattan.")
 
@@ -1007,10 +1010,10 @@ class Sliding_Window_Clustr(BaseDFCMethod):
             'num_subj', 'num_select_nodes', 'num_time_point', 'Fs_ratio',
             'noise_ratio', 'num_realization', 'session']
         self.params = {}
-        
+
         for params_name in self.params_name_lst:
-                self.params[params_name] = None
-        
+            self.params[params_name] = None
+
         self.params['measure_name'] = 'Clustering'
         self.params['is_state_based'] = True
         self.params['clstr_base_measure'] = 'SlidingWindow'
@@ -1026,7 +1029,7 @@ class Sliding_Window_Clustr(BaseDFCMethod):
 
         self.params['subjects'] = list(self.time_series.data_dict.keys())
         self.sub_id = self.params['subjects'][self.params['subject']]
-        
+
         if not self.params['clstr_base_measure'] in self.base_methods_name_lst:
             raise ValueError("Base measure not recognized.")
 
@@ -1035,7 +1038,7 @@ class Sliding_Window_Clustr(BaseDFCMethod):
         measure.estimate_FCS(time_series=self.time_series)
         dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
         return dFC
-    
+
 class Hmm_Cont(BaseDFCMethod):
     name = "STATE Continuous Hidden Markov Model"
     '''
@@ -1048,7 +1051,7 @@ class Hmm_Cont(BaseDFCMethod):
                  iterations: int = 20,
                  normalization: bool = True,
                  **params):
-        
+
         self.time_series = time_series
 
         self.logs_ = ''
@@ -1083,7 +1086,7 @@ class Hmm_Cont(BaseDFCMethod):
         measure.estimate_FCS(time_series=self.time_series)
         dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
         return dFC
-    
+
 class Hmm_Disc(BaseDFCMethod):
     name = "STATE Discrete Hidden Markov Model"
     '''
@@ -1103,7 +1106,7 @@ class Hmm_Disc(BaseDFCMethod):
                  n_subj_clusters: int = 5,
                  normalization: bool = True,
                  **params):
-        
+
         self.time_series = time_series
 
         self.logs_ = ''
@@ -1113,7 +1116,7 @@ class Hmm_Disc(BaseDFCMethod):
         self.swc = None
         self.FCS_fit_time_ = None
         self.dFC_assess_time_ = None
-        
+
         self.params_name_lst = ['measure_name', 'is_state_based', 'clstr_base_measure', 'sw_method', 'tapered_window',
             'dhmm_obs_state_ratio', 'coi_correction', 'hmm_iter',
             'n_jobs', 'verbose', 'backend',
@@ -1126,7 +1129,7 @@ class Hmm_Disc(BaseDFCMethod):
                 self.params[params_name] = params[params_name]
             else:
                 self.params[params_name] = None
-        
+
         self.params['measure_name'] = 'DiscreteHMM'
         self.params['is_state_based'] = True
         self.params['subject'] = subject
@@ -1143,7 +1146,7 @@ class Hmm_Disc(BaseDFCMethod):
 
         self.params['subjects'] = list(self.time_series.data_dict.keys())
         self.sub_id = self.params['subjects'][self.params['subject']]
-        
+
         if not self.params['clstr_base_measure'] in self.base_methods_name_lst:
             raise ValueError("Base measure not recognized.")
 
@@ -1152,7 +1155,7 @@ class Hmm_Disc(BaseDFCMethod):
         measure.estimate_FCS(time_series=self.time_series)
         dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
         return dFC
-    
+
 class Windowless(BaseDFCMethod):
     name = "STATE Windowless"
     '''
@@ -1165,7 +1168,7 @@ class Windowless(BaseDFCMethod):
                  n_subj_clusters: int = 5,
                  normalization: bool = True,
                  **params):
-        
+
         self.time_series = time_series
 
         self.logs_ = ''
@@ -1201,6 +1204,7 @@ class Windowless(BaseDFCMethod):
         dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
         return dFC
 
+
 '''
 Static FC methods
 '''
@@ -1214,13 +1218,13 @@ class Static_Pearson(ConnectivityMethod):
                  standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
-        
+
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
 
     def connectivity(self):
-        fc = np.corrcoef(self.time_series.T) 
+        fc = np.corrcoef(self.time_series.T)
         fc = self.postproc(fc)
-        return fc  
+        return fc
 
 class Static_Partial(ConnectivityMethod):
     name = "STATIC Partial Correlation"
@@ -1232,7 +1236,7 @@ class Static_Partial(ConnectivityMethod):
                  standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
-        
+
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
 
     def connectivity(self):
@@ -1241,19 +1245,19 @@ class Static_Partial(ConnectivityMethod):
         fc = -precision / np.sqrt(np.outer(np.diag(precision), np.diag(precision)))
         fc = self.postproc(fc)
         return fc
-    
+
 class Static_Mutual_Info(ConnectivityMethod):
     name = "STATIC Mutual Information"
     options = {}
 
-    def __init__(self, 
+    def __init__(self,
                  time_series: np.ndarray,
                  num_bins: int = 10,
                  diagonal: int = 0,
                  standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
-        
+
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.num_bins = num_bins
 

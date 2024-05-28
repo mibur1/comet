@@ -3,8 +3,8 @@ import numpy as np
 from numba import jit
 from typing import Literal
 
-def handle_negative_weights(W: np.ndarray, 
-                            type: Literal["absolute", "discard"] = "absolute", 
+def handle_negative_weights(W: np.ndarray,
+                            type: Literal["absolute", "discard"] = "absolute",
                             copy: bool = True) -> np.ndarray:
     '''Handle negative weights in a connectivity/adjacency matrix
 
@@ -22,7 +22,7 @@ def handle_negative_weights(W: np.ndarray,
     copy : bool, optional
         if True, a copy of W is returned, otherwise W is modified in place
         default is True
-    
+
     Returns
     -------
     W : PxP np.ndarray
@@ -39,13 +39,13 @@ def handle_negative_weights(W: np.ndarray,
         raise NotImplementedError("Options are: *absolute* or *discard*")
     return W
 
-def threshold(W: np.ndarray, 
-              type: Literal["density", "absolute"] = "density", 
-              threshold: float = None, 
-              density: float = None, 
+def threshold(W: np.ndarray,
+              type: Literal["density", "absolute"] = "density",
+              threshold: float = None,
+              density: float = None,
               copy: bool = True) -> np.ndarray:
     '''Thresholding of connectivity/adjacency matrix
-    
+
     Performs absolute or density-based thresholding
 
     Parameters
@@ -56,7 +56,7 @@ def threshold(W: np.ndarray,
     type : string, optional
         type of thresholding, can be *absolute* or *density*
         default is *absolute*
-    
+
     threshold : float, optional
         threshold value for absolute thresholding
         default is None
@@ -68,7 +68,7 @@ def threshold(W: np.ndarray,
     copy : bool, optional
         if True, a copy of W is returned, otherwise W is modified in place
         default is True
-    
+
     Returns
     -------
     W : PxP np.ndarray
@@ -76,7 +76,7 @@ def threshold(W: np.ndarray,
 
     Notes
     -----
-    The implemented for density based thresholding always keeps the exact same number of connections. If multiple edges have the same weight, 
+    The implemented for density based thresholding always keeps the exact same number of connections. If multiple edges have the same weight,
     the included edges are chosen "randomly" (based on their order in the sorted indices). This is identical to the behaviour in the BCT implementation.
     '''
     if copy:
@@ -89,7 +89,7 @@ def threshold(W: np.ndarray,
             raise ValueError("Error: Density must be between 0 and 1")
         if not np.allclose(W, W.T):
             raise ValueError("Error: Matrix is not symmetrical")
-        
+
         W[np.tril_indices(len(W))] = 0 # set lower triangle to zero
         triu_indices = np.triu_indices_from(W, k=1) # get upper triangle indices
         sorted_indices = np.argsort(W[triu_indices])[::-1] # sort upper triangle by indices
@@ -102,7 +102,7 @@ def threshold(W: np.ndarray,
         raise NotImplementedError("Thresholding must be of type *absolute* or *density*")
     return W
 
-def binarise(W: np.ndarray, 
+def binarise(W: np.ndarray,
              copy: bool = True) -> np.ndarray:
     '''Binarise connectivity/adjacency matrix
 
@@ -114,7 +114,7 @@ def binarise(W: np.ndarray,
     copy : bool, optional
         if True, a copy of W is returned, otherwise W is modified in place
         default is True
-    
+
     Returns
     -------
     W : PxP np.ndarray
@@ -126,7 +126,7 @@ def binarise(W: np.ndarray,
     W[W != 0] = 1
     return W
 
-def normalise(W: np.ndarray, 
+def normalise(W: np.ndarray,
               copy: bool = True) -> np.ndarray:
     '''Normalise connectivity/adjacency matrix
 
@@ -138,7 +138,7 @@ def normalise(W: np.ndarray,
     copy : bool, optional
         if True, a copy of W is returned, otherwise W is modified in place
         default is True
-    
+
     Returns
     -------
     W : PxP np.ndarray
@@ -149,11 +149,11 @@ def normalise(W: np.ndarray,
 
     if not np.max(np.abs(W)) > 0:
         raise ValueError("Error: Matrix contains only zeros")
-    
+
     W /= np.max(np.abs(W))
     return W
 
-def invert(W: np.ndarray, 
+def invert(W: np.ndarray,
            copy: bool = True) -> np.ndarray:
     '''Invert connectivity/adjacency matrix
 
@@ -167,7 +167,7 @@ def invert(W: np.ndarray,
     copy : bool, optional
         if True, a copy of W is returned, otherwise W is modified in place
         default is True
-    
+
     Returns
     -------
     W : PxP np.ndarray
@@ -180,8 +180,8 @@ def invert(W: np.ndarray,
     W = 1 / W_safe
     return W
 
-def logtransform(W: np.ndarray, 
-                 epsilon: float = 1e-10, 
+def logtransform(W: np.ndarray,
+                 epsilon: float = 1e-10,
                  copy: bool = True) -> np.ndarray:
     '''Log transform of connectivity/adjacency matrix
 
@@ -195,11 +195,11 @@ def logtransform(W: np.ndarray,
     epsilon : float, optional
         clipping value for numeric stability,
         default is 1e-10
-    
+
     copy : bool, optional
         if True, a copy of W is returned, otherwise W is modified in place
         default is True
-    
+
     Returns
     -------
     W : PxP np.ndarray
@@ -214,7 +214,7 @@ def logtransform(W: np.ndarray,
     W = -np.log(W_safe)
     return W
 
-def symmetrise(W: np.ndarray, 
+def symmetrise(W: np.ndarray,
                copy: bool = True) -> np.ndarray:
     '''Symmetrise connectivity/adjacency matrix
 
@@ -228,7 +228,7 @@ def symmetrise(W: np.ndarray,
     copy : bool, optional
         if True, a copy of W is returned, otherwise W is modified in place
         default is True
-    
+
     Returns
     -------
     W : PxP np.ndarray
@@ -244,7 +244,7 @@ def symmetrise(W: np.ndarray,
     else:
         W_mean = (np.triu(W, k=1) + np.tril(W, k=-1)) / 2
         W = W_mean + W_mean.T + np.diag(np.diag(W))
-    
+
     return W
 
 def randomise(G: np.ndarray,
@@ -255,7 +255,7 @@ def randomise(G: np.ndarray,
     '''
     if copy:
         G = G.copy()
-    
+
     num_nodes = G.shape[0]
     G_rand = np.zeros((num_nodes, num_nodes))
     mask = np.triu(np.ones((num_nodes, num_nodes)), 1)
@@ -303,8 +303,8 @@ def regular_matrix(G: np.ndarray, r: float) -> np.ndarray:
 
     return M
 
-def avg_shortest_path(G: np.ndarray, 
-                      include_diagonal: bool = False, 
+def avg_shortest_path(G: np.ndarray,
+                      include_diagonal: bool = False,
                       include_infinite: bool = False) -> float:
     '''
     Average shortest path length calculated from the distance matrix.
@@ -333,7 +333,7 @@ def transitivity(A: np.ndarray) -> np.ndarray:
     Only for undirected matrices (binary/weighted). Adapted from the bctpy implementation: https://github.com/aestrivex/bctpy
     '''
     is_binary = np.all(np.logical_or(np.isclose(A, 0), np.isclose(A, 1)))
-    
+
     if is_binary:
         tri3 = np.trace(np.dot(A, np.dot(A, A)))
         tri2 = np.sum(np.dot(A, A)) - np.trace(np.dot(A, A))
@@ -353,11 +353,11 @@ def clustering_onella(W: np.ndarray) -> np.ndarray:
 
     return C.mean()
 
-def postproc(W: np.ndarray, 
-             diag: float = 0, 
+def postproc(W: np.ndarray,
+             diag: float = 0,
              copy: bool = True) -> np.ndarray:
     '''Postprocessing of connectivity/adjacency matrix
-    
+
     Ensures W is symmetric, sets diagonal to diag, removes NaNs and infinities, and ensures exact binarity
 
     Parameters
@@ -368,11 +368,11 @@ def postproc(W: np.ndarray,
     diag : int, optional
         set diagonal to this value
         default is 0
-    
+
     copy : bool, optional
         if True, a copy of W is returned, otherwise W is modified in place
         default is True
-    
+
     Returns
     -------
     W : PxP np.ndarray
@@ -383,25 +383,25 @@ def postproc(W: np.ndarray,
 
     if not np.allclose(W, W.T):
         raise ValueError("Error: Matrix is not symmetrical")
-    
+
     np.fill_diagonal(W, diag)
     np.nan_to_num(W, nan=0.0, posinf=0.0, neginf=0.0, copy=False)
     W = np.round(W, decimals=5) # This should ensure exact binarity if floating point inaccuracies occur
     return W
 
-def efficiency(G: np.ndarray, 
+def efficiency(G: np.ndarray,
                weighted: bool = True,
                local: bool = False) -> np.ndarray:
     return efficiency_wei(G, local=local) if weighted else efficiency_bin(G, local=local)
 
-def efficiency_wei(Gw: np.ndarray, 
+def efficiency_wei(Gw: np.ndarray,
                    local: bool=False) -> np.ndarray:
     '''Efficiency for weighted networks
-    
+
     Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy
     Global efficiency is the average of inverse shortest path length, and is inversely related to the characteristic path length.
     Local efficiency is the global efficiency computed on the neighborhood of the node, and is related to the clustering coefficient.
-    
+
     Parameters
     ----------
     Gw : PxP np.ndarray
@@ -409,19 +409,19 @@ def efficiency_wei(Gw: np.ndarray,
 
     local : bool, optional
         if True, local efficiency is computed. Default is False (global efficiency)
-    
+
     Returns
     -------
     E (global) : float
         global efficiency, if local is False
-    
+
     E (local) : Nx1 np.ndarray
         local efficiency, if local is True
 
-   
+
     References
     ----------
-    Latora, V., & Marchiori, M. (2001). Efficient behavior of small-world networks. 
+    Latora, V., & Marchiori, M. (2001). Efficient behavior of small-world networks.
     Physical review letters, 87(19), 198701. DOI: https://doi.org/10.1103/PhysRevLett.87.198701
 
     Onnela, J. P., Saramäki, J., Kertész, J., & Kaski, K. (2004). Intensity and coherence of motifs in weighted c
@@ -430,10 +430,10 @@ def efficiency_wei(Gw: np.ndarray,
     Fagiolo, G. (2007). Clustering in complex directed networks. Physical Review E, 76(2), 026107.
     DOI: https://doi.org/10.1103/PhysRevE.76.026107
 
-    Rubinov, M., & Sporns, O. (2010). Complex network measures of brain connectivity: uses and interpretations. 
+    Rubinov, M., & Sporns, O. (2010). Complex network measures of brain connectivity: uses and interpretations.
     Neuroimage, 52(3), 1059-1069. DOI: https://doi.org/10.1016/j.neuroimage.2009.10.003
 
-    Wang, Y., Ghumare, E., Vandenberghe, R., & Dupont, P. (2017). Comparison of different generalizations of clustering coefficient 
+    Wang, Y., Ghumare, E., Vandenberghe, R., & Dupont, P. (2017). Comparison of different generalizations of clustering coefficient
     and local efficiency for weighted undirected graphs. Neural computation, 29(2), 313-331. DOI: https://doi.org/10.1162/NECO_a_00914
 
     Notes
@@ -443,7 +443,7 @@ def efficiency_wei(Gw: np.ndarray,
     n = len(Gw)
     Gl = invert(Gw, copy=True)  # connection length matrix
     A = np.array((Gw != 0), dtype=int)
-   
+
     #local efficiency algorithm described by Wang et al 2016, recommended
     if local:
         E = np.zeros((n,))
@@ -452,7 +452,7 @@ def efficiency_wei(Gw: np.ndarray,
             sw = np.cbrt(Gw[u, V]) + np.cbrt(Gw[V, u].T)
             e = distance_wei(np.cbrt(Gl)[np.ix_(V, V)], inv=True)
             se = e+e.T
-            
+
             numer = np.sum(np.outer(sw.T, sw) * se) / 2
             if numer != 0:
                 # symmetrized adjacency vector
@@ -466,14 +466,14 @@ def efficiency_wei(Gw: np.ndarray,
 
     return E
 
-def efficiency_bin(G: np.ndarray, 
-                   local: bool=False) -> np.ndarray:    
+def efficiency_bin(G: np.ndarray,
+                   local: bool=False) -> np.ndarray:
     '''Efficiency for binary networks
-    
+
     Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy
     Global efficiency is the average of inverse shortest path length, and is inversely related to the characteristic path length.
     Local efficiency is the global efficiency computed on the neighborhood of the node, and is related to the clustering coefficient.
-    
+
     Parameters
     ----------
     G : PxP np.ndarray
@@ -481,25 +481,25 @@ def efficiency_bin(G: np.ndarray,
 
     local : bool, optional
         if True, local efficiency is computed. Default is False (global efficiency)
-    
+
     Returns
     -------
     E (global) : float
         global efficiency, if local is False
-    
+
     E (local) : Nx1 np.ndarray
         local efficiency, if local is True
 
-   
+
     References
     ----------
-    Latora, V., & Marchiori, M. (2001). Efficient behavior of small-world networks. 
+    Latora, V., & Marchiori, M. (2001). Efficient behavior of small-world networks.
     Physical review letters, 87(19), 198701. DOI: https://doi.org/10.1103/PhysRevLett.87.198701
 
     Fagiolo, G. (2007). Clustering in complex directed networks. Physical Review E, 76(2), 026107.
     DOI: https://doi.org/10.1103/PhysRevE.76.026107
 
-    Rubinov, M., & Sporns, O. (2010). Complex network measures of brain connectivity: uses and interpretations. 
+    Rubinov, M., & Sporns, O. (2010). Complex network measures of brain connectivity: uses and interpretations.
     Neuroimage, 52(3), 1059-1069. DOI: https://doi.org/10.1016/j.neuroimage.2009.10.003
     '''
     G = binarise(G)
@@ -524,21 +524,21 @@ def efficiency_bin(G: np.ndarray,
     else:
         e = distance_bin(G, inv=True)
         E = np.sum(e) / (n * n - n)
-    
+
     return E
 
 def small_world_sigma(G: np.ndarray,
                       nrand: int = 10) -> np.ndarray:
     '''Small-worldness sigma for undirected networks (binary or weighted)
-        
-    Small worldness sigma is calculated as the ratio of the clustering coefficient and the characteristic path length 
+
+    Small worldness sigma is calculated as the ratio of the clustering coefficient and the characteristic path length
     of the real network to the average clustering coefficient and characteristic path length of the random networks.
 
     Parameters
     ----------
     G : PxP np.ndarray
         undireted adjacency/connectivity matrix
-    
+
     nrand : int, optional
         number of random networks to generate (and average over). Default is 10.
 
@@ -550,7 +550,7 @@ def small_world_sigma(G: np.ndarray,
     Notes
     -----
     This implementation of small worldness relies on matrix operations and is *drastically* faster than the Networkx implementation.
-    However, it uses a different approch for rewiring edges, so the results will differ. It automatically detects if the input 
+    However, it uses a different approch for rewiring edges, so the results will differ. It automatically detects if the input
     matrix is binary or weighted.
     '''
     randMetrics = {"C": [], "L": []}
@@ -571,7 +571,7 @@ def small_world_sigma(G: np.ndarray,
 def small_world_propensity(G: np.ndarray) -> np.ndarray:
     if not np.allclose(G, G.T):
         raise ValueError("Error: Matrix is not symmetrical")
-    
+
     G = G / np.max(G)
     n = G.shape[0]  # Number of nodes
 
@@ -612,7 +612,7 @@ def small_world_propensity(G: np.ndarray) -> np.ndarray:
     delta = (4 * alpha / np.pi) - 1
 
     """print("Comet  :",
-          "C", round(net_clus, 3), 
+          "C", round(net_clus, 3),
           "L", round(net_path, 3),
           "regC", round(reg_clus, 3),
           "rngC", round(rand_clus, 3),
@@ -629,7 +629,7 @@ def small_world_propensity(G: np.ndarray) -> np.ndarray:
 @jit(nopython=True)
 def matching_ind_und(G: np.ndarray) -> np.ndarray:
     '''Matching index for undirected networks
-    
+
     Based on the MATLAB implementation by Stuart Oldham: https://github.com/StuartJO/FasterMatchingIndex
     Matching index is a measure of similarity between two nodes' connectivity profiles (excluding their mutual connection, should it exist).
 
@@ -642,13 +642,13 @@ def matching_ind_und(G: np.ndarray) -> np.ndarray:
     -------
     M : PxP np.ndarray
         matching index matrix
-   
+
     References
     ----------
-    Oldham, S., Fulcher, B. D., Aquino, K., Arnatkevičiūtė, A., Paquola, C., Shishegar, R., & Fornito, A. (2022). Modeling spatial, developmental, 
-    physiological, and topological constraints on human brain connectivity. Science advances, 8(22), eabm6127. DOI: https://doi.org/10.1126/sciadv.abm6127 
+    Oldham, S., Fulcher, B. D., Aquino, K., Arnatkevičiūtė, A., Paquola, C., Shishegar, R., & Fornito, A. (2022). Modeling spatial, developmental,
+    physiological, and topological constraints on human brain connectivity. Science advances, 8(22), eabm6127. DOI: https://doi.org/10.1126/sciadv.abm6127
 
-    Betzel, R. F., Avena-Koenigsberger, A., Goñi, J., He, Y., De Reus, M. A., Griffa, A., ... & Sporns, O. (2016). 
+    Betzel, R. F., Avena-Koenigsberger, A., Goñi, J., He, Y., De Reus, M. A., Griffa, A., ... & Sporns, O. (2016).
     Generative models of the human connectome. Neuroimage, 124, 1054-1064.DOI: https://doi.org/10.1016/j.neuroimage.2015.09.041
 
     Notes
@@ -670,10 +670,10 @@ def matching_ind_und(G: np.ndarray) -> np.ndarray:
 @jit(nopython=True)
 def distance_wei(G: np.ndarray, inv: bool = False) -> np.ndarray:
     '''(Inverse) distance matrix for weighted networks
-    
+
     Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy
     Significantly improved performance due to numba JIT compilation
-    
+
     Parameters
     ----------
     G : PxP np.ndarray
@@ -681,12 +681,12 @@ def distance_wei(G: np.ndarray, inv: bool = False) -> np.ndarray:
 
     inv : bool, optional
         if True, the element wise inverse of the distance matrux is returned. Default is False
-    
+
     Returns
     -------
     D : PxP np.ndarray
         (inverse) distance matrix
-    
+
     Notes
     -----
     Algorithm: Modified Dijkstra's algorithm
@@ -703,7 +703,7 @@ def distance_wei(G: np.ndarray, inv: bool = False) -> np.ndarray:
         while True:
             S[V] = 0  # distance u->V is now permanent
             G1[:, V] = 0  # no in-edges as already shortest
-            
+
             for v in V:
                 W = np.where(G1[v, :])[0]  # neighbors of smallest nodes
                 max_len = n
@@ -725,16 +725,16 @@ def distance_wei(G: np.ndarray, inv: bool = False) -> np.ndarray:
     if inv:
         D = 1 / D
         np.fill_diagonal(D, 0)
-    
+
     return D
 
 @jit(nopython=True)
 def distance_bin(G: np.ndarray, inv: bool = False) -> np.ndarray:
     '''(Inverse) distance matrix for binary networks
-    
+
     Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy
     Significantly improved performance due to numba JIT compilation
-    
+
     Parameters
     ----------
     G : PxP np.ndarray
@@ -742,12 +742,12 @@ def distance_bin(G: np.ndarray, inv: bool = False) -> np.ndarray:
 
     inv : bool, optional
         if True, the element wise inverse of the distance matrux is returned. Default is False
-    
+
     Returns
     -------
     D : PxP np.ndarray
         (inverse) distance matrix
-    
+
     Notes
     -----
     Algorithm: Matrix multiplication to find paths, faster than original Dijkstra's algorithm
@@ -762,7 +762,7 @@ def distance_bin(G: np.ndarray, inv: bool = False) -> np.ndarray:
         n += 1
         nPATH = np.dot(nPATH, G)
         L = (nPATH != 0) * (D == 0)
-    
+
     for i in range(D.shape[0]):
         for j in range(D.shape[1]):
             if not D[i, j]:
@@ -772,15 +772,15 @@ def distance_bin(G: np.ndarray, inv: bool = False) -> np.ndarray:
     if inv:
         D = 1 / D
         np.fill_diagonal(D, 0)
-    
+
     return D
 
 # BCT wrapper functions with type hinting (GUI needs to know the parameter types)
-def backbone_wu(CIJ: np.ndarray, 
+def backbone_wu(CIJ: np.ndarray,
                 avgdeg: int = 0,
                 verbose: bool = False) -> tuple[np.ndarray, np.ndarray]:
     res = bct.backbone_wu(CIJ, avgdeg, verbose)
-    res_dict = {"Connection matrix of the minimum spanning tree of CIJ": res[0], 
+    res_dict = {"Connection matrix of the minimum spanning tree of CIJ": res[0],
                f"Connection matrix of the minimum spanning tree plus strongest connections up to some average degree <avgdeg>": res[1]}
     return res_dict
 
@@ -813,10 +813,12 @@ def eigenvector_centrality_und(CIJ: np.ndarray) -> np.ndarray:
 
 def gateway_coef_sign(CIJ: np.ndarray,
                       ci: Literal["louvain"] = "louvain",
-                      centrality_type: Literal["degree", "betweenness"] = "degree", ) -> tuple[np.ndarray, np.ndarray]:
+                      centrality_type: Literal["degree", "betweenness"] = "degree", ) \
+                                        -> tuple[np.ndarray, np.ndarray]:
     ci, q = bct.community_louvain(CIJ)
     res = bct.gateway_coef_sign(CIJ, ci, centrality_type)
-    res_dict = {"Gateway coefficient for positive weights": res[0], "Gateway coefficient for negative weights": res[1]}
+    res_dict = {"Gateway coefficient for positive weights": res[0], \
+                "Gateway coefficient for negative weights": res[1]}
     return res_dict
 
 def pagerank_centrality(A: np.ndarray,

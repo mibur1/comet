@@ -51,7 +51,7 @@ class Multiverse:
         indentation_level = len(first_line) - len(first_line.lstrip())
         adjusted_lines = [line[indentation_level:] if len(line) > indentation_level else line for line in template_body.splitlines()]
         adjusted_template_body = "\n".join(adjusted_lines)
-        
+
         # Create jinja template
         jinja_template = Template(adjusted_template_body)
 
@@ -122,19 +122,19 @@ class Multiverse:
             iter_universe = iter(standardized_universe_path)
             if all(decision in iter_universe for decision in standardized_invalid_path):
                 return True  # Found an invalid path, return
-        
-        return False 
+
+        return False
 
     # Read CSV
     def read_csv(self):
         calling_script_dir = os.getcwd() if in_notebook else os.path.dirname(sys.path[0])
         csv_path = os.path.join(calling_script_dir, f"{self.name}/results/multiverse_summary.csv")
         return pd.read_csv(csv_path)
-    
+
     # Print a summary of all universes
     def summary(self, universe=range(1,5)):
         multiverse_summary = self.read_csv()
-        
+
         if isinstance(universe, int):
             multiverse_summary = multiverse_summary.iloc[universe-1]
         elif isinstance(universe, range):
@@ -169,10 +169,10 @@ class Multiverse:
                 G = add_hierarchical_decision_nodes(G, root_node, parameters, level + 1)
 
             return G
-        
+
         # List of dicts. Each dict is a decision with its options
         parameters = [
-            (parameter, multiverse_summary[parameter].unique()) 
+            (parameter, multiverse_summary[parameter].unique())
             for parameter in multiverse_summary.columns[1:]
             if len(multiverse_summary[parameter].unique()) > 1
         ]
@@ -187,7 +187,7 @@ class Multiverse:
         filtered_df = multiverse_summary[multiverse_summary['Universe'] == f"Universe_{universe}"]
         for column in filtered_df.columns:
             if column not in [param_name for param_name, _ in parameters]:
-                filtered_df = filtered_df.drop(columns=column) 
+                filtered_df = filtered_df.drop(columns=column)
 
         row_dict = filtered_df.iloc[0].to_dict()
         values = ["Start"]  # Initialize the list with the "Start: Start" value
@@ -210,7 +210,7 @@ class Multiverse:
         plt.figure(figsize=figsize)
         plt.title(f"Universe {universe}", size=14, fontweight='bold')
         pos = nx.multipartite_layout(G, subset_key="level")
-        
+
         # Assigning colors based on levels using a colormap
         levels = set(nx.get_node_attributes(G, 'level').values())
         num_levels = len(levels)
@@ -233,14 +233,14 @@ class Multiverse:
 
         # Identify and annotate the bottom-most node at each level with the decision label
         levels = set(nx.get_node_attributes(G, 'level').values())
-        
-        # Create an appropriate label offset based on the maximum level node count 
+
+        # Create an appropriate label offset based on the maximum level node count
         node_nums = []
         for level in levels:
             nodes_at_level = [node for node in G.nodes if G.nodes[node].get('level') == level]
             node_nums.append(len(nodes_at_level))
         label_offset = 0.04 * max(node_nums)
-        
+
         # Draw the labels
         for level in levels:
             nodes_at_level = [node for node in G.nodes if G.nodes[node].get('level') == level]
@@ -254,7 +254,7 @@ class Multiverse:
 
         plt.tight_layout()
         plt.show()
-    
+
     # Handle the types of the decision points to generate a working template script
     def format_type(self, value):
         if isinstance(value, str):
@@ -269,7 +269,7 @@ class Multiverse:
             return self.handle_dict(value) # Dictionaries are handeled in a separate function
         elif isinstance(value, type):
             return value.__name__  # If the forking path is a class, we return the name of the class
-        elif callable(value):     
+        elif callable(value):
             return value.__name__ # If the forking path is a function, we return the name of the function
         else:
             raise TypeError(f"Unsupported type for {value} which is of type {type(value)}")
@@ -280,7 +280,7 @@ class Multiverse:
 
         func = value["func"]
         args = value["args"].copy()
-        
+
         if "Option" in args:
             del args["Option"]
 
@@ -318,7 +318,7 @@ class Multiverse:
                         context[key] = value
 
                 writer.writerow(context)
-    
+
     # Create a specification curve
     def specification_curve(self, fname="multiverse_summary.csv", measure=None, cmap="Set2", ci=95, chance_level=None, linewidth=2, figsize=(16,9), height_ratio=[2,1], fontsize=10, dotsize=50, label_offset=-0.05):
         ###################################################################################################################
@@ -345,7 +345,7 @@ class Multiverse:
             parameters = multiverse_summary.drop(columns=[measure])
             universes_with_summary = [(data, parameters.iloc[i].to_dict()) for i, data in enumerate(universe_data)]
             sorted_combined = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
-            
+
         else:
             print(f"Getting {measure} from .pkl files")
             with open(f"{results_path}/forking_paths.pkl", "rb") as file:
@@ -388,7 +388,7 @@ class Multiverse:
             for i, opt in enumerate(options):
                 if isinstance(opt, dict):
                     options[i] = opt.get('name')
-            
+
             if len(options) == 1:
                 single_params.append(decision)
 
@@ -411,7 +411,7 @@ class Multiverse:
             # Calculate the position to annotate the decision key, centered over its options
             key_position = current_position + len(options) / 2 - 0.5
             key_positions[key] = key_position
-            
+
             # Process each option in the current group
             for option in options:
                 flat_list.append((key, option))
@@ -438,11 +438,11 @@ class Multiverse:
 
         for key, pos in key_positions.items():
             ax[1].text(label_offset - 0.01, pos, key, transform=trans1, ha='right', va='center', fontweight="bold", fontsize=fontsize, rotation=0)
-        
+
         ##########################
         # Vertical parameter lines
         s=-0.5
-        for i in range(len(line_ends)):  
+        for i in range(len(line_ends)):
             e = line_ends[i] - 0.5
             line = mlines.Line2D([label_offset, label_offset], [s, e], color="black", lw=1, transform=trans1, clip_on=False)
             ax[1].add_line(line)
@@ -466,7 +466,7 @@ class Multiverse:
 
                 # Plot CI
                 ax[0].plot([i, i], [ci_lower, ci_upper], color="gray", linewidth=linewidth) # Draw CI
-            
+
                 # Plot mean measure value
                 if ci_lower > 0.5:
                     ax[0].scatter(i, mean_val, zorder=3, color="green", edgecolor="green", s=dotsize)
@@ -474,7 +474,7 @@ class Multiverse:
                     ax[0].scatter(i, mean_val, zorder=3, color="red", edgecolor="red", s=dotsize)
                 else:
                     ax[0].scatter(i, mean_val, zorder=3, color="black", edgecolor="black", s=dotsize)
-            
+
             # Less than 3 values, no CI
             else:
                 if chance_level is not None:
@@ -486,7 +486,7 @@ class Multiverse:
                     ax[0].scatter(i, mean_val, zorder=3, color="black", edgecolor="black", s=dotsize)
 
             #################
-            # Decision points    
+            # Decision points
             group_ends = decision_info[2]
             num_groups = len(group_ends) + 1
             colormap = plt.cm.get_cmap(cmap, num_groups)
@@ -496,7 +496,7 @@ class Multiverse:
                 if option in decision_info[0] and decision in decision_info[3]:
                     index = decision_info[0].index(option)
                     plot_pos = decision_info[1][index]
-                    
+
                     # Determine the current group based on plot_pos
                     current_group = 0
                     for end in group_ends:
@@ -505,14 +505,14 @@ class Multiverse:
                         current_group += 1
 
                     current_color = colors[current_group]
-                    
+
                     ax[1].scatter(i, plot_pos, color=current_color, marker='o', s=dotsize)
 
         #####################################################
         # Specification curve ticks and labels + chance level
         trans0 = transforms.blended_transform_factory(ax[0].transAxes, ax[0].transData)
 
-        ax[0].xaxis.grid(False) 
+        ax[0].xaxis.grid(False)
         ax[0].set_xticks(np.arange(0,len(sorted_combined),1))
         ax[0].set_xticklabels([])
         ax[0].set_xlim(-1, len(sorted_combined)+1)
@@ -522,7 +522,7 @@ class Multiverse:
         ax[0].text(label_offset - 0.01, ycenter, measure, transform=trans0, ha='right', va='center', fontweight="bold", fontsize=fontsize, rotation=0)
         line = mlines.Line2D([label_offset, label_offset], [ymin, ymax], color="black", lw=1, transform=trans0, clip_on=False)
         ax[0].add_line(line)
-        
+
         ax[0].hlines(chance_level, xmin=-2, xmax=len(sorted_combined)+1, linestyles="--", lw=2, colors='black', zorder=1)
 
         ########
@@ -533,13 +533,13 @@ class Multiverse:
             legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=8, markerfacecolor="black", markeredgecolor="black", label=f"Mean {measure}"))
         else:
             legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=8, markerfacecolor="black", markeredgecolor="black", label=f"{measure}"))
-    
+
         if hasattr(result, '__len__') and len(result) > 3:
             legend_items.append(mpatches.Patch(facecolor='gray', edgecolor='white', label=f"{ci}% CI"))
-        
+
         if chance_level is not None:
             legend_items.append(mlines.Line2D([], [], color='black', linestyle='--', lw=linewidth, label='Chance level'))
-        
+
         ax[0].legend(handles=legend_items, loc='upper left', fontsize=fontsize)
 
         plt.tight_layout()

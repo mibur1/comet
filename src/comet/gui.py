@@ -77,7 +77,7 @@ class InfoButton(QPushButton):
 class Data:
     # File variables
     file_name:     str        = field(default=None)         # data file name
-    file_data:     np.ndarray = field(default=None)         # input time series data  
+    file_data:     np.ndarray = field(default=None)         # input time series data
     sample_mask:   np.ndarray = field(default=None)         # mask for time series data
 
     # DFC variables
@@ -131,19 +131,19 @@ class DataStorage:
             self.storage[data_hash] = copy.deepcopy(data_obj) # IMPORTANT: deep copy for a completely new data object
             return True
         return False
-    
+
     def delete_data(self, data_obj):
         # Identify and delete existing entries with the same dfc_name as data_obj
         keys_to_delete = [key for key, value in self.storage.items() if value.dfc_name == data_obj.dfc_name]
         for key in keys_to_delete:
             del self.storage[key]
-    
+
     def check_for_identical_data(self, data_obj):
         # Get data and parameters for previously calculated identical data
         data_hash = self.generate_hash(data_obj)
-        data = self.storage.get(data_hash, None)   
+        data = self.storage.get(data_hash, None)
         return copy.deepcopy(data) # IMPORTANT: deep copy
-    
+
     def check_previous_data(self, methodName):
         # Get data for the last calculation with a given method
         for data_obj in reversed(list(self.storage.values())):
@@ -197,7 +197,7 @@ class App(QMainWindow):
 
         # Parameter names for the GUI
         self.param_names = {
-            "self":                 "self", 
+            "self":                 "self",
             "time_series":          "Time series",
             "windowsize":           "Window size",
             "stepsize":             "Step size",
@@ -223,10 +223,10 @@ class App(QMainWindow):
             "standardize":          "Z-score connectivity",
             "tril":                 "Extract lower triangle",
             "method":               "Specific method",
-               
+
             "params":               "Various parameters",
             "coi_correction":       "COI correction",
-            "clstr_distance":       "Distance metric",    
+            "clstr_distance":       "Distance metric",
             "num_bins":             "Number of bins",
             "n_overlap":            "Window overlap",
             "tapered_window":       "Tapered window",
@@ -244,20 +244,20 @@ class App(QMainWindow):
 
         }
         self.reverse_param_names = {v: k for k, v in self.param_names.items()}
-        
+
         # All availble connectivity methods
         self.connectivityMethods = {
             'SlidingWindow':                'CONT Sliding Window',
             'Jackknife':                    'CONT Jackknife Correlation',
             'FlexibleLeastSquares':         'CONT Flexible Least Squares',
-            'SpatialDistance':              'CONT Spatial Distance', 
+            'SpatialDistance':              'CONT Spatial Distance',
             'TemporalDerivatives':          'CONT Multiplication of Temporal Derivatives',
             'DCC':                          'CONT Dynamic Conditional Correlation',
             'PhaseSynchrony':               'CONT Phase Synchronization',
             'LeiDA':                        'CONT Leading Eigenvector Dynamics',
             'WaveletCoherence':             'CONT Wavelet Coherence',
             'Edge_centric_connectivity':    'CONT Edge-centric Connectivity',
-            
+
             'Sliding_Window_Clustr':        'STATE Sliding Window Clustering',
             'Cap':                          'STATE Co-activation patterns',
             'HMM_Disc':                     'STATE Discrete Hidden Markov Model',
@@ -270,8 +270,8 @@ class App(QMainWindow):
         }
 
         self.reverse_connectivityMethods = {v: k for k, v in self.connectivityMethods.items()}
-        
-        
+
+
         # All availble graph analysis functions
         self.graphOptions = {
             "handle_negative_weights":      "PREP Negative weights",
@@ -283,7 +283,7 @@ class App(QMainWindow):
             "symmetrise":                   "PREP Symmetrise",
             "randomise":                    "PREP Randomise",
             "postproc":                     "PREP Post-processing",
-            
+
             "efficiency":                   "COMET Efficiency",
             "matching_ind_und":             "COMET Matching index",
             "small_world_propensity":       "COMET Small world propensity",
@@ -310,7 +310,7 @@ class App(QMainWindow):
 
     def initUI(self):
         self.setWindowTitle(self.title)
-        
+
         # Top-level layout which contains connectivity, graph, and multiverse tabs
         topLayout = QVBoxLayout()
         self.topTabWidget = QTabWidget()
@@ -330,7 +330,7 @@ class App(QMainWindow):
     def initFromData(self, init_dfc_data=None, init_dfc_instance=None):
         # Make sure both the dFC data and the method object are provided
         assert self.data.dfc_instance is not None, "Please provide the method object corresponding to your dFC data as the second argument to the GUI."
-        
+
         # Init the data structures
         self.data.dfc_data = init_dfc_data
         self.data.dfc_instance = init_dfc_instance
@@ -350,16 +350,16 @@ class App(QMainWindow):
             self.data.dfc_states = init_dfc_data.FCSs_
             self.data.dfc_state_tc = init_dfc_data.state_TC()
             self.data.dfc_edge_ts = None
-        
+
         # Only a single matrix is returned (most cases)
         else:
             self.data.dfc_data = init_dfc_data
             self.data.dfc_state_tc = None
             self.data.dfc_edge_ts = None
-        
+
         # Add to data storage TOOD: this does not work yet (why? and is it even needed?)
         #self.data_storage.add_data(self.data)
-        
+
         # Disable the GUI elements
         self.methodComboBox.setEnabled(False)
         self.calculateButton.setEnabled(False)
@@ -378,7 +378,7 @@ class App(QMainWindow):
         self.continuousCheckBox.setEnabled(False)
         self.stateBasedCheckBox.setEnabled(False)
         self.staticCheckBox.setEnabled(False)
-        
+
         # Set plots
         self.plotConnectivity()
         self.plotDistribution()
@@ -397,7 +397,7 @@ class App(QMainWindow):
 
         for param_name in init_signature.parameters:
             self.data.dfc_params[param_name] = getattr(init_dfc_instance, param_name, None)
-        
+
         self.setParameters(disable=True)
 
     def dataTab(self):
@@ -416,11 +416,11 @@ class App(QMainWindow):
         loadLayout = QVBoxLayout()
         loadLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
         buttonLayout = QHBoxLayout()
-        
+
         fileButton = QPushButton('Load single time series')
         bidsButton = QPushButton('Load BIDS dataset')
         self.fileNameLabel = QLabel('No data loaded yet.')
-        
+
         self.pydfc_subjectDropdownContainer = QWidget()
         self.pydfc_subjectDropdownLayout = QHBoxLayout()
         self.pydfc_subjectLabel = QLabel("Available subjects:")
@@ -434,7 +434,7 @@ class App(QMainWindow):
 
         self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
         self.transposeCheckbox.hide()
-        
+
         buttonLayout.addWidget(fileButton)
         buttonLayout.addWidget(bidsButton)
 
@@ -442,9 +442,9 @@ class App(QMainWindow):
         loadLayout.addWidget(self.fileNameLabel)
         loadLayout.addWidget(self.pydfc_subjectDropdownContainer)
         loadLayout.addWidget(self.transposeCheckbox)
-        
+
         leftLayout.addLayout(loadLayout)
-        
+
         # Add BIDS layout
         self.addBidsLayout(leftLayout)
 
@@ -472,7 +472,7 @@ class App(QMainWindow):
         self.boldCanvas.draw()
 
         rightLayout.addWidget(plotTabWidget)
-        
+
         ######################
         #  Combine sections  #
         ######################
@@ -496,7 +496,7 @@ class App(QMainWindow):
 
         # Method label and combobox
         self.methodLabel = QLabel("Dynamic functional connectivity method:")
-        
+
         # Checkboxes for method types
         self.continuousCheckBox = QCheckBox("Continuous")
         self.stateBasedCheckBox = QCheckBox("State-based")
@@ -513,7 +513,7 @@ class App(QMainWindow):
         self.continuousCheckBox.stateChanged.connect(self.updateMethodComboBox)
         self.stateBasedCheckBox.stateChanged.connect(self.updateMethodComboBox)
         self.staticCheckBox.stateChanged.connect(self.updateMethodComboBox)
-        
+
         self.methodComboBox = QComboBox()
         self.leftLayout.addWidget(self.methodLabel)
         self.leftLayout.addLayout(checkboxLayout)
@@ -536,7 +536,7 @@ class App(QMainWindow):
 
         # Add the container widget to the left layout directly below the combobox
         self.leftLayout.addWidget(self.parameterContainer)
-        
+
         # Initial population of the combobox, this does the entire initialization
         self.updateMethodComboBox()
 
@@ -586,13 +586,13 @@ class App(QMainWindow):
         # Calculation info textbox
         self.calculatingLabel = QLabel('No data calculated yet')
         self.leftLayout.addWidget(self.calculatingLabel)
-        
+
         ################################
         #  Right section for plotting  #
         ################################
         rightLayout = QVBoxLayout()
         self.tabWidget = QTabWidget()
-        
+
         # Tab 1: Imshow plot
         imshowTab = QWidget()
         imshowLayout = QVBoxLayout()
@@ -634,7 +634,7 @@ class App(QMainWindow):
         # Slider
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setMinimum(0)  # Set the minimum value of the slider
-        self.slider.setMaximum(0)  
+        self.slider.setMaximum(0)
         self.slider.valueChanged.connect(self.onSliderValueChanged)
         rightLayout.addWidget(self.slider)
 
@@ -697,7 +697,7 @@ class App(QMainWindow):
         graphTab = QWidget()
         graphLayout = QVBoxLayout()  # Main layout for the tab
         graphTab.setLayout(graphLayout)
-        
+
         ###############################
         #  Left section for settings  #
         ###############################
@@ -715,7 +715,7 @@ class App(QMainWindow):
         self.takeCurrentButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         buttonsLayout.addWidget(self.takeCurrentButton, 1)
         self.takeCurrentButton.clicked.connect(self.takeCurrentData)
-        
+
         self.graphFileNameLabel = QLabel('No file loaded yet')
 
         leftLayout.addLayout(buttonsLayout)
@@ -744,7 +744,7 @@ class App(QMainWindow):
         self.graphCheckBox.setChecked(True)
         self.BCTCheckBox.setChecked(True)
         leftLayout.addLayout(checkboxLayout)
-            
+
         # Create the combo box for selecting the graph analysis type
         self.graphAnalysisComboBox = QComboBox()
         leftLayout.addWidget(self.graphAnalysisComboBox)
@@ -756,7 +756,7 @@ class App(QMainWindow):
         self.preprocessingCheckBox.stateChanged.connect(self.updateGraphComboBox)
         self.graphCheckBox.stateChanged.connect(self.updateGraphComboBox)
         self.BCTCheckBox.stateChanged.connect(self.updateGraphComboBox)
-        
+
         self.updateGraphComboBox()
 
         # Create a container widget for the parameter layout
@@ -799,7 +799,7 @@ class App(QMainWindow):
         #  Right section for plotting  #
         ################################
         rightLayout = QVBoxLayout()
-        
+
         # Different plotting tabs
         graphTabWidget = QTabWidget()
 
@@ -813,7 +813,7 @@ class App(QMainWindow):
         self.matrixFigure.patch.set_facecolor('#E0E0E0')
         matrixLayout.addWidget(self.matrixCanvas)
         graphTabWidget.addTab(matrixTab, "Adjacency Matrix")
-       
+
         # Draw default plot (logo)
         self.plotLogo(self.matrixFigure)
         self.matrixCanvas.draw()
@@ -865,7 +865,7 @@ class App(QMainWindow):
         multiverseTab = QWidget()
         multiverseLayout = QVBoxLayout()  # Main layout for the tab
         multiverseTab.setLayout(multiverseLayout)
-        
+
         ###############################
         #  Left section for settings  #
         ###############################
@@ -971,7 +971,7 @@ class App(QMainWindow):
 
         self.topTabWidget.addTab(multiverseTab, "Multiverse Analysis")
 
-    
+
     """
     Data tab
     """
@@ -988,7 +988,7 @@ class App(QMainWindow):
         self.data.file_name = file_name
         self.data.file_data = None
         self.data.sample_mask = None
-        
+
         self.subjectDropdown.clear()
         self.subjectDropdown.hide()
 
@@ -999,13 +999,13 @@ class App(QMainWindow):
         if file_path.endswith('.mat'):
             data_dict = loadmat(file_path)
             self.data.file_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
-        
+
         elif file_path.endswith('.txt'):
             self.data.file_data = np.loadtxt(file_path)
-        
+
         elif file_path.endswith('.npy'):
             self.data.file_data = np.load(file_path)
-        
+
         elif file_path.endswith('.pkl'):
             with open(file_path, 'rb') as f:
                 self.data.file_data = pickle.load(f)
@@ -1030,7 +1030,7 @@ class App(QMainWindow):
 
             # Identify entirely empty columns
             empty_columns = data.columns[data.isna().all()]
-            
+
             # Remove corresponding rois if rois exist
             if rois is not None:
                 removed_rois = rois[empty_columns].to_list()
@@ -1045,7 +1045,7 @@ class App(QMainWindow):
 
             # Update header_list if rois exist
             self.data.roi_names = np.array(rois, dtype=object)
-        
+
         elif file_path.endswith(".dtseries.nii"):
             self.data.cifti_data = nib.load(file_path)
             self.data.file_data = data_cifti.parcellate(self.data.cifti_data, atlas="glasser")
@@ -1081,7 +1081,7 @@ class App(QMainWindow):
             self.staticCheckBox.setChecked(False)
 
             self.transposeCheckbox.setEnabled(True)
-        
+
         else:
             self.time_series_textbox.setText(file_name)
 
@@ -1102,7 +1102,7 @@ class App(QMainWindow):
                 self.fileNameLabel.setText(f"Loaded {self.data.file_name} with shape {self.data.file_data.shape}")
                 self.fileNameLabel2.setText(f"Loaded {self.data.file_name} with shape {self.data.file_data.shape}")
                 self.transposeCheckbox.setEnabled(True)
-        
+
         # Reset and enable the GUI elements
         self.bidsContainer.hide()
         self.transposeCheckbox.show()
@@ -1167,7 +1167,7 @@ class App(QMainWindow):
             self.fileNameLabel.setText(f"Initializing BIDS layout, please wait...")
 
             QApplication.processEvents()
-            
+
             # Load BIDS layout in a separate thread
             self.workerThread = QThread()
             self.worker = Worker(self.loadBIDSThread, bids_folder)
@@ -1185,12 +1185,12 @@ class App(QMainWindow):
     def loadBIDSThread(self, bids_folder):
         # Get the layout
         self.bids_layout = BIDSLayout(bids_folder, derivatives=True)
-        
+
         # Get subjects and update the dropdown
         subjects = self.bids_layout.get_subjects()
         sub_id = [f"sub-{subject}" for subject in subjects]
         self.subjectDropdown.addItems(sub_id)
-        
+
         # Update the GUI
         self.onBIDSLayoutChanged()
         self.onBIDSAtlasSelected()
@@ -1228,7 +1228,7 @@ class App(QMainWindow):
         self.runLabel = QLabel("Run:")
         self.runLabel.setFixedWidth(40)
         self.runDropdown = QComboBox()
-        
+
         self.taskDropdownLayout.addWidget(self.taskLabel, 1)
         self.taskDropdownLayout.addWidget(self.taskDropdown, 4)
         self.taskDropdownLayout.addWidget(self.sessionLabel, 1)
@@ -1245,10 +1245,10 @@ class App(QMainWindow):
         self.parcellationOptionsLabel = QLabel("Type:")
         self.parcellationOptionsLabel.setFixedWidth(40)
         self.parcellationOptions = QComboBox()
-        self.atlasnames = ["AAL template (SPM 12)", "BASC multiscale", "Destrieux et al. (2009)", "Pauli et al. (2017)", "Schaefer et al. (2018)", 
+        self.atlasnames = ["AAL template (SPM 12)", "BASC multiscale", "Destrieux et al. (2009)", "Pauli et al. (2017)", "Schaefer et al. (2018)",
                            "Talairach atlas", "Yeo (2011) networks", "Dosenbach et al. (2010)", "Power et al. (2011)", "Seitzmann et al. (2018)"]
         self.parcellationDropdown.addItems(self.atlasnames)
-        
+
         self.parcellationDropdownLayout.addWidget(self.parcellationLabel, 1)
         self.parcellationDropdownLayout.addWidget(self.parcellationDropdown, 4)
         self.parcellationDropdownLayout.addWidget(self.parcellationOptionsLabel, 1)
@@ -1270,7 +1270,7 @@ class App(QMainWindow):
         confoundsLayout = QVBoxLayout(confoundsContainer)
         confoundsStrategyWidget = self.loadConfounds()
         confoundsLayout.addWidget(confoundsStrategyWidget)
-        
+
         ####################
         # Combine containers
         self.bidsLayout.addWidget(self.fileContainer)
@@ -1293,7 +1293,7 @@ class App(QMainWindow):
         self.bidsContainer.hide()
 
         return
-    
+
     def onBidsResult(self, bids_folder):
         # Layout loaded successfully
         self.fileNameLabel.setText(f"Loaded BIDS data from {bids_folder}")
@@ -1313,49 +1313,49 @@ class App(QMainWindow):
             if atlasname == "AAL template (SPM 12)":
                 atlas = datasets.fetch_atlas_aal()
                 return atlas["maps"], atlas["labels"]
-            
+
             elif atlasname == "BASC multiscale":
                 resolution = int(self.parcellationOptions.currentText())
                 atlas = datasets.fetch_atlas_basc_multiscale_2015(resolution=resolution)
                 return atlas["maps"], None
-                   
+
             elif atlasname == "Destrieux et al. (2009)":
                 atlas = datasets.fetch_atlas_destrieux_2009()
                 return atlas["maps"], atlas["labels"]
-            
+
             elif atlasname == "Pauli et al. (2017)":
                 atlas = datasets.fetch_atlas_pauli_2017(version="det")
                 return atlas["maps"], atlas["labels"]
-            
+
             elif atlasname == "Schaefer et al. (2018)":
                 n_rois = int(self.parcellationOptions.currentText())
                 atlas = datasets.fetch_atlas_schaefer_2018(n_rois=n_rois)
                 return atlas["maps"], atlas["labels"]
-              
+
             elif atlasname == "Talairach atlas":
                 atlas = datasets.fetch_atlas_talairach(level_name="hemisphere")
                 return atlas["maps"], atlas["labels"]
-            
+
             elif atlasname == "Yeo (2011) networks":
                 thickness = str(self.parcellationOptions.currentText())
                 atlas = datasets.fetch_atlas_yeo_2011()
                 return atlas[thickness], None
-            
+
             elif atlasname == "Power et al. (2011)":
                 atlas = datasets.fetch_coords_power_2011(legacy_format=False)
                 coords = np.vstack((atlas.rois["x"], atlas.rois["y"], atlas.rois["z"])).T
                 return coords
-            
+
             elif atlasname == "Dosenbach et al. (2010)":
                 atlas = datasets.fetch_coords_dosenbach_2010(legacy_format=False)
                 coords = np.vstack((atlas.rois["x"], atlas.rois["y"], atlas.rois["z"])).T
                 return coords, atlas["networks"], atlas["labels"]
-        
+
             elif atlasname == "Seitzmann et al. (2018)":
                 atlas = datasets.fetch_coords_seitzman_2018(legacy_format=False)
                 coords = np.vstack((atlas.rois["x"], atlas.rois["y"], atlas.rois["z"])).T
                 return coords, atlas["networks"], atlas["regions"]
-            
+
         else:
             QMessageBox.warning(self, "Error", "Atlas not found")
             return
@@ -1367,9 +1367,9 @@ class App(QMainWindow):
         selected_run = self.runDropdown.currentText()
 
         # Nifti file
-        img = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz', 
+        img = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz',
                                    subject=selected_subject.split('-')[-1], task=selected_task, run=selected_run, session=selected_session, space='MNI152NLin2009cAsym')
-        
+
         # result is a list of a single path, we get rid of the list
         if img:
             self.data.file_name = img[0]
@@ -1377,7 +1377,7 @@ class App(QMainWindow):
             self.data.file_name = None
 
         # Mask file
-        mask = self.bids_layout.get(return_type='file', suffix='mask', extension='nii.gz', 
+        mask = self.bids_layout.get(return_type='file', suffix='mask', extension='nii.gz',
                                    subject=selected_subject.split('-')[-1], task=selected_task, run=selected_run, session=selected_session, space='MNI152NLin2009cAsym')
         if mask:
             self.mask_name = mask[0]
@@ -1392,7 +1392,7 @@ class App(QMainWindow):
             self.aroma_file = None
             self.strategy_checkboxes["ica_aroma"].setEnabled(False)
 
-        return 
+        return
 
     def onBIDSLayoutChanged(self):
         # Disconnect the signal to avoid recursive calls
@@ -1410,7 +1410,7 @@ class App(QMainWindow):
         self.parcellationOptions.setEnabled(False)
 
         QApplication.processEvents()
-    
+
         """
         The following lines of code get the evailable scans in an hierarchical way
         A full subjects list was previously initialized and doesnt change. Depending on the chosen task, the available sessions and runs are updated.
@@ -1428,7 +1428,7 @@ class App(QMainWindow):
             self.taskDropdown.addItems(tasks)
             if current_task in tasks:
                 self.taskDropdown.setCurrentText(current_task)
-            
+
             # 3. Available sessions for the selected subject and task
             sessions = self.bids_layout.get_sessions(subject=subject_id, task=current_task)
             current_session = self.sessionDropdown.currentText() if (self.sessionDropdown.count() > 0 and self.sessionDropdown.currentText() in sessions) else str(sessions[0])
@@ -1455,14 +1455,14 @@ class App(QMainWindow):
                 self.aroma_file = aroma_files[0]
             else:
                 self.aroma_file = None
-            
+
             # 6. Get the corresponding nifti file
             self.getNifti()  # get currently selected image
-        
+
         except Exception as e:
             print(f"Error when updating BIDS layout: {str(e)}")
             print("TODO: This might not a problem, but it should be handled properly.")
-        
+
         """
         End of hierarchical scan selection
         """
@@ -1472,7 +1472,7 @@ class App(QMainWindow):
         self.runDropdown.setEnabled(True)
         self.parcellationDropdown.setEnabled(True)
         self.parcellationOptions.setEnabled(True)
-        
+
         self.calculateBIDStextbox.setText("No time series data extracted yet.")
 
         # Reconnect the signals
@@ -1492,7 +1492,7 @@ class App(QMainWindow):
 
         elif self.parcellationDropdown.currentText() == "BASC multiscale":
             self.parcellationOptions.addItems(["7", "12", "20", "36", "64", "122", "197", "325", "444"])
-        
+
         elif self.parcellationDropdown.currentText() == "Destrieux et al. (2009)":
             self.parcellationOptions.addItems(["148"])
 
@@ -1513,21 +1513,21 @@ class App(QMainWindow):
 
         elif self.parcellationDropdown.currentText() == "Power et al. (2011)":
             self.parcellationOptions.addItems(["264"])
-        
+
         elif self.parcellationDropdown.currentText() == "Seitzmann et al. (2018)":
             self.parcellationOptions.addItems(["300"])
 
         else:
             QMessageBox.warning(self, "Error", "Atlas not found")
             return
-        
+
         self.parcellationOptions.show()
         return
 
     def loadConfounds(self):
         confoundsWidget = QWidget()
         layout = QVBoxLayout(confoundsWidget)
-        
+
         self.confound_options = {
             "strategy": ["motion", "wm_csf", "compcor", "global_signal", "high_pass", "ica_aroma", "scrub", "demean"],
             "motion": ["full", "basic", "power2", "derivatives"],
@@ -1587,15 +1587,15 @@ class App(QMainWindow):
             if key != "strategy":
                 info_text = cleaning_info[key]
                 info_button = InfoButton(info_text)
-            
+
             # Special cases
             if key == "n_compcor":
                 input_widget = CompcorSpinBox()
                 input_widget.setObjectName(f"{key}_input")
                 h_layout.addWidget(input_widget)
                 h_layout.setObjectName("compcor")
-                h_layout.addWidget(info_button) 
-            
+                h_layout.addWidget(info_button)
+
             elif key in ["fd_threshold", "std_dvars_threshold"]:
                 input_widget = QDoubleSpinBox()
                 input_widget.setRange(0.0, 999.0)
@@ -1604,8 +1604,8 @@ class App(QMainWindow):
                 input_widget.setObjectName(f"{key}_input")
                 h_layout.addWidget(input_widget)
                 h_layout.setObjectName("scrub")
-                h_layout.addWidget(info_button) 
-            
+                h_layout.addWidget(info_button)
+
             elif key == "strategy":
                 strategy_group = QGroupBox()
                 strategy_layout = QGridLayout(strategy_group)
@@ -1623,12 +1623,12 @@ class App(QMainWindow):
                         row += 1
                 h_layout.addWidget(strategy_group)
                 input_widget = None
-            
+
             else:
                 if isinstance(param, list):
                     input_widget = QComboBox()
                     input_widget.addItems(param)
-                
+
                 elif isinstance(param, int):
                     input_widget = QSpinBox()
                     input_widget.setRange(0, 999)
@@ -1647,8 +1647,8 @@ class App(QMainWindow):
                 h_layout.setObjectName(key)
                 if input_widget is not None:
                     h_layout.addWidget(input_widget)
-                h_layout.addWidget(info_button) 
-            
+                h_layout.addWidget(info_button)
+
             # Store the layout in the dictionary
             self.layouts[key] = h_layout
             if key != "strategy":
@@ -1724,7 +1724,7 @@ class App(QMainWindow):
 
         # Get the selected strategies
         args["strategy"] = strategy_list
-        
+
         # Set specific options for each strategy
         for strategy in strategy_list:
             if strategy == "motion":
@@ -1748,7 +1748,7 @@ class App(QMainWindow):
 
         return args
 
-    # Time series extraction and cleaning    
+    # Time series extraction and cleaning
     def extractTimeSeries(self):
         print("Calculating time series, please wait...")
         self.calculateBIDStextbox.setText("Calculating time series, please wait...")
@@ -1764,7 +1764,7 @@ class App(QMainWindow):
         self.worker.result.connect(self.handleExtractResult)
         self.worker.error.connect(self.handleExtractError)
         self.workerThread.start()
-        
+
         return
 
     def extractTimeSeriesThread(self, img_path):
@@ -1774,18 +1774,18 @@ class App(QMainWindow):
         if self.parcellationDropdown.currentText() in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
             rois, networks, labels,  = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
             masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", mask_img=self.mask_name)
-        
+
         elif self.parcellationDropdown.currentText() == "Power et al. (2011)":
             rois = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
             masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", mask_img=self.mask_name)
-        
+
         else:
             atlas, labels = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
             masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize="zscore_sample", mask_img=self.mask_name)
-        
+
         # Extract time series
         time_series = masker.fit_transform(img_path, confounds=confounds)
-        
+
         # Set data and gui elements
         self.data.file_data = time_series
         self.data.sample_mask = sample_mask
@@ -1797,14 +1797,14 @@ class App(QMainWindow):
         self.calculateBIDStextbox.setText(f"Done calculating time series. Shape: {self.data.file_data.shape}\nFile: {self.data.file_name.split('/')[-1]}")
         print(f"Done calculating time series. Shape: {self.data.file_data.shape}\nFile: {self.data.file_name.split('/')[-1]}")
         self.fileNameLabel2.setText(f"Time series with shape {self.data.file_data.shape}, ready for dFC calculation.")
-        
+
         self.transposeCheckbox.setEnabled(True)
-        
+
         #Plot
         self.createCarpetPlot()
-        
+
         return
-    
+
     def handleExtractError(self, error):
         # Handles errors in the worker thread
         self.calculateBIDStextbox.setText(f"Error when extracting time series, please try again.")
@@ -1830,16 +1830,16 @@ class App(QMainWindow):
             mask = np.ones(ts.shape, dtype=bool)
             mask[self.data.sample_mask] = False
             ts[mask] = 0
-        
+
             # Create a custom colormap
             cmap = cm.gray
             cmap.set_bad(color='red')  # Set color for masked/invalid data points
-            
+
             # Mask the data array where sample_mask is False
             ts = np.ma.masked_where(mask, ts)
-        
+
         # Plot the data
-        im = ax.imshow(ts, cmap=cmap, aspect='auto') 
+        im = ax.imshow(ts, cmap=cmap, aspect='auto')
         ax.set_xlabel("ROIs")
         ax.set_ylabel("TRs")
 
@@ -1882,13 +1882,13 @@ class App(QMainWindow):
             # Ensure the file has the correct extension
             if not filePath.endswith('.mat'):
                 filePath += '.mat'
-            
+
             # Save the the current data object to a .mat file
             try:
                 data_dict = {}
                 for field in self.data.__dataclass_fields__:
                     value = getattr(self.data, field)
-                    
+
                     if isinstance(value, np.ndarray):
                         data_dict[field] = value
                     elif isinstance(value, dict):
@@ -1925,7 +1925,7 @@ class App(QMainWindow):
         # Return if no methods are available
         if methodName == None or methodName == "Use checkboxes to get available methods":
             return
-        
+
         # Get selected connectivity method
         self.data.dfc_instance = getattr(methods, self.class_info.get(methodName), None) # the actual class
         self.data.dfc_name = self.class_info.get(methodName) # class name
@@ -1956,7 +1956,7 @@ class App(QMainWindow):
             position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
             self.positionLabel.setText(position_text)
             self.slider.setValue(self.slider.value())
-        
+
         # If connectivity data does not exist we reset the figure and slider to prepare for a new calculation
         # This also indicates to the user that this data was not yet calculated/saved
         else:
@@ -1981,19 +1981,19 @@ class App(QMainWindow):
             if self.continuousCheckBox.isChecked() and className.startswith("CONT"):
                     return True
             if self.stateBasedCheckBox.isChecked() and className.startswith("STATE"):
-                    return True 
+                    return True
             if self.staticCheckBox.isChecked() and className.startswith("STATIC"):
                     return True
             return False
 
         class_mappings = {
             'CONT': [
-                'Sliding Window', 'Jackknife Correlation', 'Flexible Least Squares', 'Spatial Distance', 
-                'Multiplication of Temporal Derivatives', 'Dynamic Conditional Correlation', 
+                'Sliding Window', 'Jackknife Correlation', 'Flexible Least Squares', 'Spatial Distance',
+                'Multiplication of Temporal Derivatives', 'Dynamic Conditional Correlation',
                 'Phase Synchronization', 'Leading Eigenvector Dynamics', 'Wavelet Coherence', 'Edge-centric Connectivity'
             ],
             'STATE': [
-                'Sliding Window Clustering', 'Co-activation patterns', 'Discrete Hidden Markov Model', 
+                'Sliding Window Clustering', 'Co-activation patterns', 'Discrete Hidden Markov Model',
                 'Continuous Hidden Markov Model', 'Windowless'
             ],
             'STATIC': [
@@ -2126,25 +2126,25 @@ class App(QMainWindow):
 
         self.data.file_data = data_cifti.parcellate(self.data.cifti_data, atlas=atlas_name)
         self.fileNameLabel.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
-    
+
     # Calculations
     def onCalculateButton(self):
         # Check if ts_data is available
         if self.data.file_data is None:
             self.calculatingLabel.setText(f"Error. No time series data has been loaded.")
             return
-        
+
         # Get the current parameters from the UI for the upcoming calculation
         self.getParameters()
-    
+
         # Process all pending events
-        QApplication.processEvents() 
-        
+        QApplication.processEvents()
+
         # Start worker thread for dFC calculations and submit for calculation
         self.workerThread = QThread()
         self.worker = Worker(self.calculateConnectivity, self.data.dfc_params)
         self.worker.moveToThread(self.workerThread)
-        
+
         self.worker.finished.connect(self.workerThread.quit)
         self.worker.result.connect(self.handleResult)
         self.worker.error.connect(self.handleError)
@@ -2153,15 +2153,15 @@ class App(QMainWindow):
         self.workerThread.start()
         self.calculatingLabel.setText(f"Calculating {self.methodComboBox.currentText()}, please wait...")
         self.calculateButton.setEnabled(False)
-    
+
     def calculateConnectivity(self, parameters):
         keep_in_memory = self.keepInMemoryCheckbox.isChecked()
-        
+
         # Check if data already exists
         existing_data = self.data_storage.check_for_identical_data(self.data)
         if existing_data is not None:
             return existing_data
-        
+
         # Remove keys not allowed for calculation
         clean_parameters = parameters.copy()
         clean_parameters.pop('parcellation', None)
@@ -2185,7 +2185,7 @@ class App(QMainWindow):
             self.data.dfc_states = result.FCSs_
             self.data.dfc_state_tc = result.state_TC()
             self.data.dfc_edge_ts = None
-        
+
         # Only a single matrix is returned (most cases)
         else:
             self.data.dfc_data = result
@@ -2205,7 +2205,7 @@ class App(QMainWindow):
         # Update the sliders and text
         if self.data.dfc_data is not None:
             self.calculatingLabel.setText(f"Calculated {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
-            
+
             if len(self.data.dfc_data.shape) == 3:
                 self.slider.show()
                 self.rowSelector.setMaximum(self.data.dfc_data.shape[0] - 1)
@@ -2214,7 +2214,7 @@ class App(QMainWindow):
 
             # Update time label
             total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
-            
+
             if self.currentTabIndex == 0 or self.currentTabIndex == 2:
                 position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
             else:
@@ -2222,7 +2222,7 @@ class App(QMainWindow):
 
             self.positionLabel.setText(position_text)
             self.slider.setValue(self.slider.value())
-            
+
         # Plot
         self.plotConnectivity()
         self.plotDistribution()
@@ -2243,7 +2243,7 @@ class App(QMainWindow):
 
     # Parameters
     def initParameters(self, class_instance):
-        # Now the parameter labels and boxes are set up    
+        # Now the parameter labels and boxes are set up
         labels = []
 
         # Calculate the maximum label width (just a visual thing)
@@ -2261,7 +2261,7 @@ class App(QMainWindow):
         time_series_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         time_series_label.setMinimumSize(time_series_label.sizeHint())
         labels.append(time_series_label)
-        
+
         self.time_series_textbox.setPlaceholderText("No data loaded yet")
         if self.data.file_name:
             self.time_series_textbox.setText(self.data.file_name)
@@ -2317,17 +2317,17 @@ class App(QMainWindow):
                 if param_type == bool:
                     param_input_widget = QComboBox()
                     param_input_widget.addItems(["True", "False"])
-                    
+
                     default_index = param_input_widget.findText(str(param.default))
                     param_input_widget.setCurrentIndex(default_index)
                     param_input_widget.setEnabled(True)
 
                 # Dropdown for parameters with predefined options
                 elif get_origin(type_hints.get(name)) is Literal:
-                    options = type_hints.get(name).__args__ 
+                    options = type_hints.get(name).__args__
                     param_input_widget = QComboBox()
                     param_input_widget.addItems([str(option) for option in options])
-                    
+
                     default_index = param_input_widget.findText(param.default)
                     param_input_widget.setCurrentIndex(default_index)
                     param_input_widget.setEnabled(True)
@@ -2356,7 +2356,7 @@ class App(QMainWindow):
                 else:
                     param_input_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
                     param_input_widget.setEnabled(True)
-   
+
 
                 # Create info button with tooltip
                 info_text = self.getInfoText(param.name, self.data.dfc_name)
@@ -2366,16 +2366,16 @@ class App(QMainWindow):
                 param_layout = QHBoxLayout()
                 param_layout.addWidget(param_label)
                 param_layout.addWidget(param_input_widget)
-                param_layout.addWidget(info_button) 
+                param_layout.addWidget(info_button)
 
                 # Add the layout to the main parameter layout
                 self.parameterLayout.addLayout(param_layout)
 
     def getParameters(self):
         # Get the time series and parameters (from the UI) for the selected connectivity method and store them in a dictionary
-        
+
         self.data.dfc_params['time_series'] = self.data.file_data # Time series data
-        
+
         # Converts string to boolean, float, or retains as string if conversion is not applicable
         def convert_value(value):
             if value.lower() in ['true', 'false']:
@@ -2483,15 +2483,15 @@ class App(QMainWindow):
             elif item.spacerItem():  # If the item is a spacer
                 # No need to delete spacer items; they are automatically handled by Qt
                 pass
-   
+
     # Memory
     def onKeepInMemoryChecked(self, state):
         if state == 2 and self.data.dfc_data is not None:
             self.data_storage.add_data(self.data)
-                
+
     def onClearMemory(self):
         self.data_storage = DataStorage()
-        
+
         self.figure.clear()
         self.canvas.draw()
         self.distributionFigure.clear()
@@ -2504,7 +2504,7 @@ class App(QMainWindow):
     # Plotting
     def plotConnectivity(self):
         current_data = self.data.dfc_data
-        
+
         if current_data is None:
             QMessageBox.warning(self, "No calculated data available for plotting")
             return
@@ -2537,7 +2537,7 @@ class App(QMainWindow):
         cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
 
         self.slider.setMaximum(current_data.shape[2] - 1 if len(current_data.shape) == 3 else 0)
-    
+
         self.figure.set_facecolor('#E0E0E0')
         self.figure.tight_layout()
         self.canvas.draw()
@@ -2555,7 +2555,7 @@ class App(QMainWindow):
         self.rowSelector.show()
         self.colSelector.show()
 
-        if current_data is not None and row < current_data.shape[0] and col < current_data.shape[1] and self.data.dfc_edge_ts is None and self.data.dfc_state_tc is None:    
+        if current_data is not None and row < current_data.shape[0] and col < current_data.shape[1] and self.data.dfc_edge_ts is None and self.data.dfc_state_tc is None:
             self.timeSeriesFigure.clear()
             ax = self.timeSeriesFigure.add_subplot(111)
             time_series = current_data[row, col, :] if len(current_data.shape) == 3 else current_data[row, col]
@@ -2590,7 +2590,7 @@ class App(QMainWindow):
                 ax_state.imshow(matrix, cmap='coolwarm', aspect=1)
                 ax_state.set_title(f"State {col+1}")
                 ax_state.set_xticks([])
-                ax_state.set_yticks([]) 
+                ax_state.set_yticks([])
 
         elif self.data.dfc_edge_ts is not None:
             self.timeSeriesFigure.clear()
@@ -2611,7 +2611,7 @@ class App(QMainWindow):
             ax2.set_title("Mean time series")
             ax2.set_xlabel("Time (TRs)")
             ax2.set_ylabel("Mean Edge Value")
-        
+
         else:
             # Clear the plot if the data is not available
             self.timeSeriesFigure.clear()
@@ -2667,10 +2667,10 @@ class App(QMainWindow):
         self.timeSeriesFigure.clear()
         ax = self.timeSeriesFigure.add_subplot(111)
         ax.plot(range(start, end), time_series_slice)
-        
+
         self.timeSeriesFigure.tight_layout()
         self.timeSeriesCanvas.draw()
-        
+
         return
 
     def onTabChanged(self):
@@ -2694,7 +2694,7 @@ class App(QMainWindow):
             self.slider.hide()
             position_text = ""
             return
-        
+
         if self.currentTabIndex == 0 or self.currentTabIndex == 2:
             self.slider.show()
             self.slider.setValue(self.currentSliderValue)
@@ -2716,14 +2716,14 @@ class App(QMainWindow):
             self.backButton.hide()
             self.forwardButton.hide()
             self.forwardLargeButton.hide()
-            
+
             # If we have nothing to scroll though, hide some GUI elements
             if len(self.data.dfc_data.shape) == 2 or self.data.dfc_edge_ts is not None or self.data.dfc_state_tc is not None:
                 position_text = ""
                 self.slider.hide()
-                
+
                 # Disable brain area selector widgets
-                for i in range(self.timeSeriesSelectorLayout.count()):    
+                for i in range(self.timeSeriesSelectorLayout.count()):
                     widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
                     if widget is not None:
                         widget.setVisible(False)
@@ -2732,9 +2732,9 @@ class App(QMainWindow):
                 self.slider.hide()
                 position_text = ""
                 #position_text = f"Use the slider to zoom in and scroll through the time series"
-                
+
                 # Enable brain area selector widgets
-                for i in range(self.timeSeriesSelectorLayout.count()):    
+                for i in range(self.timeSeriesSelectorLayout.count()):
                     widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
                     if widget is not None:
                         widget.setVisible(True)
@@ -2745,11 +2745,11 @@ class App(QMainWindow):
                 self.timeSeriesCanvas.draw()
 
                 # Disable brain area selector widgets
-                for i in range(self.timeSeriesSelectorLayout.count()):    
+                for i in range(self.timeSeriesSelectorLayout.count()):
                     widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
                     if widget is not None:
                         widget.setVisible(False)
-                        
+
         if self.currentTabIndex == 3:
             self.backLargeButton.hide()
             self.backButton.hide()
@@ -2757,7 +2757,7 @@ class App(QMainWindow):
             self.forwardLargeButton.hide()
             self.slider.hide()
             position_text = ""
-            
+
         self.positionLabel.setText(position_text)
         self.update()
 
@@ -2765,7 +2765,7 @@ class App(QMainWindow):
         # Ensure there is data to work with
         if self.data.dfc_data is None or self.im is None:
             return
-        
+
         if self.currentTabIndex == 0 or self.currentTabIndex == 2:
             # Get and update the data of the imshow object
             self.currentSliderValue = value
@@ -2803,7 +2803,7 @@ class App(QMainWindow):
         self.currentSliderValue = max(0, min(self.slider.value() + delta, self.slider.maximum()))
         self.slider.setValue(self.currentSliderValue)
         self.slider.update()
-        
+
         self.plotConnectivity()
         self.plotDistribution()
 
@@ -2829,10 +2829,10 @@ class App(QMainWindow):
 
         elif file_path.endswith('.txt'):
             self.data.graph_data = np.loadtxt(file_path)
-        
+
         elif file_path.endswith('.npy'):
             self.data.graph_data = np.load(file_path)
-      
+
         else:
             self.data.graph_data = None
             self.time_series_textbox.setText("Unsupported file format")
@@ -2845,7 +2845,7 @@ class App(QMainWindow):
 
         self.data.graph_raw = self.data.graph_data
         self.graphFileNameLabel.setText(f"Loaded {self.data.graph_file} with shape {self.data.graph_data.shape}")
-        
+
         self.plotGraph()
         self.onGraphCombobox()
 
@@ -2861,13 +2861,13 @@ class App(QMainWindow):
             # Ensure the file has the correct extension
             if not filePath.endswith('.mat'):
                 filePath += '.mat'
-            
+
             # Save the the current data object to a .mat file
             try:
                 data_dict = {}
                 for field in [f for f in self.data.__dataclass_fields__ if f.startswith('graph_')]:
                     value = getattr(self.data, field)
-                    
+
                     if isinstance(value, np.ndarray):
                         data_dict[field] = value
                     elif isinstance(value, dict):
@@ -2891,17 +2891,17 @@ class App(QMainWindow):
                         data_dict[field] = value
 
                 savemat(filePath, data_dict)
-            
+
             except Exception as e:
                 QMessageBox.warning(self, "Output Error", f"Error saving data: {e}")
-            
+
             return
 
     def takeCurrentData(self):
         if self.data.dfc_data is None:
             QMessageBox.warning(self, "Output Error", "No current dFC data available.")
             return
-        
+
         if len(self.data.dfc_data.shape) == 3:
             self.data.graph_data = self.data.dfc_data[:,:,self.currentSliderValue]
         elif len(self.data.dfc_data.shape) == 2:
@@ -2909,9 +2909,9 @@ class App(QMainWindow):
         else:
             QMessageBox.warning(self, "Output Error", "FC data seems to have the wrong shape.")
             return
-        
+
         self.data.graph_raw = self.data.graph_data
-        
+
         print(f"Used current dFC data with shape {self.data.graph_data.shape}")
         self.graphFileNameLabel.setText(f"Used current dFC data with shape {self.data.graph_data.shape}")
         self.data.graph_file = f"dfC from {self.data.file_name}" #with {self.data.dfc_name} at t={self.currentSliderValue}"
@@ -3035,13 +3035,13 @@ class App(QMainWindow):
     def setGraphParameters(self):
         # Clear parameters
         self.clearParameters(self.graphParameterLayout)
-        
+
         # Retrieve the selected function from the graph module
         if self.graphAnalysisComboBox.currentData() == None:
             return
 
         func = getattr(graph, self.graphAnalysisComboBox.currentData())
-        
+
         # Retrieve the signature of the function
         func_signature = inspect.signature(func)
         type_hints = get_type_hints(func)
@@ -3065,7 +3065,7 @@ class App(QMainWindow):
                 param_layout = QHBoxLayout()
                 param_type = type_hints.get(name)
                 param_default = 1 if isinstance(param.default, inspect._empty) else param.default
-                
+
                 if param_default == None:
                     if param_type == bool:
                         param_default = False
@@ -3093,14 +3093,14 @@ class App(QMainWindow):
                         param_widget = QComboBox()
                         param_widget.addItems(["False", "True"])
                         param_widget.setCurrentIndex(int(param_default))
-                    # Int                  
+                    # Int
                     elif param_type == int:
                         param_widget = QSpinBox()
                         param_widget.setValue(param_default)
                         param_widget.setMaximum(10000)
                         param_widget.setMinimum(-10000)
                         param_widget.setSingleStep(param_default)
-                    # Float 
+                    # Float
                     elif param_type == float:
                         param_widget = QDoubleSpinBox()
                         if name == "threshold":
@@ -3112,7 +3112,7 @@ class App(QMainWindow):
                         param_widget.setSingleStep(0.01)
                     # String
                     elif get_origin(type_hints.get(name)) is Literal:
-                        options = type_hints.get(name).__args__ 
+                        options = type_hints.get(name).__args__
                         param_widget = QComboBox()
                         param_widget.addItems([str(option) for option in options])
                     # Fallback
@@ -3146,7 +3146,7 @@ class App(QMainWindow):
                     if 'density' in temp_widgets:
                         temp_widgets['density'][0].show()
                         temp_widgets['density'][1].show()
-            
+
             # Connect the signal from the type_widget to the updateVisibility function
             type_widget.currentIndexChanged.connect(updateVisibility)
             updateVisibility()
@@ -3206,7 +3206,7 @@ class App(QMainWindow):
     # Plotting
     def plotGraph(self):
         current_data = self.data.graph_data
-        
+
         if current_data is None:
             QMessageBox.warning(self, "No calculated data available for plotting")
             return
@@ -3224,7 +3224,7 @@ class App(QMainWindow):
         cax = divider.append_axes("right", size="5%", pad=0.15)
         cbar = self.matrixFigure.colorbar(self.im, cax=cax)
         cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
-    
+
         self.matrixFigure.set_facecolor('#E0E0E0')
         self.matrixFigure.tight_layout()
         self.matrixCanvas.draw()
@@ -3232,7 +3232,7 @@ class App(QMainWindow):
     def plotMeasure(self, measure):
         self.graphFigure.clear()
         ax = self.graphFigure.add_subplot(111)
-        
+
         # Check type of the graph output data
         if isinstance(self.data.graph_out, (np.ndarray, np.float64)):
             if self.data.graph_out.ndim == 0:
@@ -3248,7 +3248,7 @@ class App(QMainWindow):
                 mean_val = np.mean(self.data.graph_out)
                 var_val = np.var(self.data.graph_out)
                 self.graphTextbox.append(f"{measure} (mean: {mean_val:.2f}, variance: {var_val:.2f})")
-            
+
             elif self.data.graph_out.ndim == 2:
                 # For a 2D array, use imshow
                 vmax = np.max(np.abs(self.data.graph_out))
@@ -3260,7 +3260,7 @@ class App(QMainWindow):
                 self.graphFigure.colorbar(im, cax=cax).ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
             else:
                 self.graphTextbox.append("3D graph data not currently supported for plotting.")
-        
+
         elif isinstance(self.data.graph_out, dict):
             # Setup data for output
             output_string = f"{measure}: "
@@ -3294,23 +3294,23 @@ class App(QMainWindow):
                         mean_val = np.mean(value)
                         var_val = np.var(value)
                         self.graphTextbox.append(f"{measure} (mean: {mean_val:.2f}, variance: {var_val:.2f})")
-                        
+
                     elif value.ndim == 2:
                         # For a 2D array, use imshow
                         im = ax.imshow(value, cmap='coolwarm', vmin=-vmax, vmax=vmax)
                         ax.set_title(key)
-    
+
                         # Create the colorbar
                         divider = make_axes_locatable(ax)
                         cax = divider.append_axes("right", size="5%", pad=0.15)
                         cbar = self.graphFigure.colorbar(im, cax=cax)
                         cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
-  
+
                     else:
                         self.graphTextbox.append("Graph output data is not in expected format.")
 
                     ax.set_title(key)
-        
+
         else:
             self.graphTextbox.append("Graph output data is not in expected format.")
 
@@ -3318,9 +3318,9 @@ class App(QMainWindow):
         self.graphFigure.set_facecolor('#E0E0E0')
         self.graphFigure.tight_layout()
         self.graphCanvas.draw()
-        
+
         return
-    
+
 
     """
     Multiverse tab
@@ -3373,7 +3373,7 @@ class App(QMainWindow):
         functionComboBox = QComboBox()
         functionComboBox.currentIndexChanged.connect(lambda _: self.updateFunctionParameters(functionComboBox, parameterContainer))
         functionComboBox.setObjectName("functionComboBox")
-        
+
         # Parameter container widget
         parameterContainer = QWidget()
         parameterContainer.setObjectName("parameterContainer")
@@ -3461,7 +3461,7 @@ class App(QMainWindow):
         self.update()
 
         return
-    
+
     # Gets a dict with the current function parameters
     def getFunctionParameters(self, parameterContainer):
         params_dict = {}
@@ -3521,7 +3521,7 @@ class App(QMainWindow):
             func = dfc_class_.__init__
         else:
             QMessageBox.warning(self, "Error", "Function is not recognized")
-        
+
         # Retrieve the signature of the function
         func_signature = inspect.signature(func)
         type_hints = get_type_hints(func)
@@ -3566,7 +3566,7 @@ class App(QMainWindow):
                 param_type = type_hints.get(name)
                 print(name, param_type)
                 param_default = 1 if isinstance(param.default, inspect._empty) else param.default
-                
+
                 if param_default == None:
                     if param_type == bool:
                         param_default = False
@@ -3591,15 +3591,15 @@ class App(QMainWindow):
                         param_widget = QComboBox()
                         param_widget.addItems(["False", "True"])
                         param_widget.setCurrentIndex(int(param_default))
-                    # Int                  
+                    # Int
                     elif param_type == int:
                         param_widget = QSpinBox()
                         param_widget.setValue(param_default)
                         param_widget.setMaximum(10000)
                         param_widget.setMinimum(-10000)
                         param_widget.setSingleStep(1)
-                    # Float 
-                    elif param_type == float:    
+                    # Float
+                    elif param_type == float:
                         param_widget = QDoubleSpinBox()
                         if name == "threshold":
                             param_widget.setValue(0.0)
@@ -3617,7 +3617,7 @@ class App(QMainWindow):
 
                     # String
                     elif get_origin(type_hints.get(name)) is Literal:
-                        options = type_hints.get(name).__args__ 
+                        options = type_hints.get(name).__args__
                         param_widget = QComboBox()
                         param_widget.addItems([str(option) for option in options])
                     # Fallback
@@ -3651,11 +3651,11 @@ class App(QMainWindow):
                     if 'density' in temp_widgets:
                         temp_widgets['density'][0].show()
                         temp_widgets['density'][1].show()
-            
+
             # Connect the signal from the type_widget to the updateVisibility function
             type_widget.currentIndexChanged.connect(updateVisibility)
             updateVisibility()
-            
+
             return
 
     # "Other" category for custom functions
@@ -3685,7 +3685,7 @@ class App(QMainWindow):
         param_layout.addWidget(param_edit)
         parameterContainer.layout().addLayout(param_layout)
 
-        return  
+        return
 
     # Adds a new decision widget to the layout
     def addNewDecision(self, layout, buttonLayout):
@@ -3710,7 +3710,7 @@ class App(QMainWindow):
         if not name:
             QMessageBox.warning(self, "Input Error", "Please ensure a name is provided for the decision.")
             return
-        
+
         # Retrieve the selected function key and determine its module prefix
         func_key = functionComboBox.currentData()
 
@@ -3761,19 +3761,19 @@ class App(QMainWindow):
         # Add to forking paths
         self.data.forking_paths[currentName].append(option_dict)
         return
-    
+
     # Collapse the option layout
     def collapseOption(self, collapseButton, parameterContainer):
         if collapseButton.text() == " \u25B2 ":
             parameterContainer.hide()
             collapseButton.setText(" \u25BC ")
             return
-            
+
         if collapseButton.text() == " \u25BC ":
             parameterContainer.show()
             collapseButton.setText(" \u25B2 ")
             return
-        
+
         return
 
     # Adds decision to the script
@@ -3784,7 +3784,7 @@ class App(QMainWindow):
         if category == "General":
             options = [self.setDtypeForOption(option.strip()) for option in optionsInput.text().split(',') if option.strip()]
             self.data.forking_paths[name] = options
-        else: 
+        else:
             options = self.data.forking_paths[name]
 
         if name and options:
@@ -3792,7 +3792,7 @@ class App(QMainWindow):
         else:
             QMessageBox.warning(self, "Input Error", "Please ensure a name and at least one option are provided.")
         return
-    
+
     # Handles data conversion based on the input
     def setDtypeForOption(self, option):
         # Try to convert to integer
@@ -3826,7 +3826,7 @@ class App(QMainWindow):
                 self.data.mv_containers.remove(decisionWidget)
                 self.generateScript()
                 return
-            
+
         if key in self.data.forking_paths:
             options = self.data.forking_paths[key]
 
@@ -3862,7 +3862,7 @@ class App(QMainWindow):
             elif item.spacerItem():
                 # No need to delete spacer items as Qt does it automatically
                 pass
-    
+
     # Generates the template script
     def generateScript(self, init_template=False):
         if init_template:
@@ -3889,7 +3889,7 @@ class App(QMainWindow):
                 "multiverse.summary()\n"
                 "#multiverse.run()\n"
             )
-        
+
         else:
             script_content = (
                 "from comet.multiverse import Multiverse\n"
@@ -3931,7 +3931,7 @@ class App(QMainWindow):
         if fileName:
             self.loadedScriptDisplay.setText(f"Loaded: {fileName}")
             self.loadedScriptPath = fileName
-            
+
             # Read the content of the file
             try:
                 with open(fileName, 'r', encoding='utf-8') as file:
@@ -3950,7 +3950,7 @@ class App(QMainWindow):
             # Ensure the file has the correct extension
             if not fileName.endswith('.py'):
                 fileName += '.py'
-            
+
             with open(fileName, 'w') as file:
                 file.write(script_text)
 
