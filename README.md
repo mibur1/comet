@@ -1,7 +1,7 @@
 ## Comet - A dynamic functional connectivity toolbox for multiverse analysis
 [![DOI](src/comet/resources/img/doi.svg)](https://doi.org/10.1101/2024.01.21.576546) [![PyPI](src/comet/resources/img/pypi.svg)](https://pypi.org/project/comet-toolbox/)
 
-**Important notes:**
+#### Important notes
 
 * This package is at an early stage of development, with frequent changes being made. If you intend to use this package at this stage, I kindly ask that you contact me via the email address in the [pyproject.toml](https://github.com/mibur1/dfc-multiverse/blob/main/pyproject.toml) file.
 * Many features are not yet tested, so there will be bugs (the question is just how many). A comprehensive testing suite and documentation will be added in the near future
@@ -37,7 +37,7 @@ pip install -e .
 
 ### Usage
 
-**General** 
+#### General
 
 The toolbox is designed in a modular way, which means you can use the individual parts in combination with others, but also by themselves.
 
@@ -47,7 +47,7 @@ The toolbox is designed in a modular way, which means you can use the individual
 * Multiverse analysis needs decision/option pairs of any kind to create forking paths in the analysis as well as a template script for the analysis
 
 
-**GUI** 
+#### GUI
 
 After installation, you can use the graphical user interface through the terminal by typing:
 
@@ -62,7 +62,7 @@ If you want to explore the toolbox with example data, you can load data included
 * ```aomic_multi.pkl``` contains parcellated BOLD data for 5 subjects from the AOMIC data set (usable for state-based dFC measures)
 
 
-**Scripting**
+#### Scripting
 
 If you intend to use the toolbox in a standard python script, [demo scripts](https://github.com/mibur1/dfc-multiverse/tree/main/tutorials) are provided as a starting point:
 
