@@ -478,8 +478,8 @@ class LeiDA(ConnectivityMethod):
             # Compute coherence matrix
             cohmat = np.cos(np.subtract.outer(instantaneous_phase[n,:], instantaneous_phase[n,:]))
 
-            # Compute the eigenvectors and eigenvalues
-            eigenvalues, eigenvectors = eigh(cohmat)
+            # Compute the eigenvectors (ignore eigenvalues)
+            _, eigenvectors = eigh(cohmat)
 
             # The leading eigenvector is the one corresponding to the largest eigenvalue
             V1 = eigenvectors[:, -1]
@@ -550,7 +550,7 @@ class WaveletCoherence(ConnectivityMethod):
         for i in range(P):
             # Calculate continuous wavelet transform
             y_normal = (self.time_series[:,i] - self.time_series[:,i].mean()) / self.time_series[:,i].std()
-            W, s, freq, coi, fft, fftfregs = cwt(y_normal, dt, dj=dj, s0=s0, J=J, wavelet=mother_wavelet)
+            W, s, _, _, _, _ = cwt(y_normal, dt, dj=dj, s0=s0, J=J, wavelet=mother_wavelet)
             scales = np.ones([1, y_normal.size]) * s[:, None]
             S = mother_wavelet.smooth(np.abs(W) ** 2 / scales, dt, dj, s) # Smooth the wavelet spectra
 
@@ -723,7 +723,7 @@ class DCC(ConnectivityMethod):
         output : float
             real number proportional to the correlation component in negative log-likelihood (to be minimized)
         """
-        T, N = epsilon.shape
+        T, _ = epsilon.shape
         S2 = np.cov(epsilon, rowvar=False)
         SS = S2 * (1 - sum(theta))
         Q = S2.copy()
@@ -797,7 +797,8 @@ class DCC(ConnectivityMethod):
             try:
                 res = minimize(lambda x: self._LcOriginal(epsilon, x), x0, constraints=constraints, bounds=bounds)
                 break
-            except:
+            except Exception as e:
+                print(f"Exception: {e}")
                 print(f"Attempt {attempt + 1} failed, trying new random initial values")
                 x0 = (random.uniform(0.25, 0.5), random.uniform(0.25, 0.5))
                 if attempt == 4:

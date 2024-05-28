@@ -19,13 +19,13 @@ from matplotlib import patches as mpatches
 from joblib import Parallel, delayed
 
 def in_notebook():
-        try:
-            from IPython import get_ipython
-            if 'IPKernelApp' not in get_ipython().config:
-                return False
-        except Exception:
+    try:
+        from IPython import get_ipython
+        if 'IPKernelApp' not in get_ipython().config:
             return False
-        return True
+    except Exception:
+        return False
+    return True
 
 class Multiverse:
     def __init__(self, name="multiverse"):
@@ -228,7 +228,8 @@ class Multiverse:
             nx.draw_networkx_nodes(G, pos, nodelist=nodes_at_level, node_size=node_size, node_color=[level_colors[level] for _ in nodes_at_level])
 
         # Draw labels
-        node_labels = {node: G.nodes[node]['option'] if node != root_node else G.nodes[node]['label'] for node in G.nodes} # Use only the option as a node label
+        node_labels = {node: G.nodes[node]['option'] if node != root_node \
+                       else G.nodes[node]['label'] for node in G.nodes} # Use only the option as a node label
         nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=12)
 
         # Identify and annotate the bottom-most node at each level with the decision label
@@ -320,9 +321,7 @@ class Multiverse:
                 writer.writerow(context)
 
     # Create a specification curve
-    def specification_curve(self, fname="multiverse_summary.csv", measure=None, cmap="Set2", ci=95, chance_level=None, linewidth=2, figsize=(16,9), height_ratio=[2,1], fontsize=10, dotsize=50, label_offset=-0.05):
-        ###################################################################################################################
-        # Load data and sort in ascending order for sequential plotting (specification curve is created from left to right)
+    def load_and_prepare_data(self, fname="multiverse_summary.csv", measure=None):
         calling_script_dir = os.getcwd() if 'in_notebook' in globals() and in_notebook else os.path.dirname(sys.argv[0])
         results_path = os.path.join(calling_script_dir, f"{self.name}/results")
         csv_path = os.path.join(results_path, fname)
@@ -330,17 +329,14 @@ class Multiverse:
 
         if measure in multiverse_summary.columns:
             print(f"Getting {measure} from .csv file")
-            # Get forking paths/decisions from csv
             forking_paths = {}
 
             for column in multiverse_summary.columns:
                 if column == measure:
                     continue
-
                 unique_values = multiverse_summary[column].unique().tolist()
                 forking_paths[column] = unique_values
 
-            # Get results and corresponding decisions from csv
             universe_data = multiverse_summary[measure].values
             parameters = multiverse_summary.drop(columns=[measure])
             universes_with_summary = [(data, parameters.iloc[i].to_dict()) for i, data in enumerate(universe_data)]
@@ -351,38 +347,33 @@ class Multiverse:
             with open(f"{results_path}/forking_paths.pkl", "rb") as file:
                 forking_paths = pickle.load(file)
 
-            # Construct the search pattern to match files of the format 'universe_X.pkl'
             pattern = os.path.join(results_path, "universe_*.pkl")
             results_files = glob.glob(pattern)
 
-            # Load and match universes to their summaries
             universe_data = {}
             for filename in results_files:
-                # Extract the universe identifier from the filename
                 universe = os.path.basename(filename).split('.')[0]
 
-                # Load the universe data
                 with open(filename, "rb") as file:
                     universe_data[universe] = pickle.load(file)
 
-            # Create a list of tuples (universe_data, corresponding_row_in_summary)
             universes_with_summary = []
             for universe, data in universe_data.items():
-                # Find the corresponding row in the summary DataFrame
                 summary_row = multiverse_summary[multiverse_summary['Universe'].str.lower() == universe]
                 if not summary_row.empty:
                     universes_with_summary.append((data, summary_row.iloc[0]))
 
             sorted_combined = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
 
-        #############
-        # Set up plot
+        return sorted_combined, forking_paths
+
+    def specification_curve(self, fname="multiverse_summary.csv", measure=None, cmap="Set2", ci=95, chance_level=None, linewidth=2, figsize=(16,9), height_ratio=(2,1), fontsize=10, dotsize=50, label_offset=-0.05):
+        sorted_combined, forking_paths = self.load_and_prepare_data(fname, measure)
+
         sns.set_theme(style="whitegrid")
         fig, ax = plt.subplots(2, 1, figsize=figsize, gridspec_kw={'height_ratios': height_ratio}, sharex=True)
         fig.suptitle('Multiverse Analysis', fontweight="bold", fontsize=fontsize+2)
 
-        ######################################################################################################
-        # Prepare decision labels: get only the name of the decision if its a dict and remove single parameters
         single_params = []
         for decision, options in forking_paths.items():
             for i, opt in enumerate(options):
@@ -395,87 +386,66 @@ class Multiverse:
         for param in single_params:
             del forking_paths[param]
 
-        ##########################################################
-        # Plot decision labels, set up decision info for main plot
         flat_list = []
         yticks = []
         yticklabels = []
         current_position = 0
         line_ends = []
         key_positions = {}
-
-        # Space to add after each group of decisions
-        space_between_groups = 1  # Adjust this value as needed
+        space_between_groups = 1
 
         for key, options in forking_paths.items():
-            # Calculate the position to annotate the decision key, centered over its options
             key_position = current_position + len(options) / 2 - 0.5
             key_positions[key] = key_position
 
-            # Process each option in the current group
             for option in options:
                 flat_list.append((key, option))
                 yticks.append(current_position)
                 yticklabels.append(option)
-                current_position += 1  # Move to the next position for the next option
+                current_position += 1
 
             line_ends.append(current_position)
-            current_position += space_between_groups # Space after each group of decisions
+            current_position += space_between_groups
 
         decision_info = (yticklabels, yticks, line_ends, forking_paths.keys())
 
-        ###########################
-        # Decision ticks and labels
         ax[1].set_yticks(yticks)
         ax[1].set_yticklabels(yticklabels)
         ax[1].tick_params(axis='y', labelsize=10)
         ax[1].set_ylim(-1, current_position)
         ax[1].yaxis.grid(False)
 
-        ####################
-        # Plot decision keys
         trans1 = transforms.blended_transform_factory(ax[1].transAxes, ax[1].transData)
 
         for key, pos in key_positions.items():
             ax[1].text(label_offset - 0.01, pos, key, transform=trans1, ha='right', va='center', fontweight="bold", fontsize=fontsize, rotation=0)
 
-        ##########################
-        # Vertical parameter lines
-        s=-0.5
-        for i in range(len(line_ends)):
-            e = line_ends[i] - 0.5
+        s = -0.5
+        for i, line_end in enumerate(line_ends):
+            e = line_end - 0.5
             line = mlines.Line2D([label_offset, label_offset], [s, e], color="black", lw=1, transform=trans1, clip_on=False)
             ax[1].add_line(line)
-            s = line_ends[i] + 0.5
+            s = line_end + 0.5
 
-        ####################
-        # Plot each universe
         for i, (result, decisions) in enumerate(sorted_combined):
-            ##########################
-            # Specification curve + CI
             if hasattr(result, '__len__'):
                 mean_val = np.mean(result)
             else:
                 mean_val = result
 
-            # If we have more than 3 values, we calculate the CI
             if hasattr(result, '__len__') and len(result) > 3:
                 sem_val = np.std(result) / np.sqrt(len(result))
                 ci_lower = mean_val - sem_val * stats.t.ppf((1 + ci / 100) / 2., len(result) - 1)
                 ci_upper = mean_val + sem_val * stats.t.ppf((1 + ci / 100) / 2., len(result) - 1)
 
-                # Plot CI
-                ax[0].plot([i, i], [ci_lower, ci_upper], color="gray", linewidth=linewidth) # Draw CI
+                ax[0].plot([i, i], [ci_lower, ci_upper], color="gray", linewidth=linewidth)
 
-                # Plot mean measure value
                 if ci_lower > 0.5:
                     ax[0].scatter(i, mean_val, zorder=3, color="green", edgecolor="green", s=dotsize)
                 elif ci_upper < 0.5:
                     ax[0].scatter(i, mean_val, zorder=3, color="red", edgecolor="red", s=dotsize)
                 else:
                     ax[0].scatter(i, mean_val, zorder=3, color="black", edgecolor="black", s=dotsize)
-
-            # Less than 3 values, no CI
             else:
                 if chance_level is not None:
                     if mean_val > chance_level:
@@ -485,8 +455,6 @@ class Multiverse:
                 else:
                     ax[0].scatter(i, mean_val, zorder=3, color="black", edgecolor="black", s=dotsize)
 
-            #################
-            # Decision points
             group_ends = decision_info[2]
             num_groups = len(group_ends) + 1
             colormap = plt.cm.get_cmap(cmap, num_groups)
@@ -497,7 +465,6 @@ class Multiverse:
                     index = decision_info[0].index(option)
                     plot_pos = decision_info[1][index]
 
-                    # Determine the current group based on plot_pos
                     current_group = 0
                     for end in group_ends:
                         if plot_pos <= end:
@@ -508,14 +475,12 @@ class Multiverse:
 
                     ax[1].scatter(i, plot_pos, color=current_color, marker='o', s=dotsize)
 
-        #####################################################
-        # Specification curve ticks and labels + chance level
         trans0 = transforms.blended_transform_factory(ax[0].transAxes, ax[0].transData)
 
         ax[0].xaxis.grid(False)
-        ax[0].set_xticks(np.arange(0,len(sorted_combined),1))
+        ax[0].set_xticks(np.arange(0, len(sorted_combined), 1))
         ax[0].set_xticklabels([])
-        ax[0].set_xlim(-1, len(sorted_combined)+1)
+        ax[0].set_xlim(-1, len(sorted_combined) + 1)
 
         ymin, ymax = ax[0].get_ylim()
         ycenter = (ymax + ymin) / 2
@@ -523,10 +488,8 @@ class Multiverse:
         line = mlines.Line2D([label_offset, label_offset], [ymin, ymax], color="black", lw=1, transform=trans0, clip_on=False)
         ax[0].add_line(line)
 
-        ax[0].hlines(chance_level, xmin=-2, xmax=len(sorted_combined)+1, linestyles="--", lw=2, colors='black', zorder=1)
+        ax[0].hlines(chance_level, xmin=-2, xmax=len(sorted_combined) + 1, linestyles="--", lw=2, colors='black', zorder=1)
 
-        ########
-        # Legend
         legend_items = []
 
         if hasattr(result, '__len__') and len(result) > 1:

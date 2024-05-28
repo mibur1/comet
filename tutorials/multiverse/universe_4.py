@@ -19,8 +19,10 @@ labels = data_sim[3] # trial labels (connectivity state)
 ###############################################
 # 2. DFC CALCULATION (DECISION: DFC METHOD)
 # Preprocessing. Phase-based methods require band-pass filtering, amplitude-based methods require high-pass filtering.
-ts_bp = comet.data.clean(ts_sim, confounds=None, t_r=0.72, detrend=True, standardize=False, high_pass=0.03, low_pass=0.07) # band pass (narrow-band signal for Hilbert transform)
-ts_hp = comet.data.clean(ts_sim, confounds=None, t_r=0.72, detrend=True, standardize=False, high_pass=0.01)                # high pass (for amplitude based methods)
+ts_bp = comet.data.clean(ts_sim, confounds=None, t_r=0.72, detrend=True, standardize=False, \
+                         high_pass=0.03, low_pass=0.07) # band pass (narrow-band signal for Hilbert transform)
+ts_hp = comet.data.clean(ts_sim, confounds=None, t_r=0.72, detrend=True, standardize=False, \
+                         high_pass=0.01)                # high pass (for amplitude based methods)
 dfc_ts = comet.methods.SlidingWindow(ts_hp, **{'windowsize': 21, 'shape': 'gaussian', 'std': 7}).connectivity() # estimate dFC
 
 #######################################
@@ -60,22 +62,24 @@ behaviour = np.asarray(behaviour)
 
 ####################################################################
 # 4. CALCULATE GRAPH MEASURES (DECISIONS: DENSITY, BINARISATION)
-def compute_graph_measures(t, features, index, density, bin):
+def compute_graph_measures(t, features, index, density, binarise):
     W = np.asarray(features[t, :, :]).copy()
     W = comet.graph.handle_negative_weights(W, type="absolute")
     W = comet.graph.threshold(W, type="density", density=density)
     W = comet.graph.postproc(W)
 
-    ci, q = bct.community_louvain(W)
+    ci, _ = bct.community_louvain(W)
     participation = bct.participation_coef(W, ci, degree="undirected")
-    clustering = bct.clustering_coef_bu(W) if bin else bct.clustering_coef_wu(W)
-    efficiency = comet.graph.efficiency_bin(W, local=True) if bin else comet.graph.efficiency_wei(W, local=True)
+    clustering = bct.clustering_coef_bu(W) if binarise else bct.clustering_coef_wu(W)
+    efficiency = comet.graph.efficiency_bin(W, local=True) if binarise else comet.graph.efficiency_wei(W, local=True)
     return {
         "participation": participation,
         "clustering": clustering,
         "efficiency": efficiency,
         "index": index[t]
     }
+
+
 graph_results = Parallel(n_jobs=8)(delayed(compute_graph_measures)(t, features, index, 0.5, False) for t in tqdm(range(features.shape[0])))
 
 # Unpack the results

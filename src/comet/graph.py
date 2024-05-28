@@ -325,8 +325,7 @@ def avg_shortest_path(G: np.ndarray,
         D[np.isinf(D)] = np.nan
 
     Dv = D[~np.isnan(D)]
-    l = np.mean(Dv)
-    return l
+    return np.mean(Dv)
 
 def transitivity(A: np.ndarray) -> np.ndarray:
     '''Transitivity is the ratio of triangles to triplets in the network (classical version of the clustering coefficient).
@@ -395,7 +394,7 @@ def efficiency(G: np.ndarray,
     return efficiency_wei(G, local=local) if weighted else efficiency_bin(G, local=local)
 
 def efficiency_wei(Gw: np.ndarray,
-                   local: bool=False) -> np.ndarray:
+                   local: bool = False) -> np.ndarray:
     '''Efficiency for weighted networks
 
     Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy
@@ -815,7 +814,7 @@ def gateway_coef_sign(CIJ: np.ndarray,
                       ci: Literal["louvain"] = "louvain",
                       centrality_type: Literal["degree", "betweenness"] = "degree", ) \
                                         -> tuple[np.ndarray, np.ndarray]:
-    ci, q = bct.community_louvain(CIJ)
+    ci, _ = bct.community_louvain(CIJ)
     res = bct.gateway_coef_sign(CIJ, ci, centrality_type)
     res_dict = {"Gateway coefficient for positive weights": res[0], \
                 "Gateway coefficient for negative weights": res[1]}
@@ -843,6 +842,7 @@ def participation_coef_sign(CIJ: np.ndarray,
     res = bct.participation_coef_sign(CIJ, ci)
     res_dict = {"Nodal participation coefficient from positive weights": res[0], "Nodal participation coefficient from negative weights": res[1]}
     return res_dict
+
 
 """def rich_club(CIJ: np.ndarray,
                  weighted: bool=True,
