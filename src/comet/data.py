@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from nilearn import signal
 from scipy.io import loadmat
-import importlib.resources as pkg_resources
+import importlib_resources
 from .methods import *
 from .multiverse import in_notebook
 
@@ -69,11 +69,11 @@ def load_example(type=None):
     Load simulated time series data with two randomly changing connectivity states
     """
     if type == "pkl":
-        with pkg_resources.path("comet.resources", "simulation.pkl") as file_path:
+        with importlib_resources.path("comet.resources", "simulation.pkl") as file_path:
             with open(file_path, 'rb') as file:
                 data = pickle.load(file)
     else:
-        with pkg_resources.path("comet.resources", "simulation.txt") as file_path:
+        with importlib_resources.path("comet.resources", "simulation.txt") as file_path:
             data = np.loadtxt(file_path)
     
     return data
@@ -82,7 +82,7 @@ def load_single_state():
     """
     Load simulated time series data with a single connectivity state
     """
-    with pkg_resources.path("comet.resources", "single_state.txt") as file_path:
+    with importlib_resources.path("comet.resources", "single_state.txt") as file_path:
         data = np.loadtxt(file_path)
     
     return data

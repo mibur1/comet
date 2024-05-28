@@ -3,7 +3,7 @@ import numpy as np
 import nibabel as nib
 nib.imageglobals.logger.setLevel(40)
 from scipy.io import loadmat
-import importlib.resources as pkg_resources
+import importlib_resources
 
 def parcellate(dtseries, atlas="glasser", method=np.mean, standardize=True):
     """
@@ -14,7 +14,7 @@ def parcellate(dtseries, atlas="glasser", method=np.mean, standardize=True):
 
     # schaefer_kong includes the medial wall which we have to insert into the data
     if atlas == "schaefer_kong":
-        with pkg_resources.path("comet.resources.atlas", "fs_LR_32k_medial_mask.mat") as maskdir:
+        with importlib_resources.path("comet.resources.atlas", "fs_LR_32k_medial_mask.mat") as maskdir:
             medial_mask = loadmat(maskdir)['medial_mask'].squeeze().astype(bool)
         idx = np.where(medial_mask == 0)[0]
 
@@ -48,13 +48,13 @@ def prepare_atlas(atlas_name, debug=False):
     Prepare a cifti 2 atlas to be used in parcellation
     """
     if atlas_name == "glasser":
-        with pkg_resources.path("comet.resources.atlas", "Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors_with_Atlas_ROIs2.32k_fs_LR.dlabel.nii") as path:
+        with importlib_resources.path("comet.resources.atlas", "Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors_with_Atlas_ROIs2.32k_fs_LR.dlabel.nii") as path:
             atlas = nib.load(path)
     elif atlas_name == "schaefer_kong":
-        with pkg_resources.path("comet.resources.atlas", "Schaefer2018_200Parcels_Kong2022_17Networks_order.dlabel.nii") as path:
+        with importlib_resources.path("comet.resources.atlas", "Schaefer2018_200Parcels_Kong2022_17Networks_order.dlabel.nii") as path:
             atlas = nib.load(path)
     elif atlas_name == "schaefer_tian":
-        with pkg_resources.path("comet.resources.atlas", "Schaefer2018_200Parcels_17Networks_order_Tian_Subcortex_S4.dlabel.nii") as path:
+        with importlib_resources.path("comet.resources.atlas", "Schaefer2018_200Parcels_17Networks_order_Tian_Subcortex_S4.dlabel.nii") as path:
             atlas = nib.load(path)
     else:
         sys.exit("Atlas must be any of glasser, schaefer_kong, or schaefer_tian")
