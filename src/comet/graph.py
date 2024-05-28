@@ -85,8 +85,10 @@ def threshold(W: np.ndarray,
     if type == "absolute":
         W[W < threshold] = 0
     elif type == "density":
-        assert density >= 0 and density <= 1, "Error: Density must be between 0 and 1"
-        assert np.allclose(W, W.T), "Error: Matrix is not symmetric"
+        if not density >=0 and density <= 1:
+            raise ValueError("Error: Density must be between 0 and 1")
+        if not np.allclose(W, W.T):
+            raise ValueError("Error: Matrix is not symmetrical")
         
         W[np.tril_indices(len(W))] = 0 # set lower triangle to zero
         triu_indices = np.triu_indices_from(W, k=1) # get upper triangle indices
@@ -145,7 +147,9 @@ def normalise(W: np.ndarray,
     if copy:
         W = W.copy()
 
-    assert np.max(np.abs(W)) > 0, "Error: Matrix contains only zeros"
+    if not np.max(np.abs(W)) > 0:
+        raise ValueError("Error: Matrix contains only zeros")
+    
     W /= np.max(np.abs(W))
     return W
 
@@ -377,7 +381,9 @@ def postproc(W: np.ndarray,
     if copy:
         W = W.copy()
 
-    assert np.allclose(W, W.T), "Error: Matrix is not symmetrical"
+    if not np.allclose(W, W.T):
+        raise ValueError("Error: Matrix is not symmetrical")
+    
     np.fill_diagonal(W, diag)
     np.nan_to_num(W, nan=0.0, posinf=0.0, neginf=0.0, copy=False)
     W = np.round(W, decimals=5) # This should ensure exact binarity if floating point inaccuracies occur
@@ -563,7 +569,9 @@ def small_world_sigma(G: np.ndarray,
     return sigma
 
 def small_world_propensity(G: np.ndarray) -> np.ndarray:
-    assert np.allclose(G, G.T), "Error: Matrix is not symmetrical"
+    if not np.allclose(G, G.T):
+        raise ValueError("Error: Matrix is not symmetrical")
+    
     G = G / np.max(G)
     n = G.shape[0]  # Number of nodes
 

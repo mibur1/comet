@@ -95,7 +95,8 @@ class SlidingWindow(ConnectivityMethod):
         self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1 # N possible estimates given the window and step size
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
 
-        assert self.windowsize <= self.T, "windowsize is larger than time series"
+        if not self.windowsize <= self.T:
+            raise ValueError("windowsize is larger than time series")
 
     def _weights(self):
         '''
@@ -164,7 +165,8 @@ class Jackknife(ConnectivityMethod):
         self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1 # N possible estimates given the window size
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
 
-        assert self.windowsize <= self.T, "windowsize is larger than time series"
+        if not self.windowsize <= self.T:
+            raise ValueError("windowsize is larger than time series")
     
     def _weights(self):
         '''
@@ -274,7 +276,8 @@ class TemporalDerivatives(ConnectivityMethod):
         self.N_estimates = self.T - self.windowsize
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
 
-        assert self.windowsize <= self.T, "windowsize is larger than time series"
+        if not self.windowsize <= self.T:
+            raise ValueError("windowsize is larger than time series")
 
     def centers(self):
         '''
@@ -876,8 +879,8 @@ class Sliding_Window(BaseDFCMethod):
         self.params['measure_name'] = 'SlidingWindow'
         self.params['is_state_based'] = False
 
-        assert self.params['sw_method'] in self.sw_methods_name_lst, \
-            "sw_method not recognized."
+        if not self.params['sw_method'] in self.sw_methods_name_lst:
+            raise ValueError("sw_method not recognized.")
 
     def connectivity(self):
         measure = SLIDING_WINDOW(**self.params)
@@ -987,9 +990,9 @@ class Sliding_Window_Clustr(BaseDFCMethod):
         
         self.time_series = time_series   
     
-        assert clstr_distance=='euclidean' or clstr_distance=='manhattan', \
-            "Clustering distance not recognized. It must be either \
-                euclidean or manhattan."
+        if not clstr_distance=='euclidean' or clstr_distance=='manhattan':
+            raise ValueError("Clustering distance not recognized. It must be either euclidean or manhattan.")
+
         self.logs_ = ''
         self.TPM = []
         self.FCS_ = []
@@ -1023,9 +1026,9 @@ class Sliding_Window_Clustr(BaseDFCMethod):
 
         self.params['subjects'] = list(self.time_series.data_dict.keys())
         self.sub_id = self.params['subjects'][self.params['subject']]
-
-        assert self.params['clstr_base_measure'] in self.base_methods_name_lst, \
-            "Base method not recognized."
+        
+        if not self.params['clstr_base_measure'] in self.base_methods_name_lst:
+            raise ValueError("Base measure not recognized.")
 
     def connectivity(self):
         measure = SLIDING_WINDOW_CLUSTR(**self.params)
@@ -1140,9 +1143,9 @@ class Hmm_Disc(BaseDFCMethod):
 
         self.params['subjects'] = list(self.time_series.data_dict.keys())
         self.sub_id = self.params['subjects'][self.params['subject']]
-
-        assert self.params['clstr_base_measure'] in self.base_methods_name_lst, \
-            "Base measure not recognized."
+        
+        if not self.params['clstr_base_measure'] in self.base_methods_name_lst:
+            raise ValueError("Base measure not recognized.")
 
     def connectivity(self):
         measure = HMM_DISC(**self.params)
@@ -1255,7 +1258,8 @@ class Static_Mutual_Info(ConnectivityMethod):
         self.num_bins = num_bins
 
     def connectivity(self):
-        assert self.num_bins is not None, "Number of bins must be specified for mutual information method"
+        if self.num_bins is None:
+            raise ValueError("Number of bins must be specified for mutual information method")
 
         binned_data = np.zeros_like(self.time_series, dtype=int)
 
