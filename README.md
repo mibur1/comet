@@ -34,7 +34,6 @@ Installation from the source code of this repository is also possible:
 ```
 pip install -e .
 ```
-
 ### Usage
 
 #### General
@@ -45,7 +44,6 @@ The toolbox is designed in a modular way, which means you can use the individual
 * state-based dFC methods require a TIME_SERIES object (as used in the [pydfc toolbox](https://github.com/neurodatascience/dFC)) containing data for multiple subjects as input
 * Graph measures need 2D adjacency/connectivity matrices as input
 * Multiverse analysis needs decision/option pairs of any kind to create forking paths in the analysis as well as a template script for the analysis
-
 
 #### GUI
 
@@ -60,7 +58,6 @@ If you want to explore the toolbox with example data, you can load data included
 * ```simulation.txt``` contains simulated BOLD data for 10 brain regions with 2 changing brain states (usable for continuous and static dFC measures)
 * ```abide_50088.txt``` contains parcellated BOLD data for a single subject from the ABIDE data set (usable for continuous and static dFC measures)
 * ```aomic_multi.pkl``` contains parcellated BOLD data for 5 subjects from the AOMIC data set (usable for state-based dFC measures)
-
 
 #### Scripting
 
