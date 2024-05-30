@@ -7,7 +7,6 @@ import pandas as pd
 from nilearn import signal
 from scipy.io import loadmat
 import importlib_resources
-from .methods import *
 from .multiverse import in_notebook
 
 def load_timeseries(path=None, rois=None):

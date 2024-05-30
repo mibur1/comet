@@ -20,10 +20,10 @@ os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["OMP_NUM_THREADS"] = "1"
 
 
-'''
+"""
 Abstract class template for all dynamic functional connectivity methods
 Abstract methods need to be overriden in the child classes
-'''
+"""
 class ConnectivityMethod(metaclass=ABCMeta):
     def __init__(self, time_series, diagonal=0, standardize=False, fisher_z=False, tril=False):
         self.time_series = time_series.astype("float32")
@@ -67,9 +67,9 @@ class ConnectivityMethod(metaclass=ABCMeta):
         return R_mat
 
 
-'''
+"""
 Continuous dFC methods
-'''
+"""
 class SlidingWindow(ConnectivityMethod):
     name = "CONT Sliding Window"
     '''
@@ -576,7 +576,7 @@ class WaveletCoherence(ConnectivityMethod):
                 iwc[j,i,:,:] = WCT
 
                 if self.method == "weighted":
-                # Calculate DFC as weighted average using cross wavelet power
+                    # Calculate DFC as weighted average using cross wavelet power
                     CWP = np.abs(W1 * np.conj(W2)) # cross wavelet power
                     CWP = CWP[self.drop_scales:-self.drop_scales, self.drop_timepoints:-self.drop_timepoints] # drop outer scales and outer time points
                     WCT = WCT[self.drop_scales:-self.drop_scales, self.drop_timepoints:-self.drop_timepoints] # drop outer scales and outer time points
@@ -849,14 +849,14 @@ class Edge_centric_connectivity(ConnectivityMethod):
         return dfc, (a, u, v)
 
 
-'''
+"""
 State based dFC methods. Basically wrapper functions to bring methods from https://github.com/neurodatascience/dFC/ into the Comet framework
-'''
+"""
 class Sliding_Window(BaseDFCMethod):
     name = "CONT Sliding Window (pydfc)"
-    '''
+    """
     Sliding Window
-    '''
+    """
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
                  clstr_distance: Literal["euclidean"] = "euclidean",
@@ -893,9 +893,9 @@ class Sliding_Window(BaseDFCMethod):
 
 class Time_Freq(BaseDFCMethod):
     name = "CONT Time-frequency (pydfc)"
-    '''
+    """
     Time-Frequency
-    '''
+    """
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
                  num_cores: int = 8,
@@ -932,9 +932,9 @@ class Time_Freq(BaseDFCMethod):
 
 class Cap(BaseDFCMethod):
     name = "STATE Co-activation patterns"
-    '''
+    """
     Co-activation patterns
-    '''
+    """
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
                  subject: int = 0,
@@ -978,9 +978,9 @@ class Cap(BaseDFCMethod):
 
 class Sliding_Window_Clustr(BaseDFCMethod):
     name = "STATE Sliding Window Clustering"
-    '''
+    """
     Sliding Window Clustering
-    '''
+    """
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
                  subject: int = 0,
@@ -1042,9 +1042,9 @@ class Sliding_Window_Clustr(BaseDFCMethod):
 
 class Hmm_Cont(BaseDFCMethod):
     name = "STATE Continuous Hidden Markov Model"
-    '''
+    """
     Continuous Hidden Markov Model
-    '''
+    """
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
                  subject: int = 0,
@@ -1090,9 +1090,9 @@ class Hmm_Cont(BaseDFCMethod):
 
 class Hmm_Disc(BaseDFCMethod):
     name = "STATE Discrete Hidden Markov Model"
-    '''
+    """
     Discrete Hidden Markov Model
-    '''
+    """
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
                  subject: int = 0,
@@ -1159,9 +1159,9 @@ class Hmm_Disc(BaseDFCMethod):
 
 class Windowless(BaseDFCMethod):
     name = "STATE Windowless"
-    '''
+    """
     Windowless
-    '''
+    """
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
                  subject: int = 0,

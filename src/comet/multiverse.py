@@ -321,9 +321,7 @@ class Multiverse:
                 writer.writerow(context)
 
     # Create a specification curve
-    def load_and_prepare_data(self, fname="multiverse_summary.csv", measure=None):
-        calling_script_dir = os.getcwd() if 'in_notebook' in globals() and in_notebook else os.path.dirname(sys.argv[0])
-        results_path = os.path.join(calling_script_dir, f"{self.name}/results")
+    def load_and_prepare_data(self, fname="multiverse_summary.csv", measure=None, results_path=None):
         csv_path = os.path.join(results_path, fname)
         multiverse_summary = pd.read_csv(csv_path)
 
@@ -368,7 +366,10 @@ class Multiverse:
         return sorted_combined, forking_paths
 
     def specification_curve(self, fname="multiverse_summary.csv", measure=None, cmap="Set2", ci=95, chance_level=None, linewidth=2, figsize=(16,9), height_ratio=(2,1), fontsize=10, dotsize=50, label_offset=-0.05):
-        sorted_combined, forking_paths = self.load_and_prepare_data(fname, measure)
+        calling_script_dir = os.getcwd() if 'in_notebook' in globals() and in_notebook else os.path.dirname(sys.argv[0])
+        results_path = os.path.join(calling_script_dir, f"{self.name}/results")
+
+        sorted_combined, forking_paths = self.load_and_prepare_data(fname, measure, results_path)
 
         sns.set_theme(style="whitegrid")
         fig, ax = plt.subplots(2, 1, figsize=figsize, gridspec_kw={'height_ratios': height_ratio}, sharex=True)

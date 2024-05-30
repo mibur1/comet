@@ -1799,6 +1799,7 @@ class App(QMainWindow):
         self.fileNameLabel2.setText(f"Time series with shape {self.data.file_data.shape}, ready for dFC calculation.")
 
         self.transposeCheckbox.setEnabled(True)
+        self.time_series_textbox.setText(self.data.file_name)
 
         #Plot
         self.createCarpetPlot()
@@ -4000,4 +4001,3 @@ def run(dfc_data=None, method=None):
 
 if __name__ == '__main__':
     run()
-

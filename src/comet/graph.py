@@ -466,7 +466,7 @@ def efficiency_wei(Gw: np.ndarray,
     return E
 
 def efficiency_bin(G: np.ndarray,
-                   local: bool=False) -> np.ndarray:
+                   local: bool = False) -> np.ndarray:
     '''Efficiency for binary networks
 
     Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy
@@ -610,7 +610,8 @@ def small_world_propensity(G: np.ndarray) -> np.ndarray:
     alpha = np.arctan(delta_L / delta_C)
     delta = (4 * alpha / np.pi) - 1
 
-    """print("Comet  :",
+    """
+    print("Comet  :",
           "C", round(net_clus, 3),
           "L", round(net_path, 3),
           "regC", round(reg_clus, 3),
@@ -780,7 +781,7 @@ def backbone_wu(CIJ: np.ndarray,
                 verbose: bool = False) -> tuple[np.ndarray, np.ndarray]:
     res = bct.backbone_wu(CIJ, avgdeg, verbose)
     res_dict = {"Connection matrix of the minimum spanning tree of CIJ": res[0],
-               f"Connection matrix of the minimum spanning tree plus strongest connections up to some average degree <avgdeg>": res[1]}
+                "Connection matrix of the minimum spanning tree plus strongest connections up to some average degree <avgdeg>": res[1]}
     return res_dict
 
 def betweenness(G: np.ndarray,
@@ -831,20 +832,20 @@ def participation_coef(CIJ: np.ndarray,
                        ci: Literal["louvain"] = "louvain",
                        sparse: bool = False,
                        degree: Literal["undirected"] = "undirected") -> np.ndarray:
-    ci, q = bct.community_louvain(CIJ)
+    ci, _ = bct.community_louvain(CIJ)
     res = bct.participation_coef_sparse(CIJ, ci, degree) if sparse else bct.participation_coef(CIJ, ci, degree)
     res_dict = {"Nodal participation coefficient (sparse)": res} if sparse else {"Nodal participation coefficient": res}
     return res_dict
 
 def participation_coef_sign(CIJ: np.ndarray,
                             ci: Literal["louvain"] = "louvain",) -> tuple[np.ndarray, np.ndarray]:
-    ci, q = bct.community_louvain(CIJ)
+    ci, _ = bct.community_louvain(CIJ)
     res = bct.participation_coef_sign(CIJ, ci)
     res_dict = {"Nodal participation coefficient from positive weights": res[0], "Nodal participation coefficient from negative weights": res[1]}
     return res_dict
 
-
-"""def rich_club(CIJ: np.ndarray,
+"""
+def rich_club(CIJ: np.ndarray,
                  weighted: bool=True,
                  klevel: int = None) -> np.ndarray:
     res = bct.rich_club_wu(CIJ, klevel) if weighted else bct.rich_club_bu(CIJ, klevel)
@@ -853,7 +854,8 @@ def participation_coef_sign(CIJ: np.ndarray,
     res_dict = {"Rich club coefficient vectors (weighted)": res} if weighted else {"Rich club coefficient vectors (binary)": res}
     return res_dict"""
 
-"""def transitivity(CIJ: np.ndarray,
+"""
+def transitivity(CIJ: np.ndarray,
                  weighted: bool=True) -> float:
     res = bct.transitivity_wu(CIJ) if weighted else bct.transitivity_bu(CIJ)
     res_dict = {"Global transitivity (weighted)": res} if weighted else {"Global transitivity (binary)": res}
