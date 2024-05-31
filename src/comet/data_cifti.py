@@ -10,7 +10,7 @@ def parcellate(dtseries, atlas="glasser", method=np.mean, standardize=True):
     Parcellation, calculates the mean over all grayordinates within a parcel. Z-standardization is enabled by default
     """
     ts = dtseries.get_fdata()
-    rois, keys, labels, rgba = prepare_atlas(atlas)
+    rois, keys, _, _ = prepare_atlas(atlas)
 
     # schaefer_kong includes the medial wall which we have to insert into the data
     if atlas == "schaefer_kong":

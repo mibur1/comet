@@ -365,7 +365,8 @@ class Multiverse:
 
         return sorted_combined, forking_paths
 
-    def specification_curve(self, fname="multiverse_summary.csv", measure=None, cmap="Set2", ci=95, chance_level=None, linewidth=2, figsize=(16,9), height_ratio=(2,1), fontsize=10, dotsize=50, label_offset=-0.05):
+    def specification_curve(self, fname="multiverse_summary.csv", measure=None, cmap="Set2", ci=95, chance_level=None, \
+                            linewidth=2, figsize=(16,9), height_ratio=(2,1), fontsize=10, dotsize=50, label_offset=-0.05):
         calling_script_dir = os.getcwd() if 'in_notebook' in globals() and in_notebook else os.path.dirname(sys.argv[0])
         results_path = os.path.join(calling_script_dir, f"{self.name}/results")
 
@@ -419,7 +420,8 @@ class Multiverse:
         trans1 = transforms.blended_transform_factory(ax[1].transAxes, ax[1].transData)
 
         for key, pos in key_positions.items():
-            ax[1].text(label_offset - 0.01, pos, key, transform=trans1, ha='right', va='center', fontweight="bold", fontsize=fontsize, rotation=0)
+            ax[1].text(label_offset - 0.01, pos, key, transform=trans1, ha='right', va='center', \
+                       fontweight="bold", fontsize=fontsize, rotation=0)
 
         s = -0.5
         for i, line_end in enumerate(line_ends):
@@ -485,7 +487,8 @@ class Multiverse:
 
         ymin, ymax = ax[0].get_ylim()
         ycenter = (ymax + ymin) / 2
-        ax[0].text(label_offset - 0.01, ycenter, measure, transform=trans0, ha='right', va='center', fontweight="bold", fontsize=fontsize, rotation=0)
+        ax[0].text(label_offset - 0.01, ycenter, measure, transform=trans0, ha='right', va='center', \
+                   fontweight="bold", fontsize=fontsize, rotation=0)
         line = mlines.Line2D([label_offset, label_offset], [ymin, ymax], color="black", lw=1, transform=trans0, clip_on=False)
         ax[0].add_line(line)
 
@@ -494,9 +497,11 @@ class Multiverse:
         legend_items = []
 
         if hasattr(result, '__len__') and len(result) > 1:
-            legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=8, markerfacecolor="black", markeredgecolor="black", label=f"Mean {measure}"))
+            legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=8, \
+                                              markerfacecolor="black", markeredgecolor="black", label=f"Mean {measure}"))
         else:
-            legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=8, markerfacecolor="black", markeredgecolor="black", label=f"{measure}"))
+            legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=8, \
+                                              markerfacecolor="black", markeredgecolor="black", label=f"{measure}"))
 
         if hasattr(result, '__len__') and len(result) > 3:
             legend_items.append(mpatches.Patch(facecolor='gray', edgecolor='white', label=f"{ci}% CI"))
