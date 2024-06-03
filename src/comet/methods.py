@@ -11,7 +11,8 @@ from scipy.optimize import minimize
 from sklearn.metrics import mutual_info_score
 from statsmodels.stats.weightstats import DescrStatsW
 from pycwt import cwt, Morlet
-from pydfc.dfc_methods import *
+from pydfc.dfc_methods import BaseDFCMethod, SLIDING_WINDOW, SLIDING_WINDOW_CLUSTR, \
+                              TIME_FREQ, CAP, HMM_DISC, HMM_CONT, WINDOWLESS
 from pydfc import time_series
 from typing import Literal
 
