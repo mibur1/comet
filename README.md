@@ -1,5 +1,6 @@
 ## Comet - A dynamic functional connectivity toolbox for multiverse analysis
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/5c4e04d5e0274eefa716280d132e927c)](https://app.codacy.com/gh/mibur1/dfc-multiverse?utm_source=github.com&utm_medium=referral&utm_content=mibur1/dfc-multiverse&utm_campaign=Badge_Grade)
 [![DOI](src/comet/resources/img/doi.svg)](https://doi.org/10.1101/2024.01.21.576546) [![PyPI](src/comet/resources/img/pypi.svg)](https://pypi.org/project/comet-toolbox/)
 
 ### Important notes
