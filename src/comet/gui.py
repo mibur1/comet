@@ -3262,17 +3262,32 @@ class App(QMainWindow):
             else:
                 self.graphTextbox.append("3D graph data not currently supported for plotting.")
 
-        elif isinstance(self.data.graph_out, dict):
+        elif isinstance(self.data.graph_out, tuple):
             # Setup data for output
-            output_string = f"{measure}: "
+            output_string = f""
             output_arrays = []
-            for key, value in self.data.graph_out.items():
-                if isinstance(value, (int, float)):
-                    output_string += f"{key}: {value:.2f}, "
-                    self.plotLogo(self.graphFigure)
 
-                elif isinstance(value, np.ndarray):
-                    output_arrays.append((key, value))
+            data = self.data.graph_out[0]
+            label = self.data.graph_out[1]
+
+            if isinstance(data, (int, float)):
+                output_string += f"{label}: {data:.2f}, "
+                self.plotLogo(self.graphFigure)
+
+            elif isinstance(data, np.ndarray):
+                output_arrays.append((label, data))
+
+            elif isinstance(data, tuple):
+                for i, dat in enumerate(data):
+                    if isinstance(dat, (int, float)):
+                        output_string += f"{label[i]}: {dat:.2f}, "
+                        self.plotLogo(self.graphFigure)
+
+                    elif isinstance(dat, np.ndarray):
+                        output_arrays.append((label[i], dat))
+
+            else:
+                self.graphTextbox.append("Graph output data is not in expected format.")
 
             # Print the output string
             self.graphTextbox.append(output_string.strip(', '))  # Remove the trailing comma

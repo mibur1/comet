@@ -1,6 +1,6 @@
 [project]
 name = "comet-toolbox"
-version = "0.4.3"
+version = "0.4.4"
 authors = [
   {name="Micha Burkhardt", email="micha.burkhardt@uol.de"},
 ]
