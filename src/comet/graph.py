@@ -311,13 +311,13 @@ def avg_shortest_path(G: np.ndarray,
     '''
     is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
     if is_binary:
-        D = distance_bin(G, inv=False)
+        D = distance_bin(G)
     else:
-        D = distance_wei(G, inv=False)
+        D = distance_wei(G, inv=True)
 
     if np.isinf(D).any():
         import warnings
-        issue = "The graph is not fully connected and infinite path lenghts were set to NaN. Small world estimates might be inaccurate."
+        issue = "The graph is not fully connected and infinite path lenghts were set to NaN"
         warnings.warn(issue)
     if not include_diagonal:
         np.fill_diagonal(D, np.nan)
@@ -668,7 +668,7 @@ def matching_ind_und(G: np.ndarray) -> np.ndarray:
     return M
 
 @jit(nopython=True)
-def distance_wei(G: np.ndarray, inv: bool = False) -> np.ndarray:
+def distance_wei(G: np.ndarray, inv: bool = True) -> np.ndarray:
     '''(Inverse) distance matrix for weighted networks
 
     Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy
@@ -680,7 +680,7 @@ def distance_wei(G: np.ndarray, inv: bool = False) -> np.ndarray:
         undireted weighted adjacency/connectivity matrix
 
     inv : bool, optional
-        if True, the element wise inverse of the distance matrux is returned. Default is False
+        if True, the element wise inverse of the distance matrux is returned. Default is True
 
     Returns
     -------
@@ -691,6 +691,9 @@ def distance_wei(G: np.ndarray, inv: bool = False) -> np.ndarray:
     -----
     Algorithm: Modified Dijkstra's algorithm
     '''
+    if inv:
+        G = 1 / G
+
     n = len(G)
     D = np.full((n, n), np.inf)
     np.fill_diagonal(D, 0)
@@ -721,16 +724,11 @@ def distance_wei(G: np.ndarray, inv: bool = False) -> np.ndarray:
                 break
             V = np.where(D[u, :] == minD)[0]
 
-    np.fill_diagonal(D, 1)
-    if inv:
-        D = 1 / D
-        np.fill_diagonal(D, 0)
-
     return D
 
 @jit(nopython=True)
-def distance_bin(G: np.ndarray, inv: bool = False) -> np.ndarray:
-    '''(Inverse) distance matrix for binary networks
+def distance_bin(G: np.ndarray) -> np.ndarray:
+    '''Distance matrix for binary networks
 
     Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy
     Significantly improved performance due to numba JIT compilation
@@ -739,9 +737,6 @@ def distance_bin(G: np.ndarray, inv: bool = False) -> np.ndarray:
     ----------
     G : PxP np.ndarray
         undireted weighted adjacency/connectivity matrix
-
-    inv : bool, optional
-        if True, the element wise inverse of the distance matrux is returned. Default is False
 
     Returns
     -------
@@ -768,10 +763,7 @@ def distance_bin(G: np.ndarray, inv: bool = False) -> np.ndarray:
             if not D[i, j]:
                 D[i, j] = np.inf
 
-    np.fill_diagonal(D, 1)
-    if inv:
-        D = 1 / D
-        np.fill_diagonal(D, 0)
+    np.fill_diagonal(D, 0)
 
     return D
 
@@ -780,36 +772,36 @@ def backbone_wu(CIJ: np.ndarray,
                 avgdeg: int = 0,
                 verbose: bool = False) -> tuple[np.ndarray, np.ndarray]:
     res = bct.backbone_wu(CIJ, avgdeg, verbose)
-    res_dict = {"Connection matrix of the minimum spanning tree of CIJ": res[0],
-                "Connection matrix of the minimum spanning tree plus strongest connections up to some average degree <avgdeg>": res[1]}
-    return res_dict
+    label = ["Connection matrix of the minimum spanning tree of CIJ", \
+             "Connection matrix of the minimum spanning tree plus strongest connections up to some average degree <avgdeg>"]
+    return res, label
 
 def betweenness(G: np.ndarray,
                 weighted: bool = True) -> np.ndarray:
     res = bct.betweenness_wei(G) if weighted else bct.betweenness_bin(G)
-    res_dict = {"Nodal betweenness centrality (weighted)": res} if weighted else {"Nodal betweenness centrality (binary)": res}
-    return res_dict
+    label = "Nodal betweenness centrality (weighted)" if weighted else "Nodal betweenness centrality (binary)"
+    return res, label
 
 def clustering_coef(G: np.ndarray,
                        weighted: bool = True) -> np.ndarray:
     res = bct.clustering_coef_wu(G) if weighted else bct.clustering_coef_bu(G)
-    res_dict = {"Nodal clustering coefficient (weighted)": res} if weighted else {"Nodal clustering coefficient (binary)": res}
-    return res_dict
+    label = "Nodal clustering coefficient (weighted)" if weighted else "Nodal clustering coefficient (binary)"
+    return res, label
 
 def degrees_und(CIJ: np.ndarray) -> np.ndarray:
     res = bct.degrees_und(CIJ)
-    res_dict = {"Nodal degree": res}
-    return res_dict
+    label = "Nodal degree"
+    return res, label
 
 def density_und(CIJ: np.ndarray) -> tuple[float, int, int]:
     res = bct.density_und(CIJ)
-    res_dict = {"Density": res[0], "Number of vertices": res[1], "Number of edges": res[2]}
-    return res_dict
+    label = ["Density", "Number of vertices", "Number of edges"]
+    return res, label
 
 def eigenvector_centrality_und(CIJ: np.ndarray) -> np.ndarray:
     res = bct.eigenvector_centrality_und(CIJ)
-    res_dict = {"Nodal eigenvector centrality": res}
-    return res_dict
+    label = "Nodal eigenvector centrality"
+    return res, label
 
 def gateway_coef_sign(CIJ: np.ndarray,
                       ci: Literal["louvain"] = "louvain",
@@ -817,16 +809,16 @@ def gateway_coef_sign(CIJ: np.ndarray,
                                         -> tuple[np.ndarray, np.ndarray]:
     ci, _ = bct.community_louvain(CIJ)
     res = bct.gateway_coef_sign(CIJ, ci, centrality_type)
-    res_dict = {"Gateway coefficient for positive weights": res[0], \
-                "Gateway coefficient for negative weights": res[1]}
-    return res_dict
+    label = ["Gateway coefficient for positive weights", \
+             "Gateway coefficient for negative weights"]
+    return res, label
 
 def pagerank_centrality(A: np.ndarray,
                         d: float = 0.85,
                         falff: Literal["byesian prior"] = "byesian prior") -> np.ndarray:
     res = bct.pagerank_centrality(A, d, None)
-    res_dict = {"Nodal pageranking vectors": res}
-    return res_dict
+    label = "Nodal pageranking vectors"
+    return res, label
 
 def participation_coef(CIJ: np.ndarray,
                        ci: Literal["louvain"] = "louvain",
@@ -834,15 +826,15 @@ def participation_coef(CIJ: np.ndarray,
                        degree: Literal["undirected"] = "undirected") -> np.ndarray:
     ci, _ = bct.community_louvain(CIJ)
     res = bct.participation_coef_sparse(CIJ, ci, degree) if sparse else bct.participation_coef(CIJ, ci, degree)
-    res_dict = {"Nodal participation coefficient (sparse)": res} if sparse else {"Nodal participation coefficient": res}
-    return res_dict
+    label = "Nodal participation coefficient (sparse)" if sparse else "Nodal participation coefficient"
+    return res, label
 
 def participation_coef_sign(CIJ: np.ndarray,
                             ci: Literal["louvain"] = "louvain",) -> tuple[np.ndarray, np.ndarray]:
     ci, _ = bct.community_louvain(CIJ)
     res = bct.participation_coef_sign(CIJ, ci)
-    res_dict = {"Nodal participation coefficient from positive weights": res[0], "Nodal participation coefficient from negative weights": res[1]}
-    return res_dict
+    label = ["Nodal participation coefficient from positive weights", "Nodal participation coefficient from negative weights"]
+    return res, label
 
 """
 def rich_club(CIJ: np.ndarray,
@@ -851,12 +843,12 @@ def rich_club(CIJ: np.ndarray,
     res = bct.rich_club_wu(CIJ, klevel) if weighted else bct.rich_club_bu(CIJ, klevel)
     print("rich club", type(res))
     print(res)
-    res_dict = {"Rich club coefficient vectors (weighted)": res} if weighted else {"Rich club coefficient vectors (binary)": res}
-    return res_dict"""
+    label = "Rich club coefficient vectors (weighted)" if weighted else "Rich club coefficient vectors (binary)"
+    return res, label"""
 
 """
 def transitivity(CIJ: np.ndarray,
                  weighted: bool=True) -> float:
     res = bct.transitivity_wu(CIJ) if weighted else bct.transitivity_bu(CIJ)
-    res_dict = {"Global transitivity (weighted)": res} if weighted else {"Global transitivity (binary)": res}
-    return res_dict"""
+    label = "Global transitivity (weighted)" if weighted else "Global transitivity (binary)"
+    return res, label"""
