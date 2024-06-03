@@ -8,4 +8,4 @@
 
 ## Available methods
 
- - np.mean: Average over all vertices/voxels within the parcel
+Currently only np.mean is available to average over all vertices/voxels within the parcel
