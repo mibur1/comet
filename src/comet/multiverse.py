@@ -95,14 +95,15 @@ class Multiverse:
         # Function for parallel processing, called by joblib.delayed
         def execute_script(file):
             print(f"Starting {file}")
-            subprocess.run(["python", os.path.join(path, file)], check=True)
+            subprocess.run(["python", os.path.join(path, file)], check=True, env=os.environ.copy())
 
         if universe_number is None:
             print("Starting multiverse analysis for all universes...")
             Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in sorted_files if file.endswith(".py"))
         else:
             print(f"Starting analysis for universe {universe_number}...")
-            subprocess.run(["python", os.path.join(path, f"universe_{universe_number}.py")], check=True)
+            file = f"universe_{universe_number}.py"
+            execute_script(file)
 
     # Checks if a universe contains a specific path
     def check_paths(self, universe_path, invalid_paths):
