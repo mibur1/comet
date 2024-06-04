@@ -26,7 +26,29 @@ Abstract class template for all dynamic functional connectivity methods
 Abstract methods need to be overriden in the child classes
 """
 class ConnectivityMethod(metaclass=ABCMeta):
+    """
+    Base class for all dynamic functional connectivity methods.
+
+    Attributes:
+        time_series (np.ndarray): Time series data.
+        T (int): Number of timepoints.
+        P (int): Number of parcels.
+        diagonal (int or float): Value to set on the diagonal of connectivity matrices.
+        standardize (bool): Whether to z-standardize the connectivity matrices.
+        fisher_z (bool): Whether to apply Fisher z-transformation.
+        tril (bool): Whether to return only the lower triangle of the matrices.
+    """
     def __init__(self, time_series, diagonal=0, standardize=False, fisher_z=False, tril=False):
+        """
+        Initializes the ConnectivityMethod with the given parameters.
+
+        Args:
+            time_series (np.ndarray): The input time series data.
+            diagonal (int or float, optional): Value to set on the diagonal of connectivity matrices. Default is 0.
+            standardize (bool, optional): Whether to z-standardize the connectivity matrices. Default is False.
+            fisher_z (bool, optional): Whether to apply Fisher z-transformation. Default is False.
+            tril (bool, optional): Whether to return only the lower triangle of the matrices. Default is False.
+        """
         self.time_series = time_series.astype("float32")
         self.T = time_series.shape[0] # T timepoints
         self.P = time_series.shape[1] # P parcels
@@ -37,9 +59,26 @@ class ConnectivityMethod(metaclass=ABCMeta):
 
     @abstractmethod
     def connectivity(self):
+        """
+        Abstract method to compute the connectivity matrix.
+        This method should be implemented in each child class.
+
+        Raises:
+            NotImplementedError: If the method is not implemented in the child class.
+        """
         raise NotImplementedError("This method should be implemented in each child class.")
 
     def postproc(self, R_mat):
+        """
+        Post-process the connectivity matrix with optional Fisher z-transformation,
+        z-standardization, diagonal setting, and lower triangle extraction.
+
+        Args:
+            R_mat (np.ndarray): The connectivity matrix to be post-processed.
+
+        Returns:
+            np.ndarray: The post-processed connectivity matrix.
+        """
         # Fisher z-transformation
         if self.fisher_z:
             R_mat = np.clip(R_mat, -1 + np.finfo(float).eps, 1 - np.finfo(float).eps)
