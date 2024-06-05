@@ -95,7 +95,7 @@ class Multiverse:
         # Function for parallel processing, called by joblib.delayed
         def execute_script(file):
             print(f"Starting {file}")
-            subprocess.run(["python", os.path.join(path, file)], check=True, env=os.environ.copy())
+            subprocess.run([sys.executable, os.path.join(path, file)], check=True, env=os.environ.copy())
 
         if universe_number is None:
             print("Starting multiverse analysis for all universes...")
