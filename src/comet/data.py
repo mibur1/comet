@@ -9,10 +9,22 @@ from scipy.io import loadmat
 import importlib_resources
 from .multiverse import in_notebook
 
-def load_timeseries(path=None, rois=None):
+def load_timeseries(path=None):
     """
-    Load time series data from a file
+    Load time series data from a file.
+    Supported file formats are: .pkl, .txt, .npy, .mat, and .tsv
+
+    Parameters
+    ----------
+    path : string
+        path to the time series data file.
+
+    Returns
+    -------
+    data : TxP np.ndarray
+        time series data
     """
+
     if path is None:
         raise ValueError("Please provide a path to the time series data")
 
@@ -65,8 +77,32 @@ def load_timeseries(path=None, rois=None):
 
 def load_example(ftype=None):
     """
-    Load simulated time series data with two randomly changing connectivity states
+    Load simulation time series with two randomly changing connectivity states.
+
+    Parameters
+    ----------
+    ftype : str, optional
+        File type to load. If specified as "pkl", a .pkl file with additional
+        information is loaded. Otherwise, only time series data is returned.
+        Default is None.
+
+    Returns
+    -------
+    data : np.ndarray or tuple
+        If `ftype` is not specified or is None, the function returns a
+        TxP np.ndarray containing the time series data
+
+        If `ftype` is "pkl", the function returns a tuple containing:
+         - data[0] : TxP np.ndarray
+           Time series data.
+         - data[1] : np.ndarray
+           Time in seconds.
+         - data[2] : np.ndarray
+           Trial onsets in seconds.
+         - data[3] : np.ndarray
+           Trial labels indicating two changing connectivity states.
     """
+
     if ftype == "pkl":
         with importlib_resources.path("comet.resources", "simulation.pkl") as file_path:
             with open(file_path, 'rb') as file:
@@ -80,7 +116,13 @@ def load_example(ftype=None):
 def load_single_state():
     """
     Load simulated time series data with a single connectivity state
+
+    Returns
+    -------
+    data : TxP np.ndarray
+        Single state time series data
     """
+
     with importlib_resources.path("comet.resources", "single_state.txt") as file_path:
         data = np.loadtxt(file_path)
 
@@ -89,7 +131,31 @@ def load_single_state():
 def save_results(data=None, universe=None):
     """
     Save all kinds of results as .pkl file
+
+    Parameters
+    ----------
+    ftype : str, optional
+        File type to load. If specified as "pkl", a .pkl file with additional
+        information is loaded. Otherwise, only time series data is returned.
+        Default is None.
+
+    Returns
+    -------
+    data : np.ndarray or tuple
+        If `ftype` is not specified or is None, the function returns a
+        TxP np.ndarray containing the time series data
+
+        If `ftype` is "pkl", the function returns a tuple containing:
+         - data[0] : TxP np.ndarray
+           Time series data.
+         - data[1] : np.ndarray
+           Time in seconds.
+         - data[2] : np.ndarray
+           Trial onsets in seconds.
+         - data[3] : np.ndarray
+           Trial labels indicating two changing connectivity states.
     """
+
     calling_script_dir = os.getcwd() if in_notebook else os.path.dirname(sys.path[0])
 
     # A bit of regex to get the universe number from the filename
@@ -106,9 +172,51 @@ def save_results(data=None, universe=None):
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 def clean(time_series, runs=None, detrend=False, confounds=None, standardize=False, standardize_confounds=True, \
-          filter='butterworth', low_pass=None, high_pass=None, t_r=0.72, ensure_finite=False):
+          filter='butterworth', low_pass=None, high_pass=None, t_r=None, ensure_finite=False):
     """
-    Standard nilearn cleaning of the time series
+    Wrapper function for nilearn.clean() for cleaning time series data
+
+    Parameters
+    ----------
+    time_series : TxP np.ndarray
+        time series data
+
+    runs : np.ndarray, optional
+        Add a run level to the cleaning process. Each run will be cleaned independently.
+        Must be a 1D array of n_samples elements.
+
+    detrend : bool, optional
+        Detrend the data. Default is False.
+
+    confounds : np.ndarray, str, pathlib.Path, pandas.DataFrame, or list of confounds
+        Confounds to be regressed out from the data. Default is None.
+
+    standardize : bool, optional
+        Z-score the data. Default is False.
+
+    standardize_confounds : bool, optional
+        Z-score the confounds. Default is True.
+
+    filter : str {butterworth, cosine, False}
+        Filtering method. Default is 'butterworth'.
+
+    low_pass : float, optional
+        Low cutoff frequency in Hertz. Default is None.
+
+    high_pass : float, optional
+        High cutoff frequency in Hertz. Default is None.
+
+    t_r : float, optional
+        Repetition time, in seconds (sampling period). Default is None
+
+    ensure_finite : bool, optional
+        Check if the data contains only finite numbers. Default is False.
+
+    Returns
+    -------
+    data : TxP np.ndarray
+        cleaned time series data
     """
+
     return signal.clean(time_series, detrend=detrend, confounds=confounds, standardize=standardize, standardize_confounds=standardize_confounds, \
                         filter=filter, low_pass=low_pass, high_pass=high_pass, t_r=t_r, ensure_finite=ensure_finite)
