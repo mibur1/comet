@@ -537,7 +537,7 @@ def efficiency(G: np.ndarray,
     '''
 
     n = len(G)
-    is_binary = np.all(np.logical_or(np.isclose(W, 0), np.isclose(W, 1)))
+    is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
 
     # Efficiency for binary networks
     if is_binary:
