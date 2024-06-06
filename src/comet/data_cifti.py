@@ -5,6 +5,10 @@ nib.imageglobals.logger.setLevel(40)
 from scipy.io import loadmat
 import importlib_resources
 
+"""
+SECTION: Functiond for parcellating cifti data
+ - Currently limited to a few included parcellatons, will be expanded in the future
+"""
 def parcellate(dtseries, atlas="glasser", method=np.mean, standardize=True):
     """
     Parcellate cifti data (.dtseries.nii) using a given atlas.
