@@ -7,10 +7,36 @@ import importlib_resources
 
 def parcellate(dtseries, atlas="glasser", method=np.mean, standardize=True):
     """
-    Parcellation, calculates the mean over all grayordinates within a parcel. Z-standardization is enabled by default
+    Parcellate cifti data (.dtseries.nii) using a given atlas.
+
+    The parcellated time series is calculated as the mean over all grayordinates within a parcel.
+
+    Parameters
+    ----------
+    dtseries : nibabel.cifti2.cifti2.Cifti2Image
+        nibabel cifti image object
+
+    atlas : string
+        name of the atlas to use for parcellation. Options are:
+         - glasser (Glasser MMP cortical parcellation)
+         - schaefer_kong (Schaefer 200 cortical parcellation)
+         - schaefer_tian (Schaefer 200 cortical parcellation + subcortical)
+
+    method : function
+        function to use for parcellation. Only available option is np.mean
+
+    standardize : bool
+        Standardize the time series to zero (temporal) mean and unit
+        standard deviation before(!) parcellation.
+
+    Returns
+    -------
+    ts_parc : TxP np.ndarray
+        parcellated time series data
     """
+
     ts = dtseries.get_fdata()
-    rois, keys, _, _ = prepare_atlas(atlas)
+    rois, keys, _, _ = _prepare_atlas(atlas)
 
     # schaefer_kong includes the medial wall which we have to insert into the data
     if atlas == "schaefer_kong":
@@ -29,7 +55,7 @@ def parcellate(dtseries, atlas="glasser", method=np.mean, standardize=True):
     # Standardize the time series
     # TODO: Check if it should be done somewhere else
     if standardize:
-        ts = stdize(ts)
+        ts = _stdize(ts)
 
     # Parcellation
     n = np.sum(keys!=0)
@@ -43,19 +69,42 @@ def parcellate(dtseries, atlas="glasser", method=np.mean, standardize=True):
 
     return ts_parc
 
-def prepare_atlas(atlas_name, debug=False):
+def _prepare_atlas(atlas_name, debug=False):
     """
-    Prepare a cifti 2 atlas to be used in parcellation
+    Helper functio: Prepare a CIFTI-2 atlas for parcellation.
+
+    Parameters
+    ----------
+    atlas_name : str
+        Name of the atlas to use for parcellation. Options are: 'glasser', 'schaefer_kong', 'schaefer_tian'.
+    debug : bool, optional
+        Flag to provide additional debugging information. Default is False.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - rois : np.ndarray
+            ROI indices for each vertex.
+        - keys : np.ndarray
+            Keys of the atlas.
+        - labels : list
+            Labels of the atlas.
+        - rgba : list
+            RGBA values of each label.
     """
+
     if atlas_name == "glasser":
-        with importlib_resources.path("comet.resources.atlas", "Q1-Q6_RelatedValidation210.CorticalAreas_dil_\
-                                      Final_Final_Areas_Group_Colors_with_Atlas_ROIs2.32k_fs_LR.dlabel.nii") as path:
+        with importlib_resources.path("comet.resources.atlas",
+                                      "Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors_with_Atlas_ROIs2.32k_fs_LR.dlabel.nii") as path:
             atlas = nib.load(path)
     elif atlas_name == "schaefer_kong":
-        with importlib_resources.path("comet.resources.atlas", "Schaefer2018_200Parcels_Kong2022_17Networks_order.dlabel.nii") as path:
+        with importlib_resources.path("comet.resources.atlas",
+                                      "Schaefer2018_200Parcels_Kong2022_17Networks_order.dlabel.nii") as path:
             atlas = nib.load(path)
     elif atlas_name == "schaefer_tian":
-        with importlib_resources.path("comet.resources.atlas", "Schaefer2018_200Parcels_17Networks_order_Tian_Subcortex_S4.dlabel.nii") as path:
+        with importlib_resources.path("comet.resources.atlas",
+                                      "Schaefer2018_200Parcels_17Networks_order_Tian_Subcortex_S4.dlabel.nii") as path:
             atlas = nib.load(path)
     else:
         sys.exit("Atlas must be any of glasser, schaefer_kong, or schaefer_tian")
@@ -75,44 +124,89 @@ def prepare_atlas(atlas_name, debug=False):
 
     index_map = atlas.header.get_index_map(0)
     named_map=list(index_map.named_maps)[0]
-
     keys = []
     labels = []
     rgba = []
 
-    # Iterate over label_table and get relevat values
-    for _, roi in enumerate(named_map.label_table):
-        labels.append(roi.label)
-        rgba.append(roi.rgba)
-        keys.append(roi.key)
+    print(named_map.label_table.items())
+
+    # Iterate over label_table items and get relevat values
+    for key, label in named_map.label_table.items():
+        labels.append(label.label)
+        rgba.append(label.rgba)
+        keys.append(key)
 
     keys = np.asarray(keys)
 
     return (rois, keys, labels, rgba)
 
-def get_fdata(dtseries):
+def _get_fdata(dtseries):
     """
-    Get the cifti 2 data
+    Helper function: Get the cifti data
+
+    Parameters
+    ----------
+    dtseries : nibabel.cifti2.cifti2.Cifti2Image
+        nibabel cifti image objet
+
+    Returns
+    -------
+    fdata : np.ndarray
+        Time series data of the cifti image
     """
+
     data = nib.load(dtseries)
     return data.get_fdata()
 
-def get_header(dtseries):
+def _get_header(dtseries):
     """
-    Get the cifti 2 headers
+    Helper function: Get the cifti header
+
+    Parameters
+    ----------
+    dtseries : nibabel.cifti2.cifti2.Cifti2Image
+        nibabel cifti image objet
+
+    Returns
+    -------
+    header : nibabel.cifti2.cifti2.Cifti2Header
+        nibabel cifti header object
     """
+
     data = nib.load(dtseries)
     return data.header
 
-def get_labels(atlas):
+def _get_labels(atlas):
     """
-    Get atlas labels and default rgba values
+    Helper function: Get atlas labels and default rgba values
+
+    Parameters
+    ----------
+    ts : np.ndarray
+        Time series data
+
+    Returns
+    -------
+    ts : np.ndarray
+        Standardized time series data
     """
-    _, _, labels, rgba = prepare_atlas(atlas)
+
+    _, _, labels, rgba = _prepare_atlas(atlas)
     return labels, rgba
 
-def stdize(ts):
+def _stdize(ts):
     """
-    Standardize to zero (temporal) mean and unit standard deviation.
+    Helper function: Standardize time series to zero (temporal) mean and unit standard deviation.
+
+    Parameters
+    ----------
+    ts : np.ndarray
+        Time series data
+
+    Returns
+    -------
+    ts : np.ndarray
+        Standardized time series data
     """
+
     return (ts - np.mean(ts,axis=0))/np.std(ts,axis=0)
