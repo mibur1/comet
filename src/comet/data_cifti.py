@@ -182,13 +182,13 @@ def _get_labels(atlas):
 
     Parameters
     ----------
-    ts : np.ndarray
-        Time series data
+    atlas : nibabel.cifti2.cifti2.Cifti2Image
+        nibabel cifti image objet
 
     Returns
     -------
-    ts : np.ndarray
-        Standardized time series data
+    labels : tuple
+        Tuple containing the labes and rgba values
     """
 
     _, _, labels, rgba = _prepare_atlas(atlas)

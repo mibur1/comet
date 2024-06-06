@@ -31,8 +31,22 @@ class Multiverse:
     def __init__(self, name="multiverse"):
         self.name = name
 
-    # Create all the universe scripts
     def create(self, analysis_template, forking_paths, invalid_paths=None):
+        """
+        Create the individual universe scripts
+
+        Parameters
+        ----------
+        analysis_template : function
+            Function containing the analysis template
+
+        forking_paths : dict
+            Dictionary containing the forking paths
+
+        invalid_paths : list
+            List of invalid paths that should be excluded from the multiverse
+        """
+
         # Get the directory of the calling script
         calling_script_dir = os.getcwd() if in_notebook else os.path.dirname(sys.path[0])
 
@@ -81,6 +95,8 @@ class Multiverse:
         # Save forking paths
         with open(f"{results_dir}/forking_paths.pkl", "wb") as file:
             pickle.dump(forking_paths, file)
+
+        return
 
     # Run all (or individual) universes
     def run(self, path=None, universe_number=None, parallel=1):
