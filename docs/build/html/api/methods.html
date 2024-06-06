@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>comet.methods &mdash; Comet Toolbox 2024 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/documentation_options.js?v=6fefd858"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="comet.graph" href="graph.html" />
+    <link rel="prev" title="Tutorials" href="../usage/tutorials.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Comet Toolbox
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Overview</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview/introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/installation.html">Installation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Usage</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../usage/quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/tutorials.html">Tutorials</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">comet.methods</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.Cap"><code class="docutils literal notranslate"><span class="pre">Cap</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Cap.connectivity"><code class="docutils literal notranslate"><span class="pre">Cap.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Cap.name"><code class="docutils literal notranslate"><span class="pre">Cap.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.ConnectivityMethod"><code class="docutils literal notranslate"><span class="pre">ConnectivityMethod</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.ConnectivityMethod.time_series"><code class="docutils literal notranslate"><span class="pre">ConnectivityMethod.time_series</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.ConnectivityMethod.T"><code class="docutils literal notranslate"><span class="pre">ConnectivityMethod.T</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.ConnectivityMethod.P"><code class="docutils literal notranslate"><span class="pre">ConnectivityMethod.P</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.ConnectivityMethod.diagonal"><code class="docutils literal notranslate"><span class="pre">ConnectivityMethod.diagonal</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.ConnectivityMethod.standardize"><code class="docutils literal notranslate"><span class="pre">ConnectivityMethod.standardize</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.ConnectivityMethod.fisher_z"><code class="docutils literal notranslate"><span class="pre">ConnectivityMethod.fisher_z</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.ConnectivityMethod.tril"><code class="docutils literal notranslate"><span class="pre">ConnectivityMethod.tril</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.ConnectivityMethod.connectivity"><code class="docutils literal notranslate"><span class="pre">ConnectivityMethod.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.ConnectivityMethod.postproc"><code class="docutils literal notranslate"><span class="pre">ConnectivityMethod.postproc()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.DCC"><code class="docutils literal notranslate"><span class="pre">DCC</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.DCC.connectivity"><code class="docutils literal notranslate"><span class="pre">DCC.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.DCC.name"><code class="docutils literal notranslate"><span class="pre">DCC.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.Edge_centric_connectivity"><code class="docutils literal notranslate"><span class="pre">Edge_centric_connectivity</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Edge_centric_connectivity.connectivity"><code class="docutils literal notranslate"><span class="pre">Edge_centric_connectivity.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Edge_centric_connectivity.name"><code class="docutils literal notranslate"><span class="pre">Edge_centric_connectivity.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.FlexibleLeastSquares"><code class="docutils literal notranslate"><span class="pre">FlexibleLeastSquares</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.FlexibleLeastSquares.connectivity"><code class="docutils literal notranslate"><span class="pre">FlexibleLeastSquares.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.FlexibleLeastSquares.name"><code class="docutils literal notranslate"><span class="pre">FlexibleLeastSquares.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.Hmm_Cont"><code class="docutils literal notranslate"><span class="pre">Hmm_Cont</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Hmm_Cont.connectivity"><code class="docutils literal notranslate"><span class="pre">Hmm_Cont.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Hmm_Cont.name"><code class="docutils literal notranslate"><span class="pre">Hmm_Cont.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.Hmm_Disc"><code class="docutils literal notranslate"><span class="pre">Hmm_Disc</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Hmm_Disc.connectivity"><code class="docutils literal notranslate"><span class="pre">Hmm_Disc.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Hmm_Disc.name"><code class="docutils literal notranslate"><span class="pre">Hmm_Disc.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.Jackknife"><code class="docutils literal notranslate"><span class="pre">Jackknife</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Jackknife.centers"><code class="docutils literal notranslate"><span class="pre">Jackknife.centers()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Jackknife.connectivity"><code class="docutils literal notranslate"><span class="pre">Jackknife.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Jackknife.name"><code class="docutils literal notranslate"><span class="pre">Jackknife.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.LeiDA"><code class="docutils literal notranslate"><span class="pre">LeiDA</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.LeiDA.connectivity"><code class="docutils literal notranslate"><span class="pre">LeiDA.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.LeiDA.name"><code class="docutils literal notranslate"><span class="pre">LeiDA.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.PhaseSynchrony"><code class="docutils literal notranslate"><span class="pre">PhaseSynchrony</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.PhaseSynchrony.connectivity"><code class="docutils literal notranslate"><span class="pre">PhaseSynchrony.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.PhaseSynchrony.name"><code class="docutils literal notranslate"><span class="pre">PhaseSynchrony.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.SlidingWindow"><code class="docutils literal notranslate"><span class="pre">SlidingWindow</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.SlidingWindow.centers"><code class="docutils literal notranslate"><span class="pre">SlidingWindow.centers()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.SlidingWindow.connectivity"><code class="docutils literal notranslate"><span class="pre">SlidingWindow.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.SlidingWindow.name"><code class="docutils literal notranslate"><span class="pre">SlidingWindow.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.Sliding_Window"><code class="docutils literal notranslate"><span class="pre">Sliding_Window</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Sliding_Window.connectivity"><code class="docutils literal notranslate"><span class="pre">Sliding_Window.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Sliding_Window.name"><code class="docutils literal notranslate"><span class="pre">Sliding_Window.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.Sliding_Window_Clustr"><code class="docutils literal notranslate"><span class="pre">Sliding_Window_Clustr</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Sliding_Window_Clustr.connectivity"><code class="docutils literal notranslate"><span class="pre">Sliding_Window_Clustr.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Sliding_Window_Clustr.name"><code class="docutils literal notranslate"><span class="pre">Sliding_Window_Clustr.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.SpatialDistance"><code class="docutils literal notranslate"><span class="pre">SpatialDistance</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.SpatialDistance.connectivity"><code class="docutils literal notranslate"><span class="pre">SpatialDistance.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.SpatialDistance.name"><code class="docutils literal notranslate"><span class="pre">SpatialDistance.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.Static_Mutual_Info"><code class="docutils literal notranslate"><span class="pre">Static_Mutual_Info</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Static_Mutual_Info.connectivity"><code class="docutils literal notranslate"><span class="pre">Static_Mutual_Info.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Static_Mutual_Info.name"><code class="docutils literal notranslate"><span class="pre">Static_Mutual_Info.name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Static_Mutual_Info.options"><code class="docutils literal notranslate"><span class="pre">Static_Mutual_Info.options</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.Static_Partial"><code class="docutils literal notranslate"><span class="pre">Static_Partial</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Static_Partial.connectivity"><code class="docutils literal notranslate"><span class="pre">Static_Partial.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Static_Partial.name"><code class="docutils literal notranslate"><span class="pre">Static_Partial.name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Static_Partial.options"><code class="docutils literal notranslate"><span class="pre">Static_Partial.options</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.Static_Pearson"><code class="docutils literal notranslate"><span class="pre">Static_Pearson</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Static_Pearson.connectivity"><code class="docutils literal notranslate"><span class="pre">Static_Pearson.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Static_Pearson.name"><code class="docutils literal notranslate"><span class="pre">Static_Pearson.name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Static_Pearson.options"><code class="docutils literal notranslate"><span class="pre">Static_Pearson.options</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.TemporalDerivatives"><code class="docutils literal notranslate"><span class="pre">TemporalDerivatives</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.TemporalDerivatives.centers"><code class="docutils literal notranslate"><span class="pre">TemporalDerivatives.centers()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.TemporalDerivatives.connectivity"><code class="docutils literal notranslate"><span class="pre">TemporalDerivatives.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.TemporalDerivatives.name"><code class="docutils literal notranslate"><span class="pre">TemporalDerivatives.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.Time_Freq"><code class="docutils literal notranslate"><span class="pre">Time_Freq</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Time_Freq.connectivity"><code class="docutils literal notranslate"><span class="pre">Time_Freq.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Time_Freq.name"><code class="docutils literal notranslate"><span class="pre">Time_Freq.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.WaveletCoherence"><code class="docutils literal notranslate"><span class="pre">WaveletCoherence</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.WaveletCoherence.connectivity"><code class="docutils literal notranslate"><span class="pre">WaveletCoherence.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.WaveletCoherence.name"><code class="docutils literal notranslate"><span class="pre">WaveletCoherence.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comet.methods.Windowless"><code class="docutils literal notranslate"><span class="pre">Windowless</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Windowless.connectivity"><code class="docutils literal notranslate"><span class="pre">Windowless.connectivity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.methods.Windowless.name"><code class="docutils literal notranslate"><span class="pre">Windowless.name</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="graph.html">comet.graph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiverse.html">comet.multiverse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data.html">comet.data</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contributing</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contribute/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contribute/contributions.html">Contributions</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Comet Toolbox</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">comet.methods</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/methods.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="comet-methods">
+<h1>comet.methods<a class="headerlink" href="#comet-methods" title="Link to this heading">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<dl class="py class" id="module-comet.methods">
+<dt class="sig sig-object py" id="comet.methods.Cap">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">Cap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">TIME_SERIES</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subject</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_states</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_subj_clusters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Cap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Cap" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseDFCMethod</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.Cap.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Cap.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Cap.connectivity" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.Cap.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'STATE</span> <span class="pre">Co-activation</span> <span class="pre">patterns'</span></em><a class="headerlink" href="#comet.methods.Cap.name" title="Link to this definition">¶</a></dt>
+<dd><p>Co-activation patterns</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.ConnectivityMethod">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">ConnectivityMethod</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagonal</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fisher_z</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tril</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#ConnectivityMethod"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.ConnectivityMethod" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Base class for all dynamic functional connectivity methods.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.ConnectivityMethod.time_series">
+<span class="sig-name descname"><span class="pre">time_series</span></span><a class="headerlink" href="#comet.methods.ConnectivityMethod.time_series" title="Link to this definition">¶</a></dt>
+<dd><p>Time series data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.ConnectivityMethod.T">
+<span class="sig-name descname"><span class="pre">T</span></span><a class="headerlink" href="#comet.methods.ConnectivityMethod.T" title="Link to this definition">¶</a></dt>
+<dd><p>Number of timepoints.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.ConnectivityMethod.P">
+<span class="sig-name descname"><span class="pre">P</span></span><a class="headerlink" href="#comet.methods.ConnectivityMethod.P" title="Link to this definition">¶</a></dt>
+<dd><p>Number of parcels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.ConnectivityMethod.diagonal">
+<span class="sig-name descname"><span class="pre">diagonal</span></span><a class="headerlink" href="#comet.methods.ConnectivityMethod.diagonal" title="Link to this definition">¶</a></dt>
+<dd><p>Value to set on the diagonal of connectivity matrices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int or float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.ConnectivityMethod.standardize">
+<span class="sig-name descname"><span class="pre">standardize</span></span><a class="headerlink" href="#comet.methods.ConnectivityMethod.standardize" title="Link to this definition">¶</a></dt>
+<dd><p>Whether to z-standardize the connectivity matrices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.ConnectivityMethod.fisher_z">
+<span class="sig-name descname"><span class="pre">fisher_z</span></span><a class="headerlink" href="#comet.methods.ConnectivityMethod.fisher_z" title="Link to this definition">¶</a></dt>
+<dd><p>Whether to apply Fisher z-transformation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.ConnectivityMethod.tril">
+<span class="sig-name descname"><span class="pre">tril</span></span><a class="headerlink" href="#comet.methods.ConnectivityMethod.tril" title="Link to this definition">¶</a></dt>
+<dd><p>Whether to return only the lower triangle of the matrices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.ConnectivityMethod.connectivity">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#ConnectivityMethod.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.ConnectivityMethod.connectivity" title="Link to this definition">¶</a></dt>
+<dd><p>Abstract method to compute the connectivity matrix.
+This method should be implemented in each child class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>NotImplementedError</strong> – If the method is not implemented in the child class.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.ConnectivityMethod.postproc">
+<span class="sig-name descname"><span class="pre">postproc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R_mat</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#ConnectivityMethod.postproc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.ConnectivityMethod.postproc" title="Link to this definition">¶</a></dt>
+<dd><p>Post-process the connectivity matrix with optional Fisher z-transformation,
+z-standardization, diagonal setting, and lower triangle extraction.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>R_mat</strong> (<em>np.ndarray</em>) – The connectivity matrix to be post-processed.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The post-processed connectivity matrix.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.DCC">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">DCC</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_cores</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">16</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardizeData</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagonal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fisher_z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tril</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#DCC"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.DCC" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#comet.methods.ConnectivityMethod" title="comet.methods.ConnectivityMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConnectivityMethod</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.DCC.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#DCC.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.DCC.connectivity" title="Link to this definition">¶</a></dt>
+<dd><p>DCC algorithm</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>theta</strong> (<em>T-by-N matrix</em>) – fMRI time series data</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>H</strong> (<em>N*N*T matrix</em>) – estimated dynamic conditional covariance matrices</p></li>
+<li><p><strong>R</strong> (<em>N*N*T matrix</em>) – estimated dynamic conditional correlation matrices</p></li>
+<li><p><strong>Theta</strong> (<em>N*3 matrix</em>) – GARCH(1,1) parameters</p></li>
+<li><p><strong>X</strong> (<em>1*N vector</em>) – DCC parameters</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.DCC.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CONT</span> <span class="pre">Dynamic</span> <span class="pre">Conditional</span> <span class="pre">Correlation'</span></em><a class="headerlink" href="#comet.methods.DCC.name" title="Link to this definition">¶</a></dt>
+<dd><p>Dynamic Conditional Correlation:
+Lindquist, M. A., Xu, Y., Nebel, M. B., &amp; Caffo, B. S. (2014). Evaluating dynamic bivariate correlations
+in resting-state fMRI: a comparison study and a new approach. NeuroImage, 101, 531-546.
+<a class="reference external" href="https://doi.org/10.1016/j.neuroimage.2014.06.052">https://doi.org/10.1016/j.neuroimage.2014.06.052</a></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.Edge_centric_connectivity">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">Edge_centric_connectivity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardizeData</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vlim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagonal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fisher_z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tril</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Edge_centric_connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Edge_centric_connectivity" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#comet.methods.ConnectivityMethod" title="comet.methods.ConnectivityMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConnectivityMethod</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.Edge_centric_connectivity.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Edge_centric_connectivity.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Edge_centric_connectivity.connectivity" title="Link to this definition">¶</a></dt>
+<dd><p>Abstract method to compute the connectivity matrix.
+This method should be implemented in each child class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>NotImplementedError</strong> – If the method is not implemented in the child class.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.Edge_centric_connectivity.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CONT</span> <span class="pre">Edge-centric</span> <span class="pre">Connectivity'</span></em><a class="headerlink" href="#comet.methods.Edge_centric_connectivity.name" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.FlexibleLeastSquares">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">FlexibleLeastSquares</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardizeData</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_cores</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">16</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagonal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fisher_z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tril</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#FlexibleLeastSquares"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.FlexibleLeastSquares" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#comet.methods.ConnectivityMethod" title="comet.methods.ConnectivityMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConnectivityMethod</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.FlexibleLeastSquares.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#FlexibleLeastSquares.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.FlexibleLeastSquares.connectivity" title="Link to this definition">¶</a></dt>
+<dd><p>Abstract method to compute the connectivity matrix.
+This method should be implemented in each child class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>NotImplementedError</strong> – If the method is not implemented in the child class.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.FlexibleLeastSquares.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CONT</span> <span class="pre">Flexible</span> <span class="pre">Least</span> <span class="pre">Squares'</span></em><a class="headerlink" href="#comet.methods.FlexibleLeastSquares.name" title="Link to this definition">¶</a></dt>
+<dd><p>Flexible Least Squares:
+Liao, W., Wu, G. R., Xu, Q., Ji, G. J., Zhang, Z., Zang, Y. F., &amp; Lu, G. (2014).
+DynamicBC: a MATLAB toolbox for dynamic brain connectome analysis. Brain connectivity, 4(10), 780-790.
+<a class="reference external" href="https://doi.org/10.1089/brain.2014.0253">https://doi.org/10.1089/brain.2014.0253</a></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.Hmm_Cont">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">Hmm_Cont</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">TIME_SERIES</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subject</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_states</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iterations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Hmm_Cont"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Hmm_Cont" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseDFCMethod</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.Hmm_Cont.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Hmm_Cont.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Hmm_Cont.connectivity" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.Hmm_Cont.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'STATE</span> <span class="pre">Continuous</span> <span class="pre">Hidden</span> <span class="pre">Markov</span> <span class="pre">Model'</span></em><a class="headerlink" href="#comet.methods.Hmm_Cont.name" title="Link to this definition">¶</a></dt>
+<dd><p>Continuous Hidden Markov Model</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.Hmm_Disc">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">Hmm_Disc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">TIME_SERIES</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subject</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">windowsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">44</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_overlap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clstr_base_measure</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'SlidingWindow'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'SlidingWindow'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sw_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'pear_corr'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'pear_corr'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tapered_window</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iterations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dhmm_obs_state_ratio</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.6666666666666666</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_states</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_subj_clusters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Hmm_Disc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Hmm_Disc" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseDFCMethod</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.Hmm_Disc.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Hmm_Disc.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Hmm_Disc.connectivity" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.Hmm_Disc.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'STATE</span> <span class="pre">Discrete</span> <span class="pre">Hidden</span> <span class="pre">Markov</span> <span class="pre">Model'</span></em><a class="headerlink" href="#comet.methods.Hmm_Disc.name" title="Link to this definition">¶</a></dt>
+<dd><p>Discrete Hidden Markov Model</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.Jackknife">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">Jackknife</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">windowsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stepsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagonal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fisher_z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tril</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Jackknife"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Jackknife" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#comet.methods.ConnectivityMethod" title="comet.methods.ConnectivityMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConnectivityMethod</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.Jackknife.centers">
+<span class="sig-name descname"><span class="pre">centers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Jackknife.centers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Jackknife.centers" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the central index of each window so dFC estimates can be related to the original time series</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.Jackknife.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Jackknife.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Jackknife.connectivity" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate jackknife correlation</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.Jackknife.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CONT</span> <span class="pre">Jackknife</span> <span class="pre">Correlation'</span></em><a class="headerlink" href="#comet.methods.Jackknife.name" title="Link to this definition">¶</a></dt>
+<dd><p>Jackknife correlation:
+Richter CG, Thompson WH, Bosman CA, Fries P. A jackknife approach to quantifying single-trial
+correlation between covariance-based metrics undefined on a single-trial basis.
+<a class="reference external" href="https://doi.org/10.1016/j.neuroimage.2015.04.040">https://doi.org/10.1016/j.neuroimage.2015.04.040</a></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.LeiDA">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">LeiDA</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flip_eigenvectors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagonal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fisher_z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tril</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#LeiDA"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.LeiDA" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#comet.methods.ConnectivityMethod" title="comet.methods.ConnectivityMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConnectivityMethod</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.LeiDA.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#LeiDA.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.LeiDA.connectivity" title="Link to this definition">¶</a></dt>
+<dd><p>Abstract method to compute the connectivity matrix.
+This method should be implemented in each child class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>NotImplementedError</strong> – If the method is not implemented in the child class.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.LeiDA.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CONT</span> <span class="pre">Leading</span> <span class="pre">Eigenvector</span> <span class="pre">Dynamics'</span></em><a class="headerlink" href="#comet.methods.LeiDA.name" title="Link to this definition">¶</a></dt>
+<dd><p>Leading Eigenvector Dynamics:
+Cabral, J., Vidaurre, D., Marques, P., Magalhães, R., Silva Moreira, P., Miguel Soares, J., … &amp; Kringelbach, M. L. (2017).
+Cognitive performance in healthy older adults relates to spontaneous switching between states of functional connectivity during rest.
+Scientific reports, 7(1), 5135. <a class="reference external" href="https://doi.org/10.1038/s41598-017-05425-7">https://doi.org/10.1038/s41598-017-05425-7</a></p>
+<p>Olsen, A. S., Lykkebo-Valløe, A., Ozenne, B., Madsen, M. K., Stenbæk, D. S., Armand, S., … &amp; Fisher, P. M. (2022). Psilocybin modulation
+of time-varying functional connectivity is associated with plasma psilocin and subjective effects. Neuroimage, 264, 119716.
+<a class="reference external" href="https://doi.org/10.1016/j.neuroimage.2022.119716">https://doi.org/10.1016/j.neuroimage.2022.119716</a></p>
+<p>Vohryzek, J., Deco, G., Cessac, B., Kringelbach, M. L., &amp; Cabral, J. (2020). Ghost attractors in spontaneous brain activity:
+Recurrent excursions into functionally-relevant BOLD phase-locking states. Frontiers in systems neuroscience, 14, 20.
+<a class="reference external" href="https://doi.org/10.3389/fnsys.2020.00020">https://doi.org/10.3389/fnsys.2020.00020</a></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.PhaseSynchrony">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">PhaseSynchrony</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'crp'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'phcoh'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'teneto'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'crp'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagonal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fisher_z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tril</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#PhaseSynchrony"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.PhaseSynchrony" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#comet.methods.ConnectivityMethod" title="comet.methods.ConnectivityMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConnectivityMethod</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.PhaseSynchrony.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#PhaseSynchrony.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.PhaseSynchrony.connectivity" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate instantaneous phase synchrony
+CARE: Hilbert transform needs narrowband signal to produce meaningful results</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.PhaseSynchrony.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CONT</span> <span class="pre">Phase</span> <span class="pre">Synchronization'</span></em><a class="headerlink" href="#comet.methods.PhaseSynchrony.name" title="Link to this definition">¶</a></dt>
+<dd><p>Instantaneous Phase Synchrony:
+Honari, H., Choe, A. S., &amp; Lindquist, M. A. (2021). Evaluating phase synchronization methods in fMRI:
+A comparison study and new approaches. NeuroImage, 228, 117704. <a class="reference external" href="https://doi.org/10.1016/j.neuroimage.2020.117704">https://doi.org/10.1016/j.neuroimage.2020.117704</a></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.SlidingWindow">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">SlidingWindow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">windowsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">29</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stepsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'rectangular'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'gaussian'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'hamming'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rectangular'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagonal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fisher_z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tril</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#SlidingWindow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.SlidingWindow" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#comet.methods.ConnectivityMethod" title="comet.methods.ConnectivityMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConnectivityMethod</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.SlidingWindow.centers">
+<span class="sig-name descname"><span class="pre">centers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#SlidingWindow.centers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.SlidingWindow.centers" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the central index of each window so dFC estimates can be related to the original time series</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.SlidingWindow.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#SlidingWindow.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.SlidingWindow.connectivity" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate sliding window correlation</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.SlidingWindow.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CONT</span> <span class="pre">Sliding</span> <span class="pre">Window'</span></em><a class="headerlink" href="#comet.methods.SlidingWindow.name" title="Link to this definition">¶</a></dt>
+<dd><p>Sliding Window
+Most widely used method, which involves sliding a window over the data.
+Cavariance is estimated for each windowed section.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.Sliding_Window">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">Sliding_Window</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">TIME_SERIES</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clstr_distance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'euclidean'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'euclidean'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Sliding_Window"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Sliding_Window" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseDFCMethod</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.Sliding_Window.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Sliding_Window.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Sliding_Window.connectivity" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.Sliding_Window.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CONT</span> <span class="pre">Sliding</span> <span class="pre">Window</span> <span class="pre">(pydfc)'</span></em><a class="headerlink" href="#comet.methods.Sliding_Window.name" title="Link to this definition">¶</a></dt>
+<dd><p>Sliding Window</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.Sliding_Window_Clustr">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">Sliding_Window_Clustr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">TIME_SERIES</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subject</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">windowsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">44</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_overlap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tapered_window</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_states</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_subj_clusters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clstr_distance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'euclidean'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'manhattan'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'euclidean'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Sliding_Window_Clustr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Sliding_Window_Clustr" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseDFCMethod</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.Sliding_Window_Clustr.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Sliding_Window_Clustr.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Sliding_Window_Clustr.connectivity" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.Sliding_Window_Clustr.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'STATE</span> <span class="pre">Sliding</span> <span class="pre">Window</span> <span class="pre">Clustering'</span></em><a class="headerlink" href="#comet.methods.Sliding_Window_Clustr.name" title="Link to this definition">¶</a></dt>
+<dd><p>Sliding Window Clustering</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.SpatialDistance">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">SpatialDistance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'euclidean'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'cosine'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'cityblock'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'euclidean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagonal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fisher_z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tril</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#SpatialDistance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.SpatialDistance" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#comet.methods.ConnectivityMethod" title="comet.methods.ConnectivityMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConnectivityMethod</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.SpatialDistance.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#SpatialDistance.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.SpatialDistance.connectivity" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate spatial distance correlation</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.SpatialDistance.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CONT</span> <span class="pre">Spatial</span> <span class="pre">Distance'</span></em><a class="headerlink" href="#comet.methods.SpatialDistance.name" title="Link to this definition">¶</a></dt>
+<dd><p>Spatial Distance:
+William Hedley Thompson, Per Brantefors, Peter Fransson. From static
+to temporal network theory: Applications to functional brain connectivity.
+<a class="reference external" href="https://doi.org/10.1162/NETN_a_00011">https://doi.org/10.1162/NETN_a_00011</a></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.Static_Mutual_Info">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">Static_Mutual_Info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_bins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagonal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fisher_z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tril</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Static_Mutual_Info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Static_Mutual_Info" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#comet.methods.ConnectivityMethod" title="comet.methods.ConnectivityMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConnectivityMethod</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.Static_Mutual_Info.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Static_Mutual_Info.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Static_Mutual_Info.connectivity" title="Link to this definition">¶</a></dt>
+<dd><p>Abstract method to compute the connectivity matrix.
+This method should be implemented in each child class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>NotImplementedError</strong> – If the method is not implemented in the child class.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.Static_Mutual_Info.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'STATIC</span> <span class="pre">Mutual</span> <span class="pre">Information'</span></em><a class="headerlink" href="#comet.methods.Static_Mutual_Info.name" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.Static_Mutual_Info.options">
+<span class="sig-name descname"><span class="pre">options</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#comet.methods.Static_Mutual_Info.options" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.Static_Partial">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">Static_Partial</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagonal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fisher_z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tril</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Static_Partial"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Static_Partial" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#comet.methods.ConnectivityMethod" title="comet.methods.ConnectivityMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConnectivityMethod</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.Static_Partial.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Static_Partial.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Static_Partial.connectivity" title="Link to this definition">¶</a></dt>
+<dd><p>Abstract method to compute the connectivity matrix.
+This method should be implemented in each child class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>NotImplementedError</strong> – If the method is not implemented in the child class.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.Static_Partial.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'STATIC</span> <span class="pre">Partial</span> <span class="pre">Correlation'</span></em><a class="headerlink" href="#comet.methods.Static_Partial.name" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.Static_Partial.options">
+<span class="sig-name descname"><span class="pre">options</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#comet.methods.Static_Partial.options" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.Static_Pearson">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">Static_Pearson</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagonal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fisher_z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tril</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Static_Pearson"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Static_Pearson" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#comet.methods.ConnectivityMethod" title="comet.methods.ConnectivityMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConnectivityMethod</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.Static_Pearson.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Static_Pearson.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Static_Pearson.connectivity" title="Link to this definition">¶</a></dt>
+<dd><p>Abstract method to compute the connectivity matrix.
+This method should be implemented in each child class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>NotImplementedError</strong> – If the method is not implemented in the child class.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.Static_Pearson.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'STATIC</span> <span class="pre">Pearson</span> <span class="pre">Correlation'</span></em><a class="headerlink" href="#comet.methods.Static_Pearson.name" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.Static_Pearson.options">
+<span class="sig-name descname"><span class="pre">options</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#comet.methods.Static_Pearson.options" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.TemporalDerivatives">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">TemporalDerivatives</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">windowsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagonal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fisher_z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tril</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#TemporalDerivatives"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.TemporalDerivatives" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#comet.methods.ConnectivityMethod" title="comet.methods.ConnectivityMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConnectivityMethod</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.TemporalDerivatives.centers">
+<span class="sig-name descname"><span class="pre">centers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#TemporalDerivatives.centers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.TemporalDerivatives.centers" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the central index of each window so dFC estimates can be related to the original time series</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.TemporalDerivatives.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#TemporalDerivatives.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.TemporalDerivatives.connectivity" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate multiplication of temproral derivatives</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.TemporalDerivatives.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CONT</span> <span class="pre">Multiplication</span> <span class="pre">of</span> <span class="pre">Temporal</span> <span class="pre">Derivatives'</span></em><a class="headerlink" href="#comet.methods.TemporalDerivatives.name" title="Link to this definition">¶</a></dt>
+<dd><p>Multiplication of temporal derivatives:
+Shine JM, Koyejo O, Bell PT, Gorgolewski KJ, Gilat M, Poldrack RA. Estimation of
+dynamic functional connectivity using Multiplication of Temporal Derivatives.
+<a class="reference external" href="https://doi.org/10.1016/j.neuroimage.2015.07.064">https://doi.org/10.1016/j.neuroimage.2015.07.064</a>.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.Time_Freq">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">Time_Freq</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">TIME_SERIES</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_cores</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coi_correction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Time_Freq"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Time_Freq" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseDFCMethod</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.Time_Freq.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Time_Freq.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Time_Freq.connectivity" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.Time_Freq.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CONT</span> <span class="pre">Time-frequency</span> <span class="pre">(pydfc)'</span></em><a class="headerlink" href="#comet.methods.Time_Freq.name" title="Link to this definition">¶</a></dt>
+<dd><p>Time-Frequency</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.WaveletCoherence">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">WaveletCoherence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'weighted'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'weighted'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">TR</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.72</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fmin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.007</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fmax</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_scales</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_scales</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_timepoints</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagonal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fisher_z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tril</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#WaveletCoherence"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.WaveletCoherence" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#comet.methods.ConnectivityMethod" title="comet.methods.ConnectivityMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConnectivityMethod</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.WaveletCoherence.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#WaveletCoherence.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.WaveletCoherence.connectivity" title="Link to this definition">¶</a></dt>
+<dd><p>Abstract method to compute the connectivity matrix.
+This method should be implemented in each child class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>NotImplementedError</strong> – If the method is not implemented in the child class.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.WaveletCoherence.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CONT</span> <span class="pre">Wavelet</span> <span class="pre">Coherence'</span></em><a class="headerlink" href="#comet.methods.WaveletCoherence.name" title="Link to this definition">¶</a></dt>
+<dd><p>Instantaneous Wavelet Coherence:
+Jacob Billings, Manish Saggar, Jaroslav Hlinka, Shella Keilholz, Giovanni Petri; Simplicial and
+topological descriptions of human brain dynamics. Network Neuroscience 2021; 5 (2): 549–568.
+<a class="reference external" href="https://doi.org/10.1162/netn_a_00190">https://doi.org/10.1162/netn_a_00190</a></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comet.methods.Windowless">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.methods.</span></span><span class="sig-name descname"><span class="pre">Windowless</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">TIME_SERIES</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subject</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_states</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_subj_clusters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Windowless"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Windowless" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseDFCMethod</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comet.methods.Windowless.connectivity">
+<span class="sig-name descname"><span class="pre">connectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/methods.html#Windowless.connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.methods.Windowless.connectivity" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comet.methods.Windowless.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'STATE</span> <span class="pre">Windowless'</span></em><a class="headerlink" href="#comet.methods.Windowless.name" title="Link to this definition">¶</a></dt>
+<dd><p>Windowless</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../usage/tutorials.html" class="btn btn-neutral float-left" title="Tutorials" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="graph.html" class="btn btn-neutral float-right" title="comet.graph" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Micha Burkhardt.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
