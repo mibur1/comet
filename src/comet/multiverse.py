@@ -19,6 +19,9 @@ from matplotlib import patches as mpatches
 from joblib import Parallel, delayed
 
 def in_notebook():
+    """
+    Helper function to check if the code is running in a Jupyter notebook
+    """
     try:
         from IPython import get_ipython
         if 'IPKernelApp' not in get_ipython().config:
@@ -28,9 +31,39 @@ def in_notebook():
     return True
 
 class Multiverse:
+    """
+    Multiverse class for creating, running, and visualizing the multiverse analysis.
+
+    This class provides functionality to create multiple analysis scripts based on different decision paths,
+    run them in parallel, and visualize the results as a network or specification curve.
+
+    Attributes
+    ----------
+    name : str
+        Name of the multiverse analysis. Default is "multiverse".
+
+    Methods
+    -------
+    create()
+        Create individual universe scripts
+
+    run()
+        Run the multiverse or universes
+
+    summary()
+        Print the multiverse summary
+
+    visualize()
+        Visualize the multiverse as a network
+
+    specification_curve()
+        Create a specification curve
+    """
+
     def __init__(self, name="multiverse"):
         self.name = name
 
+    # Public functions
     def create(self, analysis_template, forking_paths, invalid_paths=None):
         """
         Create the individual universe scripts
@@ -75,13 +108,13 @@ class Multiverse:
 
         # Remove universes that contain invalid paths
         if invalid_paths is not None:
-            valid_universes = [combination for combination in all_universes if not self.check_paths(combination, invalid_paths)]
+            valid_universes = [combination for combination in all_universes if not self._check_paths(combination, invalid_paths)]
         else:
             valid_universes = all_universes
 
         # Create Python scripts for each combination
         for i, combination in enumerate(valid_universes, start=1):
-            context = {key: self.format_type(value) for key, value in zip(keys, combination)}
+            context = {key: self._format_type(value) for key, value in zip(keys, combination)}
             rendered_content = jinja_template.render(**context)
 
             # Write to Python script
@@ -90,7 +123,7 @@ class Multiverse:
                 file.write(rendered_content)
 
         # Generate CSV file with the decisions of all universes
-        self.create_csv(results_dir, valid_universes, keys)
+        self._create_csv(results_dir, valid_universes, keys)
 
         # Save forking paths
         with open(f"{results_dir}/forking_paths.pkl", "wb") as file:
@@ -98,8 +131,22 @@ class Multiverse:
 
         return
 
-    # Run all (or individual) universes
     def run(self, path=None, universe_number=None, parallel=1):
+        """
+        Run either an individual universe or the entire multiverse
+
+        Parameters
+        ----------
+        path : string
+            Path of the multiverse directory
+
+        universe_number : int
+            Number of the universe to run. Default is None, which runs all universes
+
+        parallel : int
+            Number of universes to run in parallel
+        """
+
         if path is None:
             calling_script_dir = os.getcwd() if in_notebook else os.path.dirname(sys.path[0])
             multiverse_dir = os.path.join(calling_script_dir, self.name)
@@ -121,36 +168,19 @@ class Multiverse:
             file = f"universe_{universe_number}.py"
             execute_script(file)
 
-    # Checks if a universe contains a specific path
-    def check_paths(self, universe_path, invalid_paths):
+        return
 
-        def get_decision(decision):
-            if isinstance(decision, dict) and "name" in decision:
-                return decision["name"]
-            return decision
-
-        # Standardize the universe_path
-        standardized_universe_path = [get_decision(decision) for decision in universe_path]
-
-        for invalid_path in invalid_paths:
-            standardized_invalid_path = [get_decision(decision) for decision in invalid_path]
-
-            # Check if standardized_invalid_path is a subsequence of standardized_universe_path
-            iter_universe = iter(standardized_universe_path)
-            if all(decision in iter_universe for decision in standardized_invalid_path):
-                return True  # Found an invalid path, return
-
-        return False
-
-    # Read CSV
-    def read_csv(self):
-        calling_script_dir = os.getcwd() if in_notebook else os.path.dirname(sys.path[0])
-        csv_path = os.path.join(calling_script_dir, f"{self.name}/results/multiverse_summary.csv")
-        return pd.read_csv(csv_path)
-
-    # Print a summary of all universes
     def summary(self, universe=range(1,5)):
-        multiverse_summary = self.read_csv()
+        """
+        Print the multiverse summary to the terminal/notebook
+
+        Parameters
+        ----------
+        universe : int or range
+            The universe number(s) to display. Default is range(1,5)
+        """
+
+        multiverse_summary = self._read_csv()
 
         if isinstance(universe, int):
             multiverse_summary = multiverse_summary.iloc[universe-1]
@@ -163,9 +193,26 @@ class Multiverse:
         else:
             print(multiverse_summary + "\n")
 
-    # Visualize the multiverse as a network
     def visualize(self, universe=None, cmap="Set2", node_size=1500, figsize=(8,5)):
-        multiverse_summary = self.read_csv()
+        """
+        Visualize the multiverse as a network
+
+        Parameters
+        ----------
+        universe : int
+            The universe to highlight in the network. Default is None
+
+        cmap : str
+            Colormap to use for the nodes. Default is "Set2"
+
+        node_size : int
+            Size of the nodes. Default is 1500
+
+        figsize : tuple
+            Size of the figure. Default is (8,5)
+        """
+
+        multiverse_summary = self._read_csv()
 
         # Function that recursively add nodes and edges excluding single-option parameters
         def add_hierarchical_decision_nodes(G, root_node, parameters, level=0):
@@ -273,121 +320,53 @@ class Multiverse:
         plt.tight_layout()
         plt.show()
 
-    # Handle the types of the decision points to generate a working template script
-    def format_type(self, value):
-        if isinstance(value, str):
-            return f"'{value}'"  # Strings are wrapped in quotes
-        elif isinstance(value, int):
-            return str(value)  # Integers are converted directly
-        elif isinstance(value, float):
-            return str(value)  # Floats are converted directly
-        elif isinstance(value, bool):
-            return "True" if value else "False" # Booleans are converted to their literal representations
-        elif isinstance(value, dict):
-            return self.handle_dict(value) # Dictionaries are handeled in a separate function
-        elif isinstance(value, type):
-            return value.__name__  # If the forking path is a class, we return the name of the class
-        elif callable(value):
-            return value.__name__ # If the forking path is a function, we return the name of the function
-        else:
-            raise TypeError(f"Unsupported type for {value} which is of type {type(value)}")
-
-    # Handle the decision points that require class/function imports
-    def handle_dict(self, value):
-        function_call = ""
-
-        func = value["func"]
-        args = value["args"].copy()
-
-        if "Option" in args:
-            del args["Option"]
-
-        first_arg = next(iter(args))
-        input_data = args[first_arg]
-        del args[first_arg]
-
-        if value["func"].startswith("comet.methods"):
-            function_call = f"{func}({input_data}, **{args}).connectivity()"
-        else:
-            if "ci" in args:
-                ci = args["ci"]
-                del args["ci"]
-                function_call = f"{func}({input_data}, ci={ci}[0], **{args})"
-            else:
-                function_call = f"{func}({input_data}, **{args})"
-
-        return function_call
-
-    # Create CSV file with the parameters of all universes
-    def create_csv(self, csv_path, all_universes, keys):
-        # Generate CSV file with the parameters of all universes
-        with open(f"{csv_path}/multiverse_summary.csv", "w", newline='') as csvfile:
-            fieldnames = ['Universe'] + list(keys)  # 'Universe' as the first column
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-
-            for i, combination in enumerate(all_universes, start=1):
-                context = {'Universe': f"Universe_{i}"}
-
-                for key, value in zip(keys, combination):
-                    if isinstance(value, dict):
-                        context[key] = value.get('name', '')
-                    else:
-                        context[key] = value
-
-                writer.writerow(context)
-
-    # Create a specification curve
-    def load_and_prepare_data(self, fname="multiverse_summary.csv", measure=None, results_path=None):
-        csv_path = os.path.join(results_path, fname)
-        multiverse_summary = pd.read_csv(csv_path)
-
-        if measure in multiverse_summary.columns:
-            print(f"Getting {measure} from .csv file")
-            forking_paths = {}
-
-            for column in multiverse_summary.columns:
-                if column == measure:
-                    continue
-                unique_values = multiverse_summary[column].unique().tolist()
-                forking_paths[column] = unique_values
-
-            universe_data = multiverse_summary[measure].values
-            parameters = multiverse_summary.drop(columns=[measure])
-            universes_with_summary = [(data, parameters.iloc[i].to_dict()) for i, data in enumerate(universe_data)]
-            sorted_combined = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
-
-        else:
-            print(f"Getting {measure} from .pkl files")
-            with open(f"{results_path}/forking_paths.pkl", "rb") as file:
-                forking_paths = pickle.load(file)
-
-            pattern = os.path.join(results_path, "universe_*.pkl")
-            results_files = glob.glob(pattern)
-
-            universe_data = {}
-            for filename in results_files:
-                universe = os.path.basename(filename).split('.')[0]
-
-                with open(filename, "rb") as file:
-                    universe_data[universe] = pickle.load(file)
-
-            universes_with_summary = []
-            for universe, data in universe_data.items():
-                summary_row = multiverse_summary[multiverse_summary['Universe'].str.lower() == universe]
-                if not summary_row.empty:
-                    universes_with_summary.append((data, summary_row.iloc[0]))
-
-            sorted_combined = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
-
-        return sorted_combined, forking_paths
+        return
 
     def specification_curve(self, fname="multiverse_summary.csv", measure=None, cmap="Set2", ci=95, chance_level=None, \
                             linewidth=2, figsize=(16,9), height_ratio=(2,1), fontsize=10, dotsize=50, label_offset=-0.05):
+        """
+        Create and save a specification curve plot from multiverse results
+
+        Parameters
+        ----------
+        fname : string
+            Name of the .csv file containing the multiverse summary. Default is "multiverse_summary.csv"
+
+        measure : string
+            Name of the measure to plot. Default is None
+
+        cmap : string
+            Colormap to use for the nodes. Default is "Set2"
+
+        ci : int
+            Confidence interval to plot. Default is 95
+
+        chance_level : float
+            Chance level to plot. Default is None
+
+        linewidth : int
+            Width of the boxplots. Default is 2
+
+        figsize : tuple
+            Size of the figure. Default is (16,9)
+
+        height_ratio : tuple
+            Height ratio of the two subplots. Default is (2,1)
+
+        fontsize : int
+            Font size of the labels. Default is 10
+
+        dotsize : int
+            Size of the dots. Default is 50
+
+        label_offset : float
+            Offset of the labels. Needs to be adjusted manually, default is -0.05
+        """
+
         calling_script_dir = os.getcwd() if 'in_notebook' in globals() and in_notebook else os.path.dirname(sys.argv[0])
         results_path = os.path.join(calling_script_dir, f"{self.name}/results")
 
-        sorted_combined, forking_paths = self.load_and_prepare_data(fname, measure, results_path)
+        sorted_combined, forking_paths = self._load_and_prepare_data(fname, measure, results_path)
 
         sns.set_theme(style="whitegrid")
         fig, ax = plt.subplots(2, 1, figsize=figsize, gridspec_kw={'height_ratios': height_ratio}, sharex=True)
@@ -530,3 +509,229 @@ class Multiverse:
 
         plt.tight_layout()
         plt.savefig(f"{results_path}/specification_curve.png")
+
+        return
+
+    # Internal functions
+    def _check_paths(self, universe_path, invalid_paths):
+        """
+        Internal function: Check if a universe contains a specific path
+
+        Parameters
+        ----------
+        universe_path : list
+            The "decision path" of a universe
+
+        invalid_paths : list
+            List of invalid paths that should be excluded from the multiverse
+
+        Returns
+        -------
+        result : bool
+            Returns True if the universe contains an invalid path, else False
+        """
+
+        def get_decision(decision):
+            if isinstance(decision, dict) and "name" in decision:
+                return decision["name"]
+            return decision
+
+        # Standardize the universe_path
+        standardized_universe_path = [get_decision(decision) for decision in universe_path]
+
+        for invalid_path in invalid_paths:
+            standardized_invalid_path = [get_decision(decision) for decision in invalid_path]
+
+            # Check if standardized_invalid_path is a subsequence of standardized_universe_path
+            iter_universe = iter(standardized_universe_path)
+            if all(decision in iter_universe for decision in standardized_invalid_path):
+                return True  # Found an invalid path, return
+
+        return False
+
+    def _read_csv(self):
+        """
+        Internal function: Reads the multiverse_summary.csv file
+
+        Returns
+        -------
+        summary : pandas.DataFrame
+            Pandas datframe containing the multiverse summary
+        """
+
+        calling_script_dir = os.getcwd() if in_notebook else os.path.dirname(sys.path[0])
+        csv_path = os.path.join(calling_script_dir, f"{self.name}/results/multiverse_summary.csv")
+        return pd.read_csv(csv_path)
+
+    def _format_type(self, value):
+        """
+        Internal function: Converts the different data types of decision points
+        to strings, which is necessary to create the template script
+
+        Parameters
+        ----------
+        value : any
+            The value to be formatted
+
+        Returns
+        -------
+        formatted_value : string
+            The formatted value
+        """
+
+        if isinstance(value, str):
+            return f"'{value}'"  # Strings are wrapped in quotes
+        elif isinstance(value, int):
+            return str(value)  # Integers are converted directly
+        elif isinstance(value, float):
+            return str(value)  # Floats are converted directly
+        elif isinstance(value, bool):
+            return "True" if value else "False" # Booleans are converted to their literal representations
+        elif isinstance(value, dict):
+            return self._handle_dict(value) # Dictionaries are handeled in a separate function
+        elif isinstance(value, type):
+            return value.__name__  # If the forking path is a class, we return the name of the class
+        elif callable(value):
+            return value.__name__ # If the forking path is a function, we return the name of the function
+        else:
+            raise TypeError(f"Unsupported type for {value} which is of type {type(value)}")
+
+    def _handle_dict(self, value):
+        """
+        Internal function: Handle the decision points that dicts.
+        These are the decision points which require class/function imports.
+
+        Parameters
+        ----------
+        value : dict
+            The dictionary to be formatted
+
+        Returns
+        -------
+        function_call : string
+            The formatted function call
+        """
+
+        function_call = ""
+
+        func = value["func"]
+        args = value["args"].copy()
+
+        if "Option" in args:
+            del args["Option"]
+
+        first_arg = next(iter(args))
+        input_data = args[first_arg]
+        del args[first_arg]
+
+        if value["func"].startswith("comet.methods"):
+            function_call = f"{func}({input_data}, **{args}).connectivity()"
+        else:
+            if "ci" in args:
+                ci = args["ci"]
+                del args["ci"]
+                function_call = f"{func}({input_data}, ci={ci}[0], **{args})"
+            else:
+                function_call = f"{func}({input_data}, **{args})"
+
+        return function_call
+
+    def _create_csv(self, csv_path, all_universes, keys):
+        """
+        Internal function: Create a CSV file with the parameters of all universes
+
+        Parameters
+        ----------
+        csv_path : string
+            Path to save the CSV file
+
+        all_universes : list
+            List of all universes
+
+        keys : list
+            List of keys for the CSV file
+        """
+
+        # Generate CSV file with the parameters of all universes
+        with open(f"{csv_path}/multiverse_summary.csv", "w", newline='') as csvfile:
+            fieldnames = ['Universe'] + list(keys)  # 'Universe' as the first column
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+
+            for i, combination in enumerate(all_universes, start=1):
+                context = {'Universe': f"Universe_{i}"}
+
+                for key, value in zip(keys, combination):
+                    if isinstance(value, dict):
+                        context[key] = value.get('name', '')
+                    else:
+                        context[key] = value
+
+                writer.writerow(context)
+
+    def _load_and_prepare_data(self, fname="multiverse_summary.csv", measure=None, results_path=None):
+        """
+        Internal function: Load and prepare the data for the specification curve plotting
+
+        Parameters
+        ----------
+        fname : string
+            Name of the .csv file containing the multiverse summary. Default is "multiverse_summary.csv"
+
+        measure : string
+            Name of the measure to plot. Default is None
+
+        results_path : string
+            Path to the results directory
+
+        Returns
+        -------
+        sorted_combined : list
+            List of sorted universes with their summary
+
+        forking_paths : dict
+            Dictionary containing the forking paths
+        """
+
+        csv_path = os.path.join(results_path, fname)
+        multiverse_summary = pd.read_csv(csv_path)
+
+        if measure in multiverse_summary.columns:
+            print(f"Getting {measure} from .csv file")
+            forking_paths = {}
+
+            for column in multiverse_summary.columns:
+                if column == measure:
+                    continue
+                unique_values = multiverse_summary[column].unique().tolist()
+                forking_paths[column] = unique_values
+
+            universe_data = multiverse_summary[measure].values
+            parameters = multiverse_summary.drop(columns=[measure])
+            universes_with_summary = [(data, parameters.iloc[i].to_dict()) for i, data in enumerate(universe_data)]
+            sorted_combined = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
+
+        else:
+            print(f"Getting {measure} from .pkl files")
+            with open(f"{results_path}/forking_paths.pkl", "rb") as file:
+                forking_paths = pickle.load(file)
+
+            pattern = os.path.join(results_path, "universe_*.pkl")
+            results_files = glob.glob(pattern)
+
+            universe_data = {}
+            for filename in results_files:
+                universe = os.path.basename(filename).split('.')[0]
+
+                with open(filename, "rb") as file:
+                    universe_data[universe] = pickle.load(file)
+
+            universes_with_summary = []
+            for universe, data in universe_data.items():
+                summary_row = multiverse_summary[multiverse_summary['Universe'].str.lower() == universe]
+                if not summary_row.empty:
+                    universes_with_summary.append((data, summary_row.iloc[0]))
+
+            sorted_combined = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
+
+        return sorted_combined, forking_paths
