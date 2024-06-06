@@ -140,6 +140,23 @@ def _prepare_atlas(atlas_name, debug=False):
 
     return (rois, keys, labels, rgba)
 
+def _stdize(ts):
+    """
+    Helper function: Standardize time series to zero (temporal) mean and unit standard deviation.
+
+    Parameters
+    ----------
+    ts : np.ndarray
+        Time series data
+
+    Returns
+    -------
+    ts : np.ndarray
+        Standardized time series data
+    """
+
+    return (ts - np.mean(ts,axis=0))/np.std(ts,axis=0)
+
 def _get_fdata(dtseries):
     """
     Helper function: Get the cifti data
@@ -193,20 +210,3 @@ def _get_labels(atlas):
 
     _, _, labels, rgba = _prepare_atlas(atlas)
     return labels, rgba
-
-def _stdize(ts):
-    """
-    Helper function: Standardize time series to zero (temporal) mean and unit standard deviation.
-
-    Parameters
-    ----------
-    ts : np.ndarray
-        Time series data
-
-    Returns
-    -------
-    ts : np.ndarray
-        Standardized time series data
-    """
-
-    return (ts - np.mean(ts,axis=0))/np.std(ts,axis=0)
