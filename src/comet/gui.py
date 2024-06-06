@@ -102,7 +102,6 @@ class Data:
     # Misc variables
     cifti_data:    np.ndarray = field(default=None)         # input cifti data (for .dtseries files)
     roi_names:     np.ndarray = field(default=None)         # input roi data (for .tsv files)
-    mv_containers: list       = field(default_factory=list) # decision containers for multiverse analysis
 
     def clear_dfc_data(self):
         self.dfc_params   = {}
@@ -327,6 +326,8 @@ class App(QMainWindow):
         centralWidget.setLayout(topLayout)
         self.setCentralWidget(centralWidget)
 
+        return
+
     def initFromData(self, init_dfc_data=None, init_dfc_instance=None):
         # Make sure both the dFC data and the method object are provided
         assert self.data.dfc_instance is not None, "Please provide the method object corresponding to your dFC data as the second argument to the GUI."
@@ -399,6 +400,8 @@ class App(QMainWindow):
             self.data.dfc_params[param_name] = getattr(init_dfc_instance, param_name, None)
 
         self.setParameters(disable=True)
+
+        return
 
     def dataTab(self):
         dataTab = QWidget()
@@ -479,6 +482,8 @@ class App(QMainWindow):
         dataLayout.addLayout(leftLayout, 1)
         dataLayout.addLayout(rightLayout, 1)
         self.topTabWidget.addTab(dataTab, "Data Preparation")
+
+        return
 
     def connectivityTab(self):
         connectivityTab = QWidget()
@@ -693,6 +698,8 @@ class App(QMainWindow):
         connectivityLayout.addLayout(rightLayout, 3)
         self.topTabWidget.addTab(connectivityTab, "Connectivity Analysis")
 
+        return
+
     def graphTab(self):
         graphTab = QWidget()
         graphLayout = QVBoxLayout()  # Main layout for the tab
@@ -861,10 +868,15 @@ class App(QMainWindow):
         # Add the tab to the top level tab widget
         self.topTabWidget.addTab(graphTab, "Graph Analysis")
 
+        return
+
     def multiverseTab(self):
         multiverseTab = QWidget()
         multiverseLayout = QVBoxLayout()  # Main layout for the tab
         multiverseTab.setLayout(multiverseLayout)
+
+        # Empty list to store container widgets
+        self.mv_containers = [] # decision containers for multiverse analysis
 
         ###############################
         #  Left section for settings  #
@@ -971,6 +983,7 @@ class App(QMainWindow):
 
         self.topTabWidget.addTab(multiverseTab, "Multiverse Analysis")
 
+        return
 
     """
     Data tab
@@ -992,9 +1005,12 @@ class App(QMainWindow):
         self.subjectDropdown.clear()
         self.subjectDropdown.hide()
 
-        self.pydfc_subjectDropdown.currentIndexChanged.disconnect(self.onSubjectChanged)
-        self.pydfc_subjectDropdown.clear()
-        self.pydfc_subjectDropdownContainer.hide()
+        try:
+            self.pydfc_subjectDropdown.currentIndexChanged.disconnect(self.onSubjectChanged)
+            self.pydfc_subjectDropdown.clear()
+            self.pydfc_subjectDropdownContainer.hide()
+        except:
+            pass
 
         if file_path.endswith('.mat'):
             data_dict = loadmat(file_path)
@@ -2434,8 +2450,10 @@ class App(QMainWindow):
                 index = widget.findText(value)
                 if index >= 0:
                     widget.setCurrentIndex(index)
-            elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
+            elif isinstance(widget, QSpinBox):
                 widget.setValue(int(value))
+            elif isinstance(widget, QDoubleSpinBox):
+                widget.setValue(float(value))
 
         # No parameters yet, return
         if not self.data.dfc_params:
@@ -3411,7 +3429,7 @@ class App(QMainWindow):
         mainLayout.addWidget(parameterContainer)
 
         # Add the widget to a list so we can keep track of individual items
-        self.data.mv_containers.append(decisionWidget)
+        self.mv_containers.append(decisionWidget)
 
         return decisionWidget
 
@@ -3706,7 +3724,7 @@ class App(QMainWindow):
     # Adds a new decision widget to the layout
     def addNewDecision(self, layout, buttonLayout):
         # Collapse all existing parameter containers before adding a new one
-        for container in self.data.mv_containers:
+        for container in self.mv_containers:
             parameterContainer = container.findChild(QWidget, "parameterContainer")
             collapseButton = container.findChild(QPushButton, "collapseButton")
             if parameterContainer and collapseButton and parameterContainer.isVisible():
@@ -3839,7 +3857,7 @@ class App(QMainWindow):
                 self.clearLayout(decisionWidget.layout())
                 decisionWidget.deleteLater()
                 optionsInputField.clear()
-                self.data.mv_containers.remove(decisionWidget)
+                self.mv_containers.remove(decisionWidget)
                 self.generateScript()
                 return
 
@@ -3859,7 +3877,7 @@ class App(QMainWindow):
                     self.clearLayout(decisionWidget.layout())  # Clear all child widgets and sub-layouts
                 decisionWidget.deleteLater()  # Delete the decision widget
                 optionsInputField.clear()  # Clear the options input field
-                self.data.mv_containers.remove(decisionWidget)
+                self.mv_containers.remove(decisionWidget)
 
         self.generateScript()
         return
