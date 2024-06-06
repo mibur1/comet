@@ -1,6 +1,5 @@
 # Custom stuff
-tests/
-docs/
+testing_stuff/
 universe_*.py
 
 # Byte-compiled / optimized / DLL files
