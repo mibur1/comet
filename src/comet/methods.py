@@ -371,6 +371,8 @@ class SpatialDistance(ConnectivityMethod):
     to temporal network theory: Applications to functional brain connectivity.
     https://doi.org/10.1162/NETN_a_00011
     """
+    name = "CONT Spatial Distance"
+
     def __init__(self,
                  time_series: np.ndarray,
                  dist: Literal["euclidean", "cosine", "cityblock"] = "euclidean",
@@ -734,7 +736,6 @@ class PhaseSynchrony(ConnectivityMethod):
         return self.R_mat
 
 class LeiDA(ConnectivityMethod):
-    name = "CONT Leading Eigenvector Dynamics"
     """
     Leading Eigenvector Dynamics.
 
@@ -767,6 +768,8 @@ class LeiDA(ConnectivityMethod):
     Recurrent excursions into functionally-relevant BOLD phase-locking states. Frontiers in systems neuroscience, 14, 20.
     https://doi.org/10.3389/fnsys.2020.00020
     """
+    name = "CONT Leading Eigenvector Dynamics"
+
     def __init__(self,
                  time_series: np.ndarray,
                  flip_eigenvectors: bool = False,
