@@ -1,5 +1,8 @@
-Comet Toolbox Documentation
-===========================
+.. include:: links.rst
+.. include:: ../../README.rst
+
+Sections
+--------
 
 .. toctree::
    :maxdepth: 1
