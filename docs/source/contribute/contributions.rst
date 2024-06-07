@@ -1,4 +1,0 @@
-Contributions
-=============
-
-Contributions are welcome.

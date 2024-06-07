@@ -12,6 +12,8 @@
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
         <script src="../../_static/documentation_options.js?v=6fefd858"></script>
         <script src="../../_static/doctools.js?v=9a2dae69"></script>
         <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
@@ -39,27 +41,11 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Overview</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../overview/introduction.html">Introduction</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../overview/installation.html">Installation</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Usage</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../usage/quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../usage/tutorials.html">Tutorials</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../api/methods.html">comet.methods</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api/graph.html">comet.graph</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api/multiverse.html">comet.multiverse</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api/data.html">comet.data</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Contributing</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../contribute/about.html">About</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../contribute/contributions.html">Contributions</a></li>
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../sections/overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../sections/usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../sections/api.html">Programming API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../sections/contribute.html">Contributing</a></li>
 </ul>
 
         </div>
@@ -99,7 +85,7 @@
 <span class="kn">from</span> <span class="nn">.multiverse</span> <span class="kn">import</span> <span class="n">in_notebook</span>
 
 <div class="viewcode-block" id="load_timeseries">
-<a class="viewcode-back" href="../../api/data.html#comet.data.load_timeseries">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.data.load_timeseries">[docs]</a>
 <span class="k">def</span> <span class="nf">load_timeseries</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Load time series data from a file.</span>
@@ -168,7 +154,7 @@
 
 
 <div class="viewcode-block" id="load_example">
-<a class="viewcode-back" href="../../api/data.html#comet.data.load_example">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.data.load_example">[docs]</a>
 <span class="k">def</span> <span class="nf">load_example</span><span class="p">(</span><span class="n">ftype</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Load simulation time series with two randomly changing connectivity states.</span>
@@ -209,7 +195,7 @@
 
 
 <div class="viewcode-block" id="load_single_state">
-<a class="viewcode-back" href="../../api/data.html#comet.data.load_single_state">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.data.load_single_state">[docs]</a>
 <span class="k">def</span> <span class="nf">load_single_state</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Load simulated time series data with a single connectivity state</span>
@@ -227,7 +213,7 @@
 
 
 <div class="viewcode-block" id="save_results">
-<a class="viewcode-back" href="../../api/data.html#comet.data.save_results">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.data.save_results">[docs]</a>
 <span class="k">def</span> <span class="nf">save_results</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">universe</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Save all kinds of results as .pkl file</span>
@@ -273,7 +259,7 @@
 
 
 <div class="viewcode-block" id="clean">
-<a class="viewcode-back" href="../../api/data.html#comet.data.clean">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.data.clean">[docs]</a>
 <span class="k">def</span> <span class="nf">clean</span><span class="p">(</span><span class="n">time_series</span><span class="p">,</span> <span class="n">runs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">detrend</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">confounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">standardize</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">standardize_confounds</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> \
           <span class="nb">filter</span><span class="o">=</span><span class="s1">&#39;butterworth&#39;</span><span class="p">,</span> <span class="n">low_pass</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">high_pass</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">t_r</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ensure_finite</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>

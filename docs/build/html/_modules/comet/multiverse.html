@@ -12,6 +12,8 @@
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
         <script src="../../_static/documentation_options.js?v=6fefd858"></script>
         <script src="../../_static/doctools.js?v=9a2dae69"></script>
         <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
@@ -39,27 +41,11 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Overview</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../overview/introduction.html">Introduction</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../overview/installation.html">Installation</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Usage</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../usage/quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../usage/tutorials.html">Tutorials</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../api/methods.html">comet.methods</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api/graph.html">comet.graph</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api/multiverse.html">comet.multiverse</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api/data.html">comet.data</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Contributing</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../contribute/about.html">About</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../contribute/contributions.html">Contributions</a></li>
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../sections/overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../sections/usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../sections/api.html">Programming API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../sections/contribute.html">Contributing</a></li>
 </ul>
 
         </div>
@@ -108,7 +94,7 @@
 <span class="kn">from</span> <span class="nn">joblib</span> <span class="kn">import</span> <span class="n">Parallel</span><span class="p">,</span> <span class="n">delayed</span>
 
 <div class="viewcode-block" id="in_notebook">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.in_notebook">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.multiverse.in_notebook">[docs]</a>
 <span class="k">def</span> <span class="nf">in_notebook</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Helper function to check if the code is running in a Jupyter notebook</span>
@@ -123,7 +109,7 @@
 
 
 <div class="viewcode-block" id="Multiverse">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.multiverse.Multiverse">[docs]</a>
 <span class="k">class</span> <span class="nc">Multiverse</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Multiverse class for creating, running, and visualizing the multiverse analysis.</span>
@@ -142,7 +128,7 @@
 
     <span class="c1"># Public methods</span>
 <div class="viewcode-block" id="Multiverse.create">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse.create">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.multiverse.Multiverse.create">[docs]</a>
     <span class="k">def</span> <span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">analysis_template</span><span class="p">,</span> <span class="n">forking_paths</span><span class="p">,</span> <span class="n">invalid_paths</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Create the individual universe scripts</span>
@@ -212,7 +198,7 @@
 
 
 <div class="viewcode-block" id="Multiverse.run">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse.run">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.multiverse.Multiverse.run">[docs]</a>
     <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">universe_number</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Run either an individual universe or the entire multiverse</span>
@@ -254,7 +240,7 @@
 
 
 <div class="viewcode-block" id="Multiverse.summary">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse.summary">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.multiverse.Multiverse.summary">[docs]</a>
     <span class="k">def</span> <span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">5</span><span class="p">)):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Print the multiverse summary to the terminal/notebook</span>
@@ -280,7 +266,7 @@
 
 
 <div class="viewcode-block" id="Multiverse.visualize">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse.visualize">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.multiverse.Multiverse.visualize">[docs]</a>
     <span class="k">def</span> <span class="nf">visualize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;Set2&quot;</span><span class="p">,</span> <span class="n">node_size</span><span class="o">=</span><span class="mi">1500</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">5</span><span class="p">)):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Visualize the multiverse as a network</span>
@@ -412,7 +398,7 @@
 
 
 <div class="viewcode-block" id="Multiverse.specification_curve">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse.specification_curve">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.multiverse.Multiverse.specification_curve">[docs]</a>
     <span class="k">def</span> <span class="nf">specification_curve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fname</span><span class="o">=</span><span class="s2">&quot;multiverse_summary.csv&quot;</span><span class="p">,</span> <span class="n">measure</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;Set2&quot;</span><span class="p">,</span> <span class="n">ci</span><span class="o">=</span><span class="mi">95</span><span class="p">,</span> <span class="n">chance_level</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> \
                             <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span><span class="mi">9</span><span class="p">),</span> <span class="n">height_ratio</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">dotsize</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">label_offset</span><span class="o">=-</span><span class="mf">0.05</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -605,8 +591,6 @@
 
 
     <span class="c1"># Internal methods</span>
-<div class="viewcode-block" id="Multiverse._check_paths">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse._check_paths">[docs]</a>
     <span class="k">def</span> <span class="nf">_check_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe_path</span><span class="p">,</span> <span class="n">invalid_paths</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Internal function: Check if a universe contains a specific path</span>
@@ -641,11 +625,8 @@
             <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">decision</span> <span class="ow">in</span> <span class="n">iter_universe</span> <span class="k">for</span> <span class="n">decision</span> <span class="ow">in</span> <span class="n">standardized_invalid_path</span><span class="p">):</span>
                 <span class="k">return</span> <span class="kc">True</span>  <span class="c1"># Found an invalid path, return</span>
 
-        <span class="k">return</span> <span class="kc">False</span></div>
+        <span class="k">return</span> <span class="kc">False</span>
 
-
-<div class="viewcode-block" id="Multiverse._read_csv">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse._read_csv">[docs]</a>
     <span class="k">def</span> <span class="nf">_read_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Internal function: Reads the multiverse_summary.csv file</span>
@@ -658,11 +639,8 @@
 
         <span class="n">calling_script_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span> <span class="k">if</span> <span class="n">in_notebook</span> <span class="k">else</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
         <span class="n">csv_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">calling_script_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">/results/multiverse_summary.csv&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">)</span>
 
-
-<div class="viewcode-block" id="Multiverse._format_type">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse._format_type">[docs]</a>
     <span class="k">def</span> <span class="nf">_format_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Internal function: Converts the different data types of decision points</span>
@@ -694,11 +672,8 @@
         <span class="k">elif</span> <span class="nb">callable</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="vm">__name__</span> <span class="c1"># If the forking path is a function, we return the name of the function</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported type for </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2"> which is of type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported type for </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2"> which is of type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-
-<div class="viewcode-block" id="Multiverse._handle_dict">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse._handle_dict">[docs]</a>
     <span class="k">def</span> <span class="nf">_handle_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Internal function: Handle the decision points that dicts.</span>
@@ -737,11 +712,8 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">function_call</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="n">input_data</span><span class="si">}</span><span class="s2">, **</span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s2">)&quot;</span>
 
-        <span class="k">return</span> <span class="n">function_call</span></div>
+        <span class="k">return</span> <span class="n">function_call</span>
 
-
-<div class="viewcode-block" id="Multiverse._create_csv">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse._create_csv">[docs]</a>
     <span class="k">def</span> <span class="nf">_create_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">csv_path</span><span class="p">,</span> <span class="n">all_universes</span><span class="p">,</span> <span class="n">keys</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Internal function: Create a CSV file with the parameters of all universes</span>
@@ -773,11 +745,8 @@
                     <span class="k">else</span><span class="p">:</span>
                         <span class="n">context</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
 
-                <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">context</span><span class="p">)</span></div>
+                <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
 
-
-<div class="viewcode-block" id="Multiverse._load_and_prepare_data">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse._load_and_prepare_data">[docs]</a>
     <span class="k">def</span> <span class="nf">_load_and_prepare_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fname</span><span class="o">=</span><span class="s2">&quot;multiverse_summary.csv&quot;</span><span class="p">,</span> <span class="n">measure</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">results_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Internal function: Load and prepare the data for the specification curve plotting</span>
@@ -844,7 +813,6 @@
             <span class="n">sorted_combined</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">universes_with_summary</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
 
         <span class="k">return</span> <span class="n">sorted_combined</span><span class="p">,</span> <span class="n">forking_paths</span></div>
-</div>
 
 </pre></div>
 

@@ -12,6 +12,8 @@
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
         <script src="../../_static/documentation_options.js?v=6fefd858"></script>
         <script src="../../_static/doctools.js?v=9a2dae69"></script>
         <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
@@ -39,27 +41,11 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Overview</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../overview/introduction.html">Introduction</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../overview/installation.html">Installation</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Usage</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../usage/quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../usage/tutorials.html">Tutorials</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../api/methods.html">comet.methods</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api/graph.html">comet.graph</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api/multiverse.html">comet.multiverse</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api/data.html">comet.data</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Contributing</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../contribute/about.html">About</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../contribute/contributions.html">Contributions</a></li>
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../sections/overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../sections/usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../sections/api.html">Programming API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../sections/contribute.html">Contributing</a></li>
 </ul>
 
         </div>
@@ -116,7 +102,7 @@
 <span class="sd"> - If new methods are added, they should be implemented as a child class of ConnectivityMethod</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <div class="viewcode-block" id="ConnectivityMethod">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.ConnectivityMethod">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.ConnectivityMethod">[docs]</a>
 <span class="k">class</span> <span class="nc">ConnectivityMethod</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">ABCMeta</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Base class for all dynamic functional connectivity methods.</span>
@@ -165,7 +151,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">tril</span> <span class="o">=</span> <span class="n">tril</span>
 
 <div class="viewcode-block" id="ConnectivityMethod.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.ConnectivityMethod.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.ConnectivityMethod.connectivity">[docs]</a>
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -181,7 +167,7 @@
 
 
 <div class="viewcode-block" id="ConnectivityMethod.postproc">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.ConnectivityMethod.postproc">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.ConnectivityMethod.postproc">[docs]</a>
     <span class="k">def</span> <span class="nf">postproc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">R_mat</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Post-process the connectivity matrix with optional Fisher z-transformation,</span>
@@ -233,7 +219,7 @@
 <span class="sd"> - All methods produce continuously variying connectivity estimates</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <div class="viewcode-block" id="SlidingWindow">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.SlidingWindow">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.SlidingWindow">[docs]</a>
 <span class="k">class</span> <span class="nc">SlidingWindow</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Sliding Window connectivity method.</span>
@@ -316,7 +302,7 @@
         <span class="k">return</span> <span class="n">weights</span>
 
 <div class="viewcode-block" id="SlidingWindow.centers">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.SlidingWindow.centers">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.SlidingWindow.centers">[docs]</a>
     <span class="k">def</span> <span class="nf">centers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the central index of each window so dynamic functional connectivity (dFC)</span>
@@ -332,7 +318,7 @@
 
 
 <div class="viewcode-block" id="SlidingWindow.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.SlidingWindow.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.SlidingWindow.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate sliding window correlation.</span>
@@ -356,7 +342,7 @@
 
 
 <div class="viewcode-block" id="Jackknife">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Jackknife">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Jackknife">[docs]</a>
 <span class="k">class</span> <span class="nc">Jackknife</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Jackknife correlation method.</span>
@@ -423,7 +409,7 @@
         <span class="k">return</span> <span class="n">weights</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Jackknife.centers">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Jackknife.centers">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Jackknife.centers">[docs]</a>
     <span class="k">def</span> <span class="nf">centers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the central index of each window so dynamic functional connectivity (dFC)</span>
@@ -439,7 +425,7 @@
 
 
 <div class="viewcode-block" id="Jackknife.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Jackknife.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Jackknife.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate jackknife correlation.</span>
@@ -463,7 +449,7 @@
 
 
 <div class="viewcode-block" id="SpatialDistance">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.SpatialDistance">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.SpatialDistance">[docs]</a>
 <span class="k">class</span> <span class="nc">SpatialDistance</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Spatial Distance connectivity method.</span>
@@ -489,6 +475,8 @@
 <span class="sd">    to temporal network theory: Applications to functional brain connectivity.</span>
 <span class="sd">    https://doi.org/10.1162/NETN_a_00011</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;CONT Spatial Distance&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                  <span class="n">dist</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;euclidean&quot;</span><span class="p">,</span> <span class="s2">&quot;cosine&quot;</span><span class="p">,</span> <span class="s2">&quot;cityblock&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;euclidean&quot;</span><span class="p">,</span>
@@ -540,7 +528,7 @@
         <span class="k">return</span> <span class="n">weights</span>
 
 <div class="viewcode-block" id="SpatialDistance.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.SpatialDistance.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.SpatialDistance.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate spatial distance correlation.</span>
@@ -563,7 +551,7 @@
 
 
 <div class="viewcode-block" id="TemporalDerivatives">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.TemporalDerivatives">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.TemporalDerivatives">[docs]</a>
 <span class="k">class</span> <span class="nc">TemporalDerivatives</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Multiplication of Temporal Derivatives connectivity method.</span>
@@ -609,7 +597,7 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;windowsize is larger than time series&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="TemporalDerivatives.centers">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.TemporalDerivatives.centers">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.TemporalDerivatives.centers">[docs]</a>
     <span class="k">def</span> <span class="nf">centers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the central index of each window so dynamic functional connectivity (dFC)</span>
@@ -625,7 +613,7 @@
 
 
 <div class="viewcode-block" id="TemporalDerivatives.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.TemporalDerivatives.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.TemporalDerivatives.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate multiplication of temporal derivatives.</span>
@@ -655,7 +643,7 @@
 
 
 <div class="viewcode-block" id="FlexibleLeastSquares">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.FlexibleLeastSquares">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.FlexibleLeastSquares">[docs]</a>
 <span class="k">class</span> <span class="nc">FlexibleLeastSquares</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Flexible Least Squares connectivity method.</span>
@@ -768,7 +756,7 @@
         <span class="k">return</span> <span class="n">i</span><span class="p">,</span> <span class="n">beta_i</span>
 
 <div class="viewcode-block" id="FlexibleLeastSquares.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.FlexibleLeastSquares.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.FlexibleLeastSquares.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate flexible least squares connectivity as implemented in the DynamicBC toolbox</span>
@@ -804,7 +792,7 @@
 
 
 <div class="viewcode-block" id="PhaseSynchrony">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.PhaseSynchrony">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.PhaseSynchrony">[docs]</a>
 <span class="k">class</span> <span class="nc">PhaseSynchrony</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Instantaneous Phase Synchronization methods.</span>
@@ -845,7 +833,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="n">method</span>
 
 <div class="viewcode-block" id="PhaseSynchrony.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.PhaseSynchrony.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.PhaseSynchrony.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate instantaneous phase synchrony.</span>
@@ -877,9 +865,8 @@
 
 
 <div class="viewcode-block" id="LeiDA">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.LeiDA">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.LeiDA">[docs]</a>
 <span class="k">class</span> <span class="nc">LeiDA</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;CONT Leading Eigenvector Dynamics&quot;</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Leading Eigenvector Dynamics.</span>
 
@@ -912,6 +899,8 @@
 <span class="sd">    Recurrent excursions into functionally-relevant BOLD phase-locking states. Frontiers in systems neuroscience, 14, 20.</span>
 <span class="sd">    https://doi.org/10.3389/fnsys.2020.00020</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;CONT Leading Eigenvector Dynamics&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                  <span class="n">flip_eigenvectors</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -928,7 +917,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
 
 <div class="viewcode-block" id="LeiDA.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.LeiDA.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.LeiDA.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate Leading Eigenvector Dynamics Analysis (LeiDA).</span>
@@ -964,7 +953,7 @@
 
 
 <div class="viewcode-block" id="WaveletCoherence">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.WaveletCoherence">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.WaveletCoherence">[docs]</a>
 <span class="k">class</span> <span class="nc">WaveletCoherence</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Instantaneous Wavelet Coherence.</span>
@@ -1031,7 +1020,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">drop_timepoints</span> <span class="o">=</span> <span class="n">drop_timepoints</span>
 
 <div class="viewcode-block" id="WaveletCoherence.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.WaveletCoherence.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.WaveletCoherence.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate instantaneous wavelet coherence.</span>
@@ -1109,7 +1098,7 @@
 
 
 <div class="viewcode-block" id="DCC">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.DCC">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.DCC">[docs]</a>
 <span class="k">class</span> <span class="nc">DCC</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Dynamic Conditional Correlation (DCC) as described by Lindquist et al. (2014).</span>
@@ -1302,7 +1291,7 @@
         <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">ep</span><span class="p">,</span> <span class="n">d</span>
 
 <div class="viewcode-block" id="DCC.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.DCC.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.DCC.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        DCC algorithm</span>
@@ -1373,7 +1362,7 @@
 
 
 <div class="viewcode-block" id="Edge_centric_connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Edge_centric_connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Edge_centric_connectivity">[docs]</a>
 <span class="k">class</span> <span class="nc">Edge_centric_connectivity</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Edge-centric connectivity method.</span>
@@ -1407,7 +1396,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">standardizeData</span> <span class="o">=</span> <span class="n">standardizeData</span>
 
 <div class="viewcode-block" id="Edge_centric_connectivity.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Edge_centric_connectivity.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Edge_centric_connectivity.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate edge-centric connectivity.</span>
@@ -1443,7 +1432,7 @@
 <span class="sd">   into the Comet framework</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <div class="viewcode-block" id="Sliding_Window">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Sliding_Window">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Sliding_Window">[docs]</a>
 <span class="k">class</span> <span class="nc">Sliding_Window</span><span class="p">(</span><span class="n">BaseDFCMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Wrapper function for the sliding window connectivity method</span>
@@ -1490,7 +1479,7 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;sw_method not recognized.&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Sliding_Window.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Sliding_Window.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Sliding_Window.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the sliding window dynamic functional connectivity.</span>
@@ -1507,7 +1496,7 @@
 
 
 <div class="viewcode-block" id="Time_Freq">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Time_Freq">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Time_Freq">[docs]</a>
 <span class="k">class</span> <span class="nc">Time_Freq</span><span class="p">(</span><span class="n">BaseDFCMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Wrapper function for the time-frequency connectivity method</span>
@@ -1556,7 +1545,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;n_jobs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">num_cores</span>
 
 <div class="viewcode-block" id="Time_Freq.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Time_Freq.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Time_Freq.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the time-frequency dynamic functional connectivity.</span>
@@ -1573,7 +1562,7 @@
 
 
 <div class="viewcode-block" id="Cap">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Cap">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Cap">[docs]</a>
 <span class="k">class</span> <span class="nc">Cap</span><span class="p">(</span><span class="n">BaseDFCMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Wrapper function for the co-activation patterns (CAP) method</span>
@@ -1632,7 +1621,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">sub_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;subjects&#39;</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;subject&#39;</span><span class="p">]]</span>
 
 <div class="viewcode-block" id="Cap.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Cap.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Cap.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the co-activation patterns dynamic functional connectivity.</span>
@@ -1650,7 +1639,7 @@
 
 
 <div class="viewcode-block" id="Sliding_Window_Clustr">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Sliding_Window_Clustr">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Sliding_Window_Clustr">[docs]</a>
 <span class="k">class</span> <span class="nc">Sliding_Window_Clustr</span><span class="p">(</span><span class="n">BaseDFCMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Wrapper function for the sliding window clustering method</span>
@@ -1733,7 +1722,7 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Base measure not recognized.&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Sliding_Window_Clustr.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Sliding_Window_Clustr.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Sliding_Window_Clustr.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the sliding window clustering dynamic functional connectivity.</span>
@@ -1751,7 +1740,7 @@
 
 
 <div class="viewcode-block" id="Hmm_Cont">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Hmm_Cont">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Hmm_Cont">[docs]</a>
 <span class="k">class</span> <span class="nc">Hmm_Cont</span><span class="p">(</span><span class="n">BaseDFCMethod</span><span class="p">):</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;STATE Continuous Hidden Markov Model&quot;</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -1811,7 +1800,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">sub_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;subjects&#39;</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;subject&#39;</span><span class="p">]]</span>
 
 <div class="viewcode-block" id="Hmm_Cont.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Hmm_Cont.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Hmm_Cont.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the continuous hidden Markov model dynamic functional connectivity.</span>
@@ -1829,7 +1818,7 @@
 
 
 <div class="viewcode-block" id="Hmm_Disc">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Hmm_Disc">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Hmm_Disc">[docs]</a>
 <span class="k">class</span> <span class="nc">Hmm_Disc</span><span class="p">(</span><span class="n">BaseDFCMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Wrapper function for the discrete hidden Markov model (HMM) method</span>
@@ -1925,7 +1914,7 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Base measure not recognized.&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Hmm_Disc.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Hmm_Disc.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Hmm_Disc.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the discrete hidden Markov model dynamic functional connectivity.</span>
@@ -1943,7 +1932,7 @@
 
 
 <div class="viewcode-block" id="Windowless">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Windowless">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Windowless">[docs]</a>
 <span class="k">class</span> <span class="nc">Windowless</span><span class="p">(</span><span class="n">BaseDFCMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Wrapper function for the windowless method</span>
@@ -2004,7 +1993,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">sub_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;subjects&#39;</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;subject&#39;</span><span class="p">]]</span>
 
 <div class="viewcode-block" id="Windowless.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Windowless.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Windowless.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the windowless dynamic functional connectivity.</span>
@@ -2028,7 +2017,7 @@
 <span class="sd">   from a given time series</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <div class="viewcode-block" id="Static_Pearson">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Static_Pearson">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Static_Pearson">[docs]</a>
 <span class="k">class</span> <span class="nc">Static_Pearson</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Static functional connectivity method using Pearson correlation.</span>
@@ -2058,7 +2047,7 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">time_series</span><span class="p">,</span> <span class="n">diagonal</span><span class="p">,</span> <span class="n">standardize</span><span class="p">,</span> <span class="n">fisher_z</span><span class="p">,</span> <span class="n">tril</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Static_Pearson.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Static_Pearson.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Static_Pearson.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the functional connectivity.</span>
@@ -2075,7 +2064,7 @@
 
 
 <div class="viewcode-block" id="Static_Partial">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Static_Partial">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Static_Partial">[docs]</a>
 <span class="k">class</span> <span class="nc">Static_Partial</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Static functional connectivity method using partial correlation.</span>
@@ -2105,7 +2094,7 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">time_series</span><span class="p">,</span> <span class="n">diagonal</span><span class="p">,</span> <span class="n">standardize</span><span class="p">,</span> <span class="n">fisher_z</span><span class="p">,</span> <span class="n">tril</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Static_Partial.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Static_Partial.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Static_Partial.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the functional connectivity.</span>
@@ -2124,7 +2113,7 @@
 
 
 <div class="viewcode-block" id="Static_Mutual_Info">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Static_Mutual_Info">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Static_Mutual_Info">[docs]</a>
 <span class="k">class</span> <span class="nc">Static_Mutual_Info</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Static functional connectivity method using mutual information.</span>
@@ -2159,7 +2148,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">num_bins</span> <span class="o">=</span> <span class="n">num_bins</span>
 
 <div class="viewcode-block" id="Static_Mutual_Info.connectivity">
-<a class="viewcode-back" href="../../api/methods.html#comet.methods.Static_Mutual_Info.connectivity">[docs]</a>
+<a class="viewcode-back" href="../../sections/api.html#comet.methods.Static_Mutual_Info.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the functional connectivity.</span>

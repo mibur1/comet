@@ -16,6 +16,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
+    'sphinx_rtd_theme'
 ]
 templates_path = ['_templates']
 exclude_patterns = []
@@ -26,6 +27,8 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 html_static_path = ['_static']
 
 html_theme_options = {
-    'collapse_navigation': True,
     'navigation_depth': 4,
+    'collapse_navigation': True,
+    'sticky_navigation': True,
+    'titles_only': False
 }
