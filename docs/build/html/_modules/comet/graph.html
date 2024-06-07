@@ -89,15 +89,22 @@
   <h1>Source code for comet.graph</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">bct</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scipy.sparse</span>
 <span class="kn">from</span> <span class="nn">numba</span> <span class="kn">import</span> <span class="n">jit</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Literal</span>
 
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">SECTION: Graph processing functions</span>
+<span class="sd"> - General functions to preprocess connectivity/adjacency matrices</span>
+<span class="sd">   before graph analysis.</span>
+<span class="sd">&quot;&quot;&quot;</span>
 <div class="viewcode-block" id="handle_negative_weights">
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.handle_negative_weights">[docs]</a>
 <span class="k">def</span> <span class="nf">handle_negative_weights</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                             <span class="nb">type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;absolute&quot;</span><span class="p">,</span> <span class="s2">&quot;discard&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;absolute&quot;</span><span class="p">,</span>
                             <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;Handle negative weights in a connectivity/adjacency matrix</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Handle negative weights in a connectivity/adjacency matrix</span>
 
 <span class="sd">    Connectivity methods can produce negative estimates, which can be handled in different ways before graph analysis.</span>
 
@@ -119,6 +126,7 @@
 <span class="sd">    W : PxP np.ndarray</span>
 <span class="sd">        adjacency/connectivity matrix with only positive weights</span>
 <span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="k">if</span> <span class="n">copy</span><span class="p">:</span>
         <span class="n">W</span> <span class="o">=</span> <span class="n">W</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
@@ -138,7 +146,8 @@
               <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
               <span class="n">density</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
               <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;Thresholding of connectivity/adjacency matrix</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Thresholding of connectivity/adjacency matrix</span>
 
 <span class="sd">    Performs absolute or density-based thresholding</span>
 
@@ -173,6 +182,7 @@
 <span class="sd">    The implemented for density based thresholding always keeps the exact same number of connections. If multiple edges have the same weight,</span>
 <span class="sd">    the included edges are chosen &quot;randomly&quot; (based on their order in the sorted indices). This is identical to the behaviour in the BCT implementation.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="k">if</span> <span class="n">copy</span><span class="p">:</span>
         <span class="n">W</span> <span class="o">=</span> <span class="n">W</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
@@ -201,7 +211,8 @@
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.binarise">[docs]</a>
 <span class="k">def</span> <span class="nf">binarise</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
              <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;Binarise connectivity/adjacency matrix</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Binarise connectivity/adjacency matrix</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -217,6 +228,7 @@
 <span class="sd">    W : PxP np.ndarray</span>
 <span class="sd">        binarised adjacency/connectivity matrix</span>
 <span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="k">if</span> <span class="n">copy</span><span class="p">:</span>
         <span class="n">W</span> <span class="o">=</span> <span class="n">W</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
@@ -228,7 +240,8 @@
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.normalise">[docs]</a>
 <span class="k">def</span> <span class="nf">normalise</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
               <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;Normalise connectivity/adjacency matrix</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Normalise connectivity/adjacency matrix</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -244,6 +257,7 @@
 <span class="sd">    W : PxP np.ndarray</span>
 <span class="sd">        normalised adjacency/connectivity matrix</span>
 <span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="k">if</span> <span class="n">copy</span><span class="p">:</span>
         <span class="n">W</span> <span class="o">=</span> <span class="n">W</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
@@ -258,7 +272,8 @@
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.invert">[docs]</a>
 <span class="k">def</span> <span class="nf">invert</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
            <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;Invert connectivity/adjacency matrix</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Invert connectivity/adjacency matrix</span>
 
 <span class="sd">    Element wise inversion W such that each value W[i,j] will be 1 / W[i,j] (internode strengths internode distances)</span>
 
@@ -276,6 +291,7 @@
 <span class="sd">    W : PxP np.ndarray</span>
 <span class="sd">        element wise inverted adjacency/connectivity matrix</span>
 <span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="k">if</span> <span class="n">copy</span><span class="p">:</span>
         <span class="n">W</span> <span class="o">=</span> <span class="n">W</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
@@ -289,7 +305,8 @@
 <span class="k">def</span> <span class="nf">logtransform</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                  <span class="n">epsilon</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-10</span><span class="p">,</span>
                  <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;Log transform of connectivity/adjacency matrix</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Log transform of connectivity/adjacency matrix</span>
 
 <span class="sd">    Element wise log transform of W such that each value W[i,j] will be -log(W[i,j]</span>
 
@@ -311,6 +328,7 @@
 <span class="sd">    W : PxP np.ndarray</span>
 <span class="sd">        element wise log transformed adjacency/connectivity matrix</span>
 <span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="k">if</span> <span class="n">copy</span><span class="p">:</span>
         <span class="n">W</span> <span class="o">=</span> <span class="n">W</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
@@ -325,9 +343,10 @@
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.symmetrise">[docs]</a>
 <span class="k">def</span> <span class="nf">symmetrise</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;Symmetrise connectivity/adjacency matrix</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Symmetrise connectivity/adjacency matrix</span>
 
-<span class="sd">    Symmetrise W such that each value W[i,j] will be W[j,i]</span>
+<span class="sd">    Symmetrise W such that each value W[i,j] will be W[j,i].</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -343,6 +362,7 @@
 <span class="sd">    W : PxP np.ndarray</span>
 <span class="sd">        symmetrised adjacency/connectivity matrix</span>
 <span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="k">if</span> <span class="n">copy</span><span class="p">:</span>
         <span class="n">W</span> <span class="o">=</span> <span class="n">W</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
@@ -362,9 +382,21 @@
 <span class="k">def</span> <span class="nf">randomise</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
               <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    Randomly rewire edges of a adjacency/connectivity matrix. Based on the small_world_propensity implementation</span>
-<span class="sd">    which just randomizes the matrix: https://github.com/rkdan/small_world_propensity</span>
+<span class="sd">    Randomly rewire edges of an adjacency/connectivity matrix</span>
+
+<span class="sd">    Implemented as in https://github.com/rkdan/small_world_propensity</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    G : PxP np.ndarray</span>
+<span class="sd">        adjacency/connectivity matrix</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    G_rand : PxP np.ndarray</span>
+<span class="sd">        randomised adjacency/connectivity matrix</span>
 <span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="k">if</span> <span class="n">copy</span><span class="p">:</span>
         <span class="n">G</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
@@ -372,10 +404,8 @@
     <span class="n">G_rand</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_nodes</span><span class="p">,</span> <span class="n">num_nodes</span><span class="p">))</span>
     <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">triu</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">num_nodes</span><span class="p">,</span> <span class="n">num_nodes</span><span class="p">)),</span> <span class="mi">1</span><span class="p">)</span>
 
-    <span class="c1"># Find the indices where mask &gt; 0 in column-major order</span>
-    <span class="n">grab_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">T</span><span class="p">))</span>
+    <span class="n">grab_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">T</span><span class="p">))</span> <span class="c1"># Find the indices where mask &gt; 0</span>
 
-    <span class="c1"># Access G with the indices</span>
     <span class="n">orig_edges</span> <span class="o">=</span> <span class="n">G</span><span class="p">[</span><span class="n">grab_indices</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">grab_indices</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]]</span>
     <span class="n">num_edges</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">orig_edges</span><span class="p">)</span>
     <span class="n">rand_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">num_edges</span><span class="p">,</span> <span class="n">num_edges</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -386,12 +416,31 @@
             <span class="n">G_rand</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">randomized_edges</span><span class="p">[</span><span class="n">edge</span><span class="p">]</span>
             <span class="n">G_rand</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">randomized_edges</span><span class="p">[</span><span class="n">edge</span><span class="p">]</span>
             <span class="n">edge</span> <span class="o">+=</span> <span class="mi">1</span>
+
     <span class="k">return</span> <span class="n">G_rand</span></div>
 
 
 <div class="viewcode-block" id="regular_matrix">
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.regular_matrix">[docs]</a>
-<span class="k">def</span> <span class="nf">regular_matrix</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="k">def</span> <span class="nf">regular_matrix</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Create a regular matrix</span>
+
+<span class="sd">    Adapted from https://github.com/rkdan/small_world_propensity</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    G : PxP np.ndarray</span>
+<span class="sd">        adjacency/connectivity matrix</span>
+<span class="sd">    r : int</span>
+<span class="sd">        average effective radius of the network</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    M : PxP np.ndarray</span>
+<span class="sd">        adjacency matric of the regularised matrix</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="n">n</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">G_upper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">triu</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>  <span class="c1"># Keep only the upper triangular part</span>
     <span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">G_upper</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span><span class="p">))[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># Flatten and sort including zeros</span>
@@ -419,70 +468,13 @@
     <span class="k">return</span> <span class="n">M</span></div>
 
 
-<div class="viewcode-block" id="avg_shortest_path">
-<a class="viewcode-back" href="../../api/graph.html#comet.graph.avg_shortest_path">[docs]</a>
-<span class="k">def</span> <span class="nf">avg_shortest_path</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-                      <span class="n">include_diagonal</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-                      <span class="n">include_infinite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    Average shortest path length calculated from the distance matrix.</span>
-<span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">is_binary</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="mi">1</span><span class="p">)))</span>
-    <span class="k">if</span> <span class="n">is_binary</span><span class="p">:</span>
-        <span class="n">D</span> <span class="o">=</span> <span class="n">distance_bin</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">D</span> <span class="o">=</span> <span class="n">distance_wei</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="n">inv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">D</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
-        <span class="kn">import</span> <span class="nn">warnings</span>
-        <span class="n">issue</span> <span class="o">=</span> <span class="s2">&quot;The graph is not fully connected and infinite path lenghts were set to NaN&quot;</span>
-        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">issue</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">include_diagonal</span><span class="p">:</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">fill_diagonal</span><span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">include_infinite</span><span class="p">:</span>
-        <span class="n">D</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">D</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-
-    <span class="n">Dv</span> <span class="o">=</span> <span class="n">D</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">D</span><span class="p">)]</span>
-    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">Dv</span><span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="transitivity">
-<a class="viewcode-back" href="../../api/graph.html#comet.graph.transitivity">[docs]</a>
-<span class="k">def</span> <span class="nf">transitivity</span><span class="p">(</span><span class="n">A</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;Transitivity is the ratio of triangles to triplets in the network (classical version of the clustering coefficient).</span>
-<span class="sd">    Only for undirected matrices (binary/weighted). Adapted from the bctpy implementation: https://github.com/aestrivex/bctpy</span>
-<span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">is_binary</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="mi">1</span><span class="p">)))</span>
-
-    <span class="k">if</span> <span class="n">is_binary</span><span class="p">:</span>
-        <span class="n">tri3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">A</span><span class="p">)))</span>
-        <span class="n">tri2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">A</span><span class="p">))</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">A</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">tri3</span> <span class="o">/</span> <span class="n">tri2</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">A</span> <span class="o">==</span> <span class="mi">0</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">ws</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cbrt</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
-        <span class="n">cyc3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">ws</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">ws</span><span class="p">,</span> <span class="n">ws</span><span class="p">)))</span>
-        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">cyc3</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">K</span> <span class="o">*</span> <span class="p">(</span><span class="n">K</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="clustering_onella">
-<a class="viewcode-back" href="../../api/graph.html#comet.graph.clustering_onella">[docs]</a>
-<span class="k">def</span> <span class="nf">clustering_onella</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">W</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">W2</span> <span class="o">=</span> <span class="n">W</span> <span class="o">/</span> <span class="n">W</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
-    <span class="n">cyc3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diagonal</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">matrix_power</span><span class="p">(</span><span class="n">W2</span> <span class="o">**</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="mi">3</span><span class="p">),</span> <span class="mi">3</span><span class="p">))</span>
-    <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">cyc3</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">K</span><span class="p">)</span>
-    <span class="n">C</span> <span class="o">=</span> <span class="n">cyc3</span> <span class="o">/</span> <span class="p">(</span><span class="n">K</span> <span class="o">*</span> <span class="n">K</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">C</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span></div>
-
-
 <div class="viewcode-block" id="postproc">
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.postproc">[docs]</a>
 <span class="k">def</span> <span class="nf">postproc</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
              <span class="n">diag</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
              <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;Postprocessing of connectivity/adjacency matrix</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Postprocessing of connectivity/adjacency matrix</span>
 
 <span class="sd">    Ensures W is symmetric, sets diagonal to diag, removes NaNs and infinities, and ensures exact binarity</span>
 
@@ -516,28 +508,133 @@
     <span class="k">return</span> <span class="n">W</span></div>
 
 
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">SECTION: Graph analysis functions</span>
+<span class="sd"> - Comet specfic graph analysis functions</span>
+<span class="sd"> - Functions which rely on path length calculations are compiled</span>
+<span class="sd">   to machine code using numba for improved performance</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="avg_shortest_path">
+<a class="viewcode-back" href="../../api/graph.html#comet.graph.avg_shortest_path">[docs]</a>
+<span class="k">def</span> <span class="nf">avg_shortest_path</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                      <span class="n">include_diagonal</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                      <span class="n">include_infinite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Average shortest path length calculated from a connectivity matrix.</span>
+
+<span class="sd">    If the matrix is weighted, the inverse of the weights is used as a proxy of distance.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    G : NxN np.ndarray</span>
+<span class="sd">        undirected connection matrix (binary or weighted)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    D : float</span>
+<span class="sd">        average shortest path length</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">is_binary</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="mi">1</span><span class="p">)))</span>
+    <span class="n">D</span> <span class="o">=</span> <span class="n">distance_bin</span><span class="p">(</span><span class="n">G</span><span class="p">)</span> <span class="k">if</span> <span class="n">is_binary</span> <span class="k">else</span> <span class="n">distance_wei</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="n">inv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">D</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="kn">import</span> <span class="nn">warnings</span>
+        <span class="n">issue</span> <span class="o">=</span> <span class="s2">&quot;The graph is not fully connected and infinite path lenghts were set to NaN&quot;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">issue</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">include_diagonal</span><span class="p">:</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">fill_diagonal</span><span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">include_infinite</span><span class="p">:</span>
+        <span class="n">D</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">D</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="n">Dv</span> <span class="o">=</span> <span class="n">D</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">D</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">Dv</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="transitivity_und">
+<a class="viewcode-back" href="../../api/graph.html#comet.graph.transitivity_und">[docs]</a>
+<span class="k">def</span> <span class="nf">transitivity_und</span><span class="p">(</span><span class="n">A</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Transitivity for undirected networks (binary and weighted), adapted from</span>
+<span class="sd">    the bctpy implementation: https://github.com/aestrivex/bctpy</span>
+
+<span class="sd">    Transitivity is the ratio of triangles to triplets in the network and is</span>
+<span class="sd">    a classical version of the clustering coefficient.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    A : NxN np.ndarray</span>
+<span class="sd">        binary undirected connection matrix</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    T : float</span>
+<span class="sd">        transitivity scalar</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">is_binary</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="mi">1</span><span class="p">)))</span>
+
+    <span class="k">if</span> <span class="n">is_binary</span><span class="p">:</span>
+        <span class="n">tri3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">A</span><span class="p">)))</span>
+        <span class="n">tri2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">A</span><span class="p">))</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">A</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">tri3</span> <span class="o">/</span> <span class="n">tri2</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">A</span> <span class="o">==</span> <span class="mi">0</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">ws</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cbrt</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
+        <span class="n">cyc3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">ws</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">ws</span><span class="p">,</span> <span class="n">ws</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">cyc3</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">K</span> <span class="o">*</span> <span class="p">(</span><span class="n">K</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="avg_clustering_onella">
+<a class="viewcode-back" href="../../api/graph.html#comet.graph.avg_clustering_onella">[docs]</a>
+<span class="k">def</span> <span class="nf">avg_clustering_onella</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Average clustering coefficient as described by Onnela et al. (2005) and as implemented in</span>
+<span class="sd">    https://kk1995.github.io/BauerLab/BauerLab/MATLAB/lib/+mouse/+graph/smallWorldPropensity.html</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    W : NxN np.ndarray</span>
+<span class="sd">        binary or weighted, undirected connection matrix</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    C : float</span>
+<span class="sd">        average clustering coefficient</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Onnela, J. P., Saramäki, J., Kertész, J., &amp; Kaski, K. (2005). Intensity and</span>
+<span class="sd">    coherence of motifs in weighted complex networks. Physical Review E, 71(6), 065103.</span>
+<span class="sd">    DOI: https://doi.org/10.1103/PhysRevE.71.065103</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># count all non-zero values as in the MATLAB implementation</span>
+    <span class="n">W2</span> <span class="o">=</span> <span class="n">W</span> <span class="o">/</span> <span class="n">W</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">cyc3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diagonal</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">matrix_power</span><span class="p">(</span><span class="n">W2</span> <span class="o">**</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="mi">3</span><span class="p">),</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">cyc3</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">K</span><span class="p">)</span>
+    <span class="n">C</span> <span class="o">=</span> <span class="n">cyc3</span> <span class="o">/</span> <span class="p">(</span><span class="n">K</span> <span class="o">*</span> <span class="n">K</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">C</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span></div>
+
+
 <div class="viewcode-block" id="efficiency">
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.efficiency">[docs]</a>
 <span class="k">def</span> <span class="nf">efficiency</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-               <span class="n">weighted</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
                <span class="n">local</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="k">return</span> <span class="n">efficiency_wei</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="n">local</span><span class="o">=</span><span class="n">local</span><span class="p">)</span> <span class="k">if</span> <span class="n">weighted</span> <span class="k">else</span> <span class="n">efficiency_bin</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="n">local</span><span class="o">=</span><span class="n">local</span><span class="p">)</span></div>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Efficiency for binary and weighted networks (global and local)</span>
 
+<span class="sd">    Optimized version of the bctpy implelementation by Roan LaPlante (https://github.com/aestrivex/bctpy)</span>
 
-<div class="viewcode-block" id="efficiency_wei">
-<a class="viewcode-back" href="../../api/graph.html#comet.graph.efficiency_wei">[docs]</a>
-<span class="k">def</span> <span class="nf">efficiency_wei</span><span class="p">(</span><span class="n">Gw</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-                   <span class="n">local</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;Efficiency for weighted networks</span>
-
-<span class="sd">    Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy</span>
 <span class="sd">    Global efficiency is the average of inverse shortest path length, and is inversely related to the characteristic path length.</span>
 <span class="sd">    Local efficiency is the global efficiency computed on the neighborhood of the node, and is related to the clustering coefficient.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    Gw : PxP np.ndarray</span>
-<span class="sd">        undireted weighted adjacency/connectivity matrix</span>
+<span class="sd">        undireted adjacency/connectivity matrix (binary or weighted)</span>
 
 <span class="sd">    local : bool, optional</span>
 <span class="sd">        if True, local efficiency is computed. Default is False (global efficiency)</span>
@@ -567,98 +664,64 @@
 
 <span class="sd">    Wang, Y., Ghumare, E., Vandenberghe, R., &amp; Dupont, P. (2017). Comparison of different generalizations of clustering coefficient</span>
 <span class="sd">    and local efficiency for weighted undirected graphs. Neural computation, 29(2), 313-331. DOI: https://doi.org/10.1162/NECO_a_00914</span>
-
-<span class="sd">    Notes</span>
-<span class="sd">    -----</span>
-<span class="sd">    Algorithm: Modified Dijkstra&#39;s algorithm</span>
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">Gw</span><span class="p">)</span>
-    <span class="n">Gl</span> <span class="o">=</span> <span class="n">invert</span><span class="p">(</span><span class="n">Gw</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># connection length matrix</span>
-    <span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">Gw</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
 
-    <span class="c1">#local efficiency algorithm described by Wang et al 2016, recommended</span>
-    <span class="k">if</span> <span class="n">local</span><span class="p">:</span>
-        <span class="n">E</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,))</span>
-        <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
-            <span class="n">V</span><span class="p">,</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">Gw</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="p">:],</span> <span class="n">Gw</span><span class="p">[:,</span> <span class="n">u</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">))</span>
-            <span class="n">sw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cbrt</span><span class="p">(</span><span class="n">Gw</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="n">V</span><span class="p">])</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">cbrt</span><span class="p">(</span><span class="n">Gw</span><span class="p">[</span><span class="n">V</span><span class="p">,</span> <span class="n">u</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
-            <span class="n">e</span> <span class="o">=</span> <span class="n">distance_wei</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cbrt</span><span class="p">(</span><span class="n">Gl</span><span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">V</span><span class="p">,</span> <span class="n">V</span><span class="p">)],</span> <span class="n">inv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="n">se</span> <span class="o">=</span> <span class="n">e</span><span class="o">+</span><span class="n">e</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+    <span class="n">is_binary</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="mi">1</span><span class="p">)))</span>
 
-            <span class="n">numer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">sw</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">sw</span><span class="p">)</span> <span class="o">*</span> <span class="n">se</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
-            <span class="k">if</span> <span class="n">numer</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="c1"># Efficiency for binary networks</span>
+    <span class="k">if</span> <span class="n">is_binary</span><span class="p">:</span>
+        <span class="c1"># Local efficiency</span>
+        <span class="k">if</span> <span class="n">local</span><span class="p">:</span>
+            <span class="n">E</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,))</span>
+
+            <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+                <span class="c1"># find pairs of neighbors</span>
+                <span class="n">V</span><span class="p">,</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">G</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="p">:],</span> <span class="n">G</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">T</span><span class="p">))</span>
+                <span class="c1"># inverse distance matrix</span>
+                <span class="n">e</span> <span class="o">=</span> <span class="n">distance_bin</span><span class="p">(</span><span class="n">G</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">V</span><span class="p">,</span> <span class="n">V</span><span class="p">)],</span> <span class="n">inv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="c1"># symmetrized inverse distance matrix</span>
+                <span class="n">se</span> <span class="o">=</span> <span class="n">e</span> <span class="o">+</span> <span class="n">e</span><span class="o">.</span><span class="n">T</span>
+
                 <span class="c1"># symmetrized adjacency vector</span>
-                <span class="n">sa</span> <span class="o">=</span> <span class="n">A</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="n">V</span><span class="p">]</span> <span class="o">+</span> <span class="n">A</span><span class="p">[</span><span class="n">V</span><span class="p">,</span> <span class="n">u</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
-                <span class="n">denom</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">sa</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">sa</span> <span class="o">*</span> <span class="n">sa</span><span class="p">)</span>
+                <span class="n">sa</span> <span class="o">=</span> <span class="n">G</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="n">V</span><span class="p">]</span> <span class="o">+</span> <span class="n">G</span><span class="p">[</span><span class="n">V</span><span class="p">,</span> <span class="n">u</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
+                <span class="n">numer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">sa</span><span class="p">)</span> <span class="o">*</span> <span class="n">se</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+                <span class="k">if</span> <span class="n">numer</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">denom</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">sa</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">sa</span> <span class="o">*</span> <span class="n">sa</span><span class="p">)</span>
+                    <span class="n">E</span><span class="p">[</span><span class="n">u</span><span class="p">]</span> <span class="o">=</span> <span class="n">numer</span> <span class="o">/</span> <span class="n">denom</span>
 
-                <span class="n">E</span><span class="p">[</span><span class="n">u</span><span class="p">]</span> <span class="o">=</span> <span class="n">numer</span> <span class="o">/</span> <span class="n">denom</span>  <span class="c1"># local efficiency</span>
+        <span class="c1"># Global efficiency</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="n">distance_bin</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="n">inv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">E</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="n">n</span> <span class="o">-</span> <span class="n">n</span><span class="p">)</span>
+
+    <span class="c1"># Efficiency for weighted networks</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">e</span> <span class="o">=</span> <span class="n">distance_wei</span><span class="p">(</span><span class="n">Gl</span><span class="p">,</span> <span class="n">inv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">E</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="n">n</span> <span class="o">-</span> <span class="n">n</span><span class="p">)</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+        <span class="n">Gl</span> <span class="o">=</span> <span class="n">invert</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="c1"># invert to get connection length matrix</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">G</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">E</span></div>
+        <span class="c1"># Local efficiency as described by Wang et al 2016</span>
+        <span class="k">if</span> <span class="n">local</span><span class="p">:</span>
+            <span class="n">E</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,))</span>
+            <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+                <span class="n">V</span><span class="p">,</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">G</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="p">:],</span> <span class="n">G</span><span class="p">[:,</span> <span class="n">u</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">))</span>
+                <span class="n">sw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cbrt</span><span class="p">(</span><span class="n">G</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="n">V</span><span class="p">])</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">cbrt</span><span class="p">(</span><span class="n">G</span><span class="p">[</span><span class="n">V</span><span class="p">,</span> <span class="n">u</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+                <span class="n">e</span> <span class="o">=</span> <span class="n">distance_wei</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cbrt</span><span class="p">(</span><span class="n">Gl</span><span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">V</span><span class="p">,</span> <span class="n">V</span><span class="p">)],</span> <span class="n">inv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">se</span> <span class="o">=</span> <span class="n">e</span><span class="o">+</span><span class="n">e</span><span class="o">.</span><span class="n">T</span>
 
+                <span class="n">numer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">sw</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">sw</span><span class="p">)</span> <span class="o">*</span> <span class="n">se</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+                <span class="k">if</span> <span class="n">numer</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="c1"># symmetrized adjacency vector</span>
+                    <span class="n">sa</span> <span class="o">=</span> <span class="n">A</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="n">V</span><span class="p">]</span> <span class="o">+</span> <span class="n">A</span><span class="p">[</span><span class="n">V</span><span class="p">,</span> <span class="n">u</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
+                    <span class="n">denom</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">sa</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">sa</span> <span class="o">*</span> <span class="n">sa</span><span class="p">)</span>
 
-<div class="viewcode-block" id="efficiency_bin">
-<a class="viewcode-back" href="../../api/graph.html#comet.graph.efficiency_bin">[docs]</a>
-<span class="k">def</span> <span class="nf">efficiency_bin</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-                   <span class="n">local</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;Efficiency for binary networks</span>
+                    <span class="n">E</span><span class="p">[</span><span class="n">u</span><span class="p">]</span> <span class="o">=</span> <span class="n">numer</span> <span class="o">/</span> <span class="n">denom</span>  <span class="c1"># local efficiency</span>
 
-<span class="sd">    Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy</span>
-<span class="sd">    Global efficiency is the average of inverse shortest path length, and is inversely related to the characteristic path length.</span>
-<span class="sd">    Local efficiency is the global efficiency computed on the neighborhood of the node, and is related to the clustering coefficient.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    G : PxP np.ndarray</span>
-<span class="sd">        undireted binary adjacency/connectivity matrix</span>
-
-<span class="sd">    local : bool, optional</span>
-<span class="sd">        if True, local efficiency is computed. Default is False (global efficiency)</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    E (global) : float</span>
-<span class="sd">        global efficiency, if local is False</span>
-
-<span class="sd">    E (local) : Nx1 np.ndarray</span>
-<span class="sd">        local efficiency, if local is True</span>
-
-
-<span class="sd">    References</span>
-<span class="sd">    ----------</span>
-<span class="sd">    Latora, V., &amp; Marchiori, M. (2001). Efficient behavior of small-world networks.</span>
-<span class="sd">    Physical review letters, 87(19), 198701. DOI: https://doi.org/10.1103/PhysRevLett.87.198701</span>
-
-<span class="sd">    Fagiolo, G. (2007). Clustering in complex directed networks. Physical Review E, 76(2), 026107.</span>
-<span class="sd">    DOI: https://doi.org/10.1103/PhysRevE.76.026107</span>
-
-<span class="sd">    Rubinov, M., &amp; Sporns, O. (2010). Complex network measures of brain connectivity: uses and interpretations.</span>
-<span class="sd">    Neuroimage, 52(3), 1059-1069. DOI: https://doi.org/10.1016/j.neuroimage.2009.10.003</span>
-<span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">G</span> <span class="o">=</span> <span class="n">binarise</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
-    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>  <span class="c1"># number of nodes</span>
-    <span class="k">if</span> <span class="n">local</span><span class="p">:</span>
-        <span class="n">E</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,))</span>  <span class="c1"># local efficiency</span>
-
-        <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
-            <span class="c1"># find pairs of neighbors</span>
-            <span class="n">V</span><span class="p">,</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">G</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="p">:],</span> <span class="n">G</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">T</span><span class="p">))</span>
-            <span class="c1"># inverse distance matrix</span>
-            <span class="n">e</span> <span class="o">=</span> <span class="n">distance_bin</span><span class="p">(</span><span class="n">G</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">V</span><span class="p">,</span> <span class="n">V</span><span class="p">)],</span> <span class="n">inv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="c1"># symmetrized inverse distance matrix</span>
-            <span class="n">se</span> <span class="o">=</span> <span class="n">e</span> <span class="o">+</span> <span class="n">e</span><span class="o">.</span><span class="n">T</span>
-
-            <span class="c1"># symmetrized adjacency vector</span>
-            <span class="n">sa</span> <span class="o">=</span> <span class="n">G</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="n">V</span><span class="p">]</span> <span class="o">+</span> <span class="n">G</span><span class="p">[</span><span class="n">V</span><span class="p">,</span> <span class="n">u</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
-            <span class="n">numer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">sa</span><span class="p">)</span> <span class="o">*</span> <span class="n">se</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
-            <span class="k">if</span> <span class="n">numer</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">denom</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">sa</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">sa</span> <span class="o">*</span> <span class="n">sa</span><span class="p">)</span>
-                <span class="n">E</span><span class="p">[</span><span class="n">u</span><span class="p">]</span> <span class="o">=</span> <span class="n">numer</span> <span class="o">/</span> <span class="n">denom</span>  <span class="c1"># local efficiency</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">e</span> <span class="o">=</span> <span class="n">distance_bin</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="n">inv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">E</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="n">n</span> <span class="o">-</span> <span class="n">n</span><span class="p">)</span>
+        <span class="c1"># Global efficiency</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="n">distance_wei</span><span class="p">(</span><span class="n">Gl</span><span class="p">,</span> <span class="n">inv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">E</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="n">n</span> <span class="o">-</span> <span class="n">n</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">E</span></div>
 
@@ -667,7 +730,8 @@
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.small_world_sigma">[docs]</a>
 <span class="k">def</span> <span class="nf">small_world_sigma</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                       <span class="n">nrand</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;Small-worldness sigma for undirected networks (binary or weighted)</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Small-worldness sigma for undirected networks (binary or weighted)</span>
 
 <span class="sd">    Small worldness sigma is calculated as the ratio of the clustering coefficient and the characteristic path length</span>
 <span class="sd">    of the real network to the average clustering coefficient and characteristic path length of the random networks.</span>
@@ -687,17 +751,19 @@
 
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
-<span class="sd">    This implementation of small worldness relies on matrix operations and is *drastically* faster than the Networkx implementation.</span>
-<span class="sd">    However, it uses a different approch for rewiring edges, so the results will differ. It automatically detects if the input</span>
-<span class="sd">    matrix is binary or weighted.</span>
+<span class="sd">    This implementation of small worldness relies on matrix operations and is *drastically* faster than the</span>
+<span class="sd">    Networkx implementation. However, it uses a different approch for rewiring edges, so the results will differ.</span>
+
+<span class="sd">    It automatically detects if the input matrix is binary or weighted.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="n">randMetrics</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;C&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;L&quot;</span><span class="p">:</span> <span class="p">[]}</span>
     <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nrand</span><span class="p">):</span>
         <span class="n">Gr</span> <span class="o">=</span> <span class="n">randomise</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
-        <span class="n">randMetrics</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">transitivity</span><span class="p">(</span><span class="n">Gr</span><span class="p">))</span>
+        <span class="n">randMetrics</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">transitivity_und</span><span class="p">(</span><span class="n">Gr</span><span class="p">))</span>
         <span class="n">randMetrics</span><span class="p">[</span><span class="s2">&quot;L&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">avg_shortest_path</span><span class="p">(</span><span class="n">Gr</span><span class="p">))</span>
 
-    <span class="n">C</span> <span class="o">=</span> <span class="n">transitivity</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+    <span class="n">C</span> <span class="o">=</span> <span class="n">transitivity_und</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
     <span class="n">L</span> <span class="o">=</span> <span class="n">avg_shortest_path</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
 
     <span class="n">Cr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">randMetrics</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">])</span>
@@ -710,6 +776,42 @@
 <div class="viewcode-block" id="small_world_propensity">
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.small_world_propensity">[docs]</a>
 <span class="k">def</span> <span class="nf">small_world_propensity</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Small world propensity calculation for undirected and symmetric networks.</span>
+<span class="sd">    Clustering is calculated using the approach of Onnela et al. (2005).</span>
+
+<span class="sd">    Based on the MATLAB and Python implementations by Eric Bridgeford, Sarah F. Muldoon, and Ryan Daniels:</span>
+<span class="sd">    https://kk1995.github.io/BauerLab/BauerLab/MATLAB/lib/+mouse/+graph/smallWorldPropensity.html</span>
+<span class="sd">    https://github.com/rkdan/small_world_propensity</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    F : PxP np.ndarray</span>
+<span class="sd">        undirected and symmetric adjacency/connectivity matrix</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    SWP : float</span>
+<span class="sd">        small world propensity of the matrix</span>
+<span class="sd">    delta_C : float</span>
+<span class="sd">        fractional deviation from the expected culstering coefficient of a random network</span>
+<span class="sd">    delta_L : float</span>
+<span class="sd">        fractional deviation from the expected path length of a random network</span>
+<span class="sd">    alpha : float</span>
+<span class="sd">        angle between delta_C and delta_L</span>
+<span class="sd">    delta : float</span>
+<span class="sd">        scaled version of alpha in the range of [-1,1]</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Muldoon, S., Bridgeford, E. &amp; Bassett, D. Small-World Propensity and Weighted Brain Networks.</span>
+<span class="sd">    Sci Rep 6, 22057 (2016). DOI: https://doi.org/10.1038/srep22057</span>
+
+<span class="sd">    Onnela, J. P., Saramäki, J., Kertész, J., &amp; Kaski, K. (2005). Intensity and</span>
+<span class="sd">    coherence of motifs in weighted complex networks. Physical Review E, 71(6), 065103.</span>
+<span class="sd">    DOI: https://doi.org/10.1103/PhysRevE.71.065103</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="n">G</span><span class="o">.</span><span class="n">T</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Error: Matrix is not symmetrical&quot;</span><span class="p">)</span>
 
@@ -736,9 +838,9 @@
     <span class="n">diff_path</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">diff_path</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># Ensure diff_path does not exceed 1</span>
 
     <span class="c1"># Compute all clustering calculations for the network</span>
-    <span class="n">reg_clus</span> <span class="o">=</span> <span class="n">clustering_onella</span><span class="p">(</span><span class="n">G_reg</span><span class="p">)</span>
-    <span class="n">rand_clus</span> <span class="o">=</span> <span class="n">clustering_onella</span><span class="p">(</span><span class="n">G_rand</span><span class="p">)</span>
-    <span class="n">net_clus</span> <span class="o">=</span> <span class="n">clustering_onella</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+    <span class="n">reg_clus</span> <span class="o">=</span> <span class="n">avg_clustering_onella</span><span class="p">(</span><span class="n">G_reg</span><span class="p">)</span>
+    <span class="n">rand_clus</span> <span class="o">=</span> <span class="n">avg_clustering_onella</span><span class="p">(</span><span class="n">G_rand</span><span class="p">)</span>
+    <span class="n">net_clus</span> <span class="o">=</span> <span class="n">avg_clustering_onella</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
 
     <span class="n">B</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">reg_clus</span> <span class="o">-</span> <span class="n">net_clus</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
     <span class="n">diff_clus</span> <span class="o">=</span> <span class="n">B</span> <span class="o">/</span> <span class="p">(</span><span class="n">reg_clus</span> <span class="o">-</span> <span class="n">rand_clus</span><span class="p">)</span> <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">reg_clus</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">rand_clus</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">net_clus</span><span class="p">))</span> <span class="k">else</span> <span class="mi">1</span>
@@ -752,20 +854,6 @@
     <span class="n">alpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan</span><span class="p">(</span><span class="n">delta_L</span> <span class="o">/</span> <span class="n">delta_C</span><span class="p">)</span>
     <span class="n">delta</span> <span class="o">=</span> <span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
 
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    print(&quot;Comet  :&quot;,</span>
-<span class="sd">          &quot;C&quot;, round(net_clus, 3),</span>
-<span class="sd">          &quot;L&quot;, round(net_path, 3),</span>
-<span class="sd">          &quot;regC&quot;, round(reg_clus, 3),</span>
-<span class="sd">          &quot;rngC&quot;, round(rand_clus, 3),</span>
-<span class="sd">          &quot;regL&quot;, round(reg_path, 3),</span>
-<span class="sd">          &quot;rngL&quot;, round(rand_path, 3),</span>
-<span class="sd">          &quot;ΔC&quot;, round(delta_C, 3),</span>
-<span class="sd">          &quot;ΔL&quot;, round(delta_L, 3),</span>
-<span class="sd">          &quot;α&quot;, round(alpha, 3),</span>
-<span class="sd">          &quot;δ&quot;, round(delta, 3),</span>
-<span class="sd">          &quot;SWP&quot;, round(SWP, 3))&quot;&quot;&quot;</span>
-
     <span class="k">return</span> <span class="n">SWP</span><span class="p">,</span> <span class="n">delta_C</span><span class="p">,</span> <span class="n">delta_L</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">delta</span></div>
 
 
@@ -773,10 +861,14 @@
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.matching_ind_und">[docs]</a>
 <span class="nd">@jit</span><span class="p">(</span><span class="n">nopython</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">matching_ind_und</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;Matching index for undirected networks</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Matching index for undirected networks</span>
 
-<span class="sd">    Based on the MATLAB implementation by Stuart Oldham: https://github.com/StuartJO/FasterMatchingIndex</span>
-<span class="sd">    Matching index is a measure of similarity between two nodes&#39; connectivity profiles (excluding their mutual connection, should it exist).</span>
+<span class="sd">    Based on the MATLAB implementation by Stuart Oldham:</span>
+<span class="sd">    https://github.com/StuartJO/FasterMatchingIndex</span>
+
+<span class="sd">    Matching index is a measure of similarity between two nodes&#39; connectivity profiles</span>
+<span class="sd">    (excluding their mutual connection, should it exist).</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -790,17 +882,25 @@
 
 <span class="sd">    References</span>
 <span class="sd">    ----------</span>
-<span class="sd">    Oldham, S., Fulcher, B. D., Aquino, K., Arnatkevičiūtė, A., Paquola, C., Shishegar, R., &amp; Fornito, A. (2022). Modeling spatial, developmental,</span>
-<span class="sd">    physiological, and topological constraints on human brain connectivity. Science advances, 8(22), eabm6127. DOI: https://doi.org/10.1126/sciadv.abm6127</span>
+<span class="sd">    Oldham, S., Fulcher, B. D., Aquino, K., Arnatkevičiūtė, A., Paquola, C.,</span>
+<span class="sd">    Shishegar, R., &amp; Fornito, A. (2022). Modeling spatial, developmental,</span>
+<span class="sd">    physiological, and topological constraints on human brain connectivity.</span>
+<span class="sd">    Science advances, 8(22), eabm6127. DOI: https://doi.org/10.1126/sciadv.abm6127</span>
 
-<span class="sd">    Betzel, R. F., Avena-Koenigsberger, A., Goñi, J., He, Y., De Reus, M. A., Griffa, A., ... &amp; Sporns, O. (2016).</span>
-<span class="sd">    Generative models of the human connectome. Neuroimage, 124, 1054-1064.DOI: https://doi.org/10.1016/j.neuroimage.2015.09.041</span>
+<span class="sd">    Betzel, R. F., Avena-Koenigsberger, A., Goñi, J., He, Y., De Reus, M. A.,</span>
+<span class="sd">    Griffa, A., ... &amp; Sporns, O. (2016).</span>
+<span class="sd">    Generative models of the human connectome. Neuroimage, 124, 1054-1064.</span>
+<span class="sd">    DOI: https://doi.org/10.1016/j.neuroimage.2015.09.041</span>
 
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
-<span class="sd">    Important note: As of Jan 2024 there is a bug in the bctpy version of this function (ncon2 = c1 * CIJ should be ncon2 = CIJ * use).</span>
-<span class="sd">    This bug is fixed/irrelevant here due to the more efficient implementation using matrix operations and numba.</span>
+<span class="sd">    Important note: As of Jan 2024 there is a bug in the bctpy version of this function</span>
+<span class="sd">    (ncon2 = c1 * CIJ should instead be ncon2 = CIJ * use)</span>
+
+<span class="sd">    This bug is fixed/irrelevant here due to the more efficient implementation using</span>
+<span class="sd">    matrix operations</span>
 <span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="n">G</span> <span class="o">=</span> <span class="p">(</span><span class="n">G</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
     <span class="n">n</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">nei</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="n">G</span><span class="p">)</span>
@@ -817,10 +917,9 @@
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.distance_wei">[docs]</a>
 <span class="nd">@jit</span><span class="p">(</span><span class="n">nopython</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">distance_wei</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">inv</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;(Inverse) distance matrix for weighted networks</span>
-
-<span class="sd">    Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy</span>
-<span class="sd">    Significantly improved performance due to numba JIT compilation</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    (Inverse) distance matrix for weighted networks with significantly</span>
+<span class="sd">    improved performance due to numba compilation.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -839,6 +938,7 @@
 <span class="sd">    -----</span>
 <span class="sd">    Algorithm: Modified Dijkstra&#39;s algorithm</span>
 <span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="k">if</span> <span class="n">inv</span><span class="p">:</span>
         <span class="n">G</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">G</span>
 
@@ -879,10 +979,9 @@
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.distance_bin">[docs]</a>
 <span class="nd">@jit</span><span class="p">(</span><span class="n">nopython</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">distance_bin</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;Distance matrix for binary networks</span>
-
-<span class="sd">    Based on the bctpy implelementation by Roan LaPlante: https://github.com/aestrivex/bctpy</span>
-<span class="sd">    Significantly improved performance due to numba JIT compilation</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Distance matrix calculation for binary networks with significantly</span>
+<span class="sd">    improved performance due to numba compilation.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -898,6 +997,7 @@
 <span class="sd">    -----</span>
 <span class="sd">    Algorithm: Matrix multiplication to find paths, faster than original Dijkstra&#39;s algorithm</span>
 <span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="n">D</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">G</span><span class="p">))</span>
     <span class="n">n</span> <span class="o">=</span> <span class="mi">1</span>
     <span class="n">nPATH</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
@@ -919,103 +1019,367 @@
     <span class="k">return</span> <span class="n">D</span></div>
 
 
-<span class="c1"># BCT wrapper functions with type hinting (GUI needs to know the parameter types)</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">SECTION: bctpy wrapper functions</span>
+<span class="sd"> - The wrapper functions implement type hinting which is required for the GUI</span>
+<span class="sd"> - For the scripting API, users can also directly use the bctpy functions</span>
+<span class="sd">&quot;&quot;&quot;</span>
 <div class="viewcode-block" id="backbone_wu">
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.backbone_wu">[docs]</a>
 <span class="k">def</span> <span class="nf">backbone_wu</span><span class="p">(</span><span class="n">CIJ</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                 <span class="n">avgdeg</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
                 <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">backbone_wu</span><span class="p">(</span><span class="n">CIJ</span><span class="p">,</span> <span class="n">avgdeg</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
-    <span class="n">label</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Connection matrix of the minimum spanning tree of CIJ&quot;</span><span class="p">,</span> \
-             <span class="s2">&quot;Connection matrix of the minimum spanning tree plus strongest connections up to some average degree &lt;avgdeg&gt;&quot;</span><span class="p">]</span>
-    <span class="k">return</span> <span class="n">res</span><span class="p">,</span> <span class="n">label</span></div>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    This is a wrapper function for the backbone_wu() function</span>
+<span class="sd">    of the bctpy toolbox: https://github.com/aestrivex/bctpy.</span>
+
+<span class="sd">    The network backbone contains the dominant connections in the network</span>
+<span class="sd">    and may be used to aid network visualization. This function computes</span>
+<span class="sd">    the backbone of a given weighted and undirected connection matrix CIJ,</span>
+<span class="sd">    using a minimum-spanning-tree based algorithm.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    CIJ : NxN np.ndarray</span>
+<span class="sd">        weighted undirected connection matrix</span>
+<span class="sd">    avgdeg : float</span>
+<span class="sd">        desired average degree of backbone</span>
+<span class="sd">    verbose : bool</span>
+<span class="sd">        print out edges whilst building spanning tree. Default False.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    CIJtree : NxN np.ndarray</span>
+<span class="sd">        connection matrix of the minimum spanning tree of CIJ</span>
+<span class="sd">    CIJclus : NxN np.ndarray</span>
+<span class="sd">        connection matrix of the minimum spanning tree plus strongest</span>
+<span class="sd">        connections up to some average degree &#39;avgdeg&#39;. Identical to CIJtree</span>
+<span class="sd">        if the degree requirement is already met.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Nodes with zero strength are discarded.</span>
+
+<span class="sd">    CIJclus will have a total average degree exactly equal to</span>
+<span class="sd">        (or very close to) &#39;avgdeg&#39;.</span>
+
+<span class="sd">    &#39;avgdeg&#39; backfill is handled slightly differently than in Hagmann et al. (2008)</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">return</span> <span class="n">bct</span><span class="o">.</span><span class="n">backbone_wu</span><span class="p">(</span><span class="n">CIJ</span><span class="p">,</span> <span class="n">avgdeg</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="betweenness">
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.betweenness">[docs]</a>
-<span class="k">def</span> <span class="nf">betweenness</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-                <span class="n">weighted</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">betweenness_wei</span><span class="p">(</span><span class="n">G</span><span class="p">)</span> <span class="k">if</span> <span class="n">weighted</span> <span class="k">else</span> <span class="n">bct</span><span class="o">.</span><span class="n">betweenness_bin</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
-    <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;Nodal betweenness centrality (weighted)&quot;</span> <span class="k">if</span> <span class="n">weighted</span> <span class="k">else</span> <span class="s2">&quot;Nodal betweenness centrality (binary)&quot;</span>
-    <span class="k">return</span> <span class="n">res</span><span class="p">,</span> <span class="n">label</span></div>
+<span class="k">def</span> <span class="nf">betweenness</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    This is a wrapper function for the betweenness_*() functions</span>
+<span class="sd">    of the bctpy toolbox: https://github.com/aestrivex/bctpy.</span>
+
+<span class="sd">    Node betweenness centrality is the fraction of all shortest paths in</span>
+<span class="sd">    the network that contain a given node. Nodes with high values of</span>
+<span class="sd">    betweenness centrality participate in a large number of shortest paths.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    G : NxN np.ndarray</span>
+<span class="sd">        binary/weighted directed/undirected connection matrix</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    BC : Nx1 np.ndarray</span>
+<span class="sd">        node betweenness centrality vector</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Binary:</span>
+<span class="sd">    Betweenness centrality may be normalised to the range [0,1] as</span>
+<span class="sd">    BC/[(N-1)(N-2)], where N is the number of nodes in the network.</span>
+
+<span class="sd">    Weighted:</span>
+<span class="sd">    The input matrix must be a connection-length matrix, typically</span>
+<span class="sd">    obtained via a mapping from weight to length. For instance, in a</span>
+<span class="sd">    weighted correlation network higher correlations are more naturally</span>
+<span class="sd">    interpreted as shorter distances and the input matrix should</span>
+<span class="sd">    consequently be some inverse of the connectivity matrix.</span>
+<span class="sd">    Betweenness centrality may be normalised to the range [0,1] as</span>
+<span class="sd">    BC/[(N-1)(N-2)], where N is the number of nodes in the network.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">is_binary</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="mi">1</span><span class="p">)))</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">betweenness_bin</span><span class="p">(</span><span class="n">G</span><span class="p">)</span> <span class="k">if</span> <span class="n">is_binary</span> <span class="k">else</span> <span class="n">bct</span><span class="o">.</span><span class="n">betweenness_wei</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">res</span></div>
 
 
 <div class="viewcode-block" id="clustering_coef">
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.clustering_coef">[docs]</a>
-<span class="k">def</span> <span class="nf">clustering_coef</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-                       <span class="n">weighted</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">clustering_coef_wu</span><span class="p">(</span><span class="n">G</span><span class="p">)</span> <span class="k">if</span> <span class="n">weighted</span> <span class="k">else</span> <span class="n">bct</span><span class="o">.</span><span class="n">clustering_coef_bu</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
-    <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;Nodal clustering coefficient (weighted)&quot;</span> <span class="k">if</span> <span class="n">weighted</span> <span class="k">else</span> <span class="s2">&quot;Nodal clustering coefficient (binary)&quot;</span>
-    <span class="k">return</span> <span class="n">res</span><span class="p">,</span> <span class="n">label</span></div>
+<span class="k">def</span> <span class="nf">clustering_coef</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    This is a wrapper function for the clustering_coef_*() functions</span>
+<span class="sd">    of the bctpy toolbox: https://github.com/aestrivex/bctpy.</span>
+
+<span class="sd">    The binary clustering coefficient is the fraction of triangles around a node</span>
+<span class="sd">    (equiv. the fraction of nodes neighbors that are neighbors of each other).</span>
+
+<span class="sd">    The weighted clustering coefficient is the average &quot;intensity&quot; of triangles</span>
+<span class="sd">    around a node.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    W : NxN np.ndarray</span>
+<span class="sd">        weighted undirected connection matrix</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    C : Nx1 np.ndarray</span>
+<span class="sd">        clustering coefficient vector</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">is_binary</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="mi">1</span><span class="p">)))</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">clustering_coef_bu</span><span class="p">(</span><span class="n">W</span><span class="p">)</span> <span class="k">if</span> <span class="n">is_binary</span> <span class="k">else</span> <span class="n">bct</span><span class="o">.</span><span class="n">clustering_coef_wu</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">res</span></div>
 
 
 <div class="viewcode-block" id="degrees_und">
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.degrees_und">[docs]</a>
 <span class="k">def</span> <span class="nf">degrees_und</span><span class="p">(</span><span class="n">CIJ</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">degrees_und</span><span class="p">(</span><span class="n">CIJ</span><span class="p">)</span>
-    <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;Nodal degree&quot;</span>
-    <span class="k">return</span> <span class="n">res</span><span class="p">,</span> <span class="n">label</span></div>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    This is a wrapper function for the degrees_und() function</span>
+<span class="sd">    of the bctpy toolbox: https://github.com/aestrivex/bctpy.</span>
+
+<span class="sd">    Node degree is the number of links connected to the node.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    CIJ : NxN np.ndarray</span>
+<span class="sd">        undirected binary/weighted connection matrix</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    deg : Nx1 np.ndarray</span>
+<span class="sd">        node degree</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Weight information is discarded.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">return</span> <span class="n">bct</span><span class="o">.</span><span class="n">degrees_und</span><span class="p">(</span><span class="n">CIJ</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="density_und">
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.density_und">[docs]</a>
 <span class="k">def</span> <span class="nf">density_und</span><span class="p">(</span><span class="n">CIJ</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">density_und</span><span class="p">(</span><span class="n">CIJ</span><span class="p">)</span>
-    <span class="n">label</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Density&quot;</span><span class="p">,</span> <span class="s2">&quot;Number of vertices&quot;</span><span class="p">,</span> <span class="s2">&quot;Number of edges&quot;</span><span class="p">]</span>
-    <span class="k">return</span> <span class="n">res</span><span class="p">,</span> <span class="n">label</span></div>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    This is a wrapper function for the density_und() function</span>
+<span class="sd">    of the bctpy toolbox: https://github.com/aestrivex/bctpy.</span>
+
+<span class="sd">    Density is the fraction of present connections to possible connections.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    CIJ : NxN np.ndarray</span>
+<span class="sd">        directed weighted/binary connection matrix</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    kden : float</span>
+<span class="sd">        density</span>
+<span class="sd">    N : int</span>
+<span class="sd">        number of vertices</span>
+<span class="sd">    k : int</span>
+<span class="sd">        number of edges</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Assumes CIJ is directed and has no self-connections.</span>
+<span class="sd">    Weight information is discarded.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">return</span> <span class="n">bct</span><span class="o">.</span><span class="n">density_und</span><span class="p">(</span><span class="n">CIJ</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="eigenvector_centrality_und">
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.eigenvector_centrality_und">[docs]</a>
 <span class="k">def</span> <span class="nf">eigenvector_centrality_und</span><span class="p">(</span><span class="n">CIJ</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">eigenvector_centrality_und</span><span class="p">(</span><span class="n">CIJ</span><span class="p">)</span>
-    <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;Nodal eigenvector centrality&quot;</span>
-    <span class="k">return</span> <span class="n">res</span><span class="p">,</span> <span class="n">label</span></div>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    This is a wrapper function for the eigenvector_centrality_*() functions</span>
+<span class="sd">    of the bctpy toolbox: https://github.com/aestrivex/bctpy.</span>
+
+<span class="sd">    Eigenector centrality is a self-referential measure of centrality:</span>
+<span class="sd">    nodes have high eigenvector centrality if they connect to other nodes</span>
+<span class="sd">    that have high eigenvector centrality. The eigenvector centrality of</span>
+<span class="sd">    node i is equivalent to the ith element in the eigenvector</span>
+<span class="sd">    corresponding to the largest eigenvalue of the adjacency matrix.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    CIJ : NxN np.ndarray</span>
+<span class="sd">        Binary/weighted undirected adjacency matrix</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    ----------</span>
+<span class="sd">    v : Nx1 np.ndarray</span>
+<span class="sd">        Eigenvector associated with the largest eigenvalue of the matrix</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">return</span> <span class="n">bct</span><span class="o">.</span><span class="n">eigenvector_centrality_und</span><span class="p">(</span><span class="n">CIJ</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="gateway_coef_sign">
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.gateway_coef_sign">[docs]</a>
-<span class="k">def</span> <span class="nf">gateway_coef_sign</span><span class="p">(</span><span class="n">CIJ</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<span class="k">def</span> <span class="nf">gateway_coef_sign</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                       <span class="n">ci</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;louvain&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;louvain&quot;</span><span class="p">,</span>
                       <span class="n">centrality_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;degree&quot;</span><span class="p">,</span> <span class="s2">&quot;betweenness&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;degree&quot;</span><span class="p">,</span> <span class="p">)</span> \
                                         <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-    <span class="n">ci</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">community_louvain</span><span class="p">(</span><span class="n">CIJ</span><span class="p">)</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">gateway_coef_sign</span><span class="p">(</span><span class="n">CIJ</span><span class="p">,</span> <span class="n">ci</span><span class="p">,</span> <span class="n">centrality_type</span><span class="p">)</span>
-    <span class="n">label</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Gateway coefficient for positive weights&quot;</span><span class="p">,</span> \
-             <span class="s2">&quot;Gateway coefficient for negative weights&quot;</span><span class="p">]</span>
-    <span class="k">return</span> <span class="n">res</span><span class="p">,</span> <span class="n">label</span></div>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    This is a wrapper function for the gateway_coef_sign() function</span>
+<span class="sd">    of the bctpy toolbox: https://github.com/aestrivex/bctpy.</span>
+
+<span class="sd">    The gateway coefficient is a variant of participation coefficient.</span>
+<span class="sd">    It is weighted by how critical the connections are to intermodular</span>
+<span class="sd">    connectivity (e.g. if a node is the only connection between its</span>
+<span class="sd">    module and another module, it will have a higher gateway coefficient,</span>
+<span class="sd">    unlike participation coefficient).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    W : NxN np.ndarray</span>
+<span class="sd">        undirected signed connection matrix</span>
+<span class="sd">    ci : Nx1 np.ndarray</span>
+<span class="sd">        community affiliation vector</span>
+<span class="sd">    centrality_type : enum</span>
+<span class="sd">        &#39;degree&#39; - uses the weighted degree (i.e, node strength)</span>
+<span class="sd">        &#39;betweenness&#39; - uses the betweenness centrality</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Gpos : N x nr_mod np.ndarray</span>
+<span class="sd">        gateway coefficient for positive weights</span>
+<span class="sd">    Gneg : N x nr_mod np.ndarray</span>
+<span class="sd">        gateway coefficient for negative weights</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Vargas ER, Wahl LM, Eur Phys J B (2014) 87:1-10</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">ci</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">community_louvain</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">bct</span><span class="o">.</span><span class="n">gateway_coef_sign</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">ci</span><span class="p">,</span> <span class="n">centrality_type</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="pagerank_centrality">
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.pagerank_centrality">[docs]</a>
 <span class="k">def</span> <span class="nf">pagerank_centrality</span><span class="p">(</span><span class="n">A</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                         <span class="n">d</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.85</span><span class="p">,</span>
-                        <span class="n">falff</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;byesian prior&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;byesian prior&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">pagerank_centrality</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-    <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;Nodal pageranking vectors&quot;</span>
-    <span class="k">return</span> <span class="n">res</span><span class="p">,</span> <span class="n">label</span></div>
+                        <span class="n">falff</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    This is a wrapper function for the pagerank_centrality() function</span>
+<span class="sd">    of the bctpy toolbox: https://github.com/aestrivex/bctpy.</span>
+
+<span class="sd">    The PageRank centrality is a variant of eigenvector centrality. This</span>
+<span class="sd">    function computes the PageRank centrality of each vertex in a graph.</span>
+
+<span class="sd">    Formally, PageRank is defined as the stationary distribution achieved</span>
+<span class="sd">    by instantiating a Markov chain on a graph. The PageRank centrality of</span>
+<span class="sd">    a given vertex, then, is proportional to the number of steps (or amount</span>
+<span class="sd">    of time) spent at that vertex as a result of such a process.</span>
+
+<span class="sd">    The PageRank index gets modified by the addition of a damping factor,</span>
+<span class="sd">    d. In terms of a Markov chain, the damping factor specifies the</span>
+<span class="sd">    fraction of the time that a random walker will transition to one of its</span>
+<span class="sd">    current state&#39;s neighbors. The remaining fraction of the time the</span>
+<span class="sd">    walker is restarted at a random vertex. A common value for the damping</span>
+<span class="sd">    factor is d = 0.85.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    A : NxN np.narray</span>
+<span class="sd">        adjacency matrix</span>
+<span class="sd">    d : float</span>
+<span class="sd">        damping factor (see description)</span>
+<span class="sd">    falff : Nx1 np.ndarray | None</span>
+<span class="sd">        Initial page rank probability, non-negative values. Default value is</span>
+<span class="sd">        None. If not specified, a naive bayesian prior is used.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    r : Nx1 np.ndarray</span>
+<span class="sd">        vectors of page rankings</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Note: The algorithm will work well for smaller matrices (number of</span>
+<span class="sd">    nodes around 1000 or less)</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">return</span> <span class="n">bct</span><span class="o">.</span><span class="n">pagerank_centrality</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">falff</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="participation_coef">
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.participation_coef">[docs]</a>
-<span class="k">def</span> <span class="nf">participation_coef</span><span class="p">(</span><span class="n">CIJ</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<span class="k">def</span> <span class="nf">participation_coef</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                        <span class="n">ci</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;louvain&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;louvain&quot;</span><span class="p">,</span>
-                       <span class="n">sparse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
                        <span class="n">degree</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;undirected&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;undirected&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="n">ci</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">community_louvain</span><span class="p">(</span><span class="n">CIJ</span><span class="p">)</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">participation_coef_sparse</span><span class="p">(</span><span class="n">CIJ</span><span class="p">,</span> <span class="n">ci</span><span class="p">,</span> <span class="n">degree</span><span class="p">)</span> <span class="k">if</span> <span class="n">sparse</span> <span class="k">else</span> <span class="n">bct</span><span class="o">.</span><span class="n">participation_coef</span><span class="p">(</span><span class="n">CIJ</span><span class="p">,</span> <span class="n">ci</span><span class="p">,</span> <span class="n">degree</span><span class="p">)</span>
-    <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;Nodal participation coefficient (sparse)&quot;</span> <span class="k">if</span> <span class="n">sparse</span> <span class="k">else</span> <span class="s2">&quot;Nodal participation coefficient&quot;</span>
-    <span class="k">return</span> <span class="n">res</span><span class="p">,</span> <span class="n">label</span></div>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    This is a wrapper function for the participation_coef functions</span>
+<span class="sd">    of the bctpy toolbox: https://github.com/aestrivex/bctpy.</span>
+
+<span class="sd">    The participation coefficient is a measure of diversity of intermodular</span>
+<span class="sd">    connections of individual nodes.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    W : NxN np.ndarray or scipy.sparse.csr_matrix</span>
+<span class="sd">        binary/weighted directed/undirected connection matrix</span>
+<span class="sd">    ci : Nx1 np.ndarray</span>
+<span class="sd">        community affiliation vector (just for the GUI, will always use bct.community_louvain())</span>
+<span class="sd">    degree : str</span>
+<span class="sd">        Flag to describe nature of graph &#39;undirected&#39;: For undirected graphs</span>
+<span class="sd">                                         &#39;in&#39;: Uses the in-degree</span>
+<span class="sd">                                         &#39;out&#39;: Uses the out-degree</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    P : Nx1 np.ndarray</span>
+<span class="sd">        participation coefficient</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">ci</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">community_louvain</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">participation_coef_sparse</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">ci</span><span class="p">,</span> <span class="n">degree</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">scipy</span><span class="o">.</span><span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">)</span> <span class="k">else</span> <span class="n">bct</span><span class="o">.</span><span class="n">participation_coef</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">ci</span><span class="p">,</span> <span class="n">degree</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">res</span></div>
 
 
 <div class="viewcode-block" id="participation_coef_sign">
 <a class="viewcode-back" href="../../api/graph.html#comet.graph.participation_coef_sign">[docs]</a>
-<span class="k">def</span> <span class="nf">participation_coef_sign</span><span class="p">(</span><span class="n">CIJ</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<span class="k">def</span> <span class="nf">participation_coef_sign</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                             <span class="n">ci</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;louvain&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;louvain&quot;</span><span class="p">,)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-    <span class="n">ci</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">community_louvain</span><span class="p">(</span><span class="n">CIJ</span><span class="p">)</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">participation_coef_sign</span><span class="p">(</span><span class="n">CIJ</span><span class="p">,</span> <span class="n">ci</span><span class="p">)</span>
-    <span class="n">label</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Nodal participation coefficient from positive weights&quot;</span><span class="p">,</span> <span class="s2">&quot;Nodal participation coefficient from negative weights&quot;</span><span class="p">]</span>
-    <span class="k">return</span> <span class="n">res</span><span class="p">,</span> <span class="n">label</span></div>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    This is a wrapper function for the participation_coef_sign() function</span>
+<span class="sd">    of the bctpy toolbox: https://github.com/aestrivex/bctpy.</span>
+
+<span class="sd">    The participation coefficient is a measure of diversity of intermodular</span>
+<span class="sd">    connections of individual nodes.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    W : NxN np.ndarray</span>
+<span class="sd">        undirected connection matrix with positive and negative weights</span>
+<span class="sd">    ci : Nx1 np.ndarray</span>
+<span class="sd">        community affiliation vector (just for the GUI, will always use bct.community_louvain())</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Ppos : Nx1 np.ndarray</span>
+<span class="sd">        participation coefficient from positive weights</span>
+<span class="sd">    Pneg : Nx1 np.ndarray</span>
+<span class="sd">        participation coefficient from negative weights</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">ci</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">community_louvain</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">bct</span><span class="o">.</span><span class="n">participation_coef_sign</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">ci</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">res</span></div>
 
 
 <span class="sd">&quot;&quot;&quot;</span>
@@ -1026,13 +1390,6 @@
 <span class="sd">    print(&quot;rich club&quot;, type(res))</span>
 <span class="sd">    print(res)</span>
 <span class="sd">    label = &quot;Rich club coefficient vectors (weighted)&quot; if weighted else &quot;Rich club coefficient vectors (binary)&quot;</span>
-<span class="sd">    return res, label&quot;&quot;&quot;</span>
-
-<span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">def transitivity(CIJ: np.ndarray,</span>
-<span class="sd">                 weighted: bool=True) -&gt; float:</span>
-<span class="sd">    res = bct.transitivity_wu(CIJ) if weighted else bct.transitivity_bu(CIJ)</span>
-<span class="sd">    label = &quot;Global transitivity (weighted)&quot; if weighted else &quot;Global transitivity (binary)&quot;</span>
 <span class="sd">    return res, label&quot;&quot;&quot;</span>
 </pre></div>
 

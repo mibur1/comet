@@ -110,6 +110,9 @@
 <div class="viewcode-block" id="in_notebook">
 <a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.in_notebook">[docs]</a>
 <span class="k">def</span> <span class="nf">in_notebook</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Helper function to check if the code is running in a Jupyter notebook</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="kn">from</span> <span class="nn">IPython</span> <span class="kn">import</span> <span class="n">get_ipython</span>
         <span class="k">if</span> <span class="s1">&#39;IPKernelApp&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">get_ipython</span><span class="p">()</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
@@ -122,13 +125,40 @@
 <div class="viewcode-block" id="Multiverse">
 <a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse">[docs]</a>
 <span class="k">class</span> <span class="nc">Multiverse</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Multiverse class for creating, running, and visualizing the multiverse analysis.</span>
+
+<span class="sd">    This class provides functionality to create multiple analysis scripts based on different decision paths,</span>
+<span class="sd">    run them in parallel, and visualize the results as a network or specification curve.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name : str</span>
+<span class="sd">        Name of the multiverse analysis. Default is &quot;multiverse&quot;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;multiverse&quot;</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
 
-    <span class="c1"># Create all the universe scripts</span>
+    <span class="c1"># Public methods</span>
 <div class="viewcode-block" id="Multiverse.create">
 <a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse.create">[docs]</a>
     <span class="k">def</span> <span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">analysis_template</span><span class="p">,</span> <span class="n">forking_paths</span><span class="p">,</span> <span class="n">invalid_paths</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create the individual universe scripts</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        analysis_template : function</span>
+<span class="sd">            Function containing the analysis template</span>
+
+<span class="sd">        forking_paths : dict</span>
+<span class="sd">            Dictionary containing the forking paths</span>
+
+<span class="sd">        invalid_paths : list</span>
+<span class="sd">            List of invalid paths that should be excluded from the multiverse</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
         <span class="c1"># Get the directory of the calling script</span>
         <span class="n">calling_script_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span> <span class="k">if</span> <span class="n">in_notebook</span> <span class="k">else</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 
@@ -157,13 +187,13 @@
 
         <span class="c1"># Remove universes that contain invalid paths</span>
         <span class="k">if</span> <span class="n">invalid_paths</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">valid_universes</span> <span class="o">=</span> <span class="p">[</span><span class="n">combination</span> <span class="k">for</span> <span class="n">combination</span> <span class="ow">in</span> <span class="n">all_universes</span> <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_paths</span><span class="p">(</span><span class="n">combination</span><span class="p">,</span> <span class="n">invalid_paths</span><span class="p">)]</span>
+            <span class="n">valid_universes</span> <span class="o">=</span> <span class="p">[</span><span class="n">combination</span> <span class="k">for</span> <span class="n">combination</span> <span class="ow">in</span> <span class="n">all_universes</span> <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_paths</span><span class="p">(</span><span class="n">combination</span><span class="p">,</span> <span class="n">invalid_paths</span><span class="p">)]</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">valid_universes</span> <span class="o">=</span> <span class="n">all_universes</span>
 
         <span class="c1"># Create Python scripts for each combination</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">combination</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">valid_universes</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-            <span class="n">context</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">combination</span><span class="p">)}</span>
+            <span class="n">context</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">combination</span><span class="p">)}</span>
             <span class="n">rendered_content</span> <span class="o">=</span> <span class="n">jinja_template</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="o">**</span><span class="n">context</span><span class="p">)</span>
 
             <span class="c1"># Write to Python script</span>
@@ -172,17 +202,33 @@
                 <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">rendered_content</span><span class="p">)</span>
 
         <span class="c1"># Generate CSV file with the decisions of all universes</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">create_csv</span><span class="p">(</span><span class="n">results_dir</span><span class="p">,</span> <span class="n">valid_universes</span><span class="p">,</span> <span class="n">keys</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_create_csv</span><span class="p">(</span><span class="n">results_dir</span><span class="p">,</span> <span class="n">valid_universes</span><span class="p">,</span> <span class="n">keys</span><span class="p">)</span>
 
         <span class="c1"># Save forking paths</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">results_dir</span><span class="si">}</span><span class="s2">/forking_paths.pkl&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
-            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">forking_paths</span><span class="p">,</span> <span class="n">file</span><span class="p">)</span></div>
+            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">forking_paths</span><span class="p">,</span> <span class="n">file</span><span class="p">)</span>
+
+        <span class="k">return</span></div>
 
 
-    <span class="c1"># Run all (or individual) universes</span>
 <div class="viewcode-block" id="Multiverse.run">
 <a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse.run">[docs]</a>
     <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">universe_number</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run either an individual universe or the entire multiverse</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        path : string</span>
+<span class="sd">            Path of the multiverse directory</span>
+
+<span class="sd">        universe_number : int</span>
+<span class="sd">            Number of the universe to run. Default is None, which runs all universes</span>
+
+<span class="sd">        parallel : int</span>
+<span class="sd">            Number of universes to run in parallel</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
         <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">calling_script_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span> <span class="k">if</span> <span class="n">in_notebook</span> <span class="k">else</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
             <span class="n">multiverse_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">calling_script_dir</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
@@ -194,7 +240,7 @@
         <span class="c1"># Function for parallel processing, called by joblib.delayed</span>
         <span class="k">def</span> <span class="nf">execute_script</span><span class="p">(</span><span class="n">file</span><span class="p">):</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting </span><span class="si">{</span><span class="n">file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">file</span><span class="p">)],</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+            <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">file</span><span class="p">)],</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
 
         <span class="k">if</span> <span class="n">universe_number</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Starting multiverse analysis for all universes...&quot;</span><span class="p">)</span>
@@ -202,47 +248,24 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting analysis for universe </span><span class="si">{</span><span class="n">universe_number</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
             <span class="n">file</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;universe_</span><span class="si">{</span><span class="n">universe_number</span><span class="si">}</span><span class="s2">.py&quot;</span>
-            <span class="n">execute_script</span><span class="p">(</span><span class="n">file</span><span class="p">)</span></div>
+            <span class="n">execute_script</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+
+        <span class="k">return</span></div>
 
 
-    <span class="c1"># Checks if a universe contains a specific path</span>
-<div class="viewcode-block" id="Multiverse.check_paths">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse.check_paths">[docs]</a>
-    <span class="k">def</span> <span class="nf">check_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe_path</span><span class="p">,</span> <span class="n">invalid_paths</span><span class="p">):</span>
-
-        <span class="k">def</span> <span class="nf">get_decision</span><span class="p">(</span><span class="n">decision</span><span class="p">):</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">decision</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;name&quot;</span> <span class="ow">in</span> <span class="n">decision</span><span class="p">:</span>
-                <span class="k">return</span> <span class="n">decision</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
-            <span class="k">return</span> <span class="n">decision</span>
-
-        <span class="c1"># Standardize the universe_path</span>
-        <span class="n">standardized_universe_path</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_decision</span><span class="p">(</span><span class="n">decision</span><span class="p">)</span> <span class="k">for</span> <span class="n">decision</span> <span class="ow">in</span> <span class="n">universe_path</span><span class="p">]</span>
-
-        <span class="k">for</span> <span class="n">invalid_path</span> <span class="ow">in</span> <span class="n">invalid_paths</span><span class="p">:</span>
-            <span class="n">standardized_invalid_path</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_decision</span><span class="p">(</span><span class="n">decision</span><span class="p">)</span> <span class="k">for</span> <span class="n">decision</span> <span class="ow">in</span> <span class="n">invalid_path</span><span class="p">]</span>
-
-            <span class="c1"># Check if standardized_invalid_path is a subsequence of standardized_universe_path</span>
-            <span class="n">iter_universe</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">standardized_universe_path</span><span class="p">)</span>
-            <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">decision</span> <span class="ow">in</span> <span class="n">iter_universe</span> <span class="k">for</span> <span class="n">decision</span> <span class="ow">in</span> <span class="n">standardized_invalid_path</span><span class="p">):</span>
-                <span class="k">return</span> <span class="kc">True</span>  <span class="c1"># Found an invalid path, return</span>
-
-        <span class="k">return</span> <span class="kc">False</span></div>
-
-
-    <span class="c1"># Read CSV</span>
-<div class="viewcode-block" id="Multiverse.read_csv">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse.read_csv">[docs]</a>
-    <span class="k">def</span> <span class="nf">read_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">calling_script_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span> <span class="k">if</span> <span class="n">in_notebook</span> <span class="k">else</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-        <span class="n">csv_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">calling_script_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">/results/multiverse_summary.csv&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">)</span></div>
-
-
-    <span class="c1"># Print a summary of all universes</span>
 <div class="viewcode-block" id="Multiverse.summary">
 <a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse.summary">[docs]</a>
     <span class="k">def</span> <span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">5</span><span class="p">)):</span>
-        <span class="n">multiverse_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_csv</span><span class="p">()</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Print the multiverse summary to the terminal/notebook</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        universe : int or range</span>
+<span class="sd">            The universe number(s) to display. Default is range(1,5)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">multiverse_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_csv</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">universe</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
             <span class="n">multiverse_summary</span> <span class="o">=</span> <span class="n">multiverse_summary</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">universe</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
@@ -256,11 +279,28 @@
             <span class="nb">print</span><span class="p">(</span><span class="n">multiverse_summary</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
-    <span class="c1"># Visualize the multiverse as a network</span>
 <div class="viewcode-block" id="Multiverse.visualize">
 <a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse.visualize">[docs]</a>
     <span class="k">def</span> <span class="nf">visualize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;Set2&quot;</span><span class="p">,</span> <span class="n">node_size</span><span class="o">=</span><span class="mi">1500</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">5</span><span class="p">)):</span>
-        <span class="n">multiverse_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_csv</span><span class="p">()</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Visualize the multiverse as a network</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        universe : int</span>
+<span class="sd">            The universe to highlight in the network. Default is None</span>
+
+<span class="sd">        cmap : str</span>
+<span class="sd">            Colormap to use for the nodes. Default is &quot;Set2&quot;</span>
+
+<span class="sd">        node_size : int</span>
+<span class="sd">            Size of the nodes. Default is 1500</span>
+
+<span class="sd">        figsize : tuple</span>
+<span class="sd">            Size of the figure. Default is (8,5)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">multiverse_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_csv</span><span class="p">()</span>
 
         <span class="c1"># Function that recursively add nodes and edges excluding single-option parameters</span>
         <span class="k">def</span> <span class="nf">add_hierarchical_decision_nodes</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="n">root_node</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
@@ -366,138 +406,58 @@
                     <span class="n">plt</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="o">-</span><span class="n">label_offset</span><span class="p">,</span> <span class="n">decision</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
 
         <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
-
-    <span class="c1"># Handle the types of the decision points to generate a working template script</span>
-<div class="viewcode-block" id="Multiverse.format_type">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse.format_type">[docs]</a>
-    <span class="k">def</span> <span class="nf">format_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&#39;&quot;</span>  <span class="c1"># Strings are wrapped in quotes</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>  <span class="c1"># Integers are converted directly</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
-            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>  <span class="c1"># Floats are converted directly</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
-            <span class="k">return</span> <span class="s2">&quot;True&quot;</span> <span class="k">if</span> <span class="n">value</span> <span class="k">else</span> <span class="s2">&quot;False&quot;</span> <span class="c1"># Booleans are converted to their literal representations</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_dict</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="c1"># Dictionaries are handeled in a separate function</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="vm">__name__</span>  <span class="c1"># If the forking path is a class, we return the name of the class</span>
-        <span class="k">elif</span> <span class="nb">callable</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="vm">__name__</span> <span class="c1"># If the forking path is a function, we return the name of the function</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported type for </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2"> which is of type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
-
-
-    <span class="c1"># Handle the decision points that require class/function imports</span>
-<div class="viewcode-block" id="Multiverse.handle_dict">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse.handle_dict">[docs]</a>
-    <span class="k">def</span> <span class="nf">handle_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-        <span class="n">function_call</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-
-        <span class="n">func</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;func&quot;</span><span class="p">]</span>
-        <span class="n">args</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;args&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-
-        <span class="k">if</span> <span class="s2">&quot;Option&quot;</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
-            <span class="k">del</span> <span class="n">args</span><span class="p">[</span><span class="s2">&quot;Option&quot;</span><span class="p">]</span>
-
-        <span class="n">first_arg</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
-        <span class="n">input_data</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="n">first_arg</span><span class="p">]</span>
-        <span class="k">del</span> <span class="n">args</span><span class="p">[</span><span class="n">first_arg</span><span class="p">]</span>
-
-        <span class="k">if</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;func&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;comet.methods&quot;</span><span class="p">):</span>
-            <span class="n">function_call</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="n">input_data</span><span class="si">}</span><span class="s2">, **</span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s2">).connectivity()&quot;</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">if</span> <span class="s2">&quot;ci&quot;</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
-                <span class="n">ci</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="s2">&quot;ci&quot;</span><span class="p">]</span>
-                <span class="k">del</span> <span class="n">args</span><span class="p">[</span><span class="s2">&quot;ci&quot;</span><span class="p">]</span>
-                <span class="n">function_call</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="n">input_data</span><span class="si">}</span><span class="s2">, ci=</span><span class="si">{</span><span class="n">ci</span><span class="si">}</span><span class="s2">[0], **</span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s2">)&quot;</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">function_call</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="n">input_data</span><span class="si">}</span><span class="s2">, **</span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s2">)&quot;</span>
-
-        <span class="k">return</span> <span class="n">function_call</span></div>
-
-
-    <span class="c1"># Create CSV file with the parameters of all universes</span>
-<div class="viewcode-block" id="Multiverse.create_csv">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse.create_csv">[docs]</a>
-    <span class="k">def</span> <span class="nf">create_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">csv_path</span><span class="p">,</span> <span class="n">all_universes</span><span class="p">,</span> <span class="n">keys</span><span class="p">):</span>
-        <span class="c1"># Generate CSV file with the parameters of all universes</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">csv_path</span><span class="si">}</span><span class="s2">/multiverse_summary.csv&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">csvfile</span><span class="p">:</span>
-            <span class="n">fieldnames</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Universe&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>  <span class="c1"># &#39;Universe&#39; as the first column</span>
-            <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictWriter</span><span class="p">(</span><span class="n">csvfile</span><span class="p">,</span> <span class="n">fieldnames</span><span class="o">=</span><span class="n">fieldnames</span><span class="p">)</span>
-            <span class="n">writer</span><span class="o">.</span><span class="n">writeheader</span><span class="p">()</span>
-
-            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">combination</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">all_universes</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-                <span class="n">context</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;Universe&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Universe_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
-
-                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">combination</span><span class="p">):</span>
-                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-                        <span class="n">context</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="n">context</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-
-                <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">context</span><span class="p">)</span></div>
-
-
-    <span class="c1"># Create a specification curve</span>
-<div class="viewcode-block" id="Multiverse.load_and_prepare_data">
-<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse.load_and_prepare_data">[docs]</a>
-    <span class="k">def</span> <span class="nf">load_and_prepare_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fname</span><span class="o">=</span><span class="s2">&quot;multiverse_summary.csv&quot;</span><span class="p">,</span> <span class="n">measure</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">results_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="n">csv_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">results_path</span><span class="p">,</span> <span class="n">fname</span><span class="p">)</span>
-        <span class="n">multiverse_summary</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">measure</span> <span class="ow">in</span> <span class="n">multiverse_summary</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Getting </span><span class="si">{</span><span class="n">measure</span><span class="si">}</span><span class="s2"> from .csv file&quot;</span><span class="p">)</span>
-            <span class="n">forking_paths</span> <span class="o">=</span> <span class="p">{}</span>
-
-            <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">multiverse_summary</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">column</span> <span class="o">==</span> <span class="n">measure</span><span class="p">:</span>
-                    <span class="k">continue</span>
-                <span class="n">unique_values</span> <span class="o">=</span> <span class="n">multiverse_summary</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-                <span class="n">forking_paths</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">unique_values</span>
-
-            <span class="n">universe_data</span> <span class="o">=</span> <span class="n">multiverse_summary</span><span class="p">[</span><span class="n">measure</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
-            <span class="n">parameters</span> <span class="o">=</span> <span class="n">multiverse_summary</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">measure</span><span class="p">])</span>
-            <span class="n">universes_with_summary</span> <span class="o">=</span> <span class="p">[(</span><span class="n">data</span><span class="p">,</span> <span class="n">parameters</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">())</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">universe_data</span><span class="p">)]</span>
-            <span class="n">sorted_combined</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">universes_with_summary</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
-
-        <span class="k">else</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Getting </span><span class="si">{</span><span class="n">measure</span><span class="si">}</span><span class="s2"> from .pkl files&quot;</span><span class="p">)</span>
-            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">results_path</span><span class="si">}</span><span class="s2">/forking_paths.pkl&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
-                <span class="n">forking_paths</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
-
-            <span class="n">pattern</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">results_path</span><span class="p">,</span> <span class="s2">&quot;universe_*.pkl&quot;</span><span class="p">)</span>
-            <span class="n">results_files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
-
-            <span class="n">universe_data</span> <span class="o">=</span> <span class="p">{}</span>
-            <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">results_files</span><span class="p">:</span>
-                <span class="n">universe</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-
-                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
-                    <span class="n">universe_data</span><span class="p">[</span><span class="n">universe</span><span class="p">]</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
-
-            <span class="n">universes_with_summary</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="k">for</span> <span class="n">universe</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">universe_data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="n">summary_row</span> <span class="o">=</span> <span class="n">multiverse_summary</span><span class="p">[</span><span class="n">multiverse_summary</span><span class="p">[</span><span class="s1">&#39;Universe&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="n">universe</span><span class="p">]</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">summary_row</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-                    <span class="n">universes_with_summary</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">data</span><span class="p">,</span> <span class="n">summary_row</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
-
-            <span class="n">sorted_combined</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">universes_with_summary</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
-
-        <span class="k">return</span> <span class="n">sorted_combined</span><span class="p">,</span> <span class="n">forking_paths</span></div>
+        <span class="k">return</span></div>
 
 
 <div class="viewcode-block" id="Multiverse.specification_curve">
 <a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse.specification_curve">[docs]</a>
     <span class="k">def</span> <span class="nf">specification_curve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fname</span><span class="o">=</span><span class="s2">&quot;multiverse_summary.csv&quot;</span><span class="p">,</span> <span class="n">measure</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;Set2&quot;</span><span class="p">,</span> <span class="n">ci</span><span class="o">=</span><span class="mi">95</span><span class="p">,</span> <span class="n">chance_level</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> \
                             <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span><span class="mi">9</span><span class="p">),</span> <span class="n">height_ratio</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">dotsize</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">label_offset</span><span class="o">=-</span><span class="mf">0.05</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create and save a specification curve plot from multiverse results</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        fname : string</span>
+<span class="sd">            Name of the .csv file containing the multiverse summary. Default is &quot;multiverse_summary.csv&quot;</span>
+
+<span class="sd">        measure : string</span>
+<span class="sd">            Name of the measure to plot. Default is None</span>
+
+<span class="sd">        cmap : string</span>
+<span class="sd">            Colormap to use for the nodes. Default is &quot;Set2&quot;</span>
+
+<span class="sd">        ci : int</span>
+<span class="sd">            Confidence interval to plot. Default is 95</span>
+
+<span class="sd">        chance_level : float</span>
+<span class="sd">            Chance level to plot. Default is None</span>
+
+<span class="sd">        linewidth : int</span>
+<span class="sd">            Width of the boxplots. Default is 2</span>
+
+<span class="sd">        figsize : tuple</span>
+<span class="sd">            Size of the figure. Default is (16,9)</span>
+
+<span class="sd">        height_ratio : tuple</span>
+<span class="sd">            Height ratio of the two subplots. Default is (2,1)</span>
+
+<span class="sd">        fontsize : int</span>
+<span class="sd">            Font size of the labels. Default is 10</span>
+
+<span class="sd">        dotsize : int</span>
+<span class="sd">            Size of the dots. Default is 50</span>
+
+<span class="sd">        label_offset : float</span>
+<span class="sd">            Offset of the labels. Needs to be adjusted manually, default is -0.05</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
         <span class="n">calling_script_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span> <span class="k">if</span> <span class="s1">&#39;in_notebook&#39;</span> <span class="ow">in</span> <span class="nb">globals</span><span class="p">()</span> <span class="ow">and</span> <span class="n">in_notebook</span> <span class="k">else</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
         <span class="n">results_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">calling_script_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">/results&quot;</span><span class="p">)</span>
 
-        <span class="n">sorted_combined</span><span class="p">,</span> <span class="n">forking_paths</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_and_prepare_data</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">measure</span><span class="p">,</span> <span class="n">results_path</span><span class="p">)</span>
+        <span class="n">sorted_combined</span><span class="p">,</span> <span class="n">forking_paths</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_and_prepare_data</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">measure</span><span class="p">,</span> <span class="n">results_path</span><span class="p">)</span>
 
         <span class="n">sns</span><span class="o">.</span><span class="n">set_theme</span><span class="p">(</span><span class="n">style</span><span class="o">=</span><span class="s2">&quot;whitegrid&quot;</span><span class="p">)</span>
         <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">,</span> <span class="n">gridspec_kw</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;height_ratios&#39;</span><span class="p">:</span> <span class="n">height_ratio</span><span class="p">},</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -639,7 +599,251 @@
         <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">handles</span><span class="o">=</span><span class="n">legend_items</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="n">fontsize</span><span class="p">)</span>
 
         <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">results_path</span><span class="si">}</span><span class="s2">/specification_curve.png&quot;</span><span class="p">)</span></div>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">results_path</span><span class="si">}</span><span class="s2">/specification_curve.png&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span></div>
+
+
+    <span class="c1"># Internal methods</span>
+<div class="viewcode-block" id="Multiverse._check_paths">
+<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse._check_paths">[docs]</a>
+    <span class="k">def</span> <span class="nf">_check_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">universe_path</span><span class="p">,</span> <span class="n">invalid_paths</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Internal function: Check if a universe contains a specific path</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        universe_path : list</span>
+<span class="sd">            The &quot;decision path&quot; of a universe</span>
+
+<span class="sd">        invalid_paths : list</span>
+<span class="sd">            List of invalid paths that should be excluded from the multiverse</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        result : bool</span>
+<span class="sd">            Returns True if the universe contains an invalid path, else False</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">get_decision</span><span class="p">(</span><span class="n">decision</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">decision</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;name&quot;</span> <span class="ow">in</span> <span class="n">decision</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">decision</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">decision</span>
+
+        <span class="c1"># Standardize the universe_path</span>
+        <span class="n">standardized_universe_path</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_decision</span><span class="p">(</span><span class="n">decision</span><span class="p">)</span> <span class="k">for</span> <span class="n">decision</span> <span class="ow">in</span> <span class="n">universe_path</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">invalid_path</span> <span class="ow">in</span> <span class="n">invalid_paths</span><span class="p">:</span>
+            <span class="n">standardized_invalid_path</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_decision</span><span class="p">(</span><span class="n">decision</span><span class="p">)</span> <span class="k">for</span> <span class="n">decision</span> <span class="ow">in</span> <span class="n">invalid_path</span><span class="p">]</span>
+
+            <span class="c1"># Check if standardized_invalid_path is a subsequence of standardized_universe_path</span>
+            <span class="n">iter_universe</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">standardized_universe_path</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">decision</span> <span class="ow">in</span> <span class="n">iter_universe</span> <span class="k">for</span> <span class="n">decision</span> <span class="ow">in</span> <span class="n">standardized_invalid_path</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">True</span>  <span class="c1"># Found an invalid path, return</span>
+
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="Multiverse._read_csv">
+<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse._read_csv">[docs]</a>
+    <span class="k">def</span> <span class="nf">_read_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Internal function: Reads the multiverse_summary.csv file</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        summary : pandas.DataFrame</span>
+<span class="sd">            Pandas datframe containing the multiverse summary</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">calling_script_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span> <span class="k">if</span> <span class="n">in_notebook</span> <span class="k">else</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">csv_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">calling_script_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">/results/multiverse_summary.csv&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Multiverse._format_type">
+<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse._format_type">[docs]</a>
+    <span class="k">def</span> <span class="nf">_format_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Internal function: Converts the different data types of decision points</span>
+<span class="sd">        to strings, which is necessary to create the template script</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        value : any</span>
+<span class="sd">            The value to be formatted</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        formatted_value : string</span>
+<span class="sd">            The formatted value</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&#39;&quot;</span>  <span class="c1"># Strings are wrapped in quotes</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>  <span class="c1"># Integers are converted directly</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>  <span class="c1"># Floats are converted directly</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s2">&quot;True&quot;</span> <span class="k">if</span> <span class="n">value</span> <span class="k">else</span> <span class="s2">&quot;False&quot;</span> <span class="c1"># Booleans are converted to their literal representations</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_dict</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="c1"># Dictionaries are handeled in a separate function</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="vm">__name__</span>  <span class="c1"># If the forking path is a class, we return the name of the class</span>
+        <span class="k">elif</span> <span class="nb">callable</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="vm">__name__</span> <span class="c1"># If the forking path is a function, we return the name of the function</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported type for </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2"> which is of type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Multiverse._handle_dict">
+<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse._handle_dict">[docs]</a>
+    <span class="k">def</span> <span class="nf">_handle_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Internal function: Handle the decision points that dicts.</span>
+<span class="sd">        These are the decision points which require class/function imports.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        value : dict</span>
+<span class="sd">            The dictionary to be formatted</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        function_call : string</span>
+<span class="sd">            The formatted function call</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">function_call</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="n">func</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;func&quot;</span><span class="p">]</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;args&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="s2">&quot;Option&quot;</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+            <span class="k">del</span> <span class="n">args</span><span class="p">[</span><span class="s2">&quot;Option&quot;</span><span class="p">]</span>
+
+        <span class="n">first_arg</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+        <span class="n">input_data</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="n">first_arg</span><span class="p">]</span>
+        <span class="k">del</span> <span class="n">args</span><span class="p">[</span><span class="n">first_arg</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;func&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;comet.methods&quot;</span><span class="p">):</span>
+            <span class="n">function_call</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="n">input_data</span><span class="si">}</span><span class="s2">, **</span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s2">).connectivity()&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;ci&quot;</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+                <span class="n">ci</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="s2">&quot;ci&quot;</span><span class="p">]</span>
+                <span class="k">del</span> <span class="n">args</span><span class="p">[</span><span class="s2">&quot;ci&quot;</span><span class="p">]</span>
+                <span class="n">function_call</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="n">input_data</span><span class="si">}</span><span class="s2">, ci=</span><span class="si">{</span><span class="n">ci</span><span class="si">}</span><span class="s2">[0], **</span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">function_call</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="n">input_data</span><span class="si">}</span><span class="s2">, **</span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s2">)&quot;</span>
+
+        <span class="k">return</span> <span class="n">function_call</span></div>
+
+
+<div class="viewcode-block" id="Multiverse._create_csv">
+<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse._create_csv">[docs]</a>
+    <span class="k">def</span> <span class="nf">_create_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">csv_path</span><span class="p">,</span> <span class="n">all_universes</span><span class="p">,</span> <span class="n">keys</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Internal function: Create a CSV file with the parameters of all universes</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        csv_path : string</span>
+<span class="sd">            Path to save the CSV file</span>
+
+<span class="sd">        all_universes : list</span>
+<span class="sd">            List of all universes</span>
+
+<span class="sd">        keys : list</span>
+<span class="sd">            List of keys for the CSV file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Generate CSV file with the parameters of all universes</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">csv_path</span><span class="si">}</span><span class="s2">/multiverse_summary.csv&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">csvfile</span><span class="p">:</span>
+            <span class="n">fieldnames</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Universe&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>  <span class="c1"># &#39;Universe&#39; as the first column</span>
+            <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictWriter</span><span class="p">(</span><span class="n">csvfile</span><span class="p">,</span> <span class="n">fieldnames</span><span class="o">=</span><span class="n">fieldnames</span><span class="p">)</span>
+            <span class="n">writer</span><span class="o">.</span><span class="n">writeheader</span><span class="p">()</span>
+
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">combination</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">all_universes</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+                <span class="n">context</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;Universe&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Universe_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">combination</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                        <span class="n">context</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">context</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+                <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">context</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Multiverse._load_and_prepare_data">
+<a class="viewcode-back" href="../../api/multiverse.html#comet.multiverse.Multiverse._load_and_prepare_data">[docs]</a>
+    <span class="k">def</span> <span class="nf">_load_and_prepare_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fname</span><span class="o">=</span><span class="s2">&quot;multiverse_summary.csv&quot;</span><span class="p">,</span> <span class="n">measure</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">results_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Internal function: Load and prepare the data for the specification curve plotting</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        fname : string</span>
+<span class="sd">            Name of the .csv file containing the multiverse summary. Default is &quot;multiverse_summary.csv&quot;</span>
+
+<span class="sd">        measure : string</span>
+<span class="sd">            Name of the measure to plot. Default is None</span>
+
+<span class="sd">        results_path : string</span>
+<span class="sd">            Path to the results directory</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        sorted_combined : list</span>
+<span class="sd">            List of sorted universes with their summary</span>
+
+<span class="sd">        forking_paths : dict</span>
+<span class="sd">            Dictionary containing the forking paths</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">csv_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">results_path</span><span class="p">,</span> <span class="n">fname</span><span class="p">)</span>
+        <span class="n">multiverse_summary</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">measure</span> <span class="ow">in</span> <span class="n">multiverse_summary</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Getting </span><span class="si">{</span><span class="n">measure</span><span class="si">}</span><span class="s2"> from .csv file&quot;</span><span class="p">)</span>
+            <span class="n">forking_paths</span> <span class="o">=</span> <span class="p">{}</span>
+
+            <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">multiverse_summary</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">column</span> <span class="o">==</span> <span class="n">measure</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">unique_values</span> <span class="o">=</span> <span class="n">multiverse_summary</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+                <span class="n">forking_paths</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">unique_values</span>
+
+            <span class="n">universe_data</span> <span class="o">=</span> <span class="n">multiverse_summary</span><span class="p">[</span><span class="n">measure</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">parameters</span> <span class="o">=</span> <span class="n">multiverse_summary</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">measure</span><span class="p">])</span>
+            <span class="n">universes_with_summary</span> <span class="o">=</span> <span class="p">[(</span><span class="n">data</span><span class="p">,</span> <span class="n">parameters</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">())</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">universe_data</span><span class="p">)]</span>
+            <span class="n">sorted_combined</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">universes_with_summary</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Getting </span><span class="si">{</span><span class="n">measure</span><span class="si">}</span><span class="s2"> from .pkl files&quot;</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">results_path</span><span class="si">}</span><span class="s2">/forking_paths.pkl&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+                <span class="n">forking_paths</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+
+            <span class="n">pattern</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">results_path</span><span class="p">,</span> <span class="s2">&quot;universe_*.pkl&quot;</span><span class="p">)</span>
+            <span class="n">results_files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
+
+            <span class="n">universe_data</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">results_files</span><span class="p">:</span>
+                <span class="n">universe</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+                    <span class="n">universe_data</span><span class="p">[</span><span class="n">universe</span><span class="p">]</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+
+            <span class="n">universes_with_summary</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">universe</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">universe_data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">summary_row</span> <span class="o">=</span> <span class="n">multiverse_summary</span><span class="p">[</span><span class="n">multiverse_summary</span><span class="p">[</span><span class="s1">&#39;Universe&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="n">universe</span><span class="p">]</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">summary_row</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                    <span class="n">universes_with_summary</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">data</span><span class="p">,</span> <span class="n">summary_row</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+
+            <span class="n">sorted_combined</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">universes_with_summary</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+
+        <span class="k">return</span> <span class="n">sorted_combined</span><span class="p">,</span> <span class="n">forking_paths</span></div>
 </div>
 
 </pre></div>

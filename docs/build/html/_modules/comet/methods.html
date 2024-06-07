@@ -111,8 +111,9 @@
 
 
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">Abstract class template for all dynamic functional connectivity methods</span>
-<span class="sd">Abstract methods need to be overriden in the child classes</span>
+<span class="sd">SECTION: Abstract class template for all dynamic functional connectivity methods</span>
+<span class="sd"> - Abstract methods need to be overriden in the child classes</span>
+<span class="sd"> - If new methods are added, they should be implemented as a child class of ConnectivityMethod</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <div class="viewcode-block" id="ConnectivityMethod">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.ConnectivityMethod">[docs]</a>
@@ -120,25 +121,40 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Base class for all dynamic functional connectivity methods.</span>
 
-<span class="sd">    Attributes:</span>
-<span class="sd">        time_series (np.ndarray): Time series data.</span>
-<span class="sd">        T (int): Number of timepoints.</span>
-<span class="sd">        P (int): Number of parcels.</span>
-<span class="sd">        diagonal (int or float): Value to set on the diagonal of connectivity matrices.</span>
-<span class="sd">        standardize (bool): Whether to z-standardize the connectivity matrices.</span>
-<span class="sd">        fisher_z (bool): Whether to apply Fisher z-transformation.</span>
-<span class="sd">        tril (bool): Whether to return only the lower triangle of the matrices.</span>
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : np.ndarray</span>
+<span class="sd">        Time series data.</span>
+<span class="sd">    T : int</span>
+<span class="sd">        Number of timepoints.</span>
+<span class="sd">    P : int</span>
+<span class="sd">        Number of parcels.</span>
+<span class="sd">    diagonal : int or float</span>
+<span class="sd">        Value to set on the diagonal of connectivity matrices.</span>
+<span class="sd">    standardize : bool</span>
+<span class="sd">        Whether to z-standardize the connectivity matrices.</span>
+<span class="sd">    fisher_z : bool</span>
+<span class="sd">        Whether to apply Fisher z-transformation.</span>
+<span class="sd">    tril : bool</span>
+<span class="sd">        Whether to return only the lower triangle of the matrices.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time_series</span><span class="p">,</span> <span class="n">diagonal</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">standardize</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fisher_z</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">tril</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Initializes the ConnectivityMethod with the given parameters.</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            time_series (np.ndarray): The input time series data.</span>
-<span class="sd">            diagonal (int or float, optional): Value to set on the diagonal of connectivity matrices. Default is 0.</span>
-<span class="sd">            standardize (bool, optional): Whether to z-standardize the connectivity matrices. Default is False.</span>
-<span class="sd">            fisher_z (bool, optional): Whether to apply Fisher z-transformation. Default is False.</span>
-<span class="sd">            tril (bool, optional): Whether to return only the lower triangle of the matrices. Default is False.</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        time_series : np.ndarray</span>
+<span class="sd">            The input time series data.</span>
+<span class="sd">        diagonal : int or float, optional</span>
+<span class="sd">            Value to set on the diagonal of connectivity matrices. Default is 0.</span>
+<span class="sd">        standardize : bool, optional</span>
+<span class="sd">            Whether to z-standardize the connectivity matrices. Default is False.</span>
+<span class="sd">        fisher_z : bool, optional</span>
+<span class="sd">            Whether to apply Fisher z-transformation. Default is False.</span>
+<span class="sd">        tril : bool, optional</span>
+<span class="sd">            Whether to return only the lower triangle of the matrices. Default is False.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">time_series</span> <span class="o">=</span> <span class="n">time_series</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;float32&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="n">time_series</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="c1"># T timepoints</span>
@@ -156,8 +172,10 @@
 <span class="sd">        Abstract method to compute the connectivity matrix.</span>
 <span class="sd">        This method should be implemented in each child class.</span>
 
-<span class="sd">        Raises:</span>
-<span class="sd">            NotImplementedError: If the method is not implemented in the child class.</span>
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        NotImplementedError</span>
+<span class="sd">            If the method is not implemented in the child class.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;This method should be implemented in each child class.&quot;</span><span class="p">)</span></div>
 
@@ -169,11 +187,15 @@
 <span class="sd">        Post-process the connectivity matrix with optional Fisher z-transformation,</span>
 <span class="sd">        z-standardization, diagonal setting, and lower triangle extraction.</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            R_mat (np.ndarray): The connectivity matrix to be post-processed.</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        R_mat : np.ndarray</span>
+<span class="sd">            The connectivity matrix to be post-processed.</span>
 
-<span class="sd">        Returns:</span>
-<span class="sd">            np.ndarray: The post-processed connectivity matrix.</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            The post-processed connectivity matrix.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Fisher z-transformation</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fisher_z</span><span class="p">:</span>
@@ -206,17 +228,43 @@
 
 
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">Continuous dFC methods</span>
+<span class="sd">SECTION: Continuous dFC methods</span>
+<span class="sd"> - Several methods to estimate dynamic functional connectivity</span>
+<span class="sd"> - All methods produce continuously variying connectivity estimates</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <div class="viewcode-block" id="SlidingWindow">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.SlidingWindow">[docs]</a>
 <span class="k">class</span> <span class="nc">SlidingWindow</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sliding Window connectivity method.</span>
+
+<span class="sd">    This is the most widely used dynamic functional connectivity method. It involves sliding</span>
+<span class="sd">    a window over the data. Covariance is estimated for each windowed section.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : np.ndarray</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    windowsize : int, optional</span>
+<span class="sd">        Size of the sliding window. Default is 29.</span>
+<span class="sd">    stepsize : int, optional</span>
+<span class="sd">        Step size for sliding the window. Default is 1.</span>
+<span class="sd">    shape : {&#39;rectangular&#39;, &#39;gaussian&#39;, &#39;hamming&#39;}, optional</span>
+<span class="sd">        Shape of the window. Default is &#39;rectangular&#39;.</span>
+<span class="sd">    std : float, optional</span>
+<span class="sd">        Standard deviation for the Gaussian window. Default is 10.</span>
+<span class="sd">    diagonal : int, optional</span>
+<span class="sd">        Value to set on the diagonal of connectivity matrices. Default is 0.</span>
+<span class="sd">    standardize : bool, optional</span>
+<span class="sd">        Whether to z-standardize the connectivity matrices. Default is False.</span>
+<span class="sd">    fisher_z : bool, optional</span>
+<span class="sd">        Whether to apply Fisher z-transformation. Default is False.</span>
+<span class="sd">    tril : bool, optional</span>
+<span class="sd">        Whether to return only the lower triangle of the matrices. Default is False.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;CONT Sliding Window&quot;</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    Sliding Window</span>
-<span class="sd">        Most widely used method, which involves sliding a window over the data.</span>
-<span class="sd">        Cavariance is estimated for each windowed section.</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                  <span class="n">windowsize</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">29</span><span class="p">,</span>
@@ -241,13 +289,19 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;windowsize is larger than time series&quot;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">        Create weights for sliding window. Can be:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create weights for sliding window.</span>
+
+<span class="sd">        The window shape can be:</span>
 <span class="sd">            - rectangular</span>
 <span class="sd">            - gaussian</span>
 <span class="sd">            - hamming</span>
-<span class="sd">            - TODO: rectangular convolved with gaussian</span>
-<span class="sd">        &#39;&#39;&#39;</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Weights for each windowed section.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">weights_init</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="s1">&#39;rectangular&#39;</span><span class="p">:</span>
@@ -264,9 +318,15 @@
 <div class="viewcode-block" id="SlidingWindow.centers">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.SlidingWindow.centers">[docs]</a>
     <span class="k">def</span> <span class="nf">centers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">        Calculate the central index of each window so dFC estimates can be related to the original time series</span>
-<span class="sd">        &#39;&#39;&#39;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the central index of each window so dynamic functional connectivity (dFC)</span>
+<span class="sd">        estimates can be related to the original time series.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Central index of each window.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">centers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">windowsize</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">windowsize</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">stepsize</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">centers</span></div>
 
@@ -274,9 +334,14 @@
 <div class="viewcode-block" id="SlidingWindow.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.SlidingWindow.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">        Calculate sliding window correlation</span>
-<span class="sd">        &#39;&#39;&#39;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate sliding window correlation.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Dynamic functional connectivity as a PxPxN array.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating Sliding Window Correlation, please wait...&quot;</span><span class="p">)</span>
         <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weights</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">R_mat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">P</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">P</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_estimates</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
@@ -293,13 +358,34 @@
 <div class="viewcode-block" id="Jackknife">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Jackknife">[docs]</a>
 <span class="k">class</span> <span class="nc">Jackknife</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Jackknife correlation method.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : np.ndarray</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    windowsize : int, optional</span>
+<span class="sd">        Size of the sliding window. Default is 1.</span>
+<span class="sd">    stepsize : int, optional</span>
+<span class="sd">        Step size for sliding the window. Default is 1.</span>
+<span class="sd">    diagonal : int, optional</span>
+<span class="sd">        Value to set on the diagonal of connectivity matrices. Default is 0.</span>
+<span class="sd">    standardize : bool, optional</span>
+<span class="sd">        Whether to z-standardize the connectivity matrices. Default is False.</span>
+<span class="sd">    fisher_z : bool, optional</span>
+<span class="sd">        Whether to apply Fisher z-transformation. Default is False.</span>
+<span class="sd">    tril : bool, optional</span>
+<span class="sd">        Whether to return only the lower triangle of the matrices. Default is False.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Richter CG, Thompson WH, Bosman CA, Fries P. A jackknife approach to quantifying single-trial</span>
+<span class="sd">    correlation between covariance-based metrics undefined on a single-trial basis.</span>
+<span class="sd">    https://doi.org/10.1016/j.neuroimage.2015.04.040</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;CONT Jackknife Correlation&quot;</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    Jackknife correlation:</span>
-<span class="sd">        Richter CG, Thompson WH, Bosman CA, Fries P. A jackknife approach to quantifying single-trial</span>
-<span class="sd">        correlation between covariance-based metrics undefined on a single-trial basis.</span>
-<span class="sd">        https://doi.org/10.1016/j.neuroimage.2015.04.040</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                  <span class="n">windowsize</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
@@ -320,10 +406,17 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;windowsize is larger than time series&quot;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">        Create logical weight vectors for jackknife correlation</span>
-<span class="sd">        Example: 01111 -&gt; 10111 -&gt; 11011 -&gt; 11101 -&gt; 1110</span>
-<span class="sd">        &#39;&#39;&#39;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create logical weight vectors for jackknife correlation.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">        01111 -&gt; 10111 -&gt; 11011 -&gt; 11101 -&gt; 11110</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Boolean weights for each windowed section.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">weights_init</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
         <span class="n">weights_init</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">windowsize</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">weights_init</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">windowsize</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">stepsize</span><span class="p">)])</span>
@@ -332,9 +425,15 @@
 <div class="viewcode-block" id="Jackknife.centers">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Jackknife.centers">[docs]</a>
     <span class="k">def</span> <span class="nf">centers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">        Calculate the central index of each window so dFC estimates can be related to the original time series</span>
-<span class="sd">        &#39;&#39;&#39;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the central index of each window so dynamic functional connectivity (dFC)</span>
+<span class="sd">        estimates can be related to the original time series.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Central index of each window.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">centers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">windowsize</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">windowsize</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">stepsize</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">centers</span></div>
 
@@ -342,9 +441,14 @@
 <div class="viewcode-block" id="Jackknife.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Jackknife.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">        Calculate jackknife correlation</span>
-<span class="sd">        &#39;&#39;&#39;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate jackknife correlation.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Dynamic functional connectivity as a PxPxN array.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating Jackknife Correlation, please wait...&quot;</span><span class="p">)</span>
         <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weights</span><span class="p">()</span>
 
@@ -361,13 +465,30 @@
 <div class="viewcode-block" id="SpatialDistance">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.SpatialDistance">[docs]</a>
 <span class="k">class</span> <span class="nc">SpatialDistance</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;CONT Spatial Distance&quot;</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    Spatial Distance:</span>
-<span class="sd">        William Hedley Thompson, Per Brantefors, Peter Fransson. From static</span>
-<span class="sd">        to temporal network theory: Applications to functional brain connectivity.</span>
-<span class="sd">        https://doi.org/10.1162/NETN_a_00011</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Spatial Distance connectivity method.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : np.ndarray</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    dist : {&#39;euclidean&#39;, &#39;cosine&#39;, &#39;cityblock&#39;}, optional</span>
+<span class="sd">        Type of distance metric to use. Default is &#39;euclidean&#39;.</span>
+<span class="sd">    diagonal : int, optional</span>
+<span class="sd">        Value to set on the diagonal of connectivity matrices. Default is 0.</span>
+<span class="sd">    standardize : bool, optional</span>
+<span class="sd">        Whether to z-standardize the connectivity matrices. Default is False.</span>
+<span class="sd">    fisher_z : bool, optional</span>
+<span class="sd">        Whether to apply Fisher z-transformation. Default is False.</span>
+<span class="sd">    tril : bool, optional</span>
+<span class="sd">        Whether to return only the lower triangle of the matrices. Default is False.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    William Hedley Thompson, Per Brantefors, Peter Fransson. From static</span>
+<span class="sd">    to temporal network theory: Applications to functional brain connectivity.</span>
+<span class="sd">    https://doi.org/10.1162/NETN_a_00011</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                  <span class="n">dist</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;euclidean&quot;</span><span class="p">,</span> <span class="s2">&quot;cosine&quot;</span><span class="p">,</span> <span class="s2">&quot;cityblock&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;euclidean&quot;</span><span class="p">,</span>
@@ -383,15 +504,33 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">R_mat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">P</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">P</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_estimates</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_distance_functions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dist</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the distance function based on the specified metric.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        dist : str</span>
+<span class="sd">            The type of distance metric to use.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        function</span>
+<span class="sd">            The corresponding distance function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">options</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;euclidean&#39;</span><span class="p">:</span> <span class="n">distance</span><span class="o">.</span><span class="n">euclidean</span><span class="p">,</span>
                    <span class="s1">&#39;cosine&#39;</span>   <span class="p">:</span> <span class="n">distance</span><span class="o">.</span><span class="n">cosine</span><span class="p">,</span>
                    <span class="s1">&#39;cityblock&#39;</span><span class="p">:</span> <span class="n">distance</span><span class="o">.</span><span class="n">cityblock</span><span class="p">}</span>
         <span class="k">return</span> <span class="n">options</span><span class="p">[</span><span class="n">dist</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">        Calculate adjacency matrix for spatial distance</span>
-<span class="sd">        &#39;&#39;&#39;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate adjacency matrix for spatial distance.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            The spatial distance adjacency matrix.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">distance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="p">:],</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:])</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">)])</span>
         <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">])</span>
         <span class="n">np</span><span class="o">.</span><span class="n">fill_diagonal</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
@@ -403,9 +542,14 @@
 <div class="viewcode-block" id="SpatialDistance.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.SpatialDistance.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">        Calculate spatial distance correlation</span>
-<span class="sd">        &#39;&#39;&#39;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate spatial distance correlation.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Dynamic functional connectivity as a PxPxN array.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating Spatial Distance, please wait...&quot;</span><span class="p">)</span>
         <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weights</span><span class="p">()</span> <span class="c1"># in this case this is the distance matrix</span>
 
@@ -421,13 +565,32 @@
 <div class="viewcode-block" id="TemporalDerivatives">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.TemporalDerivatives">[docs]</a>
 <span class="k">class</span> <span class="nc">TemporalDerivatives</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Multiplication of Temporal Derivatives connectivity method.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : np.ndarray</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    windowsize : int, optional</span>
+<span class="sd">        Size of the sliding window. Default is 7.</span>
+<span class="sd">    diagonal : int, optional</span>
+<span class="sd">        Value to set on the diagonal of connectivity matrices. Default is 0.</span>
+<span class="sd">    standardize : bool, optional</span>
+<span class="sd">        Whether to z-standardize the connectivity matrices. Default is False.</span>
+<span class="sd">    fisher_z : bool, optional</span>
+<span class="sd">        Whether to apply Fisher z-transformation. Default is False.</span>
+<span class="sd">    tril : bool, optional</span>
+<span class="sd">        Whether to return only the lower triangle of the matrices. Default is False.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Shine JM, Koyejo O, Bell PT, Gorgolewski KJ, Gilat M, Poldrack RA. Estimation of</span>
+<span class="sd">    dynamic functional connectivity using Multiplication of Temporal Derivatives.</span>
+<span class="sd">    https://doi.org/10.1016/j.neuroimage.2015.07.064.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;CONT Multiplication of Temporal Derivatives&quot;</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    Multiplication of temporal derivatives:</span>
-<span class="sd">        Shine JM, Koyejo O, Bell PT, Gorgolewski KJ, Gilat M, Poldrack RA. Estimation of</span>
-<span class="sd">        dynamic functional connectivity using Multiplication of Temporal Derivatives.</span>
-<span class="sd">        https://doi.org/10.1016/j.neuroimage.2015.07.064.</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                  <span class="n">windowsize</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">7</span><span class="p">,</span>
@@ -448,9 +611,15 @@
 <div class="viewcode-block" id="TemporalDerivatives.centers">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.TemporalDerivatives.centers">[docs]</a>
     <span class="k">def</span> <span class="nf">centers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">        Calculate the central index of each window so dFC estimates can be related to the original time series</span>
-<span class="sd">        &#39;&#39;&#39;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the central index of each window so dynamic functional connectivity (dFC)</span>
+<span class="sd">        estimates can be related to the original time series.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Central index of each window.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">centers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">windowsize</span> <span class="o">//</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">windowsize</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">centers</span></div>
 
@@ -458,9 +627,14 @@
 <div class="viewcode-block" id="TemporalDerivatives.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.TemporalDerivatives.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">        Calculate multiplication of temproral derivatives</span>
-<span class="sd">        &#39;&#39;&#39;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate multiplication of temporal derivatives.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Dynamic functional connectivity as a PxPxN array.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating Multiplication of Temporal Derivatives, please wait...&quot;</span><span class="p">)</span>
         <span class="n">derivatives</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="p">:]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>
         <span class="n">derivatives</span> <span class="o">=</span> <span class="n">derivatives</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">derivatives</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
@@ -483,13 +657,36 @@
 <div class="viewcode-block" id="FlexibleLeastSquares">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.FlexibleLeastSquares">[docs]</a>
 <span class="k">class</span> <span class="nc">FlexibleLeastSquares</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Flexible Least Squares connectivity method.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : np.ndarray</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    standardizeData : bool, optional</span>
+<span class="sd">        Whether to standardize the time series data. Default is True.</span>
+<span class="sd">    mu : float, optional</span>
+<span class="sd">        Regularization parameter for the flexible least squares algorithm. Default is 100.</span>
+<span class="sd">    num_cores : int, optional</span>
+<span class="sd">        Number of CPU cores to use for parallel processing. Default is 16.</span>
+<span class="sd">    diagonal : int, optional</span>
+<span class="sd">        Value to set on the diagonal of connectivity matrices. Default is 0.</span>
+<span class="sd">    standardize : bool, optional</span>
+<span class="sd">        Whether to z-standardize the connectivity matrices. Default is False.</span>
+<span class="sd">    fisher_z : bool, optional</span>
+<span class="sd">        Whether to apply Fisher z-transformation. Default is False.</span>
+<span class="sd">    tril : bool, optional</span>
+<span class="sd">        Whether to return only the lower triangle of the matrices. Default is False.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Liao, W., Wu, G. R., Xu, Q., Ji, G. J., Zhang, Z., Zang, Y. F., &amp; Lu, G. (2014).</span>
+<span class="sd">    DynamicBC: a MATLAB toolbox for dynamic brain connectome analysis. Brain connectivity, 4(10), 780-790.</span>
+<span class="sd">    https://doi.org/10.1089/brain.2014.0253</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;CONT Flexible Least Squares&quot;</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    Flexible Least Squares:</span>
-<span class="sd">        Liao, W., Wu, G. R., Xu, Q., Ji, G. J., Zhang, Z., Zang, Y. F., &amp; Lu, G. (2014).</span>
-<span class="sd">        DynamicBC: a MATLAB toolbox for dynamic brain connectome analysis. Brain connectivity, 4(10), 780-790.</span>
-<span class="sd">        https://doi.org/10.1089/brain.2014.0253</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                  <span class="n">standardizeData</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
@@ -508,6 +705,21 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">num_cores</span> <span class="o">=</span> <span class="n">num_cores</span>
 
     <span class="k">def</span> <span class="nf">_calculateBetas</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate betas for the flexible least squares algorithm.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        X : np.ndarray</span>
+<span class="sd">            Input data matrix.</span>
+<span class="sd">        y : np.ndarray</span>
+<span class="sd">            Response variable vector.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Calculated betas.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">N</span><span class="p">,</span> <span class="n">K</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span>
         <span class="n">G</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">N</span><span class="o">*</span><span class="n">K</span><span class="p">,</span> <span class="n">N</span><span class="p">))</span>
         <span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">N</span><span class="o">*</span><span class="n">K</span><span class="p">,</span> <span class="n">N</span><span class="o">*</span><span class="n">K</span><span class="p">))</span>
@@ -537,15 +749,35 @@
         <span class="k">return</span> <span class="n">betas</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">_calculateBetasForPair</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate betas for each pair of time series.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        i : int</span>
+<span class="sd">            Index of the time series pair.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple</span>
+<span class="sd">            Index and calculated betas for the pair.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">beta_i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">P</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">))</span>
         <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">P</span><span class="p">):</span>
             <span class="n">beta_i</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculateBetas</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="p">[:,</span> <span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span>
         <span class="k">return</span> <span class="n">i</span><span class="p">,</span> <span class="n">beta_i</span>
 
-    <span class="c1"># Flexible least squares algorithm as implemented in the DynamicBC toolbox</span>
 <div class="viewcode-block" id="FlexibleLeastSquares.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.FlexibleLeastSquares.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate flexible least squares connectivity as implemented in the DynamicBC toolbox</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Dynamic functional connectivity as a PxPxN array.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating Flexible Least Squares, please wait...&quot;</span><span class="p">)</span>
         <span class="c1"># Standardize time series</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">standardizeData</span><span class="p">:</span>
@@ -574,12 +806,31 @@
 <div class="viewcode-block" id="PhaseSynchrony">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.PhaseSynchrony">[docs]</a>
 <span class="k">class</span> <span class="nc">PhaseSynchrony</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Instantaneous Phase Synchronization methods.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : np.ndarray</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    method : {&#39;crp&#39;, &#39;phcoh&#39;, &#39;teneto&#39;}, optional</span>
+<span class="sd">        The phase synchrony method to use. Default is &#39;crp&#39;.</span>
+<span class="sd">    diagonal : int, optional</span>
+<span class="sd">        Value to set on the diagonal of connectivity matrices. Default is 0.</span>
+<span class="sd">    standardize : bool, optional</span>
+<span class="sd">        Whether to z-standardize the connectivity matrices. Default is False.</span>
+<span class="sd">    fisher_z : bool, optional</span>
+<span class="sd">        Whether to apply Fisher z-transformation. Default is False.</span>
+<span class="sd">    tril : bool, optional</span>
+<span class="sd">        Whether to return only the lower triangle of the matrices. Default is False.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Honari, H., Choe, A. S., &amp; Lindquist, M. A. (2021). Evaluating phase synchronization methods in fMRI:</span>
+<span class="sd">    A comparison study and new approaches. NeuroImage, 228, 117704. https://doi.org/10.1016/j.neuroimage.2020.117704</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;CONT Phase Synchronization&quot;</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    Instantaneous Phase Synchrony:</span>
-<span class="sd">        Honari, H., Choe, A. S., &amp; Lindquist, M. A. (2021). Evaluating phase synchronization methods in fMRI:</span>
-<span class="sd">        A comparison study and new approaches. NeuroImage, 228, 117704. https://doi.org/10.1016/j.neuroimage.2020.117704</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                  <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;crp&quot;</span><span class="p">,</span> <span class="s2">&quot;phcoh&quot;</span><span class="p">,</span> <span class="s2">&quot;teneto&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;crp&quot;</span><span class="p">,</span>
@@ -596,10 +847,15 @@
 <div class="viewcode-block" id="PhaseSynchrony.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.PhaseSynchrony.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">        Calculate instantaneous phase synchrony</span>
-<span class="sd">        CARE: Hilbert transform needs narrowband signal to produce meaningful results</span>
-<span class="sd">        &#39;&#39;&#39;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate instantaneous phase synchrony.</span>
+<span class="sd">        CARE: Hilbert transform needs narrowband signal to produce meaningful results.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Dynamic functional connectivity as a PxPxN array.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating Phase Synchronization, please wait...&quot;</span><span class="p">)</span>
         <span class="n">analytic_signal</span> <span class="o">=</span> <span class="n">hilbert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="o">.</span><span class="n">transpose</span><span class="p">())</span>
         <span class="n">instantaneous_phase</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">angle</span><span class="p">(</span><span class="n">analytic_signal</span><span class="p">)</span>
@@ -624,20 +880,38 @@
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.LeiDA">[docs]</a>
 <span class="k">class</span> <span class="nc">LeiDA</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;CONT Leading Eigenvector Dynamics&quot;</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    Leading Eigenvector Dynamics:</span>
-<span class="sd">        Cabral, J., Vidaurre, D., Marques, P., Magalhães, R., Silva Moreira, P., Miguel Soares, J., ... &amp; Kringelbach, M. L. (2017).</span>
-<span class="sd">        Cognitive performance in healthy older adults relates to spontaneous switching between states of functional connectivity during rest.</span>
-<span class="sd">        Scientific reports, 7(1), 5135. https://doi.org/10.1038/s41598-017-05425-7</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Leading Eigenvector Dynamics.</span>
 
-<span class="sd">        Olsen, A. S., Lykkebo-Valløe, A., Ozenne, B., Madsen, M. K., Stenbæk, D. S., Armand, S., ... &amp; Fisher, P. M. (2022). Psilocybin modulation</span>
-<span class="sd">        of time-varying functional connectivity is associated with plasma psilocin and subjective effects. Neuroimage, 264, 119716.</span>
-<span class="sd">        https://doi.org/10.1016/j.neuroimage.2022.119716</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : np.ndarray</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    flip_eigenvectors : bool, optional</span>
+<span class="sd">        Whether to flip the eigenvectors so that the largest component is negative. Default is False.</span>
+<span class="sd">    diagonal : int, optional</span>
+<span class="sd">        Value to set on the diagonal of connectivity matrices. Default is 0.</span>
+<span class="sd">    standardize : bool, optional</span>
+<span class="sd">        Whether to z-standardize the connectivity matrices. Default is False.</span>
+<span class="sd">    fisher_z : bool, optional</span>
+<span class="sd">        Whether to apply Fisher z-transformation. Default is False.</span>
+<span class="sd">    tril : bool, optional</span>
+<span class="sd">        Whether to return only the lower triangle of the matrices. Default is False.</span>
 
-<span class="sd">        Vohryzek, J., Deco, G., Cessac, B., Kringelbach, M. L., &amp; Cabral, J. (2020). Ghost attractors in spontaneous brain activity:</span>
-<span class="sd">        Recurrent excursions into functionally-relevant BOLD phase-locking states. Frontiers in systems neuroscience, 14, 20.</span>
-<span class="sd">        https://doi.org/10.3389/fnsys.2020.00020</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Cabral, J., Vidaurre, D., Marques, P., Magalhães, R., Silva Moreira, P., Miguel Soares, J., ... &amp; Kringelbach, M. L. (2017).</span>
+<span class="sd">    Cognitive performance in healthy older adults relates to spontaneous switching between states of functional connectivity during rest.</span>
+<span class="sd">    Scientific reports, 7(1), 5135. https://doi.org/10.1038/s41598-017-05425-7</span>
+
+<span class="sd">    Olsen, A. S., Lykkebo-Valløe, A., Ozenne, B., Madsen, M. K., Stenbæk, D. S., Armand, S., ... &amp; Fisher, P. M. (2022). Psilocybin modulation</span>
+<span class="sd">    of time-varying functional connectivity is associated with plasma psilocin and subjective effects. Neuroimage, 264, 119716.</span>
+<span class="sd">    https://doi.org/10.1016/j.neuroimage.2022.119716</span>
+
+<span class="sd">    Vohryzek, J., Deco, G., Cessac, B., Kringelbach, M. L., &amp; Cabral, J. (2020). Ghost attractors in spontaneous brain activity:</span>
+<span class="sd">    Recurrent excursions into functionally-relevant BOLD phase-locking states. Frontiers in systems neuroscience, 14, 20.</span>
+<span class="sd">    https://doi.org/10.3389/fnsys.2020.00020</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                  <span class="n">flip_eigenvectors</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -656,20 +930,25 @@
 <div class="viewcode-block" id="LeiDA.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.LeiDA.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate Leading Eigenvector Dynamics Analysis (LeiDA).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Dynamic functional connectivity as a PxPxN array.</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Leading eigenvectors.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating LeiDA, please wait...&quot;</span><span class="p">)</span>
         <span class="c1"># Compute BOLD phases using Hilbert Transform</span>
         <span class="n">instantaneous_phase</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">angle</span><span class="p">(</span><span class="n">hilbert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="o">.</span><span class="n">transpose</span><span class="p">()))</span><span class="o">.</span><span class="n">transpose</span><span class="p">()</span>
 
         <span class="c1"># Compute the leading eigenvector for each time point</span>
         <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N_estimates</span><span class="p">):</span>
-            <span class="c1"># Compute coherence matrix</span>
-            <span class="n">cohmat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">subtract</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">instantaneous_phase</span><span class="p">[</span><span class="n">n</span><span class="p">,:],</span> <span class="n">instantaneous_phase</span><span class="p">[</span><span class="n">n</span><span class="p">,:]))</span>
-
-            <span class="c1"># Compute the eigenvectors (ignore eigenvalues)</span>
-            <span class="n">_</span><span class="p">,</span> <span class="n">eigenvectors</span> <span class="o">=</span> <span class="n">eigh</span><span class="p">(</span><span class="n">cohmat</span><span class="p">)</span>
-
-            <span class="c1"># The leading eigenvector is the one corresponding to the largest eigenvalue</span>
-            <span class="n">V1</span> <span class="o">=</span> <span class="n">eigenvectors</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">cohmat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">subtract</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">instantaneous_phase</span><span class="p">[</span><span class="n">n</span><span class="p">,:],</span> <span class="n">instantaneous_phase</span><span class="p">[</span><span class="n">n</span><span class="p">,:]))</span> <span class="c1"># Compute coherence matrix</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">eigenvectors</span> <span class="o">=</span> <span class="n">eigh</span><span class="p">(</span><span class="n">cohmat</span><span class="p">)</span> <span class="c1"># Compute the eigenvectors (ignore eigenvalues)</span>
+            <span class="n">V1</span> <span class="o">=</span> <span class="n">eigenvectors</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="c1"># The leading eigenvector is the one corresponding to the largest eigenvalue</span>
 
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">flip_eigenvectors</span><span class="p">:</span>
                 <span class="c1"># Make sure the largest component is negative</span>
@@ -687,13 +966,44 @@
 <div class="viewcode-block" id="WaveletCoherence">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.WaveletCoherence">[docs]</a>
 <span class="k">class</span> <span class="nc">WaveletCoherence</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Instantaneous Wavelet Coherence.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : np.ndarray</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    method : {&#39;weighted&#39;}, optional</span>
+<span class="sd">        The method to use for calculating wavelet coherence. Default is &#39;weighted&#39;.</span>
+<span class="sd">    TR : float, optional</span>
+<span class="sd">        Repetition time of the data. Default is 0.72.</span>
+<span class="sd">    fmin : float, optional</span>
+<span class="sd">        Minimum frequency for wavelet transform. Default is 0.007.</span>
+<span class="sd">    fmax : float, optional</span>
+<span class="sd">        Maximum frequency for wavelet transform. Default is 0.15.</span>
+<span class="sd">    n_scales : int, optional</span>
+<span class="sd">        Number of scales for wavelet transform. Default is 15.</span>
+<span class="sd">    drop_scales : int, optional</span>
+<span class="sd">        Number of scales to drop from the edges. Default is 2.</span>
+<span class="sd">    drop_timepoints : int, optional</span>
+<span class="sd">        Number of time points to drop from the edges. Default is 50.</span>
+<span class="sd">    diagonal : int, optional</span>
+<span class="sd">        Value to set on the diagonal of connectivity matrices. Default is 0.</span>
+<span class="sd">    standardize : bool, optional</span>
+<span class="sd">        Whether to z-standardize the connectivity matrices. Default is False.</span>
+<span class="sd">    fisher_z : bool, optional</span>
+<span class="sd">        Whether to apply Fisher z-transformation. Default is False.</span>
+<span class="sd">    tril : bool, optional</span>
+<span class="sd">        Whether to return only the lower triangle of the matrices. Default is False.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Jacob Billings, Manish Saggar, Jaroslav Hlinka, Shella Keilholz, Giovanni Petri; Simplicial and</span>
+<span class="sd">    topological descriptions of human brain dynamics. Network Neuroscience 2021; 5 (2): 549–568.</span>
+<span class="sd">    https://doi.org/10.1162/netn_a_00190</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;CONT Wavelet Coherence&quot;</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    Instantaneous Wavelet Coherence:</span>
-<span class="sd">        Jacob Billings, Manish Saggar, Jaroslav Hlinka, Shella Keilholz, Giovanni Petri; Simplicial and</span>
-<span class="sd">        topological descriptions of human brain dynamics. Network Neuroscience 2021; 5 (2): 549–568.</span>
-<span class="sd">        https://doi.org/10.1162/netn_a_00190</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                  <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;weighted&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;weighted&quot;</span><span class="p">,</span>
@@ -723,6 +1033,14 @@
 <div class="viewcode-block" id="WaveletCoherence.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.WaveletCoherence.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate instantaneous wavelet coherence.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Dynamic functional connectivity as a PxPxN array.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating Wavelet Coherence, please wait...&quot;</span><span class="p">)</span>
         <span class="c1"># Time series dimensions</span>
         <span class="n">P</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
@@ -793,13 +1111,33 @@
 <div class="viewcode-block" id="DCC">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.DCC">[docs]</a>
 <span class="k">class</span> <span class="nc">DCC</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Dynamic Conditional Correlation (DCC) as described by Lindquist et al. (2014).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : np.ndarray</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    num_cores : int, optional</span>
+<span class="sd">        Number of CPU cores to use for parallel processing. Default is 16.</span>
+<span class="sd">    standardizeData : bool, optional</span>
+<span class="sd">        Whether to standardize the time series data. Default is True.</span>
+<span class="sd">    diagonal : int, optional</span>
+<span class="sd">        Value to set on the diagonal of connectivity matrices. Default is 0.</span>
+<span class="sd">    standardize : bool, optional</span>
+<span class="sd">        Whether to z-standardize the connectivity matrices. Default is False.</span>
+<span class="sd">    fisher_z : bool, optional</span>
+<span class="sd">        Whether to apply Fisher z-transformation. Default is False.</span>
+<span class="sd">    tril : bool, optional</span>
+<span class="sd">        Whether to return only the lower triangle of the matrices. Default is False.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Lindquist, M. A., Xu, Y., Nebel, M. B., &amp; Caffo, B. S. (2014). Evaluating dynamic bivariate correlations</span>
+<span class="sd">    in resting-state fMRI: a comparison study and a new approach. NeuroImage, 101, 531-546.</span>
+<span class="sd">    https://doi.org/10.1016/j.neuroimage.2014.06.052</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;CONT Dynamic Conditional Correlation&quot;</span>
-<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    Dynamic Conditional Correlation:</span>
-<span class="sd">        Lindquist, M. A., Xu, Y., Nebel, M. B., &amp; Caffo, B. S. (2014). Evaluating dynamic bivariate correlations</span>
-<span class="sd">        in resting-state fMRI: a comparison study and a new approach. NeuroImage, 101, 531-546.</span>
-<span class="sd">        https://doi.org/10.1016/j.neuroimage.2014.06.052</span>
-<span class="sd">    &#39;&#39;&#39;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
@@ -818,7 +1156,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">num_cores</span> <span class="o">=</span> <span class="n">num_cores</span>
 
     <span class="k">def</span> <span class="nf">_loglikelihood_garch11</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculates a real number proportional to the negative log-likelihood of the GARCH(1,1) model</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculates a real number proportional to the negative log-likelihood of the GARCH(1,1) model</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -859,9 +1198,9 @@
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        epsilon : n-by-1 vector</span>
+<span class="sd">        epsilon : n-by-1 np.ndarray</span>
 <span class="sd">            standardized residual vector</span>
-<span class="sd">        d : 1-by-n vector</span>
+<span class="sd">        d : 1-by-n np.ndarray</span>
 <span class="sd">            estimated conditional volatility vector</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">T</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
@@ -878,7 +1217,8 @@
         <span class="k">return</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">d</span>
 
     <span class="k">def</span> <span class="nf">_epsilonToR</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">theta</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculates the time-varying conditional correlation matrices from standardized returns</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculates the time-varying conditional correlation matrices from standardized returns</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -889,7 +1229,7 @@
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        R : N-by-N-by-T matrix</span>
+<span class="sd">        R : N-by-N-by-T np.ndarray</span>
 <span class="sd">            conditional correlation matrix</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">T</span><span class="p">,</span> <span class="n">N</span> <span class="o">=</span> <span class="n">epsilon</span><span class="o">.</span><span class="n">shape</span>
@@ -906,7 +1246,8 @@
         <span class="k">return</span> <span class="n">R</span>
 
     <span class="k">def</span> <span class="nf">_LcOriginal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">theta</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculates the correlation component of the log-likelihood (eq. 29)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculates the correlation component of the log-likelihood (eq. 29)</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -936,6 +1277,21 @@
         <span class="k">return</span> <span class="n">output</span>
 
     <span class="k">def</span> <span class="nf">_compute_garch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fit a univariate GARCH(1,1) model to a time series and calculate standardized residuals and conditional volatilities.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        n : int</span>
+<span class="sd">            Index of the time series to be processed.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple</span>
+<span class="sd">            - np.ndarray : Fitted GARCH(1,1) parameters.</span>
+<span class="sd">            - np.ndarray : Standardized residuals.</span>
+<span class="sd">            - np.ndarray : Estimated conditional volatilities.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">ts_n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="p">[:,</span> <span class="n">n</span><span class="p">])</span>
         <span class="n">constraints</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;ineq&#39;</span><span class="p">,</span> <span class="s1">&#39;fun&#39;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">]])}</span>
         <span class="n">bounds</span> <span class="o">=</span> <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
@@ -948,7 +1304,8 @@
 <div class="viewcode-block" id="DCC.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.DCC.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;DCC algorithm</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        DCC algorithm</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -957,14 +1314,12 @@
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        H : N*N*T matrix</span>
-<span class="sd">            estimated dynamic conditional covariance matrices</span>
-<span class="sd">        R : N*N*T matrix</span>
-<span class="sd">            estimated dynamic conditional correlation matrices</span>
-<span class="sd">        Theta : N*3 matrix</span>
-<span class="sd">            GARCH(1,1) parameters</span>
-<span class="sd">        X : 1*N vector</span>
-<span class="sd">            DCC parameters</span>
+<span class="sd">        R : N*N*T np.ndarray</span>
+<span class="sd">            estimated dynamic conditional correlation tensor</span>
+<span class="sd">        tuple</span>
+<span class="sd">            - H : dynamic conditional covariance tensor</span>
+<span class="sd">            - Theta : GARCH(1,1) parameters</span>
+<span class="sd">            - X : DCC parameters</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating Dynamic Conditional Correlation, please wait...&quot;</span><span class="p">)</span>
         <span class="n">T</span><span class="p">,</span> <span class="n">N</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="o">.</span><span class="n">shape</span> <span class="c1"># T timepoints x N parcels</span>
@@ -1011,35 +1366,61 @@
         <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">T</span><span class="p">)):</span>
             <span class="n">H</span><span class="p">[:,:,</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">D</span><span class="p">[</span><span class="n">t</span><span class="p">,:]))</span> <span class="o">@</span> <span class="n">R</span><span class="p">[:,:,</span><span class="n">t</span><span class="p">]</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">D</span><span class="p">[</span><span class="n">t</span><span class="p">,:]))</span>
 
-
         <span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">postproc</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
 
-        <span class="c1">#return H, R, Theta, X</span>
-        <span class="k">return</span> <span class="n">R</span></div>
+        <span class="k">return</span> <span class="n">R</span><span class="p">,</span> <span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">Theta</span><span class="p">,</span> <span class="n">X</span><span class="p">)</span></div>
 </div>
 
 
 <div class="viewcode-block" id="Edge_centric_connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Edge_centric_connectivity">[docs]</a>
 <span class="k">class</span> <span class="nc">Edge_centric_connectivity</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Edge-centric connectivity method.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : np.ndarray</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    standardizeData : bool, optional</span>
+<span class="sd">        Whether to standardize the time series data. Default is True.</span>
+<span class="sd">    vlim : float, optional</span>
+<span class="sd">        Limit for plotting in the GUI (not used in the method itself). Default is 3.</span>
+<span class="sd">    standardize : bool, optional</span>
+<span class="sd">        Whether to z-standardize the connectivity matrices. Default is False.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Faskowitz, J., Esfahlani, F. Z., Jo, Y., Sporns, O., &amp; Betzel, R. F. (2020). Edge-centric functional</span>
+<span class="sd">    network representations of human cerebral cortex reveal overlapping system-level architecture.</span>
+<span class="sd">    Nature neuroscience, 23(12), 1644–1654. DOI: https://doi.org/10.1038/s41593-020-00719-y</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;CONT Edge-centric Connectivity&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                  <span class="n">standardizeData</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
                  <span class="n">vlim</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="c1"># for plotting in the GUI, not used in the method itself</span>
-                 <span class="n">diagonal</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-                 <span class="n">standardize</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-                 <span class="n">fisher_z</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-                 <span class="n">tril</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+                 <span class="n">standardize</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
 
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">time_series</span><span class="p">,</span> <span class="n">diagonal</span><span class="p">,</span> <span class="n">standardize</span><span class="p">,</span> <span class="n">fisher_z</span><span class="p">,</span> <span class="n">tril</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">time_series</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">standardize</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">standardizeData</span> <span class="o">=</span> <span class="n">standardizeData</span>
 
 <div class="viewcode-block" id="Edge_centric_connectivity.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Edge_centric_connectivity.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate edge-centric connectivity.</span>
 
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Dynamic functional connectivity as a PxPxN array.</span>
+<span class="sd">        tuple</span>
+<span class="sd">            - np.ndarray : Edge time series.</span>
+<span class="sd">            - np.ndarray : Indices of the upper triangle of the connectivity matrix.</span>
+<span class="sd">            - np.ndarray : Indices of the upper triangle of the connectivity matrix.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">z</span> <span class="o">=</span> <span class="n">zscore</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">standardizeData</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series</span>
         <span class="n">u</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">triu_indices</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">k</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
         <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">z</span><span class="p">[:,</span> <span class="n">u</span><span class="p">],</span> <span class="n">z</span><span class="p">[:,</span> <span class="n">v</span><span class="p">])</span> <span class="c1"># edge time series</span>
@@ -1057,15 +1438,28 @@
 
 
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">State based dFC methods. Basically wrapper functions to bring methods from https://github.com/neurodatascience/dFC/ into the Comet framework</span>
+<span class="sd">SECTION: State based dFC methods</span>
+<span class="sd"> - Basically wrapper functions to bring methods from https://github.com/neurodatascience/dFC/</span>
+<span class="sd">   into the Comet framework</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <div class="viewcode-block" id="Sliding_Window">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Sliding_Window">[docs]</a>
 <span class="k">class</span> <span class="nc">Sliding_Window</span><span class="p">(</span><span class="n">BaseDFCMethod</span><span class="p">):</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;CONT Sliding Window (pydfc)&quot;</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Sliding Window</span>
+<span class="sd">    Wrapper function for the sliding window connectivity method</span>
+<span class="sd">    from the pydfc library: https://github.com/neurodatascience/dFC/</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : time_series.TIME_SERIES</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    clstr_distance : {&#39;euclidean&#39;}, optional</span>
+<span class="sd">        Distance metric for clustering. Default is &#39;euclidean&#39;.</span>
+<span class="sd">    **params : dict, optional</span>
+<span class="sd">        Additional parameters for the Sliding Window method.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;CONT Sliding Window (pydfc)&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">time_series</span><span class="o">.</span><span class="n">TIME_SERIES</span><span class="p">,</span>
                  <span class="n">clstr_distance</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;euclidean&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;euclidean&quot;</span><span class="p">,</span>
@@ -1098,6 +1492,14 @@
 <div class="viewcode-block" id="Sliding_Window.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Sliding_Window.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the sliding window dynamic functional connectivity.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Dynamic functional connectivity estimated by the sliding window method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">measure</span> <span class="o">=</span> <span class="n">SLIDING_WINDOW</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
         <span class="n">dFC</span> <span class="o">=</span> <span class="n">measure</span><span class="o">.</span><span class="n">estimate_dFC</span><span class="p">(</span><span class="n">time_series</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">dFC</span></div>
@@ -1107,10 +1509,23 @@
 <div class="viewcode-block" id="Time_Freq">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Time_Freq">[docs]</a>
 <span class="k">class</span> <span class="nc">Time_Freq</span><span class="p">(</span><span class="n">BaseDFCMethod</span><span class="p">):</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;CONT Time-frequency (pydfc)&quot;</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Time-Frequency</span>
+<span class="sd">    Wrapper function for the time-frequency connectivity method</span>
+<span class="sd">    from the pydfc library: https://github.com/neurodatascience/dFC/</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : time_series.TIME_SERIES</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    num_cores : int, optional</span>
+<span class="sd">        Number of CPU cores to use for parallel processing. Default is 8.</span>
+<span class="sd">    coi_correction : bool, optional</span>
+<span class="sd">        Whether to apply cone of influence correction. Default is True.</span>
+<span class="sd">    **params : dict, optional</span>
+<span class="sd">        Additional parameters for the Time-Frequency method.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;CONT Time-frequency (pydfc)&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">time_series</span><span class="o">.</span><span class="n">TIME_SERIES</span><span class="p">,</span>
                  <span class="n">num_cores</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
@@ -1143,6 +1558,14 @@
 <div class="viewcode-block" id="Time_Freq.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Time_Freq.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the time-frequency dynamic functional connectivity.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Dynamic functional connectivity estimated by the time-frequency method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">measure</span> <span class="o">=</span> <span class="n">TIME_FREQ</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
         <span class="n">dFC</span> <span class="o">=</span> <span class="n">measure</span><span class="o">.</span><span class="n">estimate_dFC</span><span class="p">(</span><span class="n">time_series</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">dFC</span></div>
@@ -1152,10 +1575,27 @@
 <div class="viewcode-block" id="Cap">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Cap">[docs]</a>
 <span class="k">class</span> <span class="nc">Cap</span><span class="p">(</span><span class="n">BaseDFCMethod</span><span class="p">):</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;STATE Co-activation patterns&quot;</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Co-activation patterns</span>
+<span class="sd">    Wrapper function for the co-activation patterns (CAP) method</span>
+<span class="sd">    from the pydfc library: https://github.com/neurodatascience/dFC/</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : time_series.TIME_SERIES</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    subject : int, optional</span>
+<span class="sd">        Subject index for which to compute the CAP. Default is 0.</span>
+<span class="sd">    n_states : int, optional</span>
+<span class="sd">        Number of states for CAP. Default is 5.</span>
+<span class="sd">    n_subj_clusters : int, optional</span>
+<span class="sd">        Number of subject clusters. Default is 5.</span>
+<span class="sd">    normalization : bool, optional</span>
+<span class="sd">        Whether to normalize the data. Default is True.</span>
+<span class="sd">    **params : dict, optional</span>
+<span class="sd">        Additional parameters for the CAP method.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;STATE Co-activation patterns&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">time_series</span><span class="o">.</span><span class="n">TIME_SERIES</span><span class="p">,</span>
                  <span class="n">subject</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
@@ -1194,6 +1634,14 @@
 <div class="viewcode-block" id="Cap.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Cap.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the co-activation patterns dynamic functional connectivity.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Dynamic functional connectivity estimated by the CAP method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">measure</span> <span class="o">=</span> <span class="n">CAP</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
         <span class="n">measure</span><span class="o">.</span><span class="n">estimate_FCS</span><span class="p">(</span><span class="n">time_series</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="p">)</span>
         <span class="n">dFC</span> <span class="o">=</span> <span class="n">measure</span><span class="o">.</span><span class="n">estimate_dFC</span><span class="p">(</span><span class="n">time_series</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="o">.</span><span class="n">get_subj_ts</span><span class="p">(</span><span class="n">subjs_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sub_id</span><span class="p">))</span>
@@ -1204,10 +1652,33 @@
 <div class="viewcode-block" id="Sliding_Window_Clustr">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Sliding_Window_Clustr">[docs]</a>
 <span class="k">class</span> <span class="nc">Sliding_Window_Clustr</span><span class="p">(</span><span class="n">BaseDFCMethod</span><span class="p">):</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;STATE Sliding Window Clustering&quot;</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Sliding Window Clustering</span>
+<span class="sd">    Wrapper function for the sliding window clustering method</span>
+<span class="sd">    from the pydfc library: https://github.com/neurodatascience/dFC/</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : time_series.TIME_SERIES</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    subject : int, optional</span>
+<span class="sd">        Subject index for which to compute the sliding window clustering. Default is 0.</span>
+<span class="sd">    windowsize : int, optional</span>
+<span class="sd">        Size of the sliding window. Default is 44.</span>
+<span class="sd">    n_overlap : float, optional</span>
+<span class="sd">        Overlap between windows. Default is 0.5.</span>
+<span class="sd">    tapered_window : bool, optional</span>
+<span class="sd">        Whether to use a tapered window. Default is True.</span>
+<span class="sd">    n_states : int, optional</span>
+<span class="sd">        Number of states for clustering. Default is 5.</span>
+<span class="sd">    n_subj_clusters : int, optional</span>
+<span class="sd">        Number of subject clusters. Default is 5.</span>
+<span class="sd">    normalization : bool, optional</span>
+<span class="sd">        Whether to normalize the data. Default is True.</span>
+<span class="sd">    clstr_distance : {&#39;euclidean&#39;, &#39;manhattan&#39;}, optional</span>
+<span class="sd">        Distance metric for clustering. Default is &#39;euclidean&#39;.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;STATE Sliding Window Clustering&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">time_series</span><span class="o">.</span><span class="n">TIME_SERIES</span><span class="p">,</span>
                  <span class="n">subject</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
@@ -1264,6 +1735,14 @@
 <div class="viewcode-block" id="Sliding_Window_Clustr.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Sliding_Window_Clustr.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the sliding window clustering dynamic functional connectivity.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Dynamic functional connectivity estimated by the sliding window clustering method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">measure</span> <span class="o">=</span> <span class="n">SLIDING_WINDOW_CLUSTR</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
         <span class="n">measure</span><span class="o">.</span><span class="n">estimate_FCS</span><span class="p">(</span><span class="n">time_series</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="p">)</span>
         <span class="n">dFC</span> <span class="o">=</span> <span class="n">measure</span><span class="o">.</span><span class="n">estimate_dFC</span><span class="p">(</span><span class="n">time_series</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="o">.</span><span class="n">get_subj_ts</span><span class="p">(</span><span class="n">subjs_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sub_id</span><span class="p">))</span>
@@ -1276,7 +1755,23 @@
 <span class="k">class</span> <span class="nc">Hmm_Cont</span><span class="p">(</span><span class="n">BaseDFCMethod</span><span class="p">):</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;STATE Continuous Hidden Markov Model&quot;</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Continuous Hidden Markov Model</span>
+<span class="sd">    Wrapper function for the continuous hidden Markov model (HMM) method</span>
+<span class="sd">    from the pydfc library: https://github.com/neurodatascience/dFC/</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : time_series.TIME_SERIES</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    subject : int, optional</span>
+<span class="sd">        Subject index for which to compute the HMM. Default is 0.</span>
+<span class="sd">    n_states : int, optional</span>
+<span class="sd">        Number of states for the HMM. Default is 5.</span>
+<span class="sd">    iterations : int, optional</span>
+<span class="sd">        Number of iterations for the HMM. Default is 20.</span>
+<span class="sd">    normalization : bool, optional</span>
+<span class="sd">        Whether to normalize the data. Default is True.</span>
+<span class="sd">    **params : dict, optional</span>
+<span class="sd">        Additional parameters for the HMM method.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">time_series</span><span class="o">.</span><span class="n">TIME_SERIES</span><span class="p">,</span>
@@ -1318,6 +1813,14 @@
 <div class="viewcode-block" id="Hmm_Cont.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Hmm_Cont.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the continuous hidden Markov model dynamic functional connectivity.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Dynamic functional connectivity estimated by the HMM method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">measure</span> <span class="o">=</span> <span class="n">HMM_CONT</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
         <span class="n">measure</span><span class="o">.</span><span class="n">estimate_FCS</span><span class="p">(</span><span class="n">time_series</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="p">)</span>
         <span class="n">dFC</span> <span class="o">=</span> <span class="n">measure</span><span class="o">.</span><span class="n">estimate_dFC</span><span class="p">(</span><span class="n">time_series</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="o">.</span><span class="n">get_subj_ts</span><span class="p">(</span><span class="n">subjs_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sub_id</span><span class="p">))</span>
@@ -1328,10 +1831,41 @@
 <div class="viewcode-block" id="Hmm_Disc">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Hmm_Disc">[docs]</a>
 <span class="k">class</span> <span class="nc">Hmm_Disc</span><span class="p">(</span><span class="n">BaseDFCMethod</span><span class="p">):</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;STATE Discrete Hidden Markov Model&quot;</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Discrete Hidden Markov Model</span>
+<span class="sd">    Wrapper function for the discrete hidden Markov model (HMM) method</span>
+<span class="sd">    from the pydfc library: https://github.com/neurodatascience/dFC/</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : time_series.TIME_SERIES</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    subject : int, optional</span>
+<span class="sd">        Subject index for which to compute the HMM. Default is 0.</span>
+<span class="sd">    windowsize : int, optional</span>
+<span class="sd">        Size of the sliding window. Default is 44.</span>
+<span class="sd">    n_overlap : float, optional</span>
+<span class="sd">        Overlap between windows. Default is 0.5.</span>
+<span class="sd">    clstr_base_measure : {&#39;SlidingWindow&#39;}, optional</span>
+<span class="sd">        Base measure for clustering. Default is &#39;SlidingWindow&#39;.</span>
+<span class="sd">    sw_method : {&#39;pear_corr&#39;}, optional</span>
+<span class="sd">        Sliding window method. Default is &#39;pear_corr&#39;.</span>
+<span class="sd">    tapered_window : bool, optional</span>
+<span class="sd">        Whether to use a tapered window. Default is True.</span>
+<span class="sd">    iterations : int, optional</span>
+<span class="sd">        Number of iterations for the HMM. Default is 20.</span>
+<span class="sd">    dhmm_obs_state_ratio : float, optional</span>
+<span class="sd">        Ratio of observed to hidden states. Default is 16/24.</span>
+<span class="sd">    n_states : int, optional</span>
+<span class="sd">        Number of states for the HMM. Default is 5.</span>
+<span class="sd">    n_subj_clusters : int, optional</span>
+<span class="sd">        Number of subject clusters. Default is 5.</span>
+<span class="sd">    normalization : bool, optional</span>
+<span class="sd">        Whether to normalize the data. Default is True.</span>
+<span class="sd">    **params : dict, optional</span>
+<span class="sd">        Additional parameters for the HMM method.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;STATE Discrete Hidden Markov Model&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">time_series</span><span class="o">.</span><span class="n">TIME_SERIES</span><span class="p">,</span>
                  <span class="n">subject</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
@@ -1393,6 +1927,14 @@
 <div class="viewcode-block" id="Hmm_Disc.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Hmm_Disc.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the discrete hidden Markov model dynamic functional connectivity.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Dynamic functional connectivity estimated by the HMM method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">measure</span> <span class="o">=</span> <span class="n">HMM_DISC</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
         <span class="n">measure</span><span class="o">.</span><span class="n">estimate_FCS</span><span class="p">(</span><span class="n">time_series</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="p">)</span>
         <span class="n">dFC</span> <span class="o">=</span> <span class="n">measure</span><span class="o">.</span><span class="n">estimate_dFC</span><span class="p">(</span><span class="n">time_series</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="o">.</span><span class="n">get_subj_ts</span><span class="p">(</span><span class="n">subjs_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sub_id</span><span class="p">))</span>
@@ -1403,10 +1945,27 @@
 <div class="viewcode-block" id="Windowless">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Windowless">[docs]</a>
 <span class="k">class</span> <span class="nc">Windowless</span><span class="p">(</span><span class="n">BaseDFCMethod</span><span class="p">):</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;STATE Windowless&quot;</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Windowless</span>
+<span class="sd">    Wrapper function for the windowless method</span>
+<span class="sd">    from the pydfc library: https://github.com/neurodatascience/dFC/</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : time_series.TIME_SERIES</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    subject : int, optional</span>
+<span class="sd">        Subject index for which to compute the windowless method. Default is 0.</span>
+<span class="sd">    n_states : int, optional</span>
+<span class="sd">        Number of states for the method. Default is 5.</span>
+<span class="sd">    n_subj_clusters : int, optional</span>
+<span class="sd">        Number of subject clusters. Default is 5.</span>
+<span class="sd">    normalization : bool, optional</span>
+<span class="sd">        Whether to normalize the data. Default is True.</span>
+<span class="sd">    **params : dict, optional</span>
+<span class="sd">        Additional parameters for the windowless method.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;STATE Windowless&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">time_series</span><span class="o">.</span><span class="n">TIME_SERIES</span><span class="p">,</span>
                  <span class="n">subject</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
@@ -1447,6 +2006,14 @@
 <div class="viewcode-block" id="Windowless.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Windowless.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the windowless dynamic functional connectivity.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Dynamic functional connectivity estimated by the windowless method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">measure</span> <span class="o">=</span> <span class="n">WINDOWLESS</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
         <span class="n">measure</span><span class="o">.</span><span class="n">estimate_FCS</span><span class="p">(</span><span class="n">time_series</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="p">)</span>
         <span class="n">dFC</span> <span class="o">=</span> <span class="n">measure</span><span class="o">.</span><span class="n">estimate_dFC</span><span class="p">(</span><span class="n">time_series</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="o">.</span><span class="n">get_subj_ts</span><span class="p">(</span><span class="n">subjs_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sub_id</span><span class="p">))</span>
@@ -1455,14 +2022,31 @@
 
 
 
-<span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">Static FC methods</span>
-<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">SECTION: Static FC methods</span>
+<span class="sd"> - Static methods that calculate a single functional connectivity matrix</span>
+<span class="sd">   from a given time series</span>
+<span class="sd">&quot;&quot;&quot;</span>
 <div class="viewcode-block" id="Static_Pearson">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Static_Pearson">[docs]</a>
 <span class="k">class</span> <span class="nc">Static_Pearson</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Static functional connectivity method using Pearson correlation.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : np.ndarray</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    diagonal : int, optional</span>
+<span class="sd">        Value to set on the diagonal of connectivity matrices. Default is 0.</span>
+<span class="sd">    standardize : bool, optional</span>
+<span class="sd">        Whether to z-standardize the connectivity matrices. Default is False.</span>
+<span class="sd">    fisher_z : bool, optional</span>
+<span class="sd">        Whether to apply Fisher z-transformation. Default is False.</span>
+<span class="sd">    tril : bool, optional</span>
+<span class="sd">        Whether to return only the lower triangle of the matrices. Default is False.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;STATIC Pearson Correlation&quot;</span>
-    <span class="n">options</span> <span class="o">=</span> <span class="p">{}</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
@@ -1476,6 +2060,14 @@
 <div class="viewcode-block" id="Static_Pearson.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Static_Pearson.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the functional connectivity.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Static functional connectivity matrix.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">fc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">corrcoef</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
         <span class="n">fc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">postproc</span><span class="p">(</span><span class="n">fc</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">fc</span></div>
@@ -1485,8 +2077,23 @@
 <div class="viewcode-block" id="Static_Partial">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Static_Partial">[docs]</a>
 <span class="k">class</span> <span class="nc">Static_Partial</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Static functional connectivity method using partial correlation.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : np.ndarray</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    diagonal : int, optional</span>
+<span class="sd">        Value to set on the diagonal of connectivity matrices. Default is 0.</span>
+<span class="sd">    standardize : bool, optional</span>
+<span class="sd">        Whether to z-standardize the connectivity matrices. Default is False.</span>
+<span class="sd">    fisher_z : bool, optional</span>
+<span class="sd">        Whether to apply Fisher z-transformation. Default is False.</span>
+<span class="sd">    tril : bool, optional</span>
+<span class="sd">        Whether to return only the lower triangle of the matrices. Default is False.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;STATIC Partial Correlation&quot;</span>
-    <span class="n">options</span> <span class="o">=</span> <span class="p">{}</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
@@ -1500,6 +2107,14 @@
 <div class="viewcode-block" id="Static_Partial.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Static_Partial.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the functional connectivity.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Static functional connectivity matrix.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">corr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">corrcoef</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
         <span class="n">precision</span> <span class="o">=</span> <span class="n">inv</span><span class="p">(</span><span class="n">corr</span><span class="p">)</span>
         <span class="n">fc</span> <span class="o">=</span> <span class="o">-</span><span class="n">precision</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">precision</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">precision</span><span class="p">)))</span>
@@ -1511,8 +2126,26 @@
 <div class="viewcode-block" id="Static_Mutual_Info">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Static_Mutual_Info">[docs]</a>
 <span class="k">class</span> <span class="nc">Static_Mutual_Info</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Static functional connectivity method using mutual information.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series : np.ndarray</span>
+<span class="sd">        The input time series data.</span>
+<span class="sd">    num_bins : int, optional</span>
+<span class="sd">        Number of bins to use for the mutual information calculation. Default is 10.</span>
+<span class="sd">    diagonal : int, optional</span>
+<span class="sd">        Value to set on the diagonal of connectivity matrices. Default is 0.</span>
+<span class="sd">    standardize : bool, optional</span>
+<span class="sd">        Whether to z-standardize the connectivity matrices. Default is False.</span>
+<span class="sd">    fisher_z : bool, optional</span>
+<span class="sd">        Whether to apply Fisher z-transformation. Default is False.</span>
+<span class="sd">    tril : bool, optional</span>
+<span class="sd">        Whether to return only the lower triangle of the matrices. Default is False.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;STATIC Mutual Information&quot;</span>
-    <span class="n">options</span> <span class="o">=</span> <span class="p">{}</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">time_series</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
@@ -1528,6 +2161,14 @@
 <div class="viewcode-block" id="Static_Mutual_Info.connectivity">
 <a class="viewcode-back" href="../../api/methods.html#comet.methods.Static_Mutual_Info.connectivity">[docs]</a>
     <span class="k">def</span> <span class="nf">connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the functional connectivity.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Static functional connectivity matrix.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_bins</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Number of bins must be specified for mutual information method&quot;</span><span class="p">)</span>
 

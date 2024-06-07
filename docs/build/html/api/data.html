@@ -102,32 +102,132 @@
 </div>
 <dl class="py function" id="module-comet.data">
 <dt class="sig sig-object py" id="comet.data.clean">
-<span class="sig-prename descclassname"><span class="pre">comet.data.</span></span><span class="sig-name descname"><span class="pre">clean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">runs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detrend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize_confounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'butterworth'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">low_pass</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">high_pass</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.72</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ensure_finite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/data.html#clean"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.data.clean" title="Link to this definition">¶</a></dt>
-<dd><p>Standard nilearn cleaning of the time series</p>
+<span class="sig-prename descclassname"><span class="pre">comet.data.</span></span><span class="sig-name descname"><span class="pre">clean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">runs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detrend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize_confounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'butterworth'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">low_pass</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">high_pass</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ensure_finite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/data.html#clean"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.data.clean" title="Link to this definition">¶</a></dt>
+<dd><p>Wrapper function for nilearn.clean() for cleaning time series data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>time_series</strong> (<em>TxP np.ndarray</em>) – time series data</p></li>
+<li><p><strong>runs</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Add a run level to the cleaning process. Each run will be cleaned independently.
+Must be a 1D array of n_samples elements.</p></li>
+<li><p><strong>detrend</strong> (<em>bool</em><em>, </em><em>optional</em>) – Detrend the data. Default is False.</p></li>
+<li><p><strong>confounds</strong> (<em>np.ndarray</em><em>, </em><em>str</em><em>, </em><em>pathlib.Path</em><em>, </em><em>pandas.DataFrame</em><em>, or </em><em>list</em><em> of </em><em>confounds</em>) – Confounds to be regressed out from the data. Default is None.</p></li>
+<li><p><strong>standardize</strong> (<em>bool</em><em>, </em><em>optional</em>) – Z-score the data. Default is False.</p></li>
+<li><p><strong>standardize_confounds</strong> (<em>bool</em><em>, </em><em>optional</em>) – Z-score the confounds. Default is True.</p></li>
+<li><p><strong>filter</strong> (<em>str {butterworth</em><em>, </em><em>cosine</em><em>, </em><em>False}</em>) – Filtering method. Default is ‘butterworth’.</p></li>
+<li><p><strong>low_pass</strong> (<em>float</em><em>, </em><em>optional</em>) – Low cutoff frequency in Hertz. Default is None.</p></li>
+<li><p><strong>high_pass</strong> (<em>float</em><em>, </em><em>optional</em>) – High cutoff frequency in Hertz. Default is None.</p></li>
+<li><p><strong>t_r</strong> (<em>float</em><em>, </em><em>optional</em>) – Repetition time, in seconds (sampling period). Default is None</p></li>
+<li><p><strong>ensure_finite</strong> (<em>bool</em><em>, </em><em>optional</em>) – Check if the data contains only finite numbers. Default is False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>data</strong> – cleaned time series data</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>TxP np.ndarray</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="comet.data.load_example">
 <span class="sig-prename descclassname"><span class="pre">comet.data.</span></span><span class="sig-name descname"><span class="pre">load_example</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ftype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/data.html#load_example"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.data.load_example" title="Link to this definition">¶</a></dt>
-<dd><p>Load simulated time series data with two randomly changing connectivity states</p>
+<dd><p>Load simulation time series with two randomly changing connectivity states.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ftype</strong> (<em>str</em><em>, </em><em>optional</em>) – File type to load. If specified as “pkl”, a .pkl file with additional
+information is loaded. Otherwise, only time series data is returned.
+Default is None.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p><strong>data</strong> – If <cite>ftype</cite> is not specified or is None, the function returns a
+TxP np.ndarray containing the time series data</p>
+<dl class="simple">
+<dt>If <cite>ftype</cite> is “pkl”, the function returns a tuple containing:</dt><dd><ul class="simple">
+<li><p>data[0] : TxP np.ndarray
+Time series data.</p></li>
+<li><p>data[1] : np.ndarray
+Time in seconds.</p></li>
+<li><p>data[2] : np.ndarray
+Trial onsets in seconds.</p></li>
+<li><p>data[3] : np.ndarray
+Trial labels indicating two changing connectivity states.</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray or tuple</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="comet.data.load_single_state">
 <span class="sig-prename descclassname"><span class="pre">comet.data.</span></span><span class="sig-name descname"><span class="pre">load_single_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/data.html#load_single_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.data.load_single_state" title="Link to this definition">¶</a></dt>
 <dd><p>Load simulated time series data with a single connectivity state</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> – Single state time series data</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>TxP np.ndarray</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="comet.data.load_timeseries">
-<span class="sig-prename descclassname"><span class="pre">comet.data.</span></span><span class="sig-name descname"><span class="pre">load_timeseries</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rois</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/data.html#load_timeseries"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.data.load_timeseries" title="Link to this definition">¶</a></dt>
-<dd><p>Load time series data from a file</p>
+<span class="sig-prename descclassname"><span class="pre">comet.data.</span></span><span class="sig-name descname"><span class="pre">load_timeseries</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/data.html#load_timeseries"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.data.load_timeseries" title="Link to this definition">¶</a></dt>
+<dd><p>Load time series data from a file.
+Supported file formats are: .pkl, .txt, .npy, .mat, and .tsv</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>string</em>) – path to the time series data file.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>data</strong> – time series data</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>TxP np.ndarray</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="comet.data.save_results">
 <span class="sig-prename descclassname"><span class="pre">comet.data.</span></span><span class="sig-name descname"><span class="pre">save_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">universe</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comet/data.html#save_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.data.save_results" title="Link to this definition">¶</a></dt>
 <dd><p>Save all kinds of results as .pkl file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ftype</strong> (<em>str</em><em>, </em><em>optional</em>) – File type to load. If specified as “pkl”, a .pkl file with additional
+information is loaded. Otherwise, only time series data is returned.
+Default is None.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p><strong>data</strong> – If <cite>ftype</cite> is not specified or is None, the function returns a
+TxP np.ndarray containing the time series data</p>
+<dl class="simple">
+<dt>If <cite>ftype</cite> is “pkl”, the function returns a tuple containing:</dt><dd><ul class="simple">
+<li><p>data[0] : TxP np.ndarray
+Time series data.</p></li>
+<li><p>data[1] : np.ndarray
+Time in seconds.</p></li>
+<li><p>data[2] : np.ndarray
+Trial onsets in seconds.</p></li>
+<li><p>data[3] : np.ndarray
+Trial labels indicating two changing connectivity states.</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray or tuple</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
