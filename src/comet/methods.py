@@ -22,32 +22,48 @@ os.environ["OMP_NUM_THREADS"] = "1"
 
 
 """
-Abstract class template for all dynamic functional connectivity methods
-Abstract methods need to be overriden in the child classes
+SECTION: Abstract class template for all dynamic functional connectivity methods
+ - Abstract methods need to be overriden in the child classes
+ - If new methods are added, they should be implemented as a child class of ConnectivityMethod
 """
 class ConnectivityMethod(metaclass=ABCMeta):
     """
     Base class for all dynamic functional connectivity methods.
 
-    Attributes:
-        time_series (np.ndarray): Time series data.
-        T (int): Number of timepoints.
-        P (int): Number of parcels.
-        diagonal (int or float): Value to set on the diagonal of connectivity matrices.
-        standardize (bool): Whether to z-standardize the connectivity matrices.
-        fisher_z (bool): Whether to apply Fisher z-transformation.
-        tril (bool): Whether to return only the lower triangle of the matrices.
+    Attributes
+    ----------
+    time_series : np.ndarray
+        Time series data.
+    T : int
+        Number of timepoints.
+    P : int
+        Number of parcels.
+    diagonal : int or float
+        Value to set on the diagonal of connectivity matrices.
+    standardize : bool
+        Whether to z-standardize the connectivity matrices.
+    fisher_z : bool
+        Whether to apply Fisher z-transformation.
+    tril : bool
+        Whether to return only the lower triangle of the matrices.
     """
+
     def __init__(self, time_series, diagonal=0, standardize=False, fisher_z=False, tril=False):
         """
         Initializes the ConnectivityMethod with the given parameters.
 
-        Args:
-            time_series (np.ndarray): The input time series data.
-            diagonal (int or float, optional): Value to set on the diagonal of connectivity matrices. Default is 0.
-            standardize (bool, optional): Whether to z-standardize the connectivity matrices. Default is False.
-            fisher_z (bool, optional): Whether to apply Fisher z-transformation. Default is False.
-            tril (bool, optional): Whether to return only the lower triangle of the matrices. Default is False.
+        Parameters
+        ----------
+        time_series : np.ndarray
+            The input time series data.
+        diagonal : int or float, optional
+            Value to set on the diagonal of connectivity matrices. Default is 0.
+        standardize : bool, optional
+            Whether to z-standardize the connectivity matrices. Default is False.
+        fisher_z : bool, optional
+            Whether to apply Fisher z-transformation. Default is False.
+        tril : bool, optional
+            Whether to return only the lower triangle of the matrices. Default is False.
         """
         self.time_series = time_series.astype("float32")
         self.T = time_series.shape[0] # T timepoints
@@ -63,8 +79,10 @@ class ConnectivityMethod(metaclass=ABCMeta):
         Abstract method to compute the connectivity matrix.
         This method should be implemented in each child class.
 
-        Raises:
-            NotImplementedError: If the method is not implemented in the child class.
+        Raises
+        ------
+        NotImplementedError
+            If the method is not implemented in the child class.
         """
         raise NotImplementedError("This method should be implemented in each child class.")
 
@@ -73,11 +91,15 @@ class ConnectivityMethod(metaclass=ABCMeta):
         Post-process the connectivity matrix with optional Fisher z-transformation,
         z-standardization, diagonal setting, and lower triangle extraction.
 
-        Args:
-            R_mat (np.ndarray): The connectivity matrix to be post-processed.
+        Parameters
+        ----------
+        R_mat : np.ndarray
+            The connectivity matrix to be post-processed.
 
-        Returns:
-            np.ndarray: The post-processed connectivity matrix.
+        Returns
+        -------
+        np.ndarray
+            The post-processed connectivity matrix.
         """
         # Fisher z-transformation
         if self.fisher_z:
@@ -108,15 +130,41 @@ class ConnectivityMethod(metaclass=ABCMeta):
 
 
 """
-Continuous dFC methods
+SECTION: Continuous dFC methods
+ - Several methods to estimate dynamic functional connectivity
+ - All methods produce continuously variying connectivity estimates
 """
 class SlidingWindow(ConnectivityMethod):
+    """
+    Sliding Window connectivity method.
+
+    This is the most widely used dynamic functional connectivity method. It involves sliding
+    a window over the data. Covariance is estimated for each windowed section.
+
+    Parameters
+    ----------
+    time_series : np.ndarray
+        The input time series data.
+    windowsize : int, optional
+        Size of the sliding window. Default is 29.
+    stepsize : int, optional
+        Step size for sliding the window. Default is 1.
+    shape : {'rectangular', 'gaussian', 'hamming'}, optional
+        Shape of the window. Default is 'rectangular'.
+    std : float, optional
+        Standard deviation for the Gaussian window. Default is 10.
+    diagonal : int, optional
+        Value to set on the diagonal of connectivity matrices. Default is 0.
+    standardize : bool, optional
+        Whether to z-standardize the connectivity matrices. Default is False.
+    fisher_z : bool, optional
+        Whether to apply Fisher z-transformation. Default is False.
+    tril : bool, optional
+        Whether to return only the lower triangle of the matrices. Default is False.
+
+    """
     name = "CONT Sliding Window"
-    '''
-    Sliding Window
-        Most widely used method, which involves sliding a window over the data.
-        Cavariance is estimated for each windowed section.
-    '''
+
     def __init__(self,
                  time_series: np.ndarray,
                  windowsize: int = 29,
@@ -141,13 +189,19 @@ class SlidingWindow(ConnectivityMethod):
             raise ValueError("windowsize is larger than time series")
 
     def _weights(self):
-        '''
-        Create weights for sliding window. Can be:
+        """
+        Create weights for sliding window.
+
+        The window shape can be:
             - rectangular
             - gaussian
             - hamming
-            - TODO: rectangular convolved with gaussian
-        '''
+
+        Returns
+        -------
+        np.ndarray
+            Weights for each windowed section.
+        """
         weights_init = np.zeros(self.T)
 
         if self.shape == 'rectangular':
@@ -162,16 +216,27 @@ class SlidingWindow(ConnectivityMethod):
         return weights
 
     def centers(self):
-        '''
-        Calculate the central index of each window so dFC estimates can be related to the original time series
-        '''
+        """
+        Calculate the central index of each window so dynamic functional connectivity (dFC)
+        estimates can be related to the original time series.
+
+        Returns
+        -------
+        np.ndarray
+            Central index of each window.
+        """
         centers = np.arange(self.windowsize // 2, self.T - self.windowsize // 2, self.stepsize)
         return centers
 
     def connectivity(self):
-        '''
-        Calculate sliding window correlation
-        '''
+        """
+        Calculate sliding window correlation.
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity as a PxPxN array.
+        """
         print("Calculating Sliding Window Correlation, please wait...")
         weights = self._weights()
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
@@ -184,13 +249,34 @@ class SlidingWindow(ConnectivityMethod):
         return self.R_mat
 
 class Jackknife(ConnectivityMethod):
+    """
+    Jackknife correlation method.
+
+    Parameters
+    ----------
+    time_series : np.ndarray
+        The input time series data.
+    windowsize : int, optional
+        Size of the sliding window. Default is 1.
+    stepsize : int, optional
+        Step size for sliding the window. Default is 1.
+    diagonal : int, optional
+        Value to set on the diagonal of connectivity matrices. Default is 0.
+    standardize : bool, optional
+        Whether to z-standardize the connectivity matrices. Default is False.
+    fisher_z : bool, optional
+        Whether to apply Fisher z-transformation. Default is False.
+    tril : bool, optional
+        Whether to return only the lower triangle of the matrices. Default is False.
+
+    References
+    ----------
+    Richter CG, Thompson WH, Bosman CA, Fries P. A jackknife approach to quantifying single-trial
+    correlation between covariance-based metrics undefined on a single-trial basis.
+    https://doi.org/10.1016/j.neuroimage.2015.04.040
+    """
     name = "CONT Jackknife Correlation"
-    '''
-    Jackknife correlation:
-        Richter CG, Thompson WH, Bosman CA, Fries P. A jackknife approach to quantifying single-trial
-        correlation between covariance-based metrics undefined on a single-trial basis.
-        https://doi.org/10.1016/j.neuroimage.2015.04.040
-    '''
+
     def __init__(self,
                  time_series: np.ndarray,
                  windowsize: int = 1,
@@ -211,26 +297,44 @@ class Jackknife(ConnectivityMethod):
             raise ValueError("windowsize is larger than time series")
 
     def _weights(self):
-        '''
-        Create logical weight vectors for jackknife correlation
-        Example: 01111 -> 10111 -> 11011 -> 11101 -> 1110
-        '''
+        """
+        Create logical weight vectors for jackknife correlation.
+
+        Example:
+        01111 -> 10111 -> 11011 -> 11101 -> 11110
+
+        Returns
+        -------
+        np.ndarray
+            Boolean weights for each windowed section.
+        """
         weights_init = np.ones(self.T)
         weights_init[0:self.windowsize] = 0
         weights = np.array([np.roll(weights_init, i) for i in range(0, self.T + 1 - self.windowsize, self.stepsize)])
         return weights.astype(bool)
 
     def centers(self):
-        '''
-        Calculate the central index of each window so dFC estimates can be related to the original time series
-        '''
+        """
+        Calculate the central index of each window so dynamic functional connectivity (dFC)
+        estimates can be related to the original time series.
+
+        Returns
+        -------
+        np.ndarray
+            Central index of each window.
+        """
         centers = np.arange(self.windowsize // 2, self.T - self.windowsize // 2, self.stepsize)
         return centers
 
     def connectivity(self):
-        '''
-        Calculate jackknife correlation
-        '''
+        """
+        Calculate jackknife correlation.
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity as a PxPxN array.
+        """
         print("Calculating Jackknife Correlation, please wait...")
         weights = self._weights()
 
@@ -243,13 +347,30 @@ class Jackknife(ConnectivityMethod):
         return self.R_mat
 
 class SpatialDistance(ConnectivityMethod):
-    name = "CONT Spatial Distance"
-    '''
-    Spatial Distance:
-        William Hedley Thompson, Per Brantefors, Peter Fransson. From static
-        to temporal network theory: Applications to functional brain connectivity.
-        https://doi.org/10.1162/NETN_a_00011
-    '''
+    """
+    Spatial Distance connectivity method.
+
+    Parameters
+    ----------
+    time_series : np.ndarray
+        The input time series data.
+    dist : {'euclidean', 'cosine', 'cityblock'}, optional
+        Type of distance metric to use. Default is 'euclidean'.
+    diagonal : int, optional
+        Value to set on the diagonal of connectivity matrices. Default is 0.
+    standardize : bool, optional
+        Whether to z-standardize the connectivity matrices. Default is False.
+    fisher_z : bool, optional
+        Whether to apply Fisher z-transformation. Default is False.
+    tril : bool, optional
+        Whether to return only the lower triangle of the matrices. Default is False.
+
+    References
+    ----------
+    William Hedley Thompson, Per Brantefors, Peter Fransson. From static
+    to temporal network theory: Applications to functional brain connectivity.
+    https://doi.org/10.1162/NETN_a_00011
+    """
     def __init__(self,
                  time_series: np.ndarray,
                  dist: Literal["euclidean", "cosine", "cityblock"] = "euclidean",
@@ -265,15 +386,33 @@ class SpatialDistance(ConnectivityMethod):
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
 
     def _distance_functions(self, dist):
+        """
+        Get the distance function based on the specified metric.
+
+        Parameters
+        ----------
+        dist : str
+            The type of distance metric to use.
+
+        Returns
+        -------
+        function
+            The corresponding distance function.
+        """
         options = {'euclidean': distance.euclidean,
                    'cosine'   : distance.cosine,
                    'cityblock': distance.cityblock}
         return options[dist]
 
     def _weights(self):
-        '''
-        Calculate adjacency matrix for spatial distance
-        '''
+        """
+        Calculate adjacency matrix for spatial distance.
+
+        Returns
+        -------
+        np.ndarray
+            The spatial distance adjacency matrix.
+        """
         weights = np.array([self.distance(self.time_series[n, :], self.time_series[t, :]) for n in np.arange(0, self.T) for t in np.arange(0, self.T)])
         weights = np.reshape(weights, [self.T, self.T])
         np.fill_diagonal(weights, np.nan)
@@ -283,9 +422,14 @@ class SpatialDistance(ConnectivityMethod):
         return weights
 
     def connectivity(self):
-        '''
-        Calculate spatial distance correlation
-        '''
+        """
+        Calculate spatial distance correlation.
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity as a PxPxN array.
+        """
         print("Calculating Spatial Distance, please wait...")
         weights = self._weights() # in this case this is the distance matrix
 
@@ -297,13 +441,32 @@ class SpatialDistance(ConnectivityMethod):
         return self.R_mat
 
 class TemporalDerivatives(ConnectivityMethod):
+    """
+    Multiplication of Temporal Derivatives connectivity method.
+
+    Parameters
+    ----------
+    time_series : np.ndarray
+        The input time series data.
+    windowsize : int, optional
+        Size of the sliding window. Default is 7.
+    diagonal : int, optional
+        Value to set on the diagonal of connectivity matrices. Default is 0.
+    standardize : bool, optional
+        Whether to z-standardize the connectivity matrices. Default is False.
+    fisher_z : bool, optional
+        Whether to apply Fisher z-transformation. Default is False.
+    tril : bool, optional
+        Whether to return only the lower triangle of the matrices. Default is False.
+
+    References
+    ----------
+    Shine JM, Koyejo O, Bell PT, Gorgolewski KJ, Gilat M, Poldrack RA. Estimation of
+    dynamic functional connectivity using Multiplication of Temporal Derivatives.
+    https://doi.org/10.1016/j.neuroimage.2015.07.064.
+    """
     name = "CONT Multiplication of Temporal Derivatives"
-    '''
-    Multiplication of temporal derivatives:
-        Shine JM, Koyejo O, Bell PT, Gorgolewski KJ, Gilat M, Poldrack RA. Estimation of
-        dynamic functional connectivity using Multiplication of Temporal Derivatives.
-        https://doi.org/10.1016/j.neuroimage.2015.07.064.
-    '''
+
     def __init__(self,
                  time_series: np.ndarray,
                  windowsize: int = 7,
@@ -322,16 +485,27 @@ class TemporalDerivatives(ConnectivityMethod):
             raise ValueError("windowsize is larger than time series")
 
     def centers(self):
-        '''
-        Calculate the central index of each window so dFC estimates can be related to the original time series
-        '''
+        """
+        Calculate the central index of each window so dynamic functional connectivity (dFC)
+        estimates can be related to the original time series.
+
+        Returns
+        -------
+        np.ndarray
+            Central index of each window.
+        """
         centers = np.arange(self.windowsize // 2 + 1, self.T - self.windowsize // 2)
         return centers
 
     def connectivity(self):
-        '''
-        Calculate multiplication of temproral derivatives
-        '''
+        """
+        Calculate multiplication of temporal derivatives.
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity as a PxPxN array.
+        """
         print("Calculating Multiplication of Temporal Derivatives, please wait...")
         derivatives = self.time_series[1:, :] - self.time_series[:-1, :]
         derivatives = derivatives / np.std(derivatives, axis=0)
@@ -350,13 +524,36 @@ class TemporalDerivatives(ConnectivityMethod):
         return self.R_mat
 
 class FlexibleLeastSquares(ConnectivityMethod):
+    """
+    Flexible Least Squares connectivity method.
+
+    Parameters
+    ----------
+    time_series : np.ndarray
+        The input time series data.
+    standardizeData : bool, optional
+        Whether to standardize the time series data. Default is True.
+    mu : float, optional
+        Regularization parameter for the flexible least squares algorithm. Default is 100.
+    num_cores : int, optional
+        Number of CPU cores to use for parallel processing. Default is 16.
+    diagonal : int, optional
+        Value to set on the diagonal of connectivity matrices. Default is 0.
+    standardize : bool, optional
+        Whether to z-standardize the connectivity matrices. Default is False.
+    fisher_z : bool, optional
+        Whether to apply Fisher z-transformation. Default is False.
+    tril : bool, optional
+        Whether to return only the lower triangle of the matrices. Default is False.
+
+    References
+    ----------
+    Liao, W., Wu, G. R., Xu, Q., Ji, G. J., Zhang, Z., Zang, Y. F., & Lu, G. (2014).
+    DynamicBC: a MATLAB toolbox for dynamic brain connectome analysis. Brain connectivity, 4(10), 780-790.
+    https://doi.org/10.1089/brain.2014.0253
+    """
     name = "CONT Flexible Least Squares"
-    '''
-    Flexible Least Squares:
-        Liao, W., Wu, G. R., Xu, Q., Ji, G. J., Zhang, Z., Zang, Y. F., & Lu, G. (2014).
-        DynamicBC: a MATLAB toolbox for dynamic brain connectome analysis. Brain connectivity, 4(10), 780-790.
-        https://doi.org/10.1089/brain.2014.0253
-    '''
+
     def __init__(self,
                  time_series: np.ndarray,
                  standardizeData: bool = True,
@@ -375,6 +572,21 @@ class FlexibleLeastSquares(ConnectivityMethod):
         self.num_cores = num_cores
 
     def _calculateBetas(self, X, y):
+        """
+        Calculate betas for the flexible least squares algorithm.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Input data matrix.
+        y : np.ndarray
+            Response variable vector.
+
+        Returns
+        -------
+        np.ndarray
+            Calculated betas.
+        """
         N, K = X.shape
         G = np.zeros((N*K, N))
         A = np.zeros((N*K, N*K))
@@ -404,13 +616,33 @@ class FlexibleLeastSquares(ConnectivityMethod):
         return betas.squeeze()
 
     def _calculateBetasForPair(self, i):
+        """
+        Calculate betas for each pair of time series.
+
+        Parameters
+        ----------
+        i : int
+            Index of the time series pair.
+
+        Returns
+        -------
+        tuple
+            Index and calculated betas for the pair.
+        """
         beta_i = np.zeros((self.P, self.T))
         for j in range(self.P):
             beta_i[j, :] = self._calculateBetas(self.time_series[:, i].reshape(-1,1), self.time_series[:, j].reshape(-1,1))
         return i, beta_i
 
-    # Flexible least squares algorithm as implemented in the DynamicBC toolbox
     def connectivity(self):
+        """
+        Calculate flexible least squares connectivity as implemented in the DynamicBC toolbox
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity as a PxPxN array.
+        """
         print("Calculating Flexible Least Squares, please wait...")
         # Standardize time series
         if self.standardizeData:
@@ -435,12 +667,31 @@ class FlexibleLeastSquares(ConnectivityMethod):
         return beta
 
 class PhaseSynchrony(ConnectivityMethod):
+    """
+    Instantaneous Phase Synchronization methods.
+
+    Parameters
+    ----------
+    time_series : np.ndarray
+        The input time series data.
+    method : {'crp', 'phcoh', 'teneto'}, optional
+        The phase synchrony method to use. Default is 'crp'.
+    diagonal : int, optional
+        Value to set on the diagonal of connectivity matrices. Default is 0.
+    standardize : bool, optional
+        Whether to z-standardize the connectivity matrices. Default is False.
+    fisher_z : bool, optional
+        Whether to apply Fisher z-transformation. Default is False.
+    tril : bool, optional
+        Whether to return only the lower triangle of the matrices. Default is False.
+
+    References
+    ----------
+    Honari, H., Choe, A. S., & Lindquist, M. A. (2021). Evaluating phase synchronization methods in fMRI:
+    A comparison study and new approaches. NeuroImage, 228, 117704. https://doi.org/10.1016/j.neuroimage.2020.117704
+    """
     name = "CONT Phase Synchronization"
-    '''
-    Instantaneous Phase Synchrony:
-        Honari, H., Choe, A. S., & Lindquist, M. A. (2021). Evaluating phase synchronization methods in fMRI:
-        A comparison study and new approaches. NeuroImage, 228, 117704. https://doi.org/10.1016/j.neuroimage.2020.117704
-    '''
+
     def __init__(self,
                  time_series: np.ndarray,
                  method: Literal["crp", "phcoh", "teneto"] = "crp",
@@ -455,10 +706,15 @@ class PhaseSynchrony(ConnectivityMethod):
         self.method = method
 
     def connectivity(self):
-        '''
-        Calculate instantaneous phase synchrony
-        CARE: Hilbert transform needs narrowband signal to produce meaningful results
-        '''
+        """
+        Calculate instantaneous phase synchrony.
+        CARE: Hilbert transform needs narrowband signal to produce meaningful results.
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity as a PxPxN array.
+        """
         print("Calculating Phase Synchronization, please wait...")
         analytic_signal = hilbert(self.time_series.transpose())
         instantaneous_phase = np.angle(analytic_signal)
@@ -479,20 +735,38 @@ class PhaseSynchrony(ConnectivityMethod):
 
 class LeiDA(ConnectivityMethod):
     name = "CONT Leading Eigenvector Dynamics"
-    '''
-    Leading Eigenvector Dynamics:
-        Cabral, J., Vidaurre, D., Marques, P., Magalhães, R., Silva Moreira, P., Miguel Soares, J., ... & Kringelbach, M. L. (2017).
-        Cognitive performance in healthy older adults relates to spontaneous switching between states of functional connectivity during rest.
-        Scientific reports, 7(1), 5135. https://doi.org/10.1038/s41598-017-05425-7
+    """
+    Leading Eigenvector Dynamics.
 
-        Olsen, A. S., Lykkebo-Valløe, A., Ozenne, B., Madsen, M. K., Stenbæk, D. S., Armand, S., ... & Fisher, P. M. (2022). Psilocybin modulation
-        of time-varying functional connectivity is associated with plasma psilocin and subjective effects. Neuroimage, 264, 119716.
-        https://doi.org/10.1016/j.neuroimage.2022.119716
+    Parameters
+    ----------
+    time_series : np.ndarray
+        The input time series data.
+    flip_eigenvectors : bool, optional
+        Whether to flip the eigenvectors so that the largest component is negative. Default is False.
+    diagonal : int, optional
+        Value to set on the diagonal of connectivity matrices. Default is 0.
+    standardize : bool, optional
+        Whether to z-standardize the connectivity matrices. Default is False.
+    fisher_z : bool, optional
+        Whether to apply Fisher z-transformation. Default is False.
+    tril : bool, optional
+        Whether to return only the lower triangle of the matrices. Default is False.
 
-        Vohryzek, J., Deco, G., Cessac, B., Kringelbach, M. L., & Cabral, J. (2020). Ghost attractors in spontaneous brain activity:
-        Recurrent excursions into functionally-relevant BOLD phase-locking states. Frontiers in systems neuroscience, 14, 20.
-        https://doi.org/10.3389/fnsys.2020.00020
-    '''
+    References
+    ----------
+    Cabral, J., Vidaurre, D., Marques, P., Magalhães, R., Silva Moreira, P., Miguel Soares, J., ... & Kringelbach, M. L. (2017).
+    Cognitive performance in healthy older adults relates to spontaneous switching between states of functional connectivity during rest.
+    Scientific reports, 7(1), 5135. https://doi.org/10.1038/s41598-017-05425-7
+
+    Olsen, A. S., Lykkebo-Valløe, A., Ozenne, B., Madsen, M. K., Stenbæk, D. S., Armand, S., ... & Fisher, P. M. (2022). Psilocybin modulation
+    of time-varying functional connectivity is associated with plasma psilocin and subjective effects. Neuroimage, 264, 119716.
+    https://doi.org/10.1016/j.neuroimage.2022.119716
+
+    Vohryzek, J., Deco, G., Cessac, B., Kringelbach, M. L., & Cabral, J. (2020). Ghost attractors in spontaneous brain activity:
+    Recurrent excursions into functionally-relevant BOLD phase-locking states. Frontiers in systems neuroscience, 14, 20.
+    https://doi.org/10.3389/fnsys.2020.00020
+    """
     def __init__(self,
                  time_series: np.ndarray,
                  flip_eigenvectors: bool = False,
@@ -509,20 +783,25 @@ class LeiDA(ConnectivityMethod):
         self.res = []
 
     def connectivity(self):
+        """
+        Calculate Leading Eigenvector Dynamics Analysis (LeiDA).
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity as a PxPxN array.
+        np.ndarray
+            Leading eigenvectors.
+        """
         print("Calculating LeiDA, please wait...")
         # Compute BOLD phases using Hilbert Transform
         instantaneous_phase = np.angle(hilbert(self.time_series.transpose())).transpose()
 
         # Compute the leading eigenvector for each time point
         for n in range(self.N_estimates):
-            # Compute coherence matrix
-            cohmat = np.cos(np.subtract.outer(instantaneous_phase[n,:], instantaneous_phase[n,:]))
-
-            # Compute the eigenvectors (ignore eigenvalues)
-            _, eigenvectors = eigh(cohmat)
-
-            # The leading eigenvector is the one corresponding to the largest eigenvalue
-            V1 = eigenvectors[:, -1]
+            cohmat = np.cos(np.subtract.outer(instantaneous_phase[n,:], instantaneous_phase[n,:])) # Compute coherence matrix
+            _, eigenvectors = eigh(cohmat) # Compute the eigenvectors (ignore eigenvalues)
+            V1 = eigenvectors[:, -1] # The leading eigenvector is the one corresponding to the largest eigenvalue
 
             if self.flip_eigenvectors:
                 # Make sure the largest component is negative
@@ -536,13 +815,44 @@ class LeiDA(ConnectivityMethod):
         return self.R_mat, V1
 
 class WaveletCoherence(ConnectivityMethod):
+    """
+    Instantaneous Wavelet Coherence.
+
+    Parameters
+    ----------
+    time_series : np.ndarray
+        The input time series data.
+    method : {'weighted'}, optional
+        The method to use for calculating wavelet coherence. Default is 'weighted'.
+    TR : float, optional
+        Repetition time of the data. Default is 0.72.
+    fmin : float, optional
+        Minimum frequency for wavelet transform. Default is 0.007.
+    fmax : float, optional
+        Maximum frequency for wavelet transform. Default is 0.15.
+    n_scales : int, optional
+        Number of scales for wavelet transform. Default is 15.
+    drop_scales : int, optional
+        Number of scales to drop from the edges. Default is 2.
+    drop_timepoints : int, optional
+        Number of time points to drop from the edges. Default is 50.
+    diagonal : int, optional
+        Value to set on the diagonal of connectivity matrices. Default is 0.
+    standardize : bool, optional
+        Whether to z-standardize the connectivity matrices. Default is False.
+    fisher_z : bool, optional
+        Whether to apply Fisher z-transformation. Default is False.
+    tril : bool, optional
+        Whether to return only the lower triangle of the matrices. Default is False.
+
+    References
+    ----------
+    Jacob Billings, Manish Saggar, Jaroslav Hlinka, Shella Keilholz, Giovanni Petri; Simplicial and
+    topological descriptions of human brain dynamics. Network Neuroscience 2021; 5 (2): 549–568.
+    https://doi.org/10.1162/netn_a_00190
+    """
     name = "CONT Wavelet Coherence"
-    '''
-    Instantaneous Wavelet Coherence:
-        Jacob Billings, Manish Saggar, Jaroslav Hlinka, Shella Keilholz, Giovanni Petri; Simplicial and
-        topological descriptions of human brain dynamics. Network Neuroscience 2021; 5 (2): 549–568.
-        https://doi.org/10.1162/netn_a_00190
-    '''
+
     def __init__(self,
                  time_series: np.ndarray,
                  method: Literal["weighted"] = "weighted",
@@ -570,6 +880,14 @@ class WaveletCoherence(ConnectivityMethod):
         self.drop_timepoints = drop_timepoints
 
     def connectivity(self):
+        """
+        Calculate instantaneous wavelet coherence.
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity as a PxPxN array.
+        """
         print("Calculating Wavelet Coherence, please wait...")
         # Time series dimensions
         P = self.time_series.shape[1]
@@ -636,13 +954,33 @@ class WaveletCoherence(ConnectivityMethod):
         return dfc
 
 class DCC(ConnectivityMethod):
+    """
+    Dynamic Conditional Correlation (DCC) as described by Lindquist et al. (2014).
+
+    Parameters
+    ----------
+    time_series : np.ndarray
+        The input time series data.
+    num_cores : int, optional
+        Number of CPU cores to use for parallel processing. Default is 16.
+    standardizeData : bool, optional
+        Whether to standardize the time series data. Default is True.
+    diagonal : int, optional
+        Value to set on the diagonal of connectivity matrices. Default is 0.
+    standardize : bool, optional
+        Whether to z-standardize the connectivity matrices. Default is False.
+    fisher_z : bool, optional
+        Whether to apply Fisher z-transformation. Default is False.
+    tril : bool, optional
+        Whether to return only the lower triangle of the matrices. Default is False.
+
+    References
+    ----------
+    Lindquist, M. A., Xu, Y., Nebel, M. B., & Caffo, B. S. (2014). Evaluating dynamic bivariate correlations
+    in resting-state fMRI: a comparison study and a new approach. NeuroImage, 101, 531-546.
+    https://doi.org/10.1016/j.neuroimage.2014.06.052
+    """
     name = "CONT Dynamic Conditional Correlation"
-    '''
-    Dynamic Conditional Correlation:
-        Lindquist, M. A., Xu, Y., Nebel, M. B., & Caffo, B. S. (2014). Evaluating dynamic bivariate correlations
-        in resting-state fMRI: a comparison study and a new approach. NeuroImage, 101, 531-546.
-        https://doi.org/10.1016/j.neuroimage.2014.06.052
-    '''
 
     def __init__(self,
                  time_series: np.ndarray,
@@ -661,7 +999,8 @@ class DCC(ConnectivityMethod):
         self.num_cores = num_cores
 
     def _loglikelihood_garch11(self, theta, data):
-        """Calculates a real number proportional to the negative log-likelihood of the GARCH(1,1) model
+        """
+        Calculates a real number proportional to the negative log-likelihood of the GARCH(1,1) model
 
         Parameters
         ----------
@@ -702,9 +1041,9 @@ class DCC(ConnectivityMethod):
 
         Returns
         -------
-        epsilon : n-by-1 vector
+        epsilon : n-by-1 np.ndarray
             standardized residual vector
-        d : 1-by-n vector
+        d : 1-by-n np.ndarray
             estimated conditional volatility vector
         """
         T = len(r)
@@ -721,7 +1060,8 @@ class DCC(ConnectivityMethod):
         return epsilon, d
 
     def _epsilonToR(self, epsilon, theta):
-        """Calculates the time-varying conditional correlation matrices from standardized returns
+        """
+        Calculates the time-varying conditional correlation matrices from standardized returns
 
         Parameters
         ----------
@@ -732,7 +1072,7 @@ class DCC(ConnectivityMethod):
 
         Returns
         -------
-        R : N-by-N-by-T matrix
+        R : N-by-N-by-T np.ndarray
             conditional correlation matrix
         """
         T, N = epsilon.shape
@@ -749,7 +1089,8 @@ class DCC(ConnectivityMethod):
         return R
 
     def _LcOriginal(self, epsilon, theta):
-        """Calculates the correlation component of the log-likelihood (eq. 29)
+        """
+        Calculates the correlation component of the log-likelihood (eq. 29)
 
         Parameters
         ----------
@@ -779,6 +1120,21 @@ class DCC(ConnectivityMethod):
         return output
 
     def _compute_garch(self, n):
+        """
+        Fit a univariate GARCH(1,1) model to a time series and calculate standardized residuals and conditional volatilities.
+
+        Parameters
+        ----------
+        n : int
+            Index of the time series to be processed.
+
+        Returns
+        -------
+        tuple
+            - np.ndarray : Fitted GARCH(1,1) parameters.
+            - np.ndarray : Standardized residuals.
+            - np.ndarray : Estimated conditional volatilities.
+        """
         ts_n = np.ascontiguousarray(self.time_series[:, n])
         constraints = {'type': 'ineq', 'fun': lambda x: np.array([1 - x[0] - x[1] - x[2], x[0], x[1], x[2]])}
         bounds = ((0, 1), (0, 1), (0, 1))
@@ -789,7 +1145,8 @@ class DCC(ConnectivityMethod):
         return res.x, ep, d
 
     def connectivity(self):
-        """DCC algorithm
+        """
+        DCC algorithm
 
         Parameters
         ----------
@@ -798,14 +1155,12 @@ class DCC(ConnectivityMethod):
 
         Returns
         -------
-        H : N*N*T matrix
-            estimated dynamic conditional covariance matrices
-        R : N*N*T matrix
-            estimated dynamic conditional correlation matrices
-        Theta : N*3 matrix
-            GARCH(1,1) parameters
-        X : 1*N vector
-            DCC parameters
+        R : N*N*T np.ndarray
+            estimated dynamic conditional correlation tensor
+        tuple
+            - H : dynamic conditional covariance tensor
+            - Theta : GARCH(1,1) parameters
+            - X : DCC parameters
         """
         print("Calculating Dynamic Conditional Correlation, please wait...")
         T, N = self.time_series.shape # T timepoints x N parcels
@@ -852,29 +1207,55 @@ class DCC(ConnectivityMethod):
         for t in tqdm(range(T)):
             H[:,:,t] = np.diag(np.sqrt(D[t,:])) @ R[:,:,t] @ np.diag(np.sqrt(D[t,:]))
 
-
         R = self.postproc(R)
 
-        #return H, R, Theta, X
-        return R
+        return R, (H, Theta, X)
 
 class Edge_centric_connectivity(ConnectivityMethod):
+    """
+    Edge-centric connectivity method.
+
+    Parameters
+    ----------
+    time_series : np.ndarray
+        The input time series data.
+    standardizeData : bool, optional
+        Whether to standardize the time series data. Default is True.
+    vlim : float, optional
+        Limit for plotting in the GUI (not used in the method itself). Default is 3.
+    standardize : bool, optional
+        Whether to z-standardize the connectivity matrices. Default is False.
+
+    References
+    ----------
+    Faskowitz, J., Esfahlani, F. Z., Jo, Y., Sporns, O., & Betzel, R. F. (2020). Edge-centric functional
+    network representations of human cerebral cortex reveal overlapping system-level architecture.
+    Nature neuroscience, 23(12), 1644–1654. DOI: https://doi.org/10.1038/s41593-020-00719-y
+    """
     name = "CONT Edge-centric Connectivity"
 
     def __init__(self,
                  time_series: np.ndarray,
                  standardizeData: bool = True,
                  vlim: float = 3, # for plotting in the GUI, not used in the method itself
-                 diagonal: int = 0,
-                 standardize: bool = False,
-                 fisher_z: bool = False,
-                 tril: bool = False):
+                 standardize: bool = False):
 
-        super().__init__(time_series, diagonal, standardize, fisher_z, tril)
+        super().__init__(time_series, 0, standardize, False, False)
         self.standardizeData = standardizeData
 
     def connectivity(self):
+        """
+        Calculate edge-centric connectivity.
 
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity as a PxPxN array.
+        tuple
+            - np.ndarray : Edge time series.
+            - np.ndarray : Indices of the upper triangle of the connectivity matrix.
+            - np.ndarray : Indices of the upper triangle of the connectivity matrix.
+        """
         z = zscore(self.time_series, axis=0, ddof=1) if self.standardizeData else self.time_series
         u, v = np.triu_indices(self.time_series.shape[1], k=1)
         a = np.multiply(z[:, u], z[:, v]) # edge time series
@@ -890,13 +1271,26 @@ class Edge_centric_connectivity(ConnectivityMethod):
 
 
 """
-State based dFC methods. Basically wrapper functions to bring methods from https://github.com/neurodatascience/dFC/ into the Comet framework
+SECTION: State based dFC methods
+ - Basically wrapper functions to bring methods from https://github.com/neurodatascience/dFC/
+   into the Comet framework
 """
 class Sliding_Window(BaseDFCMethod):
+    """
+    Wrapper function for the sliding window connectivity method
+    from the pydfc library: https://github.com/neurodatascience/dFC/
+
+    Parameters
+    ----------
+    time_series : time_series.TIME_SERIES
+        The input time series data.
+    clstr_distance : {'euclidean'}, optional
+        Distance metric for clustering. Default is 'euclidean'.
+    **params : dict, optional
+        Additional parameters for the Sliding Window method.
+    """
     name = "CONT Sliding Window (pydfc)"
-    """
-    Sliding Window
-    """
+
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
                  clstr_distance: Literal["euclidean"] = "euclidean",
@@ -927,15 +1321,36 @@ class Sliding_Window(BaseDFCMethod):
             raise ValueError("sw_method not recognized.")
 
     def connectivity(self):
+        """
+        Calculate the sliding window dynamic functional connectivity.
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity estimated by the sliding window method.
+        """
         measure = SLIDING_WINDOW(**self.params)
         dFC = measure.estimate_dFC(time_series=self.time_series)
         return dFC
 
 class Time_Freq(BaseDFCMethod):
+    """
+    Wrapper function for the time-frequency connectivity method
+    from the pydfc library: https://github.com/neurodatascience/dFC/
+
+    Parameters
+    ----------
+    time_series : time_series.TIME_SERIES
+        The input time series data.
+    num_cores : int, optional
+        Number of CPU cores to use for parallel processing. Default is 8.
+    coi_correction : bool, optional
+        Whether to apply cone of influence correction. Default is True.
+    **params : dict, optional
+        Additional parameters for the Time-Frequency method.
+    """
     name = "CONT Time-frequency (pydfc)"
-    """
-    Time-Frequency
-    """
+
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
                  num_cores: int = 8,
@@ -966,15 +1381,40 @@ class Time_Freq(BaseDFCMethod):
         self.params['n_jobs'] = num_cores
 
     def connectivity(self):
+        """
+        Calculate the time-frequency dynamic functional connectivity.
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity estimated by the time-frequency method.
+        """
         measure = TIME_FREQ(**self.params)
         dFC = measure.estimate_dFC(time_series=self.time_series)
         return dFC
 
 class Cap(BaseDFCMethod):
+    """
+    Wrapper function for the co-activation patterns (CAP) method
+    from the pydfc library: https://github.com/neurodatascience/dFC/
+
+    Parameters
+    ----------
+    time_series : time_series.TIME_SERIES
+        The input time series data.
+    subject : int, optional
+        Subject index for which to compute the CAP. Default is 0.
+    n_states : int, optional
+        Number of states for CAP. Default is 5.
+    n_subj_clusters : int, optional
+        Number of subject clusters. Default is 5.
+    normalization : bool, optional
+        Whether to normalize the data. Default is True.
+    **params : dict, optional
+        Additional parameters for the CAP method.
+    """
     name = "STATE Co-activation patterns"
-    """
-    Co-activation patterns
-    """
+
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
                  subject: int = 0,
@@ -1011,16 +1451,47 @@ class Cap(BaseDFCMethod):
         self.sub_id = self.params['subjects'][self.params['subject']]
 
     def connectivity(self):
+        """
+        Calculate the co-activation patterns dynamic functional connectivity.
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity estimated by the CAP method.
+        """
         measure = CAP(**self.params)
         measure.estimate_FCS(time_series=self.time_series)
         dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
         return dFC
 
 class Sliding_Window_Clustr(BaseDFCMethod):
+    """
+    Wrapper function for the sliding window clustering method
+    from the pydfc library: https://github.com/neurodatascience/dFC/
+
+    Parameters
+    ----------
+    time_series : time_series.TIME_SERIES
+        The input time series data.
+    subject : int, optional
+        Subject index for which to compute the sliding window clustering. Default is 0.
+    windowsize : int, optional
+        Size of the sliding window. Default is 44.
+    n_overlap : float, optional
+        Overlap between windows. Default is 0.5.
+    tapered_window : bool, optional
+        Whether to use a tapered window. Default is True.
+    n_states : int, optional
+        Number of states for clustering. Default is 5.
+    n_subj_clusters : int, optional
+        Number of subject clusters. Default is 5.
+    normalization : bool, optional
+        Whether to normalize the data. Default is True.
+    clstr_distance : {'euclidean', 'manhattan'}, optional
+        Distance metric for clustering. Default is 'euclidean'.
+    """
     name = "STATE Sliding Window Clustering"
-    """
-    Sliding Window Clustering
-    """
+
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
                  subject: int = 0,
@@ -1075,6 +1546,14 @@ class Sliding_Window_Clustr(BaseDFCMethod):
             raise ValueError("Base measure not recognized.")
 
     def connectivity(self):
+        """
+        Calculate the sliding window clustering dynamic functional connectivity.
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity estimated by the sliding window clustering method.
+        """
         measure = SLIDING_WINDOW_CLUSTR(**self.params)
         measure.estimate_FCS(time_series=self.time_series)
         dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
@@ -1083,7 +1562,23 @@ class Sliding_Window_Clustr(BaseDFCMethod):
 class Hmm_Cont(BaseDFCMethod):
     name = "STATE Continuous Hidden Markov Model"
     """
-    Continuous Hidden Markov Model
+    Wrapper function for the continuous hidden Markov model (HMM) method
+    from the pydfc library: https://github.com/neurodatascience/dFC/
+
+    Parameters
+    ----------
+    time_series : time_series.TIME_SERIES
+        The input time series data.
+    subject : int, optional
+        Subject index for which to compute the HMM. Default is 0.
+    n_states : int, optional
+        Number of states for the HMM. Default is 5.
+    iterations : int, optional
+        Number of iterations for the HMM. Default is 20.
+    normalization : bool, optional
+        Whether to normalize the data. Default is True.
+    **params : dict, optional
+        Additional parameters for the HMM method.
     """
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
@@ -1123,16 +1618,55 @@ class Hmm_Cont(BaseDFCMethod):
         self.sub_id = self.params['subjects'][self.params['subject']]
 
     def connectivity(self):
+        """
+        Calculate the continuous hidden Markov model dynamic functional connectivity.
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity estimated by the HMM method.
+        """
         measure = HMM_CONT(**self.params)
         measure.estimate_FCS(time_series=self.time_series)
         dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
         return dFC
 
 class Hmm_Disc(BaseDFCMethod):
+    """
+    Wrapper function for the discrete hidden Markov model (HMM) method
+    from the pydfc library: https://github.com/neurodatascience/dFC/
+
+    Parameters
+    ----------
+    time_series : time_series.TIME_SERIES
+        The input time series data.
+    subject : int, optional
+        Subject index for which to compute the HMM. Default is 0.
+    windowsize : int, optional
+        Size of the sliding window. Default is 44.
+    n_overlap : float, optional
+        Overlap between windows. Default is 0.5.
+    clstr_base_measure : {'SlidingWindow'}, optional
+        Base measure for clustering. Default is 'SlidingWindow'.
+    sw_method : {'pear_corr'}, optional
+        Sliding window method. Default is 'pear_corr'.
+    tapered_window : bool, optional
+        Whether to use a tapered window. Default is True.
+    iterations : int, optional
+        Number of iterations for the HMM. Default is 20.
+    dhmm_obs_state_ratio : float, optional
+        Ratio of observed to hidden states. Default is 16/24.
+    n_states : int, optional
+        Number of states for the HMM. Default is 5.
+    n_subj_clusters : int, optional
+        Number of subject clusters. Default is 5.
+    normalization : bool, optional
+        Whether to normalize the data. Default is True.
+    **params : dict, optional
+        Additional parameters for the HMM method.
+    """
     name = "STATE Discrete Hidden Markov Model"
-    """
-    Discrete Hidden Markov Model
-    """
+
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
                  subject: int = 0,
@@ -1192,16 +1726,41 @@ class Hmm_Disc(BaseDFCMethod):
             raise ValueError("Base measure not recognized.")
 
     def connectivity(self):
+        """
+        Calculate the discrete hidden Markov model dynamic functional connectivity.
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity estimated by the HMM method.
+        """
         measure = HMM_DISC(**self.params)
         measure.estimate_FCS(time_series=self.time_series)
         dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
         return dFC
 
 class Windowless(BaseDFCMethod):
+    """
+    Wrapper function for the windowless method
+    from the pydfc library: https://github.com/neurodatascience/dFC/
+
+    Parameters
+    ----------
+    time_series : time_series.TIME_SERIES
+        The input time series data.
+    subject : int, optional
+        Subject index for which to compute the windowless method. Default is 0.
+    n_states : int, optional
+        Number of states for the method. Default is 5.
+    n_subj_clusters : int, optional
+        Number of subject clusters. Default is 5.
+    normalization : bool, optional
+        Whether to normalize the data. Default is True.
+    **params : dict, optional
+        Additional parameters for the windowless method.
+    """
     name = "STATE Windowless"
-    """
-    Windowless
-    """
+
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
                  subject: int = 0,
@@ -1240,18 +1799,43 @@ class Windowless(BaseDFCMethod):
         self.sub_id = self.params['subjects'][self.params['subject']]
 
     def connectivity(self):
+        """
+        Calculate the windowless dynamic functional connectivity.
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity estimated by the windowless method.
+        """
         measure = WINDOWLESS(**self.params)
         measure.estimate_FCS(time_series=self.time_series)
         dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
         return dFC
 
 
-'''
-Static FC methods
-'''
+"""
+SECTION: Static FC methods
+ - Static methods that calculate a single functional connectivity matrix
+   from a given time series
+"""
 class Static_Pearson(ConnectivityMethod):
+    """
+    Static functional connectivity method using Pearson correlation.
+
+    Parameters
+    ----------
+    time_series : np.ndarray
+        The input time series data.
+    diagonal : int, optional
+        Value to set on the diagonal of connectivity matrices. Default is 0.
+    standardize : bool, optional
+        Whether to z-standardize the connectivity matrices. Default is False.
+    fisher_z : bool, optional
+        Whether to apply Fisher z-transformation. Default is False.
+    tril : bool, optional
+        Whether to return only the lower triangle of the matrices. Default is False.
+    """
     name = "STATIC Pearson Correlation"
-    options = {}
 
     def __init__(self,
                  time_series: np.ndarray,
@@ -1263,13 +1847,36 @@ class Static_Pearson(ConnectivityMethod):
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
 
     def connectivity(self):
+        """
+        Calculate the functional connectivity.
+
+        Returns
+        -------
+        np.ndarray
+            Static functional connectivity matrix.
+        """
         fc = np.corrcoef(self.time_series.T)
         fc = self.postproc(fc)
         return fc
 
 class Static_Partial(ConnectivityMethod):
+    """
+    Static functional connectivity method using partial correlation.
+
+    Parameters
+    ----------
+    time_series : np.ndarray
+        The input time series data.
+    diagonal : int, optional
+        Value to set on the diagonal of connectivity matrices. Default is 0.
+    standardize : bool, optional
+        Whether to z-standardize the connectivity matrices. Default is False.
+    fisher_z : bool, optional
+        Whether to apply Fisher z-transformation. Default is False.
+    tril : bool, optional
+        Whether to return only the lower triangle of the matrices. Default is False.
+    """
     name = "STATIC Partial Correlation"
-    options = {}
 
     def __init__(self,
                  time_series: np.ndarray,
@@ -1281,6 +1888,14 @@ class Static_Partial(ConnectivityMethod):
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
 
     def connectivity(self):
+        """
+        Calculate the functional connectivity.
+
+        Returns
+        -------
+        np.ndarray
+            Static functional connectivity matrix.
+        """
         corr = np.corrcoef(self.time_series.T)
         precision = inv(corr)
         fc = -precision / np.sqrt(np.outer(np.diag(precision), np.diag(precision)))
@@ -1288,8 +1903,26 @@ class Static_Partial(ConnectivityMethod):
         return fc
 
 class Static_Mutual_Info(ConnectivityMethod):
+    """
+    Static functional connectivity method using mutual information.
+
+    Parameters
+    ----------
+    time_series : np.ndarray
+        The input time series data.
+    num_bins : int, optional
+        Number of bins to use for the mutual information calculation. Default is 10.
+    diagonal : int, optional
+        Value to set on the diagonal of connectivity matrices. Default is 0.
+    standardize : bool, optional
+        Whether to z-standardize the connectivity matrices. Default is False.
+    fisher_z : bool, optional
+        Whether to apply Fisher z-transformation. Default is False.
+    tril : bool, optional
+        Whether to return only the lower triangle of the matrices. Default is False.
+    """
+
     name = "STATIC Mutual Information"
-    options = {}
 
     def __init__(self,
                  time_series: np.ndarray,
@@ -1303,6 +1936,14 @@ class Static_Mutual_Info(ConnectivityMethod):
         self.num_bins = num_bins
 
     def connectivity(self):
+        """
+        Calculate the functional connectivity.
+
+        Returns
+        -------
+        np.ndarray
+            Static functional connectivity matrix.
+        """
         if self.num_bins is None:
             raise ValueError("Number of bins must be specified for mutual information method")
 

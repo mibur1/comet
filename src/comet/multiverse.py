@@ -41,29 +41,12 @@ class Multiverse:
     ----------
     name : str
         Name of the multiverse analysis. Default is "multiverse".
-
-    Methods
-    -------
-    create()
-        Create individual universe scripts
-
-    run()
-        Run the multiverse or universes
-
-    summary()
-        Print the multiverse summary
-
-    visualize()
-        Visualize the multiverse as a network
-
-    specification_curve()
-        Create a specification curve
     """
 
     def __init__(self, name="multiverse"):
         self.name = name
 
-    # Public functions
+    # Public methods
     def create(self, analysis_template, forking_paths, invalid_paths=None):
         """
         Create the individual universe scripts
@@ -512,7 +495,7 @@ class Multiverse:
 
         return
 
-    # Internal functions
+    # Internal methods
     def _check_paths(self, universe_path, invalid_paths):
         """
         Internal function: Check if a universe contains a specific path

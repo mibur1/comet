@@ -22,7 +22,7 @@ def parcellate(dtseries, atlas="glasser", method=np.mean, standardize=True):
 
     atlas : string
         name of the atlas to use for parcellation. Options are:
-         - glasser (Glasser MMP cortical parcellation)
+         - glasser (Glasser MMP cortical parcellation + subcortical)
          - schaefer_kong (Schaefer 200 cortical parcellation)
          - schaefer_tian (Schaefer 200 cortical parcellation + subcortical)
 

@@ -619,7 +619,8 @@ def small_world_sigma(G: np.ndarray,
     Notes
     -----
     This implementation of small worldness relies on matrix operations and is *drastically* faster than the
-     Networkx implementation. However, it uses a different approch for rewiring edges, so the results will differ.
+    Networkx implementation. However, it uses a different approch for rewiring edges, so the results will differ.
+
     It automatically detects if the input matrix is binary or weighted.
     '''
 
@@ -755,9 +756,10 @@ def matching_ind_und(G: np.ndarray) -> np.ndarray:
     Notes
     -----
     Important note: As of Jan 2024 there is a bug in the bctpy version of this function
-     (ncon2 = c1 * CIJ should instead be ncon2 = CIJ * use)
+    (ncon2 = c1 * CIJ should instead be ncon2 = CIJ * use)
+
     This bug is fixed/irrelevant here due to the more efficient implementation using
-     matrix operations
+    matrix operations
     '''
 
     G = (G > 0).astype(np.float64)
@@ -909,12 +911,12 @@ def backbone_wu(CIJ: np.ndarray,
 
     Notes
     -----
-        Nodes with zero strength are discarded.
+    Nodes with zero strength are discarded.
 
-        CIJclus will have a total average degree exactly equal to
-         (or very close to) 'avgdeg'.
+    CIJclus will have a total average degree exactly equal to
+        (or very close to) 'avgdeg'.
 
-        'avgdeg' backfill is handled slightly differently than in Hagmann et al. (2008)
+    'avgdeg' backfill is handled slightly differently than in Hagmann et al. (2008)
     '''
 
     return bct.backbone_wu(CIJ, avgdeg, verbose)
@@ -940,18 +942,18 @@ def betweenness(G: np.ndarray) -> np.ndarray:
 
     Notes
     -----
-       Binary:
-        Betweenness centrality may be normalised to the range [0,1] as
-        BC/[(N-1)(N-2)], where N is the number of nodes in the network.
+    Binary:
+    Betweenness centrality may be normalised to the range [0,1] as
+    BC/[(N-1)(N-2)], where N is the number of nodes in the network.
 
-       Weighted:
-        The input matrix must be a connection-length matrix, typically
-        obtained via a mapping from weight to length. For instance, in a
-        weighted correlation network higher correlations are more naturally
-        interpreted as shorter distances and the input matrix should
-        consequently be some inverse of the connectivity matrix.
-        Betweenness centrality may be normalised to the range [0,1] as
-        BC/[(N-1)(N-2)], where N is the number of nodes in the network.
+    Weighted:
+    The input matrix must be a connection-length matrix, typically
+    obtained via a mapping from weight to length. For instance, in a
+    weighted correlation network higher correlations are more naturally
+    interpreted as shorter distances and the input matrix should
+    consequently be some inverse of the connectivity matrix.
+    Betweenness centrality may be normalised to the range [0,1] as
+    BC/[(N-1)(N-2)], where N is the number of nodes in the network.
     '''
 
     is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
@@ -1092,8 +1094,9 @@ def gateway_coef_sign(W: np.ndarray,
     Gneg : N x nr_mod np.ndarray
         gateway coefficient for negative weights
 
-    Reference:
-        Vargas ER, Wahl LM, Eur Phys J B (2014) 87:1-10
+    References
+    ----------
+    Vargas ER, Wahl LM, Eur Phys J B (2014) 87:1-10
     '''
 
     ci, _ = bct.community_louvain(W)
