@@ -36,14 +36,17 @@ Graph measures can be calculated through the graph module. An example for global
 
 .. code-block:: python
 
-    from comet import graph
+    from comet import data, methods, graph
+
+    ts = data.load_example_data()
+    dFC = methods.SlidingWindow(ts, windowsize=30, shape="gaussian").connectivity()
 
     adj = dFC[:,:,0]
     dFC = graph.efficiency(adj, local=False)
 
 
 Multiverse analysis can be conducted through the multiverse module.
-This exaple will create and run a multiverse analysis with two decisions (6 possible combinations)::
+This exaple will create and run a multiverse analysis with two decisions (6 possible combinations):
 
 .. code-block:: python
 

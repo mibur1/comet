@@ -108,7 +108,10 @@ For full functionality the scripting API is recommended, however the graphical u
 </pre></div>
 </div>
 <p>Graph measures can be calculated through the graph module. An example for global efficiency (using the dFC data calculated in the previous example):</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">comet</span> <span class="kn">import</span> <span class="n">graph</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">comet</span> <span class="kn">import</span> <span class="n">data</span><span class="p">,</span> <span class="n">methods</span><span class="p">,</span> <span class="n">graph</span>
+
+<span class="n">ts</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">load_example_data</span><span class="p">()</span>
+<span class="n">dFC</span> <span class="o">=</span> <span class="n">methods</span><span class="o">.</span><span class="n">SlidingWindow</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">windowsize</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;gaussian&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">connectivity</span><span class="p">()</span>
 
 <span class="n">adj</span> <span class="o">=</span> <span class="n">dFC</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span>
 <span class="n">dFC</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">efficiency</span><span class="p">(</span><span class="n">adj</span><span class="p">,</span> <span class="n">local</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -116,25 +119,23 @@ For full functionality the scripting API is recommended, however the graphical u
 </div>
 <p>Multiverse analysis can be conducted through the multiverse module.
 This exaple will create and run a multiverse analysis with two decisions (6 possible combinations):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">..</span> <span class="n">code</span><span class="o">-</span><span class="n">block</span><span class="p">::</span> <span class="n">python</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">comet.multiverse</span> <span class="kn">import</span> <span class="n">Multiverse</span>
+
+<span class="n">forking_paths</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;decision1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+    <span class="s2">&quot;decision2&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Hello&quot;</span><span class="p">,</span> <span class="s2">&quot;World&quot;</span><span class="p">]</span>
+    <span class="p">}</span>
+
+<span class="k">def</span> <span class="nf">analysis_template</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Decision1: </span><span class="se">{{</span><span class="s2">decision1</span><span class="se">}}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Decision2: </span><span class="se">{{</span><span class="s2">decision2</span><span class="se">}}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">mverse</span> <span class="o">=</span> <span class="n">Multiverse</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;example_multiverse&quot;</span><span class="p">)</span>
+<span class="n">mverse</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">analysis_template</span><span class="p">,</span> <span class="n">forking_paths</span><span class="p">)</span>
+<span class="n">mverse</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
+<span class="n">mverse</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </pre></div>
 </div>
-<blockquote>
-<div><p>from comet.multiverse import Multiverse</p>
-<dl class="simple">
-<dt>forking_paths = {</dt><dd><p>“decision1”: [1, 2, 3],
-“decision2”: [“Hello”, “World”]
-}</p>
-</dd>
-<dt>def analysis_template():</dt><dd><p>print(f”Decision1: {{decision1}}”)
-print(f”Decision2: {{decision2}}”)</p>
-</dd>
-</dl>
-<p>mverse = Multiverse(name=”example_multiverse”)
-mverse.create(analysis_template, forking_paths)
-mverse.summary()
-mverse.run()</p>
-</div></blockquote>
 </section>
 </section>
 
