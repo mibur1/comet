@@ -1,10 +1,18 @@
 Tutorials
 =========
 
-If you intend to use the toolbox in a standard python script, tutorials are provided as a starting point:
+If you intend to use the toolbox in a standard Python script, tutorials are provided as a starting point:
 
-* Demo script for calculating dFC: tutorials/example_dfc.ipynb
-* Demo script for performing multiverse analysis: tutorials/example_multiverse.ipynb
-* Demo script for the multiverse analysis as presented preprint (+ additional visualizations): tutorials/example_analysis.ipynb
-* Demo script for graph analysis: tutorials/example_graph.ipynb`
+* :doc:`notebooks/example_dfc`
+* :doc:`notebooks/example_multiverse`
+* :doc:`notebooks/example_analysis`
+* :doc:`notebooks/example_graph`
 
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   notebooks/example_dfc
+   notebooks/example_multiverse
+   notebooks/example_analysis
+   notebooks/example_graph

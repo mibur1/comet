@@ -17,6 +17,7 @@
         <script src="../../_static/documentation_options.js?v=6fefd858"></script>
         <script src="../../_static/doctools.js?v=9a2dae69"></script>
         <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -86,7 +87,7 @@
 <span class="kn">from</span> <span class="nn">.multiverse</span> <span class="kn">import</span> <span class="n">in_notebook</span>
 
 <div class="viewcode-block" id="load_timeseries">
-<a class="viewcode-back" href="../../sections/api.html#comet.data.load_timeseries">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/data.html#comet.data.load_timeseries">[docs]</a>
 <span class="k">def</span> <span class="nf">load_timeseries</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Load time series data from a file.</span>
@@ -155,7 +156,7 @@
 
 
 <div class="viewcode-block" id="load_example">
-<a class="viewcode-back" href="../../sections/api.html#comet.data.load_example">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/data.html#comet.data.load_example">[docs]</a>
 <span class="k">def</span> <span class="nf">load_example</span><span class="p">(</span><span class="n">ftype</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Load simulation time series with two randomly changing connectivity states.</span>
@@ -196,7 +197,7 @@
 
 
 <div class="viewcode-block" id="load_single_state">
-<a class="viewcode-back" href="../../sections/api.html#comet.data.load_single_state">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/data.html#comet.data.load_single_state">[docs]</a>
 <span class="k">def</span> <span class="nf">load_single_state</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Load simulated time series data with a single connectivity state</span>
@@ -214,7 +215,7 @@
 
 
 <div class="viewcode-block" id="save_results">
-<a class="viewcode-back" href="../../sections/api.html#comet.data.save_results">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/data.html#comet.data.save_results">[docs]</a>
 <span class="k">def</span> <span class="nf">save_results</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">universe</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Save all kinds of results as .pkl file</span>
@@ -260,7 +261,7 @@
 
 
 <div class="viewcode-block" id="clean">
-<a class="viewcode-back" href="../../sections/api.html#comet.data.clean">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/data.html#comet.data.clean">[docs]</a>
 <span class="k">def</span> <span class="nf">clean</span><span class="p">(</span><span class="n">time_series</span><span class="p">,</span> <span class="n">runs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">detrend</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">confounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">standardize</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">standardize_confounds</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> \
           <span class="nb">filter</span><span class="o">=</span><span class="s1">&#39;butterworth&#39;</span><span class="p">,</span> <span class="n">low_pass</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">high_pass</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">t_r</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ensure_finite</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>

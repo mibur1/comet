@@ -17,6 +17,7 @@
         <script src="../../_static/documentation_options.js?v=6fefd858"></script>
         <script src="../../_static/doctools.js?v=9a2dae69"></script>
         <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -86,7 +87,7 @@
 <span class="sd">   before graph analysis.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <div class="viewcode-block" id="handle_negative_weights">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.handle_negative_weights">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.handle_negative_weights">[docs]</a>
 <span class="k">def</span> <span class="nf">handle_negative_weights</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                             <span class="nb">type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;absolute&quot;</span><span class="p">,</span> <span class="s2">&quot;discard&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;absolute&quot;</span><span class="p">,</span>
                             <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -127,7 +128,7 @@
 
 
 <div class="viewcode-block" id="threshold">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.threshold">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.threshold">[docs]</a>
 <span class="k">def</span> <span class="nf">threshold</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
               <span class="nb">type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;density&quot;</span><span class="p">,</span> <span class="s2">&quot;absolute&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;density&quot;</span><span class="p">,</span>
               <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -195,7 +196,7 @@
 
 
 <div class="viewcode-block" id="binarise">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.binarise">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.binarise">[docs]</a>
 <span class="k">def</span> <span class="nf">binarise</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
              <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
@@ -224,7 +225,7 @@
 
 
 <div class="viewcode-block" id="normalise">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.normalise">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.normalise">[docs]</a>
 <span class="k">def</span> <span class="nf">normalise</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
               <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
@@ -256,7 +257,7 @@
 
 
 <div class="viewcode-block" id="invert">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.invert">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.invert">[docs]</a>
 <span class="k">def</span> <span class="nf">invert</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
            <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
@@ -288,7 +289,7 @@
 
 
 <div class="viewcode-block" id="logtransform">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.logtransform">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.logtransform">[docs]</a>
 <span class="k">def</span> <span class="nf">logtransform</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                  <span class="n">epsilon</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-10</span><span class="p">,</span>
                  <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -327,7 +328,7 @@
 
 
 <div class="viewcode-block" id="symmetrise">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.symmetrise">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.symmetrise">[docs]</a>
 <span class="k">def</span> <span class="nf">symmetrise</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
@@ -365,7 +366,7 @@
 
 
 <div class="viewcode-block" id="randomise">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.randomise">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.randomise">[docs]</a>
 <span class="k">def</span> <span class="nf">randomise</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
               <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
@@ -408,7 +409,7 @@
 
 
 <div class="viewcode-block" id="regular_matrix">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.regular_matrix">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.regular_matrix">[docs]</a>
 <span class="k">def</span> <span class="nf">regular_matrix</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    Create a regular matrix</span>
@@ -456,7 +457,7 @@
 
 
 <div class="viewcode-block" id="postproc">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.postproc">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.postproc">[docs]</a>
 <span class="k">def</span> <span class="nf">postproc</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
              <span class="n">diag</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
              <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -503,7 +504,7 @@
 <span class="sd">   to machine code using numba for improved performance</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <div class="viewcode-block" id="avg_shortest_path">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.avg_shortest_path">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.avg_shortest_path">[docs]</a>
 <span class="k">def</span> <span class="nf">avg_shortest_path</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                       <span class="n">include_diagonal</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
                       <span class="n">include_infinite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
@@ -540,7 +541,7 @@
 
 
 <div class="viewcode-block" id="transitivity_und">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.transitivity_und">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.transitivity_und">[docs]</a>
 <span class="k">def</span> <span class="nf">transitivity_und</span><span class="p">(</span><span class="n">A</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    Transitivity for undirected networks (binary and weighted), adapted from</span>
@@ -574,7 +575,7 @@
 
 
 <div class="viewcode-block" id="avg_clustering_onella">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.avg_clustering_onella">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.avg_clustering_onella">[docs]</a>
 <span class="k">def</span> <span class="nf">avg_clustering_onella</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    Average clustering coefficient as described by Onnela et al. (2005) and as implemented in</span>
@@ -607,7 +608,7 @@
 
 
 <div class="viewcode-block" id="efficiency">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.efficiency">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.efficiency">[docs]</a>
 <span class="k">def</span> <span class="nf">efficiency</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                <span class="n">local</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
@@ -714,7 +715,7 @@
 
 
 <div class="viewcode-block" id="small_world_sigma">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.small_world_sigma">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.small_world_sigma">[docs]</a>
 <span class="k">def</span> <span class="nf">small_world_sigma</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                       <span class="n">nrand</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
@@ -761,7 +762,7 @@
 
 
 <div class="viewcode-block" id="small_world_propensity">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.small_world_propensity">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.small_world_propensity">[docs]</a>
 <span class="k">def</span> <span class="nf">small_world_propensity</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    Small world propensity calculation for undirected and symmetric networks.</span>
@@ -845,7 +846,7 @@
 
 
 <div class="viewcode-block" id="matching_ind_und">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.matching_ind_und">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.matching_ind_und">[docs]</a>
 <span class="nd">@jit</span><span class="p">(</span><span class="n">nopython</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">matching_ind_und</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
@@ -901,7 +902,7 @@
 
 
 <div class="viewcode-block" id="distance_wei">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.distance_wei">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.distance_wei">[docs]</a>
 <span class="nd">@jit</span><span class="p">(</span><span class="n">nopython</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">distance_wei</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">inv</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
@@ -963,7 +964,7 @@
 
 
 <div class="viewcode-block" id="distance_bin">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.distance_bin">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.distance_bin">[docs]</a>
 <span class="nd">@jit</span><span class="p">(</span><span class="n">nopython</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">distance_bin</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
@@ -1013,7 +1014,7 @@
 <span class="sd"> - For the scripting API, users can also directly use the bctpy functions</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <div class="viewcode-block" id="backbone_wu">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.backbone_wu">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.backbone_wu">[docs]</a>
 <span class="k">def</span> <span class="nf">backbone_wu</span><span class="p">(</span><span class="n">CIJ</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                 <span class="n">avgdeg</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
                 <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
@@ -1058,7 +1059,7 @@
 
 
 <div class="viewcode-block" id="betweenness">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.betweenness">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.betweenness">[docs]</a>
 <span class="k">def</span> <span class="nf">betweenness</span><span class="p">(</span><span class="n">G</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    This is a wrapper function for the betweenness_*() functions</span>
@@ -1100,7 +1101,7 @@
 
 
 <div class="viewcode-block" id="clustering_coef">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.clustering_coef">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.clustering_coef">[docs]</a>
 <span class="k">def</span> <span class="nf">clustering_coef</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    This is a wrapper function for the clustering_coef_*() functions</span>
@@ -1129,7 +1130,7 @@
 
 
 <div class="viewcode-block" id="degrees_und">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.degrees_und">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.degrees_und">[docs]</a>
 <span class="k">def</span> <span class="nf">degrees_und</span><span class="p">(</span><span class="n">CIJ</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    This is a wrapper function for the degrees_und() function</span>
@@ -1156,7 +1157,7 @@
 
 
 <div class="viewcode-block" id="density_und">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.density_und">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.density_und">[docs]</a>
 <span class="k">def</span> <span class="nf">density_und</span><span class="p">(</span><span class="n">CIJ</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    This is a wrapper function for the density_und() function</span>
@@ -1188,7 +1189,7 @@
 
 
 <div class="viewcode-block" id="eigenvector_centrality_und">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.eigenvector_centrality_und">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.eigenvector_centrality_und">[docs]</a>
 <span class="k">def</span> <span class="nf">eigenvector_centrality_und</span><span class="p">(</span><span class="n">CIJ</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    This is a wrapper function for the eigenvector_centrality_*() functions</span>
@@ -1215,7 +1216,7 @@
 
 
 <div class="viewcode-block" id="gateway_coef_sign">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.gateway_coef_sign">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.gateway_coef_sign">[docs]</a>
 <span class="k">def</span> <span class="nf">gateway_coef_sign</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                       <span class="n">ci</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;louvain&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;louvain&quot;</span><span class="p">,</span>
                       <span class="n">centrality_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;degree&quot;</span><span class="p">,</span> <span class="s2">&quot;betweenness&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;degree&quot;</span><span class="p">,</span> <span class="p">)</span> \
@@ -1257,7 +1258,7 @@
 
 
 <div class="viewcode-block" id="pagerank_centrality">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.pagerank_centrality">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.pagerank_centrality">[docs]</a>
 <span class="k">def</span> <span class="nf">pagerank_centrality</span><span class="p">(</span><span class="n">A</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                         <span class="n">d</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.85</span><span class="p">,</span>
                         <span class="n">falff</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -1305,7 +1306,7 @@
 
 
 <div class="viewcode-block" id="participation_coef">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.participation_coef">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.participation_coef">[docs]</a>
 <span class="k">def</span> <span class="nf">participation_coef</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                        <span class="n">ci</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;louvain&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;louvain&quot;</span><span class="p">,</span>
                        <span class="n">degree</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;undirected&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;undirected&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -1339,7 +1340,7 @@
 
 
 <div class="viewcode-block" id="participation_coef_sign">
-<a class="viewcode-back" href="../../sections/api.html#comet.graph.participation_coef_sign">[docs]</a>
+<a class="viewcode-back" href="../../sections/modules/graph.html#comet.graph.participation_coef_sign">[docs]</a>
 <span class="k">def</span> <span class="nf">participation_coef_sign</span><span class="p">(</span><span class="n">W</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
                             <span class="n">ci</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;louvain&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;louvain&quot;</span><span class="p">,)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>

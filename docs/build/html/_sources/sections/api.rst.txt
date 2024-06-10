@@ -1,50 +1,16 @@
 Programming API
 ===============
 
-
-comet.methods
--------------
-
-.. toctree::
-   :maxdepth: 4
-
-.. automodule:: comet.methods
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-comet.graph
------------
+* :doc:`modules/methods`    - (Dynamic) functional connectivity methods
+* :doc:`modules/graph`      - Graph analysis functions
+* :doc:`modules/multiverse` - Multiverse analysis functions
+* :doc:`modules/data`       - Data lading and processing
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 1
+   :hidden:
 
-.. automodule:: comet.graph
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-comet.multiverse
-----------------
-
-.. toctree::
-   :maxdepth: 4
-
-.. automodule:: comet.multiverse
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-comet.data
-----------
-
-.. toctree::
-   :maxdepth: 4
-
-.. automodule:: comet.data
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   modules/methods
+   modules/graph
+   modules/multiverse
+   modules/data

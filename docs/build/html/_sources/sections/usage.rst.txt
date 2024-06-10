@@ -1,26 +1,19 @@
 Usage
 =====
 
-Quickstart
-----------
-
-The toolbox is designed in a modular way, which means you can use the individual parts in combination with others, but also by themselves.
-
-* continuous and static dFC measures require 2D time series data (n_timepoints x n_regions) as input
-* state-based dFC methods require a TIME_SERIES object (as used in the `pydfc toolbox <https://github.com/neurodatascience/dFC>`_) containing data for multiple subjects as input
-* Graph measures need 2D adjacency/connectivity matrices as input
-* Multiverse analysis needs decision/option pairs of any kind to create forking paths in the analysis as well as a template script for the analysis
+The toolbox is designed in a modular way, which means the individual methods can be used in combination with others, but also by themselves.
+For full functionality the scripting API is recommended, however the graphical user interface (GUI) offers many of the same features.
 
 GUI
 ---
 
-After installation, you can use the graphical user interface through the terminal by typing:
+After installation, graphical user interface can be accessed through the terminal by typing:
 
 .. code-block:: bash
 
     comet-gui
 
-If you want to explore the toolbox with example data, you can load data included in the ``tutorials/example_data/`` folder:
+For exploration with example data, data included in the ``tutorials/example_data/`` folder can be loaded:
 
 * ``simulation.txt`` contains simulated BOLD data for 10 brain regions with 2 changing brain states (usable for continuous and static dFC measures)
 * ``abide_50088.txt`` contains parcellated BOLD data for a single subject from the ABIDE data set (usable for continuous and static dFC measures)
@@ -39,7 +32,7 @@ Dynamic functional connectivity can be estimated through the methods module. An 
     dFC = methods.SlidingWindow(ts, windowsize=30, shape="gaussian").connectivity()
 
 
-Graph measures can be calculated through the graph module. An example for global efficiency:
+Graph measures can be calculated through the graph module. An example for global efficiency (using the dFC data calculated in the previous example):
 
 .. code-block:: python
 
@@ -49,8 +42,23 @@ Graph measures can be calculated through the graph module. An example for global
     dFC = graph.efficiency(adj, local=False)
 
 
-Multiverse analysis can be conducted through the multiverse module. An example for a simple decision point:
+Multiverse analysis can be conducted through the multiverse module.
+This exaple will create and run a multiverse analysis with two decisions (6 possible combinations)::
 
 .. code-block:: python
 
-    from comet import multiverse
+    from comet.multiverse import Multiverse
+
+    forking_paths = {
+        "decision1": [1, 2, 3],
+        "decision2": ["Hello", "World"]
+        }
+
+    def analysis_template():
+        print(f"Decision1: {{decision1}}")
+        print(f"Decision2: {{decision2}}")
+
+    mverse = Multiverse(name="example_multiverse")
+    mverse.create(analysis_template, forking_paths)
+    mverse.summary()
+    mverse.run()

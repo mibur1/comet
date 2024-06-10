@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>comet.graph &mdash; Comet Toolbox 2024 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=6fefd858"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="comet.multiverse" href="multiverse.html" />
+    <link rel="prev" title="comet.methods" href="methods.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Comet Toolbox
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">Programming API</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="methods.html">comet.methods</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">comet.graph</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.avg_clustering_onella"><code class="docutils literal notranslate"><span class="pre">avg_clustering_onella()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.avg_shortest_path"><code class="docutils literal notranslate"><span class="pre">avg_shortest_path()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.backbone_wu"><code class="docutils literal notranslate"><span class="pre">backbone_wu()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.betweenness"><code class="docutils literal notranslate"><span class="pre">betweenness()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.binarise"><code class="docutils literal notranslate"><span class="pre">binarise()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.clustering_coef"><code class="docutils literal notranslate"><span class="pre">clustering_coef()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.degrees_und"><code class="docutils literal notranslate"><span class="pre">degrees_und()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.density_und"><code class="docutils literal notranslate"><span class="pre">density_und()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.distance_bin"><code class="docutils literal notranslate"><span class="pre">distance_bin()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.distance_wei"><code class="docutils literal notranslate"><span class="pre">distance_wei()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.efficiency"><code class="docutils literal notranslate"><span class="pre">efficiency()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.eigenvector_centrality_und"><code class="docutils literal notranslate"><span class="pre">eigenvector_centrality_und()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.gateway_coef_sign"><code class="docutils literal notranslate"><span class="pre">gateway_coef_sign()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.handle_negative_weights"><code class="docutils literal notranslate"><span class="pre">handle_negative_weights()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.invert"><code class="docutils literal notranslate"><span class="pre">invert()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.logtransform"><code class="docutils literal notranslate"><span class="pre">logtransform()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.matching_ind_und"><code class="docutils literal notranslate"><span class="pre">matching_ind_und()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.normalise"><code class="docutils literal notranslate"><span class="pre">normalise()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.pagerank_centrality"><code class="docutils literal notranslate"><span class="pre">pagerank_centrality()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.participation_coef"><code class="docutils literal notranslate"><span class="pre">participation_coef()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.participation_coef_sign"><code class="docutils literal notranslate"><span class="pre">participation_coef_sign()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.postproc"><code class="docutils literal notranslate"><span class="pre">postproc()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.randomise"><code class="docutils literal notranslate"><span class="pre">randomise()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.regular_matrix"><code class="docutils literal notranslate"><span class="pre">regular_matrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.small_world_propensity"><code class="docutils literal notranslate"><span class="pre">small_world_propensity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.small_world_sigma"><code class="docutils literal notranslate"><span class="pre">small_world_sigma()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.symmetrise"><code class="docutils literal notranslate"><span class="pre">symmetrise()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.threshold"><code class="docutils literal notranslate"><span class="pre">threshold()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.graph.transitivity_und"><code class="docutils literal notranslate"><span class="pre">transitivity_und()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="multiverse.html">comet.multiverse</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data.html">comet.data</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../contribute.html">Contributing</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Comet Toolbox</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../api.html">Programming API</a></li>
+      <li class="breadcrumb-item active">comet.graph</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/sections/modules/graph.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="comet-graph">
+<h1>comet.graph<a class="headerlink" href="#comet-graph" title="Link to this heading"></a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<dl class="py function" id="module-comet.graph">
+<dt class="sig sig-object py" id="comet.graph.avg_clustering_onella">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">avg_clustering_onella</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">W</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#avg_clustering_onella"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.avg_clustering_onella" title="Link to this definition"></a></dt>
+<dd><p>Average clustering coefficient as described by Onnela et al. (2005) and as implemented in
+<a class="reference external" href="https://kk1995.github.io/BauerLab/BauerLab/MATLAB/lib/+mouse/+graph/smallWorldPropensity.html">https://kk1995.github.io/BauerLab/BauerLab/MATLAB/lib/+mouse/+graph/smallWorldPropensity.html</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>W</strong> (<em>NxN np.ndarray</em>) – binary or weighted, undirected connection matrix</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>C</strong> – average clustering coefficient</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>Onnela, J. P., Saramäki, J., Kertész, J., &amp; Kaski, K. (2005). Intensity and
+coherence of motifs in weighted complex networks. Physical Review E, 71(6), 065103.
+DOI: <a class="reference external" href="https://doi.org/10.1103/PhysRevE.71.065103">https://doi.org/10.1103/PhysRevE.71.065103</a></p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.avg_shortest_path">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">avg_shortest_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_diagonal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_infinite</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#avg_shortest_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.avg_shortest_path" title="Link to this definition"></a></dt>
+<dd><p>Average shortest path length calculated from a connectivity matrix.</p>
+<p>If the matrix is weighted, the inverse of the weights is used as a proxy of distance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>G</strong> (<em>NxN np.ndarray</em>) – undirected connection matrix (binary or weighted)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>D</strong> – average shortest path length</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.backbone_wu">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">backbone_wu</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">CIJ</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">avgdeg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#backbone_wu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.backbone_wu" title="Link to this definition"></a></dt>
+<dd><p>This is a wrapper function for the backbone_wu() function
+of the bctpy toolbox: <a class="reference external" href="https://github.com/aestrivex/bctpy">https://github.com/aestrivex/bctpy</a>.</p>
+<p>The network backbone contains the dominant connections in the network
+and may be used to aid network visualization. This function computes
+the backbone of a given weighted and undirected connection matrix CIJ,
+using a minimum-spanning-tree based algorithm.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>CIJ</strong> (<em>NxN np.ndarray</em>) – weighted undirected connection matrix</p></li>
+<li><p><strong>avgdeg</strong> (<em>float</em>) – desired average degree of backbone</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em>) – print out edges whilst building spanning tree. Default False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>CIJtree</strong> (<em>NxN np.ndarray</em>) – connection matrix of the minimum spanning tree of CIJ</p></li>
+<li><p><strong>CIJclus</strong> (<em>NxN np.ndarray</em>) – connection matrix of the minimum spanning tree plus strongest
+connections up to some average degree ‘avgdeg’. Identical to CIJtree
+if the degree requirement is already met.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Nodes with zero strength are discarded.</p>
+<dl class="simple">
+<dt>CIJclus will have a total average degree exactly equal to</dt><dd><p>(or very close to) ‘avgdeg’.</p>
+</dd>
+</dl>
+<p>‘avgdeg’ backfill is handled slightly differently than in Hagmann et al. (2008)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.betweenness">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">betweenness</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#betweenness"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.betweenness" title="Link to this definition"></a></dt>
+<dd><p>This is a wrapper function for the betweenness_*() functions
+of the bctpy toolbox: <a class="reference external" href="https://github.com/aestrivex/bctpy">https://github.com/aestrivex/bctpy</a>.</p>
+<p>Node betweenness centrality is the fraction of all shortest paths in
+the network that contain a given node. Nodes with high values of
+betweenness centrality participate in a large number of shortest paths.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>G</strong> (<em>NxN np.ndarray</em>) – binary/weighted directed/undirected connection matrix</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>BC</strong> – node betweenness centrality vector</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Nx1 np.ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Binary:
+Betweenness centrality may be normalised to the range [0,1] as
+BC/[(N-1)(N-2)], where N is the number of nodes in the network.</p>
+<p>Weighted:
+The input matrix must be a connection-length matrix, typically
+obtained via a mapping from weight to length. For instance, in a
+weighted correlation network higher correlations are more naturally
+interpreted as shorter distances and the input matrix should
+consequently be some inverse of the connectivity matrix.
+Betweenness centrality may be normalised to the range [0,1] as
+BC/[(N-1)(N-2)], where N is the number of nodes in the network.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.binarise">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">binarise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">W</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#binarise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.binarise" title="Link to this definition"></a></dt>
+<dd><p>Binarise connectivity/adjacency matrix</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>W</strong> (<em>PxP np.ndarray</em>) – adjacency/connectivity matrix</p></li>
+<li><p><strong>copy</strong> (<em>bool</em><em>, </em><em>optional</em>) – if True, a copy of W is returned, otherwise W is modified in place
+default is True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>W</strong> – binarised adjacency/connectivity matrix</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PxP np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.clustering_coef">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">clustering_coef</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">W</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#clustering_coef"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.clustering_coef" title="Link to this definition"></a></dt>
+<dd><p>This is a wrapper function for the clustering_coef_*() functions
+of the bctpy toolbox: <a class="reference external" href="https://github.com/aestrivex/bctpy">https://github.com/aestrivex/bctpy</a>.</p>
+<p>The binary clustering coefficient is the fraction of triangles around a node
+(equiv. the fraction of nodes neighbors that are neighbors of each other).</p>
+<p>The weighted clustering coefficient is the average “intensity” of triangles
+around a node.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>W</strong> (<em>NxN np.ndarray</em>) – weighted undirected connection matrix</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>C</strong> – clustering coefficient vector</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Nx1 np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.degrees_und">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">degrees_und</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">CIJ</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#degrees_und"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.degrees_und" title="Link to this definition"></a></dt>
+<dd><p>This is a wrapper function for the degrees_und() function
+of the bctpy toolbox: <a class="reference external" href="https://github.com/aestrivex/bctpy">https://github.com/aestrivex/bctpy</a>.</p>
+<p>Node degree is the number of links connected to the node.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>CIJ</strong> (<em>NxN np.ndarray</em>) – undirected binary/weighted connection matrix</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>deg</strong> – node degree</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Nx1 np.ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Weight information is discarded.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.density_und">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">density_und</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">CIJ</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#density_und"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.density_und" title="Link to this definition"></a></dt>
+<dd><p>This is a wrapper function for the density_und() function
+of the bctpy toolbox: <a class="reference external" href="https://github.com/aestrivex/bctpy">https://github.com/aestrivex/bctpy</a>.</p>
+<p>Density is the fraction of present connections to possible connections.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>CIJ</strong> (<em>NxN np.ndarray</em>) – directed weighted/binary connection matrix</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>kden</strong> (<em>float</em>) – density</p></li>
+<li><p><strong>N</strong> (<em>int</em>) – number of vertices</p></li>
+<li><p><strong>k</strong> (<em>int</em>) – number of edges</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Assumes CIJ is directed and has no self-connections.
+Weight information is discarded.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.distance_bin">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">distance_bin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#distance_bin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.distance_bin" title="Link to this definition"></a></dt>
+<dd><p>Distance matrix calculation for binary networks with significantly
+improved performance due to numba compilation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>G</strong> (<em>PxP np.ndarray</em>) – undireted weighted adjacency/connectivity matrix</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>D</strong> – (inverse) distance matrix</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PxP np.ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Algorithm: Matrix multiplication to find paths, faster than original Dijkstra’s algorithm</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.distance_wei">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">distance_wei</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inv</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#distance_wei"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.distance_wei" title="Link to this definition"></a></dt>
+<dd><p>(Inverse) distance matrix for weighted networks with significantly
+improved performance due to numba compilation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>G</strong> (<em>PxP np.ndarray</em>) – undireted weighted adjacency/connectivity matrix</p></li>
+<li><p><strong>inv</strong> (<em>bool</em><em>, </em><em>optional</em>) – if True, the element wise inverse of the distance matrux is returned. Default is True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>D</strong> – (inverse) distance matrix</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PxP np.ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Algorithm: Modified Dijkstra’s algorithm</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.efficiency">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">efficiency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#efficiency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.efficiency" title="Link to this definition"></a></dt>
+<dd><p>Efficiency for binary and weighted networks (global and local)</p>
+<p>Optimized version of the bctpy implelementation by Roan LaPlante (<a class="reference external" href="https://github.com/aestrivex/bctpy">https://github.com/aestrivex/bctpy</a>)</p>
+<p>Global efficiency is the average of inverse shortest path length, and is inversely related to the characteristic path length.
+Local efficiency is the global efficiency computed on the neighborhood of the node, and is related to the clustering coefficient.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Gw</strong> (<em>PxP np.ndarray</em>) – undireted adjacency/connectivity matrix (binary or weighted)</p></li>
+<li><p><strong>local</strong> (<em>bool</em><em>, </em><em>optional</em>) – if True, local efficiency is computed. Default is False (global efficiency)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>E (global)</strong> (<em>float</em>) – global efficiency, if local is False</p></li>
+<li><p><strong>E (local)</strong> (<em>Nx1 np.ndarray</em>) – local efficiency, if local is True</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>Latora, V., &amp; Marchiori, M. (2001). Efficient behavior of small-world networks.
+Physical review letters, 87(19), 198701. DOI: <a class="reference external" href="https://doi.org/10.1103/PhysRevLett.87.198701">https://doi.org/10.1103/PhysRevLett.87.198701</a></p>
+<p>Onnela, J. P., Saramäki, J., Kertész, J., &amp; Kaski, K. (2004). Intensity and coherence of motifs in weighted c
+omplex networks. Physical Review E, 71(6), 065103. DOI: <a class="reference external" href="https://doi.org/10.1103/PhysRevE.71.065103">https://doi.org/10.1103/PhysRevE.71.065103</a></p>
+<p>Fagiolo, G. (2007). Clustering in complex directed networks. Physical Review E, 76(2), 026107.
+DOI: <a class="reference external" href="https://doi.org/10.1103/PhysRevE.76.026107">https://doi.org/10.1103/PhysRevE.76.026107</a></p>
+<p>Rubinov, M., &amp; Sporns, O. (2010). Complex network measures of brain connectivity: uses and interpretations.
+Neuroimage, 52(3), 1059-1069. DOI: <a class="reference external" href="https://doi.org/10.1016/j.neuroimage.2009.10.003">https://doi.org/10.1016/j.neuroimage.2009.10.003</a></p>
+<p>Wang, Y., Ghumare, E., Vandenberghe, R., &amp; Dupont, P. (2017). Comparison of different generalizations of clustering coefficient
+and local efficiency for weighted undirected graphs. Neural computation, 29(2), 313-331. DOI: <a class="reference external" href="https://doi.org/10.1162/NECO_a_00914">https://doi.org/10.1162/NECO_a_00914</a></p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.eigenvector_centrality_und">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">eigenvector_centrality_und</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">CIJ</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#eigenvector_centrality_und"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.eigenvector_centrality_und" title="Link to this definition"></a></dt>
+<dd><p>This is a wrapper function for the eigenvector_centrality_*() functions
+of the bctpy toolbox: <a class="reference external" href="https://github.com/aestrivex/bctpy">https://github.com/aestrivex/bctpy</a>.</p>
+<p>Eigenector centrality is a self-referential measure of centrality:
+nodes have high eigenvector centrality if they connect to other nodes
+that have high eigenvector centrality. The eigenvector centrality of
+node i is equivalent to the ith element in the eigenvector
+corresponding to the largest eigenvalue of the adjacency matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>CIJ</strong> (<em>NxN np.ndarray</em>) – Binary/weighted undirected adjacency matrix</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>v</strong> – Eigenvector associated with the largest eigenvalue of the matrix</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Nx1 np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.gateway_coef_sign">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">gateway_coef_sign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">W</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ci</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'louvain'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'louvain'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">centrality_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'degree'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'betweenness'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'degree'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#gateway_coef_sign"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.gateway_coef_sign" title="Link to this definition"></a></dt>
+<dd><p>This is a wrapper function for the gateway_coef_sign() function
+of the bctpy toolbox: <a class="reference external" href="https://github.com/aestrivex/bctpy">https://github.com/aestrivex/bctpy</a>.</p>
+<p>The gateway coefficient is a variant of participation coefficient.
+It is weighted by how critical the connections are to intermodular
+connectivity (e.g. if a node is the only connection between its
+module and another module, it will have a higher gateway coefficient,
+unlike participation coefficient).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>W</strong> (<em>NxN np.ndarray</em>) – undirected signed connection matrix</p></li>
+<li><p><strong>ci</strong> (<em>Nx1 np.ndarray</em>) – community affiliation vector</p></li>
+<li><p><strong>centrality_type</strong> (<em>enum</em>) – ‘degree’ - uses the weighted degree (i.e, node strength)
+‘betweenness’ - uses the betweenness centrality</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>Gpos</strong> (<em>N x nr_mod np.ndarray</em>) – gateway coefficient for positive weights</p></li>
+<li><p><strong>Gneg</strong> (<em>N x nr_mod np.ndarray</em>) – gateway coefficient for negative weights</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>Vargas ER, Wahl LM, Eur Phys J B (2014) 87:1-10</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.handle_negative_weights">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">handle_negative_weights</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">W</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'absolute'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'discard'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'absolute'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#handle_negative_weights"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.handle_negative_weights" title="Link to this definition"></a></dt>
+<dd><p>Handle negative weights in a connectivity/adjacency matrix</p>
+<p>Connectivity methods can produce negative estimates, which can be handled in different ways before graph analysis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>W</strong> (<em>PxP np.ndarray</em>) – adjacency/connectivity matrix</p></li>
+<li><p><strong>type</strong> (<em>string</em><em>, </em><em>optional</em>) – type of handling, can be <em>absolute</em> or <em>discard</em>
+default is <em>absolute</em></p></li>
+<li><p><strong>copy</strong> (<em>bool</em><em>, </em><em>optional</em>) – if True, a copy of W is returned, otherwise W is modified in place
+default is True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>W</strong> – adjacency/connectivity matrix with only positive weights</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PxP np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.invert">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">invert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">W</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#invert"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.invert" title="Link to this definition"></a></dt>
+<dd><p>Invert connectivity/adjacency matrix</p>
+<p>Element wise inversion W such that each value W[i,j] will be 1 / W[i,j] (internode strengths internode distances)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>W</strong> (<em>PxP np.ndarray</em>) – adjacency/connectivity matrix</p></li>
+<li><p><strong>copy</strong> (<em>bool</em><em>, </em><em>optional</em>) – if True, a copy of W is returned, otherwise W is modified in place
+default is True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>W</strong> – element wise inverted adjacency/connectivity matrix</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PxP np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.logtransform">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">logtransform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">W</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epsilon</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#logtransform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.logtransform" title="Link to this definition"></a></dt>
+<dd><p>Log transform of connectivity/adjacency matrix</p>
+<p>Element wise log transform of W such that each value W[i,j] will be -log(W[i,j]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>W</strong> (<em>PxP np.ndarray</em>) – adjacency/connectivity matrix</p></li>
+<li><p><strong>epsilon</strong> (<em>float</em><em>, </em><em>optional</em>) – clipping value for numeric stability,
+default is 1e-10</p></li>
+<li><p><strong>copy</strong> (<em>bool</em><em>, </em><em>optional</em>) – if True, a copy of W is returned, otherwise W is modified in place
+default is True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>W</strong> – element wise log transformed adjacency/connectivity matrix</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PxP np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.matching_ind_und">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">matching_ind_und</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#matching_ind_und"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.matching_ind_und" title="Link to this definition"></a></dt>
+<dd><p>Matching index for undirected networks</p>
+<p>Based on the MATLAB implementation by Stuart Oldham:
+<a class="reference external" href="https://github.com/StuartJO/FasterMatchingIndex">https://github.com/StuartJO/FasterMatchingIndex</a></p>
+<p>Matching index is a measure of similarity between two nodes’ connectivity profiles
+(excluding their mutual connection, should it exist).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>W</strong> (<em>PxP np.ndarray</em>) – undireted adjacency/connectivity matrix</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>M</strong> – matching index matrix</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PxP np.ndarray</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>Oldham, S., Fulcher, B. D., Aquino, K., Arnatkevičiūtė, A., Paquola, C.,
+Shishegar, R., &amp; Fornito, A. (2022). Modeling spatial, developmental,
+physiological, and topological constraints on human brain connectivity.
+Science advances, 8(22), eabm6127. DOI: <a class="reference external" href="https://doi.org/10.1126/sciadv.abm6127">https://doi.org/10.1126/sciadv.abm6127</a></p>
+<p>Betzel, R. F., Avena-Koenigsberger, A., Goñi, J., He, Y., De Reus, M. A.,
+Griffa, A., … &amp; Sporns, O. (2016).
+Generative models of the human connectome. Neuroimage, 124, 1054-1064.
+DOI: <a class="reference external" href="https://doi.org/10.1016/j.neuroimage.2015.09.041">https://doi.org/10.1016/j.neuroimage.2015.09.041</a></p>
+<p class="rubric">Notes</p>
+<p>Important note: As of Jan 2024 there is a bug in the bctpy version of this function
+(ncon2 = c1 * CIJ should instead be ncon2 = CIJ * use)</p>
+<p>This bug is fixed/irrelevant here due to the more efficient implementation using
+matrix operations</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.normalise">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">normalise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">W</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#normalise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.normalise" title="Link to this definition"></a></dt>
+<dd><p>Normalise connectivity/adjacency matrix</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>W</strong> (<em>PxP np.ndarray</em>) – adjacency/connectivity matrix</p></li>
+<li><p><strong>copy</strong> (<em>bool</em><em>, </em><em>optional</em>) – if True, a copy of W is returned, otherwise W is modified in place
+default is True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>W</strong> – normalised adjacency/connectivity matrix</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PxP np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.pagerank_centrality">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">pagerank_centrality</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.85</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">falff</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#pagerank_centrality"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.pagerank_centrality" title="Link to this definition"></a></dt>
+<dd><p>This is a wrapper function for the pagerank_centrality() function
+of the bctpy toolbox: <a class="reference external" href="https://github.com/aestrivex/bctpy">https://github.com/aestrivex/bctpy</a>.</p>
+<p>The PageRank centrality is a variant of eigenvector centrality. This
+function computes the PageRank centrality of each vertex in a graph.</p>
+<p>Formally, PageRank is defined as the stationary distribution achieved
+by instantiating a Markov chain on a graph. The PageRank centrality of
+a given vertex, then, is proportional to the number of steps (or amount
+of time) spent at that vertex as a result of such a process.</p>
+<p>The PageRank index gets modified by the addition of a damping factor,
+d. In terms of a Markov chain, the damping factor specifies the
+fraction of the time that a random walker will transition to one of its
+current state’s neighbors. The remaining fraction of the time the
+walker is restarted at a random vertex. A common value for the damping
+factor is d = 0.85.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> (<em>NxN np.narray</em>) – adjacency matrix</p></li>
+<li><p><strong>d</strong> (<em>float</em>) – damping factor (see description)</p></li>
+<li><p><strong>falff</strong> (<em>Nx1 np.ndarray</em><em> | </em><em>None</em>) – Initial page rank probability, non-negative values. Default value is
+None. If not specified, a naive bayesian prior is used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>r</strong> – vectors of page rankings</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Nx1 np.ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Note: The algorithm will work well for smaller matrices (number of
+nodes around 1000 or less)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.participation_coef">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">participation_coef</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">W</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ci</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'louvain'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'louvain'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degree</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'undirected'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'undirected'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#participation_coef"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.participation_coef" title="Link to this definition"></a></dt>
+<dd><p>This is a wrapper function for the participation_coef functions
+of the bctpy toolbox: <a class="reference external" href="https://github.com/aestrivex/bctpy">https://github.com/aestrivex/bctpy</a>.</p>
+<p>The participation coefficient is a measure of diversity of intermodular
+connections of individual nodes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>W</strong> (<em>NxN np.ndarray</em><em> or </em><em>scipy.sparse.csr_matrix</em>) – binary/weighted directed/undirected connection matrix</p></li>
+<li><p><strong>ci</strong> (<em>Nx1 np.ndarray</em>) – community affiliation vector (just for the GUI, will always use bct.community_louvain())</p></li>
+<li><p><strong>degree</strong> (<em>str</em>) – <dl class="simple">
+<dt>Flag to describe nature of graph ‘undirected’: For undirected graphs</dt><dd><p>’in’: Uses the in-degree
+‘out’: Uses the out-degree</p>
+</dd>
+</dl>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>P</strong> – participation coefficient</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Nx1 np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.participation_coef_sign">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">participation_coef_sign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">W</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ci</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'louvain'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'louvain'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#participation_coef_sign"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.participation_coef_sign" title="Link to this definition"></a></dt>
+<dd><p>This is a wrapper function for the participation_coef_sign() function
+of the bctpy toolbox: <a class="reference external" href="https://github.com/aestrivex/bctpy">https://github.com/aestrivex/bctpy</a>.</p>
+<p>The participation coefficient is a measure of diversity of intermodular
+connections of individual nodes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>W</strong> (<em>NxN np.ndarray</em>) – undirected connection matrix with positive and negative weights</p></li>
+<li><p><strong>ci</strong> (<em>Nx1 np.ndarray</em>) – community affiliation vector (just for the GUI, will always use bct.community_louvain())</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>Ppos</strong> (<em>Nx1 np.ndarray</em>) – participation coefficient from positive weights</p></li>
+<li><p><strong>Pneg</strong> (<em>Nx1 np.ndarray</em>) – participation coefficient from negative weights</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.postproc">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">postproc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">W</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#postproc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.postproc" title="Link to this definition"></a></dt>
+<dd><p>Postprocessing of connectivity/adjacency matrix</p>
+<p>Ensures W is symmetric, sets diagonal to diag, removes NaNs and infinities, and ensures exact binarity</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>W</strong> (<em>PxP np.ndarray</em>) – adjacency/connectivity matrix</p></li>
+<li><p><strong>diag</strong> (<em>int</em><em>, </em><em>optional</em>) – set diagonal to this value
+default is 0</p></li>
+<li><p><strong>copy</strong> (<em>bool</em><em>, </em><em>optional</em>) – if True, a copy of W is returned, otherwise W is modified in place
+default is True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>W</strong> – processed adjacency/connectivity matrix</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PxP np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.randomise">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">randomise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#randomise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.randomise" title="Link to this definition"></a></dt>
+<dd><p>Randomly rewire edges of an adjacency/connectivity matrix</p>
+<p>Implemented as in <a class="reference external" href="https://github.com/rkdan/small_world_propensity">https://github.com/rkdan/small_world_propensity</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>G</strong> (<em>PxP np.ndarray</em>) – adjacency/connectivity matrix</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>G_rand</strong> – randomised adjacency/connectivity matrix</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PxP np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.regular_matrix">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">regular_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#regular_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.regular_matrix" title="Link to this definition"></a></dt>
+<dd><p>Create a regular matrix</p>
+<p>Adapted from <a class="reference external" href="https://github.com/rkdan/small_world_propensity">https://github.com/rkdan/small_world_propensity</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>G</strong> (<em>PxP np.ndarray</em>) – adjacency/connectivity matrix</p></li>
+<li><p><strong>r</strong> (<em>int</em>) – average effective radius of the network</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>M</strong> – adjacency matric of the regularised matrix</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PxP np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.small_world_propensity">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">small_world_propensity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#small_world_propensity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.small_world_propensity" title="Link to this definition"></a></dt>
+<dd><p>Small world propensity calculation for undirected and symmetric networks.
+Clustering is calculated using the approach of Onnela et al. (2005).</p>
+<p>Based on the MATLAB and Python implementations by Eric Bridgeford, Sarah F. Muldoon, and Ryan Daniels:
+<a class="reference external" href="https://kk1995.github.io/BauerLab/BauerLab/MATLAB/lib/+mouse/+graph/smallWorldPropensity.html">https://kk1995.github.io/BauerLab/BauerLab/MATLAB/lib/+mouse/+graph/smallWorldPropensity.html</a>
+<a class="reference external" href="https://github.com/rkdan/small_world_propensity">https://github.com/rkdan/small_world_propensity</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>F</strong> (<em>PxP np.ndarray</em>) – undirected and symmetric adjacency/connectivity matrix</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>SWP</strong> (<em>float</em>) – small world propensity of the matrix</p></li>
+<li><p><strong>delta_C</strong> (<em>float</em>) – fractional deviation from the expected culstering coefficient of a random network</p></li>
+<li><p><strong>delta_L</strong> (<em>float</em>) – fractional deviation from the expected path length of a random network</p></li>
+<li><p><strong>alpha</strong> (<em>float</em>) – angle between delta_C and delta_L</p></li>
+<li><p><strong>delta</strong> (<em>float</em>) – scaled version of alpha in the range of [-1,1]</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>Muldoon, S., Bridgeford, E. &amp; Bassett, D. Small-World Propensity and Weighted Brain Networks.
+Sci Rep 6, 22057 (2016). DOI: <a class="reference external" href="https://doi.org/10.1038/srep22057">https://doi.org/10.1038/srep22057</a></p>
+<p>Onnela, J. P., Saramäki, J., Kertész, J., &amp; Kaski, K. (2005). Intensity and
+coherence of motifs in weighted complex networks. Physical Review E, 71(6), 065103.
+DOI: <a class="reference external" href="https://doi.org/10.1103/PhysRevE.71.065103">https://doi.org/10.1103/PhysRevE.71.065103</a></p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.small_world_sigma">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">small_world_sigma</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrand</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#small_world_sigma"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.small_world_sigma" title="Link to this definition"></a></dt>
+<dd><p>Small-worldness sigma for undirected networks (binary or weighted)</p>
+<p>Small worldness sigma is calculated as the ratio of the clustering coefficient and the characteristic path length
+of the real network to the average clustering coefficient and characteristic path length of the random networks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>G</strong> (<em>PxP np.ndarray</em>) – undireted adjacency/connectivity matrix</p></li>
+<li><p><strong>nrand</strong> (<em>int</em><em>, </em><em>optional</em>) – number of random networks to generate (and average over). Default is 10.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>sigms</strong> – small-worldness sigma</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This implementation of small worldness relies on matrix operations and is <em>drastically</em> faster than the
+Networkx implementation. However, it uses a different approch for rewiring edges, so the results will differ.</p>
+<p>It automatically detects if the input matrix is binary or weighted.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.symmetrise">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">symmetrise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">W</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#symmetrise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.symmetrise" title="Link to this definition"></a></dt>
+<dd><p>Symmetrise connectivity/adjacency matrix</p>
+<p>Symmetrise W such that each value W[i,j] will be W[j,i].</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>W</strong> (<em>PxP np.ndarray</em>) – adjacency/connectivity matrix</p></li>
+<li><p><strong>copy</strong> (<em>bool</em><em>, </em><em>optional</em>) – if True, a copy of W is returned, otherwise W is modified in place
+default is True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>W</strong> – symmetrised adjacency/connectivity matrix</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PxP np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.threshold">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">threshold</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">W</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'density'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'absolute'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'density'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#threshold"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.threshold" title="Link to this definition"></a></dt>
+<dd><p>Thresholding of connectivity/adjacency matrix</p>
+<p>Performs absolute or density-based thresholding</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>W</strong> (<em>PxP np.ndarray</em>) – adjacency/connectivity matrix</p></li>
+<li><p><strong>type</strong> (<em>string</em><em>, </em><em>optional</em>) – type of thresholding, can be <em>absolute</em> or <em>density</em>
+default is <em>absolute</em></p></li>
+<li><p><strong>threshold</strong> (<em>float</em><em>, </em><em>optional</em>) – threshold value for absolute thresholding
+default is None</p></li>
+<li><p><strong>density</strong> (<em>float</em><em>, </em><em>optional</em>) – density value for density-based thresholding, has to be between 0 and 1 (keep x% of strongest connections)
+default is None</p></li>
+<li><p><strong>copy</strong> (<em>bool</em><em>, </em><em>optional</em>) – if True, a copy of W is returned, otherwise W is modified in place
+default is True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>W</strong> – thresholded adjacency/connectivity matrix</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PxP np.ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The implemented for density based thresholding always keeps the exact same number of connections. If multiple edges have the same weight,
+the included edges are chosen “randomly” (based on their order in the sorted indices). This is identical to the behaviour in the BCT implementation.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comet.graph.transitivity_und">
+<span class="sig-prename descclassname"><span class="pre">comet.graph.</span></span><span class="sig-name descname"><span class="pre">transitivity_und</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/comet/graph.html#transitivity_und"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.graph.transitivity_und" title="Link to this definition"></a></dt>
+<dd><p>Transitivity for undirected networks (binary and weighted), adapted from
+the bctpy implementation: <a class="reference external" href="https://github.com/aestrivex/bctpy">https://github.com/aestrivex/bctpy</a></p>
+<p>Transitivity is the ratio of triangles to triplets in the network and is
+a classical version of the clustering coefficient.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>A</strong> (<em>NxN np.ndarray</em>) – binary undirected connection matrix</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>T</strong> – transitivity scalar</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="methods.html" class="btn btn-neutral float-left" title="comet.methods" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="multiverse.html" class="btn btn-neutral float-right" title="comet.multiverse" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Micha Burkhardt.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

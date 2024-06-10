@@ -1,11 +1,9 @@
 .. include:: links.rst
-.. include:: ../../README.rst
-
-Sections
---------
+.. include:: README.rst
 
 .. toctree::
    :maxdepth: 1
+   :hidden:
 
    sections/overview
    sections/usage

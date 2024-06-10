@@ -16,7 +16,8 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
-    'sphinx_rtd_theme'
+    'sphinx_rtd_theme',
+    'nbsphinx',
 ]
 templates_path = ['_templates']
 exclude_patterns = []
@@ -32,3 +33,5 @@ html_theme_options = {
     'sticky_navigation': True,
     'titles_only': False
 }
+
+#print(f"Available files: {os.listdir()}")
