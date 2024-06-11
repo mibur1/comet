@@ -680,7 +680,6 @@ def small_world_propensity(G: np.ndarray) -> np.ndarray:
     if not np.allclose(G, G.T):
         raise ValueError("Error: Matrix is not symmetrical")
 
-    G = G / np.max(G)
     n = G.shape[0]  # Number of nodes
 
     # Compute the average degree of the unweighted network (approximate radius)
@@ -735,12 +734,12 @@ def matching_ind_und(G: np.ndarray) -> np.ndarray:
     https://github.com/StuartJO/FasterMatchingIndex
 
     Matching index is a measure of similarity between two nodes' connectivity profiles
-    (excluding their mutual connection, should it exist).
+    (excluding their mutual connection, should it exist). Weighted matrices will be binarised.
 
     Parameters
     ----------
     W : PxP np.ndarray
-        undireted adjacency/connectivity matrix
+        undirected adjacency/connectivity matrix, will be binarised
 
     Returns
     -------
@@ -764,8 +763,7 @@ def matching_ind_und(G: np.ndarray) -> np.ndarray:
     Important note: As of Jan 2024 there is a bug in the bctpy version of this function
     (ncon2 = c1 * CIJ should instead be ncon2 = CIJ * use)
 
-    This bug is fixed/irrelevant here due to the more efficient implementation using
-    matrix operations
+    This bug is irrelevant here due to the opimized implementation.
     '''
 
     G = (G > 0).astype(np.float64) # binarise the adjacency matrix
