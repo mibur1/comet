@@ -39,7 +39,13 @@ def parcellate(dtseries, atlas="glasser", method=np.mean, standardize=True):
         parcellated time series data
     """
 
-    ts = dtseries.get_fdata()
+    if type(dtseries) == nib.cifti2.cifti2.Cifti2Image:
+        ts = dtseries.get_fdata()
+    elif type(dtseries) == np.ndarray or type(dtseries) == np.memmap:
+        ts = dtseries
+    else:
+        sys.exit("Input must be a nibabel cifti image object or a numpy memmap object")
+
     rois, keys, _, _ = _prepare_atlas(atlas)
 
     # schaefer_kong includes the medial wall which we have to insert into the data
@@ -106,6 +112,7 @@ def _prepare_atlas(atlas_name, debug=False):
         with importlib_resources.path("comet.resources.atlas",
                                       "Schaefer2018_200Parcels_Kong2022_17Networks_order.dlabel.nii") as path:
             atlas = nib.load(path)
+
     elif atlas_name == "schaefer_tian":
         with importlib_resources.path("comet.resources.atlas",
                                       "Schaefer2018_200Parcels_17Networks_order_Tian_Subcortex_S4.dlabel.nii") as path:
@@ -131,8 +138,6 @@ def _prepare_atlas(atlas_name, debug=False):
     keys = []
     labels = []
     rgba = []
-
-    print(named_map.label_table.items())
 
     # Iterate over label_table items and get relevat values
     for key, label in named_map.label_table.items():

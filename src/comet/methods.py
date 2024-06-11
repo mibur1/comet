@@ -1903,6 +1903,7 @@ class Static_Partial(ConnectivityMethod):
         precision = pinv(corr)
         fc = -precision / np.sqrt(np.outer(np.diag(precision), np.diag(precision)))
         fc = self.postproc(fc)
+
         return fc
 
 class Static_Mutual_Info(ConnectivityMethod):
