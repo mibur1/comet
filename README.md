@@ -11,10 +11,9 @@
 
 ## Installation and Usage
 
-It is recommended to use a dedicated Python environment to mitigate the risk of potential version conflicts.
+Please refer to the **[documentation](https://comet-toolbox.readthedocs.io/en/latest/)** for comprehensive installation and usage instructions.
 
-Please refer to the **[documentation](https://comet-toolbox.readthedocs.io/en/latest/)** for comprehensive installation and usage instructions. Briefly, installation is possible through the Python Package Index (PyPI) or from the source code in this repository:
-
+It is recommended to use a dedicated Python environment (e.g. through conda) to mitigate the risk of potential version conflicts. Installation is possible through the Python Package Index (PyPI) or from the source code in this repository:
 ```
 pip install comet-toolbox
 ```
@@ -113,7 +112,7 @@ or (for more versatile usage) through the scripting API. For this, **[demo scrip
             <ul>
                 <li>Multiverse summary</li>
                 <li>Multiverse as a network</li>
-                <li>Specification Curve analysis</li>
+                <li>Specification curve analysis</li>
             </ul>
         </td>
     </tr>
