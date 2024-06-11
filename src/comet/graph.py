@@ -386,7 +386,7 @@ def postproc(W: np.ndarray,
 
     np.fill_diagonal(W, diag)
     np.nan_to_num(W, nan=0.0, posinf=0.0, neginf=0.0, copy=False)
-    W = np.round(W, decimals=5) # This should ensure exact binarity if floating point inaccuracies occur
+    W = np.round(W, decimals=6) # This should ensure exact binarity if floating point inaccuracies occur
     return W
 
 
@@ -400,9 +400,10 @@ def avg_shortest_path(G: np.ndarray,
                       include_diagonal: bool = False,
                       include_infinite: bool = False) -> float:
     '''
-    Average shortest path length calculated from a connectivity matrix.
+    Average shortest path length calculated from a connection length matrix.
 
-    If the matrix is weighted, the inverse of the weights is used as a proxy of distance.
+    For binary matrices the connection length matrix is identical to the connectiivty matrix,
+    for weighted connectivity matrices it can be obtained though e.g. graph.invert().
 
     Parameters
     ----------
@@ -416,7 +417,7 @@ def avg_shortest_path(G: np.ndarray,
     '''
 
     is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
-    D = distance_bin(G) if is_binary else distance_wei(G, inv=True)
+    D = distance_bin(G) if is_binary else distance_wei(G)
 
     if np.isinf(D).any():
         import warnings
@@ -504,7 +505,7 @@ def efficiency(G: np.ndarray,
     Parameters
     ----------
     Gw : PxP np.ndarray
-        undireted adjacency/connectivity matrix (binary or weighted)
+        adjacency/connectivity matrix (binary or weighted, directed or undirected)
 
     local : bool, optional
         if True, local efficiency is computed. Default is False (global efficiency)
@@ -691,10 +692,15 @@ def small_world_propensity(G: np.ndarray) -> np.ndarray:
     G_reg = regular_matrix(G, avg_rad_eff)
     G_rand = randomise(G)
 
-    # Path length calculations for the network
-    reg_path = avg_shortest_path(G_reg)
-    rand_path = avg_shortest_path(G_rand)
-    net_path = avg_shortest_path(G)
+    # Path length calculations for the network, ignore divide by zero warnings
+    with np.errstate(divide='ignore', invalid='ignore'):
+            G_reg_inv = np.divide(1.0, G_reg)
+            G_rand_inv = np.divide(1.0, G_rand)
+            G_inv = np.divide(1.0, G)
+
+    reg_path = avg_shortest_path(G_reg_inv)
+    rand_path = avg_shortest_path(G_rand_inv)
+    net_path = avg_shortest_path(G_inv)
 
     # Compute the normalized difference in path lengths
     A = max(net_path - rand_path, 0)  # Ensure A is non-negative
@@ -762,19 +768,23 @@ def matching_ind_und(G: np.ndarray) -> np.ndarray:
     matrix operations
     '''
 
-    G = (G > 0).astype(np.float64)
+    G = (G > 0).astype(np.float64) # binarise the adjacency matrix
     n = G.shape[0]
+
     nei = np.dot(G, G)
     deg = np.sum(G, axis=1)
     degsum = deg[:, np.newaxis] + deg
+
     denominator = np.where((degsum <= 2) & (nei != 1), 1.0, degsum - 2 * G)
     M = np.where(denominator != 0, (nei * 2) / denominator, 0.0)
+
     for i in range(n):
         M[i, i] = 0.0
+
     return M
 
 @jit(nopython=True)
-def distance_wei(G: np.ndarray, inv: bool = True) -> np.ndarray:
+def distance_wei(G: np.ndarray, inv: bool = False) -> np.ndarray:
     '''
     (Inverse) distance matrix for weighted networks with significantly
     improved performance due to numba compilation.
@@ -796,9 +806,6 @@ def distance_wei(G: np.ndarray, inv: bool = True) -> np.ndarray:
     -----
     Algorithm: Modified Dijkstra's algorithm
     '''
-
-    if inv:
-        G = 1 / G
 
     n = len(G)
     D = np.full((n, n), np.inf)
@@ -830,10 +837,15 @@ def distance_wei(G: np.ndarray, inv: bool = True) -> np.ndarray:
                 break
             V = np.where(D[u, :] == minD)[0]
 
+    if inv:
+        np.fill_diagonal(D, 1)
+        D = 1 / D
+        np.fill_diagonal(D, 0)
+
     return D
 
 @jit(nopython=True)
-def distance_bin(G: np.ndarray) -> np.ndarray:
+def distance_bin(G: np.ndarray, inv: bool = False) -> np.ndarray:
     '''
     Distance matrix calculation for binary networks with significantly
     improved performance due to numba compilation.
@@ -868,6 +880,9 @@ def distance_bin(G: np.ndarray) -> np.ndarray:
         for j in range(D.shape[1]):
             if not D[i, j]:
                 D[i, j] = np.inf
+
+    if inv:
+        D = 1 / D
 
     np.fill_diagonal(D, 0)
 

@@ -6,7 +6,7 @@ from abc import ABCMeta, abstractmethod
 from scipy.stats import zscore
 from scipy.spatial import distance
 from scipy.signal import windows, hilbert
-from scipy.linalg import eigh, solve, inv
+from scipy.linalg import eigh, solve, det, inv, pinv
 from scipy.optimize import minimize
 from sklearn.metrics import mutual_info_score
 from statsmodels.stats.weightstats import DescrStatsW
@@ -1115,7 +1115,7 @@ class DCC(ConnectivityMethod):
 
         output = 0
         for t in range(T):
-            output += np.log(np.linalg.det(R)) + epsilon[t, :] @ np.linalg.inv(R) @ epsilon[t, :]
+            output += np.log(det(R)) + epsilon[t, :] @ inv(R) @ epsilon[t, :]
             temp = epsilon[t, :] * np.sqrt(np.diag(Q))
             Q = SS + theta[0] * np.outer(temp, temp) + theta[1] * Q
             R = np.diag(1/np.sqrt(np.diag(Q))) @ Q @ np.diag(1/np.sqrt(np.diag(Q)))
@@ -1900,7 +1900,7 @@ class Static_Partial(ConnectivityMethod):
             Static functional connectivity matrix.
         """
         corr = np.corrcoef(self.time_series.T)
-        precision = inv(corr)
+        precision = pinv(corr)
         fc = -precision / np.sqrt(np.outer(np.diag(precision), np.diag(precision)))
         fc = self.postproc(fc)
         return fc

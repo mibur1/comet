@@ -2193,7 +2193,7 @@ class App(QMainWindow):
             self.data.dfc_data = result[0]
             self.data.dfc_params = parameters
             self.data.dfc_state_tc = None
-            self.data.dfc_edge_ts = result[1][0] if isinstance(result[1], tuple) else None
+            self.data.dfc_edge_ts = result[1][0] if (isinstance(result[1], tuple) and result[1][0].shape != result[0].shape) else None
 
         # Result is DFC object (pydfc methods)
         elif isinstance(result, pydfc.dfc.DFC):
