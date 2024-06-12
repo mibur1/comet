@@ -92,7 +92,7 @@
 <p>This script will create perform the multiverse analysis as shown in Section 4 of the <a class="reference external" href="https://www.biorxiv.org/content/10.1101/2024.01.21.576546v1">preprint</a>.</p>
 <p>Brief outline: * Simulated time series data with two randomly changing connectivity patterns (7.2 second trial lengths) * Connectivity patterns are predicted from graph measures that are calculated from dFC data on a trial-by-trial basis * Multiverse options: dFC methods (6), temporal lag (2), graph density (2), graph weights (2), SVC kernel (2) –&gt; 96 universes</p>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">comet.multiverse</span> <span class="kn">import</span> <span class="n">Multiverse</span>
@@ -165,7 +165,7 @@
 </div>
 <p>With the forking paths defined, the analysis pipeline template can be created. Please not that the <code class="docutils literal notranslate"><span class="pre">tr</span></code> and <code class="docutils literal notranslate"><span class="pre">segment_length</span></code> parameters were also defined in the forking paths to allow for easy changes if necessary.</p>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">analysis_template</span><span class="p">():</span>
@@ -292,23 +292,23 @@
 </div>
 <p>Create (and if required run) the multiverse analysis:</p>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">multiverse</span> <span class="o">=</span> <span class="n">Multiverse</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;multiverse&quot;</span><span class="p">)</span>
-<span class="n">multiverse</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">analysis_template</span><span class="p">,</span> <span class="n">forking_paths</span><span class="p">)</span>
-<span class="c1">#multiverse.run(universe_number=1)</span>
-<span class="c1">#multiverse.run(parallel=4)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mverse</span> <span class="o">=</span> <span class="n">Multiverse</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;multiverse&quot;</span><span class="p">)</span>
+<span class="n">mverse</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">analysis_template</span><span class="p">,</span> <span class="n">forking_paths</span><span class="p">)</span>
+<span class="c1">#mverse.run(universe_number=1)</span>
+<span class="c1">#mverse.run(parallel=4)</span>
 </pre></div>
 </div>
 </div>
 <p>As the results from the multiverse analysis are already provided, we can explore and visualize the multiverse:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">multiverse</span><span class="o">.</span><span class="n">summary</span><span class="p">(</span><span class="n">universe</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">5</span><span class="p">))</span>
-<span class="n">multiverse</span><span class="o">.</span><span class="n">visualize</span><span class="p">(</span><span class="n">universe</span><span class="o">=</span><span class="mi">21</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mverse</span><span class="o">.</span><span class="n">summary</span><span class="p">(</span><span class="n">universe</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">5</span><span class="p">))</span>
+<span class="n">mverse</span><span class="o">.</span><span class="n">visualize</span><span class="p">(</span><span class="n">universe</span><span class="o">=</span><span class="mi">21</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -417,10 +417,10 @@
 <li><p>From a single .csv file, with the results being an additional column</p></li>
 </ol>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">multiverse</span><span class="o">.</span><span class="n">specification_curve</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="s2">&quot;accuracy&quot;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;Set2&quot;</span><span class="p">,</span> <span class="n">ci</span><span class="o">=</span><span class="mi">95</span><span class="p">,</span> <span class="n">chance_level</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">dotsize</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span><span class="mi">6</span><span class="p">),</span> <span class="n">height_ratio</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">label_offset</span><span class="o">=-</span><span class="mf">0.1</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mverse</span><span class="o">.</span><span class="n">specification_curve</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="s2">&quot;accuracy&quot;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;Set2&quot;</span><span class="p">,</span> <span class="n">ci</span><span class="o">=</span><span class="mi">95</span><span class="p">,</span> <span class="n">chance_level</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">dotsize</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span><span class="mi">6</span><span class="p">),</span> <span class="n">height_ratio</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">label_offset</span><span class="o">=-</span><span class="mf">0.1</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
