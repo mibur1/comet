@@ -37,7 +37,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout,
     QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QGroupBox
 
 # Comet imports and state-based dFC methods from pydfc
-from . import data_cifti, methods, graph
+from . import connectivity, data_cifti, graph
 import pydfc
 
 class Worker(QObject):
@@ -527,8 +527,8 @@ class App(QMainWindow):
         # Get all the dFC methods and names
         self.class_info = {
             obj.name: name  # Map human-readable name to class name
-            for name, obj in inspect.getmembers(methods)
-            if inspect.isclass(obj) and obj.__module__ == methods.__name__ and name != "ConnectivityMethod"
+            for name, obj in inspect.getmembers(connectivity)
+            if inspect.isclass(obj) and obj.__module__ == connectivity.__name__ and name != "ConnectivityMethod"
         }
 
         # Create a layout for dynamic textboxes
@@ -1944,7 +1944,7 @@ class App(QMainWindow):
             return
 
         # Get selected connectivity method
-        self.data.dfc_instance = getattr(methods, self.class_info.get(methodName), None) # the actual class
+        self.data.dfc_instance = getattr(connectivity, self.class_info.get(methodName), None) # the actual class
         self.data.dfc_name = self.class_info.get(methodName) # class name
 
         # Create and get new parameter layout
@@ -2185,7 +2185,7 @@ class App(QMainWindow):
 
         # Data does not exist, perform calculation
         connectivity_calculator = self.data.dfc_instance(**clean_parameters)
-        result = connectivity_calculator.connectivity()
+        result = connectivity_calculator.estimate()
         self.init_flag = False
 
         # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
@@ -3551,7 +3551,7 @@ class App(QMainWindow):
         if prefix == "COMET" or prefix == "PREP" or prefix == "BCT":
             func = getattr(graph, functionComboBox.currentData())
         elif prefix == "CONT" or prefix == "STATE" or prefix == "STATIC":
-            dfc_class_ = getattr(methods, functionComboBox.currentData())
+            dfc_class_ = getattr(connectivity, functionComboBox.currentData())
             func = dfc_class_.__init__
         else:
             QMessageBox.warning(self, "Error", "Function is not recognized")
@@ -3759,7 +3759,7 @@ class App(QMainWindow):
         elif prefix == "BCT":
             module_prefix = "bct"
         elif prefix == "CONT" or prefix == "STATE" or prefix == "STATIC":
-            module_prefix = "comet.methods"
+            module_prefix = "comet.connectivity"
         else:
             QMessageBox.warning(self, "Error", "Function is not recognized")
 

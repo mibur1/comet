@@ -74,7 +74,7 @@ class ConnectivityMethod(metaclass=ABCMeta):
         self.tril = tril
 
     @abstractmethod
-    def connectivity(self):
+    def estimate(self):
         """
         Abstract method to compute the connectivity matrix.
         This method should be implemented in each child class.
@@ -228,7 +228,7 @@ class SlidingWindow(ConnectivityMethod):
         centers = np.arange(self.windowsize // 2, self.T - self.windowsize // 2, self.stepsize)
         return centers
 
-    def connectivity(self):
+    def estimate(self):
         """
         Calculate sliding window correlation.
 
@@ -326,7 +326,7 @@ class Jackknife(ConnectivityMethod):
         centers = np.arange(self.windowsize // 2, self.T - self.windowsize // 2, self.stepsize)
         return centers
 
-    def connectivity(self):
+    def estimate(self):
         """
         Calculate jackknife correlation.
 
@@ -423,7 +423,7 @@ class SpatialDistance(ConnectivityMethod):
         np.fill_diagonal(weights, 1)
         return weights
 
-    def connectivity(self):
+    def estimate(self):
         """
         Calculate spatial distance correlation.
 
@@ -499,7 +499,7 @@ class TemporalDerivatives(ConnectivityMethod):
         centers = np.arange(self.windowsize // 2 + 1, self.T - self.windowsize // 2)
         return centers
 
-    def connectivity(self):
+    def estimate(self):
         """
         Calculate multiplication of temporal derivatives.
 
@@ -636,7 +636,7 @@ class FlexibleLeastSquares(ConnectivityMethod):
             beta_i[j, :] = self._calculateBetas(self.time_series[:, i].reshape(-1,1), self.time_series[:, j].reshape(-1,1))
         return i, beta_i
 
-    def connectivity(self):
+    def estimate(self):
         """
         Calculate flexible least squares connectivity as implemented in the DynamicBC toolbox
 
@@ -707,7 +707,7 @@ class PhaseSynchrony(ConnectivityMethod):
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
         self.method = method
 
-    def connectivity(self):
+    def estimate(self):
         """
         Calculate instantaneous phase synchrony.
         CARE: Hilbert transform needs narrowband signal to produce meaningful results.
@@ -785,7 +785,7 @@ class LeiDA(ConnectivityMethod):
         self.flip_eigenvectors = flip_eigenvectors
         self.res = []
 
-    def connectivity(self):
+    def estimate(self):
         """
         Calculate Leading Eigenvector Dynamics Analysis (LeiDA).
 
@@ -882,7 +882,7 @@ class WaveletCoherence(ConnectivityMethod):
         self.drop_scales = drop_scales
         self.drop_timepoints = drop_timepoints
 
-    def connectivity(self):
+    def estimate(self):
         """
         Calculate instantaneous wavelet coherence.
 
@@ -1147,7 +1147,7 @@ class DCC(ConnectivityMethod):
         ep, d = self._rToEpsilon(ts_n, res.x)
         return res.x, ep, d
 
-    def connectivity(self):
+    def estimate(self):
         """
         DCC algorithm
 
@@ -1246,7 +1246,7 @@ class Edge_centric_connectivity(ConnectivityMethod):
         super().__init__(time_series, 0, standardize, False, False)
         self.standardizeData = standardizeData
 
-    def connectivity(self):
+    def estimate(self):
         """
         Calculate edge-centric connectivity.
 
@@ -1323,7 +1323,7 @@ class Sliding_Window(BaseDFCMethod):
         if not self.params['sw_method'] in self.sw_methods_name_lst:
             raise ValueError("sw_method not recognized.")
 
-    def connectivity(self):
+    def estimate(self):
         """
         Calculate the sliding window dynamic functional connectivity.
 
@@ -1383,7 +1383,7 @@ class Time_Freq(BaseDFCMethod):
         self.params['coi_correction'] = coi_correction
         self.params['n_jobs'] = num_cores
 
-    def connectivity(self):
+    def estimate(self):
         """
         Calculate the time-frequency dynamic functional connectivity.
 
@@ -1453,7 +1453,7 @@ class Cap(BaseDFCMethod):
         self.params['subjects'] = list(self.time_series.data_dict.keys())
         self.sub_id = self.params['subjects'][self.params['subject']]
 
-    def connectivity(self):
+    def estimate(self):
         """
         Calculate the co-activation patterns dynamic functional connectivity.
 
@@ -1548,7 +1548,7 @@ class Sliding_Window_Clustr(BaseDFCMethod):
         if not self.params['clstr_base_measure'] in self.base_methods_name_lst:
             raise ValueError("Base measure not recognized.")
 
-    def connectivity(self):
+    def estimate(self):
         """
         Calculate the sliding window clustering dynamic functional connectivity.
 
@@ -1620,7 +1620,7 @@ class Hmm_Cont(BaseDFCMethod):
         self.params['subjects'] = list(self.time_series.data_dict.keys())
         self.sub_id = self.params['subjects'][self.params['subject']]
 
-    def connectivity(self):
+    def estimate(self):
         """
         Calculate the continuous hidden Markov model dynamic functional connectivity.
 
@@ -1728,7 +1728,7 @@ class Hmm_Disc(BaseDFCMethod):
         if not self.params['clstr_base_measure'] in self.base_methods_name_lst:
             raise ValueError("Base measure not recognized.")
 
-    def connectivity(self):
+    def estimate(self):
         """
         Calculate the discrete hidden Markov model dynamic functional connectivity.
 
@@ -1801,7 +1801,7 @@ class Windowless(BaseDFCMethod):
         self.params['subjects'] = list(self.time_series.data_dict.keys())
         self.sub_id = self.params['subjects'][self.params['subject']]
 
-    def connectivity(self):
+    def estimate(self):
         """
         Calculate the windowless dynamic functional connectivity.
 
@@ -1849,9 +1849,9 @@ class Static_Pearson(ConnectivityMethod):
 
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
 
-    def connectivity(self):
+    def estimate(self):
         """
-        Calculate the functional connectivity.
+        Estimate the functional connectivity.
 
         Returns
         -------
@@ -1890,9 +1890,9 @@ class Static_Partial(ConnectivityMethod):
 
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
 
-    def connectivity(self):
+    def estimate(self):
         """
-        Calculate the functional connectivity.
+        Estimate the functional connectivity.
 
         Returns
         -------
@@ -1939,9 +1939,9 @@ class Static_Mutual_Info(ConnectivityMethod):
         super().__init__(time_series, diagonal, standardize, fisher_z, tril)
         self.num_bins = num_bins
 
-    def connectivity(self):
+    def estimate(self):
         """
-        Calculate the functional connectivity.
+        Estimate the functional connectivity.
 
         Returns
         -------

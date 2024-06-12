@@ -607,8 +607,8 @@ class Multiverse:
         input_data = args[first_arg]
         del args[first_arg]
 
-        if value["func"].startswith("comet.methods"):
-            function_call = f"{func}({input_data}, **{args}).connectivity()"
+        if value["func"].startswith("comet.connectivity"):
+            function_call = f"{func}({input_data}, **{args}).estimate()"
         else:
             if "ci" in args:
                 ci = args["ci"]
