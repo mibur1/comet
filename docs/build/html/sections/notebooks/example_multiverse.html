@@ -7,7 +7,7 @@
   <title>Usage example: Multiverse Analysis &mdash; Comet Toolbox 2024 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
-      <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+      <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css" />
 
   
   <!--[if lt IE 9]>
@@ -50,7 +50,6 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../overview.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../overview.html#troubleshooting">Troubleshooting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="example_dfc.html">Usage example: Dynamic functional connectivity</a></li>
@@ -105,14 +104,14 @@
 
     <span class="s2">&quot;dfc_measures&quot;</span><span class="p">:</span> <span class="p">[{</span>
                         <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;LeiDA&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;func&quot;</span><span class="p">:</span> <span class="s2">&quot;comet.methods.LeiDA&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;func&quot;</span><span class="p">:</span> <span class="s2">&quot;comet.connectivity.LeiDA&quot;</span><span class="p">,</span>
                         <span class="s2">&quot;args&quot;</span><span class="p">:</span> <span class="p">{</span>
                                 <span class="s2">&quot;time_series&quot;</span><span class="p">:</span> <span class="s2">&quot;ts&quot;</span>
                                 <span class="p">}</span>
                         <span class="p">},</span>
                         <span class="p">{</span>
                         <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;JC11&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;func&quot;</span><span class="p">:</span> <span class="s2">&quot;comet.methods.Jackknife&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;func&quot;</span><span class="p">:</span> <span class="s2">&quot;comet.connectivity.Jackknife&quot;</span><span class="p">,</span>
                         <span class="s2">&quot;args&quot;</span><span class="p">:</span> <span class="p">{</span>
                                 <span class="s2">&quot;time_series&quot;</span><span class="p">:</span> <span class="s2">&quot;ts&quot;</span><span class="p">,</span>
                                 <span class="s2">&quot;windowsize&quot;</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span>
@@ -129,7 +128,7 @@
                         <span class="p">},</span>
                         <span class="p">{</span>
                         <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;eff_comet&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;func&quot;</span><span class="p">:</span> <span class="s2">&quot;comet.graph.efficiency_wei&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;func&quot;</span><span class="p">:</span> <span class="s2">&quot;comet.graph.efficiency&quot;</span><span class="p">,</span>
                         <span class="s2">&quot;args&quot;</span><span class="p">:</span> <span class="p">{</span>
                                 <span class="s2">&quot;W&quot;</span><span class="p">:</span> <span class="s2">&quot;W&quot;</span><span class="p">,</span>
                                 <span class="s2">&quot;local&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>

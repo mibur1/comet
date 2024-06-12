@@ -1,10 +1,10 @@
-comet.methods
--------------
+comet.connectivity
+------------------
 
 .. toctree::
    :maxdepth: 4
 
-.. automodule:: comet.methods
+.. automodule:: comet.connectivity
    :members:
    :undoc-members:
    :show-inheritance:

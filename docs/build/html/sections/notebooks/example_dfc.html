@@ -56,10 +56,6 @@
 <li class="toctree-l2"><a class="reference internal" href="example_multiverse.html">Usage example: Multiverse Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="example_analysis.html">Usage example: Simulation multiverse</a></li>
 <li class="toctree-l2"><a class="reference internal" href="example_graph.html">Usage example: Graph measures</a></li>
-<li class="toctree-l2"><a class="reference internal" href="example_graph.html#Calculate-and-plot-static-functional-connectivity">Calculate and plot static functional connectivity</a></li>
-<li class="toctree-l2"><a class="reference internal" href="example_graph.html#Graph-construction-and-plotting-of-the-resulting-adjacency-matrices">Graph construction and plotting of the resulting adjacency matrices</a></li>
-<li class="toctree-l2"><a class="reference internal" href="example_graph.html#Calculate-small-world-sigma">Calculate small-world sigma</a></li>
-<li class="toctree-l2"><a class="reference internal" href="example_graph.html#Calculate-local-efficiency">Calculate local efficiency</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../api.html">Programming API</a></li>
@@ -99,7 +95,7 @@
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">comet</span> <span class="kn">import</span> <span class="n">methods</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">gui</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">comet</span> <span class="kn">import</span> <span class="n">connectivity</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">gui</span>
 
 <span class="n">ts</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">load_example</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
@@ -128,8 +124,8 @@
 <span class="n">data</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">fetch_abide_pcp</span><span class="p">(</span><span class="n">SUB_ID</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">pipeline</span><span class="o">=</span><span class="s1">&#39;cpac&#39;</span><span class="p">,</span> <span class="n">band_pass_filtering</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">derivatives</span><span class="o">=</span><span class="s2">&quot;rois_dosenbach160&quot;</span><span class="p">,</span> <span class="n">legacy_format</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="n">ts</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">rois_dosenbach160</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
-<span class="n">jc</span> <span class="o">=</span> <span class="n">methods</span><span class="o">.</span><span class="n">Jackknife</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">windowsize</span><span class="o">=</span><span class="mi">11</span><span class="p">)</span>
-<span class="n">dfc_jc</span> <span class="o">=</span> <span class="n">jc</span><span class="o">.</span><span class="n">connectivity</span><span class="p">()</span>
+<span class="n">jc</span> <span class="o">=</span> <span class="n">connectivity</span><span class="o">.</span><span class="n">Jackknife</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">windowsize</span><span class="o">=</span><span class="mi">11</span><span class="p">)</span>
+<span class="n">dfc_jc</span> <span class="o">=</span> <span class="n">jc</span><span class="o">.</span><span class="n">estimate</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;JC dFC has shape: </span><span class="si">{</span><span class="n">dfc_jc</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
 <span class="n">gui</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">dfc_data</span><span class="o">=</span><span class="n">dfc_jc</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">jc</span><span class="p">)</span>
@@ -152,12 +148,12 @@ GUI closed with status 0
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Tapered sliding window</span>
-<span class="n">tsw</span> <span class="o">=</span> <span class="n">methods</span><span class="o">.</span><span class="n">SlidingWindow</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">windowsize</span><span class="o">=</span><span class="mi">21</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;gaussian&quot;</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
-<span class="n">dfc_tsw</span> <span class="o">=</span> <span class="n">tsw</span><span class="o">.</span><span class="n">connectivity</span><span class="p">()</span>
+<span class="n">tsw</span> <span class="o">=</span> <span class="n">connectivity</span><span class="o">.</span><span class="n">SlidingWindow</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">windowsize</span><span class="o">=</span><span class="mi">21</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;gaussian&quot;</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+<span class="n">dfc_tsw</span> <span class="o">=</span> <span class="n">tsw</span><span class="o">.</span><span class="n">estimate</span><span class="p">()</span>
 
 <span class="c1"># Flexible Least Squares</span>
-<span class="n">fls</span> <span class="o">=</span> <span class="n">methods</span><span class="o">.</span><span class="n">FlexibleLeastSquares</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
-<span class="n">dfc_fls</span> <span class="o">=</span> <span class="n">fls</span><span class="o">.</span><span class="n">connectivity</span><span class="p">()</span>
+<span class="n">fls</span> <span class="o">=</span> <span class="n">connectivity</span><span class="o">.</span><span class="n">FlexibleLeastSquares</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+<span class="n">dfc_fls</span> <span class="o">=</span> <span class="n">fls</span><span class="o">.</span><span class="n">estimate</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;FLS dFC has shape: </span><span class="si">{</span><span class="n">dfc_fls</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
 <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
@@ -204,8 +200,8 @@ FLS dFC has shape: (161, 161, 196)
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Tapered sliding window</span>
-<span class="n">tsw</span> <span class="o">=</span> <span class="n">methods</span><span class="o">.</span><span class="n">SlidingWindow</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">windowsize</span><span class="o">=</span><span class="mi">45</span><span class="p">,</span> <span class="n">stepsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;gaussian&quot;</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
-<span class="n">dfc_tsw</span> <span class="o">=</span> <span class="n">tsw</span><span class="o">.</span><span class="n">connectivity</span><span class="p">()</span>
+<span class="n">tsw</span> <span class="o">=</span> <span class="n">connectivity</span><span class="o">.</span><span class="n">SlidingWindow</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">windowsize</span><span class="o">=</span><span class="mi">45</span><span class="p">,</span> <span class="n">stepsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;gaussian&quot;</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+<span class="n">dfc_tsw</span> <span class="o">=</span> <span class="n">tsw</span><span class="o">.</span><span class="n">estimate</span><span class="p">()</span>
 <span class="n">centers_tsw</span> <span class="o">=</span> <span class="n">tsw</span><span class="o">.</span><span class="n">centers</span><span class="p">()</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Number of BOLD time points:&quot;</span><span class="p">,</span> <span class="n">ts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>

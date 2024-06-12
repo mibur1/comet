@@ -1,7 +1,7 @@
 Usage
 =====
 
-The toolbox is designed in a modular way, which means the individual methods can be used in combination with others, but also by themselves.
+The toolbox is designed in a modular way, which means the individual modules can be used in combination with others, but also by themselves.
 For full functionality the scripting API is recommended, however the graphical user interface (GUI) offers many of the same features.
 
 GUI
@@ -22,24 +22,24 @@ For exploration with example data, data included in the ``tutorials/example_data
 Scripting
 ---------
 
-Dynamic functional connectivity can be estimated through the methods module. An example for sliding window correlation:
+Dynamic functional connectivity can be estimated through the ``connectivity`` module. An example for sliding window correlation:
 
 .. code-block:: python
 
-    from comet import data, methods
+    from comet import data, connectivity
 
     ts = data.load_example_data()
-    dFC = methods.SlidingWindow(ts, windowsize=30, shape="gaussian").connectivity()
+    dFC = connectivity.SlidingWindow(ts, windowsize=30, shape="gaussian").estimate()
 
 
 Graph measures can be calculated through the graph module. An example for global efficiency (using the dFC data calculated in the previous example):
 
 .. code-block:: python
 
-    from comet import data, methods, graph
+    from comet import data, connectivity, graph
 
     ts = data.load_example_data()
-    dFC = methods.SlidingWindow(ts, windowsize=30, shape="gaussian").connectivity()
+    dFC = connectivity.SlidingWindow(ts, windowsize=30, shape="gaussian").estimate()
 
     adj = dFC[:,:,0]
     dFC = graph.efficiency(adj, local=False)
