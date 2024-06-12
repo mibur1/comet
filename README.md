@@ -7,9 +7,8 @@
 ## Important notes
 
 
-- This package is at an early stage of development, with frequent changes being made. If you intend to use this package at this stage, I kindly ask that you contact me via the email address in the [`pyproject.toml`](https://github.com/mibur1/dfc-multiverse/blob/main/pyproject.toml) file.
-- Many features are not yet tested, so there will be bugs (the question is just how many). A comprehensive testing suite and documentation will be added in the near future.
-
+- This package is at an early stage of development, with frequent changes being made. If you intend to use this package at this stage, please feel free to contact me via the email address in the [`pyproject.toml`](https://github.com/mibur1/dfc-multiverse/blob/main/pyproject.toml) file.
+- Some features are not yet tested, so there will be bugs (the question is just how many).
 ## Installation and Usage
 
 Please refer to the **[documentation](https://comet-toolbox.readthedocs.io/en/latest/)** for comprehensive installation and usage instructions.
