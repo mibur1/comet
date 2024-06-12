@@ -23,3 +23,14 @@ Installation from the source code of this repository is also possible:
 .. code-block:: shell
 
     pip install -e .
+
+
+Troubleshooting
+...............
+
+If you encounter errors regarding the matplotlib backend, you may need to install the following packages:
+
+.. code-block:: shell
+
+    sudo apt-get update
+    sudo apt-get install -y libegl1-mesa libxkbcommon-x11-0

@@ -44,6 +44,7 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../sections/overview.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../sections/overview.html#troubleshooting">Troubleshooting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../sections/usage.html">Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../sections/tutorials.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../sections/api.html">Programming API</a></li>
@@ -2110,6 +2111,7 @@
         <span class="n">precision</span> <span class="o">=</span> <span class="n">pinv</span><span class="p">(</span><span class="n">corr</span><span class="p">)</span>
         <span class="n">fc</span> <span class="o">=</span> <span class="o">-</span><span class="n">precision</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">precision</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">precision</span><span class="p">)))</span>
         <span class="n">fc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">postproc</span><span class="p">(</span><span class="n">fc</span><span class="p">)</span>
+
         <span class="k">return</span> <span class="n">fc</span></div>
 </div>
 

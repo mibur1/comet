@@ -44,6 +44,7 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../sections/overview.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../sections/overview.html#troubleshooting">Troubleshooting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../sections/usage.html">Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../sections/tutorials.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../sections/api.html">Programming API</a></li>
@@ -804,7 +805,6 @@
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">G</span><span class="p">,</span> <span class="n">G</span><span class="o">.</span><span class="n">T</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Error: Matrix is not symmetrical&quot;</span><span class="p">)</span>
 
-    <span class="n">G</span> <span class="o">=</span> <span class="n">G</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
     <span class="n">n</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># Number of nodes</span>
 
     <span class="c1"># Compute the average degree of the unweighted network (approximate radius)</span>
@@ -862,12 +862,12 @@
 <span class="sd">    https://github.com/StuartJO/FasterMatchingIndex</span>
 
 <span class="sd">    Matching index is a measure of similarity between two nodes&#39; connectivity profiles</span>
-<span class="sd">    (excluding their mutual connection, should it exist).</span>
+<span class="sd">    (excluding their mutual connection, should it exist). Weighted matrices will be binarised.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    W : PxP np.ndarray</span>
-<span class="sd">        undireted adjacency/connectivity matrix</span>
+<span class="sd">        undirected adjacency/connectivity matrix, will be binarised</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -891,8 +891,7 @@
 <span class="sd">    Important note: As of Jan 2024 there is a bug in the bctpy version of this function</span>
 <span class="sd">    (ncon2 = c1 * CIJ should instead be ncon2 = CIJ * use)</span>
 
-<span class="sd">    This bug is fixed/irrelevant here due to the more efficient implementation using</span>
-<span class="sd">    matrix operations</span>
+<span class="sd">    This bug is irrelevant here due to the opimized implementation.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
 
     <span class="n">G</span> <span class="o">=</span> <span class="p">(</span><span class="n">G</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="c1"># binarise the adjacency matrix</span>

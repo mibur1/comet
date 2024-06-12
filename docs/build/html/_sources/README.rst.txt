@@ -25,6 +25,9 @@
    :target: https://comet-toolbox.readthedocs.io/en/latest
    :alt: Documentation Status
 
+.. image:: https://coveralls.io/repos/github/mibur1/dfc-multiverse/badge.svg?branch=main
+   :target: https://coveralls.io/github/mibur1/dfc-multiverse?branch=main
+   :alt: Coverage Status
 
 .. raw:: html
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tutorials &mdash; Comet Toolbox 2024 documentation</title>
+  <title>Troubleshooting &mdash; Comet Toolbox 2024 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
 
@@ -19,13 +19,11 @@
         <script src="../_static/doctools.js?v=9a2dae69"></script>
         <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
         <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-        <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
-        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Usage example: Dynamic functional connectivity" href="notebooks/example_dfc.html" />
-    <link rel="prev" title="Usage" href="usage.html" /> 
+    <link rel="next" title="Usage" href="usage.html" />
+    <link rel="prev" title="Installation" href="overview.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -48,16 +46,12 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="overview.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="overview.html#troubleshooting">Troubleshooting</a></li>
-<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Tutorials</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="notebooks/example_dfc.html">Usage example: Dynamic functional connectivity</a></li>
-<li class="toctree-l2"><a class="reference internal" href="notebooks/example_multiverse.html">Usage example: Multiverse Analysis</a></li>
-<li class="toctree-l2"><a class="reference internal" href="notebooks/example_analysis.html">Usage example: Simulation multiverse</a></li>
-<li class="toctree-l2"><a class="reference internal" href="notebooks/example_graph.html">Usage example: Graph measures</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="overview.html">Installation</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Troubleshooting</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Programming API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contribute.html">Contributing</a></li>
 </ul>
@@ -76,9 +70,10 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Tutorials</li>
+          <li class="breadcrumb-item"><a href="overview.html">Installation</a></li>
+      <li class="breadcrumb-item active">Troubleshooting</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../_sources/sections/tutorials.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/sections/troubleshooting.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -86,16 +81,17 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="tutorials">
-<h1>Tutorials<a class="headerlink" href="#tutorials" title="Link to this heading"></a></h1>
-<p>If you intend to use the toolbox in a standard Python script, tutorials are provided as a starting point:</p>
-<ul class="simple">
-<li><p><a class="reference internal" href="notebooks/example_dfc.html"><span class="doc">Usage example: Dynamic functional connectivity</span></a></p></li>
-<li><p><a class="reference internal" href="notebooks/example_multiverse.html"><span class="doc">Usage example: Multiverse Analysis</span></a></p></li>
-<li><p><a class="reference internal" href="notebooks/example_analysis.html"><span class="doc">Usage example: Simulation multiverse</span></a></p></li>
-<li><p><a class="reference internal" href="notebooks/example_graph.html"><span class="doc">Usage example: Graph measures</span></a></p></li>
-</ul>
-<div class="toctree-wrapper compound">
+  <section id="troubleshooting">
+<h1>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h1>
+<p>If you encounter errors regarding the matplotlib backend, you may need to install the following packages:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt-get<span class="w"> </span>update
+sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>libegl1-mesa<span class="w"> </span>libxkbcommon-x11-0
+</pre></div>
+</div>
+<p>If version conflicts occur, make sure you use a clean Python environment with Python 3.11 (higher versions are not tested and may lead to errors):</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>create<span class="w"> </span>-n<span class="w"> </span>comet<span class="w"> </span><span class="nv">python</span><span class="o">==</span><span class="m">3</span>.11
+conda<span class="w"> </span>activate<span class="w"> </span>comet
+</pre></div>
 </div>
 </section>
 
@@ -103,8 +99,8 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="usage.html" class="btn btn-neutral float-left" title="Usage" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="notebooks/example_dfc.html" class="btn btn-neutral float-right" title="Usage example: Dynamic functional connectivity" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="overview.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="usage.html" class="btn btn-neutral float-right" title="Usage" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

@@ -37,7 +37,6 @@ dependencies = [
   "ipykernel >=6.29.3",
   "notebook >=7.0.6",
   "pytest >= 8.2.2",
-  "coveralls >= 4.0.1"
 ]
 
 [project.optional-dependencies]

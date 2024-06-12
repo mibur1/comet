@@ -10,15 +10,21 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libegl1-mesa libxkbcommon-x11-0
+
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.x'
+        python-version: '3.11'
 
-    - name: Install dependencies
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest coverage coveralls
+        pip install matplotlib coverage coveralls
+        pip install .
 
     - name: Run tests with coverage
       run: |
@@ -29,5 +35,4 @@ jobs:
       env:
         COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
       run: |
-        coverage xml
         coveralls
