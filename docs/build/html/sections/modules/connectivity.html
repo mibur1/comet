@@ -73,9 +73,9 @@
 <li class="toctree-l4"><a class="reference internal" href="#comet.connectivity.DCC.name"><code class="docutils literal notranslate"><span class="pre">DCC.name</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#comet.connectivity.Edge_centric_connectivity"><code class="docutils literal notranslate"><span class="pre">Edge_centric_connectivity</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#comet.connectivity.Edge_centric_connectivity.estimate"><code class="docutils literal notranslate"><span class="pre">Edge_centric_connectivity.estimate()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#comet.connectivity.Edge_centric_connectivity.name"><code class="docutils literal notranslate"><span class="pre">Edge_centric_connectivity.name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.connectivity.EdgeTimeSeries"><code class="docutils literal notranslate"><span class="pre">EdgeTimeSeries</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#comet.connectivity.EdgeTimeSeries.estimate"><code class="docutils literal notranslate"><span class="pre">EdgeTimeSeries.estimate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comet.connectivity.EdgeTimeSeries.name"><code class="docutils literal notranslate"><span class="pre">EdgeTimeSeries.name</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#comet.connectivity.FlexibleLeastSquares"><code class="docutils literal notranslate"><span class="pre">FlexibleLeastSquares</span></code></a><ul>
@@ -412,8 +412,8 @@ in resting-state fMRI: a comparison study and a new approach. NeuroImage, 101, 5
 </dd></dl>
 
 <dl class="py class">
-<dt class="sig sig-object py" id="comet.connectivity.Edge_centric_connectivity">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.connectivity.</span></span><span class="sig-name descname"><span class="pre">Edge_centric_connectivity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardizeData</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vlim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/comet/connectivity.html#Edge_centric_connectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.connectivity.Edge_centric_connectivity" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="comet.connectivity.EdgeTimeSeries">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">comet.connectivity.</span></span><span class="sig-name descname"><span class="pre">EdgeTimeSeries</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_series</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardizeData</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vlim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standardize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/comet/connectivity.html#EdgeTimeSeries"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.connectivity.EdgeTimeSeries" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#comet.connectivity.ConnectivityMethod" title="comet.connectivity.ConnectivityMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConnectivityMethod</span></code></a></p>
 <p>Edge-centric connectivity method.</p>
 <dl class="field-list simple">
@@ -431,8 +431,8 @@ in resting-state fMRI: a comparison study and a new approach. NeuroImage, 101, 5
 network representations of human cerebral cortex reveal overlapping system-level architecture.
 Nature neuroscience, 23(12), 1644–1654. DOI: <a class="reference external" href="https://doi.org/10.1038/s41593-020-00719-y">https://doi.org/10.1038/s41593-020-00719-y</a></p>
 <dl class="py method">
-<dt class="sig sig-object py" id="comet.connectivity.Edge_centric_connectivity.estimate">
-<span class="sig-name descname"><span class="pre">estimate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/comet/connectivity.html#Edge_centric_connectivity.estimate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.connectivity.Edge_centric_connectivity.estimate" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="comet.connectivity.EdgeTimeSeries.estimate">
+<span class="sig-name descname"><span class="pre">estimate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/comet/connectivity.html#EdgeTimeSeries.estimate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.connectivity.EdgeTimeSeries.estimate" title="Link to this definition"></a></dt>
 <dd><p>Calculate edge-centric connectivity.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -452,8 +452,8 @@ Nature neuroscience, 23(12), 1644–1654. DOI: <a class="reference external" hre
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="comet.connectivity.Edge_centric_connectivity.name">
-<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CONT</span> <span class="pre">Edge-centric</span> <span class="pre">Connectivity'</span></em><a class="headerlink" href="#comet.connectivity.Edge_centric_connectivity.name" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="comet.connectivity.EdgeTimeSeries.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CONT</span> <span class="pre">Edge-centric</span> <span class="pre">Connectivity'</span></em><a class="headerlink" href="#comet.connectivity.EdgeTimeSeries.name" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 </dd></dl>

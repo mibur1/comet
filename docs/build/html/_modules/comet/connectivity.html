@@ -860,7 +860,6 @@
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;teneto&quot;</span><span class="p">:</span>
                     <span class="n">ips</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">instantaneous_phase</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">instantaneous_phase</span><span class="p">[</span><span class="n">j</span><span class="p">])</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="c1"># teneto implementation</span>
 
-
         <span class="bp">self</span><span class="o">.</span><span class="n">R_mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">postproc</span><span class="p">(</span><span class="n">ips</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_mat</span></div>
 </div>
@@ -1363,9 +1362,9 @@
 </div>
 
 
-<div class="viewcode-block" id="Edge_centric_connectivity">
-<a class="viewcode-back" href="../../sections/modules/connectivity.html#comet.connectivity.Edge_centric_connectivity">[docs]</a>
-<span class="k">class</span> <span class="nc">Edge_centric_connectivity</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
+<div class="viewcode-block" id="EdgeTimeSeries">
+<a class="viewcode-back" href="../../sections/modules/connectivity.html#comet.connectivity.EdgeTimeSeries">[docs]</a>
+<span class="k">class</span> <span class="nc">EdgeTimeSeries</span><span class="p">(</span><span class="n">ConnectivityMethod</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Edge-centric connectivity method.</span>
 
@@ -1397,8 +1396,8 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">time_series</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">standardize</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">standardizeData</span> <span class="o">=</span> <span class="n">standardizeData</span>
 
-<div class="viewcode-block" id="Edge_centric_connectivity.estimate">
-<a class="viewcode-back" href="../../sections/modules/connectivity.html#comet.connectivity.Edge_centric_connectivity.estimate">[docs]</a>
+<div class="viewcode-block" id="EdgeTimeSeries.estimate">
+<a class="viewcode-back" href="../../sections/modules/connectivity.html#comet.connectivity.EdgeTimeSeries.estimate">[docs]</a>
     <span class="k">def</span> <span class="nf">estimate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate edge-centric connectivity.</span>

@@ -117,3 +117,16 @@ or (for more versatile usage) through the scripting API. For this, **[demo scrip
         </td>
     </tr>
 </table>
+
+
+## Current progress
+
+- [x] Large set of dFC methods and graph measures
+- [x] Multiverse analysis framework
+- [x] User-friendly GUI
+- [x] Documentation
+- [x] Tutorials for an easy start
+- [ ] Complete testing suite
+- [ ] GUI bugfixes and optimization
+- [ ] Integrating over multiverse results
+- [ ] Dynamic community measures
