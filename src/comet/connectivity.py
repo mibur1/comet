@@ -731,7 +731,6 @@ class PhaseSynchrony(ConnectivityMethod):
                 if self.method == "teneto":
                     ips[i, j, :] = 1 - np.sin(np.abs(instantaneous_phase[i] - instantaneous_phase[j])/2) # teneto implementation
 
-
         self.R_mat = self.postproc(ips)
         return self.R_mat
 
@@ -1214,7 +1213,7 @@ class DCC(ConnectivityMethod):
 
         return R, (H, Theta, X)
 
-class Edge_centric_connectivity(ConnectivityMethod):
+class EdgeTimeSeries(ConnectivityMethod):
     """
     Edge-centric connectivity method.
 

@@ -255,7 +255,7 @@ class App(QMainWindow):
             'PhaseSynchrony':               'CONT Phase Synchronization',
             'LeiDA':                        'CONT Leading Eigenvector Dynamics',
             'WaveletCoherence':             'CONT Wavelet Coherence',
-            'Edge_centric_connectivity':    'CONT Edge-centric Connectivity',
+            'EdgeTimeSeries':               'CONT Edge-centric Connectivity',
 
             'Sliding_Window_Clustr':        'STATE Sliding Window Clustering',
             'Cap':                          'STATE Co-activation patterns',
@@ -2007,7 +2007,7 @@ class App(QMainWindow):
             'CONT': [
                 'Sliding Window', 'Jackknife Correlation', 'Flexible Least Squares', 'Spatial Distance',
                 'Multiplication of Temporal Derivatives', 'Dynamic Conditional Correlation',
-                'Phase Synchronization', 'Leading Eigenvector Dynamics', 'Wavelet Coherence', 'Edge-centric Connectivity'
+                'Phase Synchronization', 'Leading Eigenvector Dynamics', 'Wavelet Coherence', 'Edge Time Series'
             ],
             'STATE': [
                 'Sliding Window Clustering', 'Co-activation patterns', 'Discrete Hidden Markov Model',
