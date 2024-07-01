@@ -35,11 +35,12 @@ def test_Jackknife(ts):
     dfc_teneto = teneto.timeseries.derive_temporalnetwork(ts.T, params={"method": "jackknife"})[0,1,:]
     assert np.allclose(dfc_comet, dfc_teneto, atol=1e-6)
 
+"""
+# Teneto implementation is not working with newer scipy versions anymore
 def test_SpatialDistance(ts):
     dfc_comet = connectivity.SpatialDistance(ts, dist="euclidean").estimate()[0,1,:]
     dfc_teneto = teneto.timeseries.derive_temporalnetwork(ts.T, params={"method": "distance", "distance": "euclidean"})[0,1,:]
-    assert np.allclose(dfc_comet, dfc_teneto, atol=1e-6)
-
+    assert np.allclose(dfc_comet, dfc_teneto, atol=1e-6)"""
 
 """
 def test_FlexibleLeastSquares(ts):
