@@ -41,9 +41,9 @@ The answer is simple: the reproducibility crisis, fueled in part by the labyrint
 
 Addressing this, we present the Comet toolbox as your trusty guide to ensure that your findings don't disappear into the Bermuda Triangle of irreproducible results.
 Whether you want to leverage the full power of multiverse analysis or just run traditional analyses, the toolbox lets you explore a broad range of methodological
-decisions in your research, ensuring robustness and transparency. From dFC estimation to graph-theoretical analyses,
-Comet's comprehensive collection of methods is your Swiss Army knife in the quest for more reproducible science.
+decisions in your research, ensuring robustness and transparency.
 
+From dFC estimation to graph-theoretical analyses, Comet's comprehensive collection of methods is your Swiss Army knife in the quest for more reproducible science.
 Plus, with a slick graphical user interface and user-friendly demo scripts, even the most Python-phobic among us can dive in and
 start exploring brain dynamics like never before. So, buckle up, and let's bring some cosmic clarity to your research universe!
 
