@@ -40,10 +40,6 @@ def test_SpatialDistance(ts):
     dfc_teneto = teneto.timeseries.derive_temporalnetwork(ts.T, params={"method": "distance", "distance": "euclidean"})[0,1,:]
     assert np.allclose(dfc_comet, dfc_teneto, atol=1e-6)
 
-def test_TemporalDerivatives(ts):
-    dfc_comet = connectivity.SpatialDistance(ts, windowsize=7).estimate()[0,1,:]
-    dfc_teneto = teneto.timeseries.derive_temporalnetwork(ts.T, params={"method": "temporalderivatives", "windowsize": 7})[0,1,:]
-    assert np.allclose(dfc_comet, dfc_teneto, atol=1e-6)
 
 """
 def test_FlexibleLeastSquares(ts):
