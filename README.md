@@ -4,16 +4,16 @@
 [![DOI](https://img.shields.io/badge/DOI-10.1101%2F2024.01.21.576546-blue?logo=arxiv)](https://doi.org/10.1101/2024.01.21.576546) [![PyPI](https://img.shields.io/badge/PyPI-comet--toolbox-orange?logo=PyPI)](https://pypi.org/project/comet-toolbox/)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/2e766745c5c04d4786ea28f7135c193e)](https://app.codacy.com/gh/mibur1/dfc-multiverse/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade) [![Documentation Status](https://readthedocs.org/projects/comet-toolbox/badge/?version=latest)](https://comet-toolbox.readthedocs.io/en/latest/?badge=latest) [![Coverage Status](https://coveralls.io/repos/github/mibur1/dfc-multiverse/badge.svg?branch=main)](https://coveralls.io/github/mibur1/dfc-multiverse?branch=main)
 
-## Important notes
+## About the toolbox
 
+Please refer to the **[documentation](https://comet-toolbox.readthedocs.io/en/latest/)** for detailed information about the toolbox. The following README will only provide a very brief overview.
 
-- This package is at an early stage of development, with frequent changes being made. If you intend to use this package at this stage, please feel free to contact me via the email address in the [`pyproject.toml`](https://github.com/mibur1/dfc-multiverse/blob/main/pyproject.toml) file.
-- Some features are not yet tested, so there will be bugs (the question is just how many).
-## Installation and Usage
+Please also note that the package is in an early stage of development, with frequent changes being made. If you intend to use this package at this stage, please feel free to contact me via the email address in the [`pyproject.toml`](https://github.com/mibur1/dfc-multiverse/blob/main/pyproject.toml) file. Some features are also not yet tested, so there will be bugs (the question is just how many).
 
-Please refer to the **[documentation](https://comet-toolbox.readthedocs.io/en/latest/)** for comprehensive installation and usage instructions.
+### Installation and usage
 
 It is recommended to use a dedicated Python environment (e.g. through conda) to mitigate the risk of potential version conflicts. Installation is possible through the Python Package Index (PyPI) or from the source code in this repository:
+
 ```
 pip install comet-toolbox
 ```
@@ -31,7 +31,7 @@ or (for more versatile usage) through the scripting API. For this, **[demo scrip
 * Demo script for **[multiverse analysis example from the preprint](tutorials/example_analysis.ipynb)** (+ additional visualizations)
 * Demo script for **[graph analysis](tutorials/example_graph.ipynb)**
 
-## Current Features
+### Current features
 
 <table style="width: 100%; border-collapse: collapse;">
     <tr>
@@ -119,11 +119,11 @@ or (for more versatile usage) through the scripting API. For this, **[demo scrip
 </table>
 
 
-## Current progress
+### Current progress (roughly)
 
 - [x] Large set of dFC methods and graph measures
 - [x] Multiverse analysis framework
-- [x] User-friendly GUI
+- [x] Graphical user interface
 - [x] Documentation
 - [x] Tutorials for an easy start
 - [ ] Complete testing suite
