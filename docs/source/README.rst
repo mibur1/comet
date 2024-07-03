@@ -33,18 +33,18 @@
 
     <br><br>
 
-Why yet another toolbox?
-------------------------
+Yet another toolbox?
+--------------------
 
 You might ask yourself, "Why do I need yet another toolbox for dynamic functional connectivity (dFC) analysis and network neuroscience?"
 The answer is simple: the reproducibility crisis, fueled in part by the labyrinth of arbitrary yet defensible decisions in your analyses.
 
-Addressing this, we present the Comet toolbox as your trusty guide to ensure that your findings don't disappear into the Bermuda Triangle of irreproducible results.
+To that avail, we present the Comet toolbox as your trusty guide to ensure that your findings don't disappear into the Bermuda Triangle of irreproducible results.
 Whether you want to leverage the full power of multiverse analysis or just run traditional analyses, the toolbox lets you explore a broad range of methodological
 decisions in your research, ensuring robustness and transparency.
 
 From dFC estimation to graph-theoretical analyses, Comet's comprehensive collection of methods is your Swiss Army knife in the quest for more reproducible science.
-Plus, with a slick graphical user interface and user-friendly demo scripts, even the most Python-phobic among us can dive in and
+Plus, with an easy-to-use graphical user interface and comprehensive demo scripts, even the most Python-phobic among us can dive in and
 start exploring brain dynamics like never before. So, buckle up, and let's bring some cosmic clarity to your research universe!
 
 Important notes
