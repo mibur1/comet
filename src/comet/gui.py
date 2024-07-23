@@ -33,18 +33,48 @@ import qdarkstyle
 from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject
 from PyQt6.QtGui import QEnterEvent, QFontMetrics
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
-    QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, QGridLayout, \
-    QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QGroupBox
+     QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, QGridLayout, \
+     QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QGroupBox
 
 # Comet imports and state-based dFC methods from pydfc
 from . import connectivity, data_cifti, graph
 import pydfc
 
+
+"""
+Helper classes for the GUI
+"""
 class Worker(QObject):
-    # Worker class for calculations (runs in a separate thread)
-    finished = pyqtSignal()
-    error = pyqtSignal(str)
+    '''
+    Worker class to execute functions in a separate thread to keep the GUI responsive.
+
+    Parameters
+    ----------
+    func : function
+        The function to be executed in the worker thread.
+
+    params : dict
+        A dictionary of parameters to pass to the function.
+
+    Signals
+    -------
+    result : pyqtSignal(object)
+        Emitted when the function successfully completes
+
+    error : pyqtSignal(str)
+        Emitted if the function raises an exception
+
+    finished : pyqtSignal()
+        Emitted when the function execution is complete
+
+    Methods
+    -------
+    run()
+        Executes the function with the provided parameters in a try-except block and emits the corresponding signals.
+    '''
     result = pyqtSignal(object)
+    error = pyqtSignal(str)
+    finished = pyqtSignal()
 
     def __init__(self, func, params):
         super().__init__()
@@ -61,7 +91,9 @@ class Worker(QObject):
             self.finished.emit()     # Notify completion
 
 class InfoButton(QPushButton):
-    # Info button class
+    '''
+    Simple class to create an info button that shows a tooltip when hovered over.
+    '''
     def __init__(self, info_text, parent=None):
         super().__init__("i", parent)
         self.info_text = info_text
@@ -73,8 +105,43 @@ class InfoButton(QPushButton):
         QToolTip.showText(tooltip_pos, self.info_text)
         super().enterEvent(event)
 
+class CompcorSpinBox(QSpinBox):
+    '''
+    Subclass of QSpinBox to allow for a special value "all" to be selected.
+    Used for the number of components in the CompCor method.
+    '''
+    def __init__(self, parent=None):
+        super(CompcorSpinBox, self).__init__(parent)
+        self.all_selected = False
+        self.setSpecialValueText("all")
+        self.setRange(0, 999)
+        self.valueChanged.connect(self.check_all)
+
+    def check_all(self, value):
+        if value == 0:
+            self.all_selected = True
+        else:
+            self.all_selected = False
+
+    def get_value(self):
+        if self.all_selected:
+            return "all"
+        else:
+            return super(CompcorSpinBox, self).value()
+
+    def set_value(self, value):
+        if value == "all":
+            self.setValue(0)
+            self.all_selected = True
+        else:
+            self.setValue(value)
+            self.all_selected = False
+
 @dataclass
 class Data:
+    '''
+    Data class which stores all relevant data for the GUI.
+    '''
     # File variables
     file_name:     str        = field(default=None)         # data file name
     file_data:     np.ndarray = field(default=None)         # input time series data
@@ -111,7 +178,27 @@ class Data:
         self.dfc_edge_ts  = None
 
 class DataStorage:
-    # Database class for storing calculated data
+    '''
+    Database class for storing data objects
+
+    Methods
+    -------
+    generate_hash(data_obj)
+        Generate a hash based on method_name, file_name, and sorted params
+
+    add_data(data_obj)
+        Add data object to the storage
+
+    delete_data(data_obj)
+        Delete data object from the storage
+
+    check_for_identical_data(data_obj)
+        Check if identical data exists in the storage
+
+    check_previous_data(methodName)
+        Get data object of previous calculations
+    '''
+
     def __init__(self):
         self.storage = {}
 
@@ -150,34 +237,10 @@ class DataStorage:
                 return copy.deepcopy(data_obj) # IMPORTANT: deep copy
         return None
 
-class CompcorSpinBox(QSpinBox):
-    def __init__(self, parent=None):
-        super(CompcorSpinBox, self).__init__(parent)
-        self.all_selected = False
-        self.setSpecialValueText("all")
-        self.setRange(0, 999)
-        self.valueChanged.connect(self.check_all)
 
-    def check_all(self, value):
-        if value == 0:
-            self.all_selected = True
-        else:
-            self.all_selected = False
-
-    def get_value(self):
-        if self.all_selected:
-            return "all"
-        else:
-            return super(CompcorSpinBox, self).value()
-
-    def set_value(self, value):
-        if value == "all":
-            self.setValue(0)
-            self.all_selected = True
-        else:
-            self.setValue(value)
-            self.all_selected = False
-
+"""
+Main class of the GUI
+"""
 class App(QMainWindow):
     """
     Initialization and GUI setup functions
@@ -403,6 +466,9 @@ class App(QMainWindow):
 
         return
 
+    """
+    Tab setup functions
+    """
     def dataTab(self):
         dataTab = QWidget()
         dataLayout = QHBoxLayout()
@@ -2828,7 +2894,7 @@ class App(QMainWindow):
 
 
     """
-    Graph tab functions
+    Graph tab
     """
     def loadGraphFile(self):
         fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"

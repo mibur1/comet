@@ -491,7 +491,8 @@ class Multiverse:
         ax[0].legend(handles=legend_items, loc='upper left', fontsize=fontsize)
 
         plt.tight_layout()
-        plt.savefig(f"{results_path}/specification_curve.png")
+        #plt.savefig(f"{results_path}/specification_curve.png")
+        plt.show()
 
         return
 
@@ -675,9 +676,12 @@ class Multiverse:
         forking_paths : dict
             Dictionary containing the forking paths
         """
-
-        csv_path = os.path.join(results_path, fname)
-        multiverse_summary = pd.read_csv(csv_path)
+        print("HI", type(fname))
+        if type(fname) == str:
+            csv_path = os.path.join(results_path, fname)
+            multiverse_summary = pd.read_csv(csv_path)
+        else:
+            multiverse_summary = fname
 
         if measure in multiverse_summary.columns:
             print(f"Getting {measure} from .csv file")
