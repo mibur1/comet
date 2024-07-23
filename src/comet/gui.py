@@ -245,17 +245,13 @@ class App(QMainWindow):
     """
     Initialization and GUI setup functions
     """
-    def __init__(self, init_dfc_data=None, init_dfc_instance=None):
+    def __init__(self):
         super().__init__()
         self.title = 'Comet Toolbox'
-        self.init_flag = True
 
+        # Data and data storage
         self.data = Data()
         self.data_storage = DataStorage()
-
-        self.currentSliderValue = 0
-        self.currentTabIndex = 0
-        self.graphStepCounter = 1
 
         # Parameter names for the GUI
         self.param_names = {
@@ -333,7 +329,6 @@ class App(QMainWindow):
 
         self.reverse_connectivityMethods = {v: k for k, v in self.connectivityMethods.items()}
 
-
         # All availble graph analysis functions
         self.graphOptions = {
             "handle_negative_weights":      "PREP Negative weights",
@@ -364,105 +359,23 @@ class App(QMainWindow):
         }
         self.reverse_graphOptions = {v: k for k, v in self.graphOptions.items()}
 
-        # Init the UI
-        self.initUI()
-
-        if init_dfc_data is not None:
-            self.initFromData(init_dfc_data, init_dfc_instance)
-
-    def initUI(self):
+        # Init the top-level layout which contains connectivity, graph, and multiverse tabs
         self.setWindowTitle(self.title)
-
-        # Top-level layout which contains connectivity, graph, and multiverse tabs
         topLayout = QVBoxLayout()
         self.topTabWidget = QTabWidget()
         topLayout.addWidget(self.topTabWidget)
 
-        # Setup the individual tabs
+        # Init the individual tabs
         self.dataTab()
         self.connectivityTab()
         self.graphTab()
         self.multiverseTab()
+        self.currentTabIndex = 0
 
         # Set main window layout to the top-level layout
         centralWidget = QWidget()
         centralWidget.setLayout(topLayout)
         self.setCentralWidget(centralWidget)
-
-        return
-
-    def initFromData(self, init_dfc_data=None, init_dfc_instance=None):
-        # Make sure both the dFC data and the method object are provided
-        assert self.data.dfc_instance is not None, "Please provide the method object corresponding to your dFC data as the second argument to the GUI."
-
-        # Init the data structures
-        self.data.dfc_data = init_dfc_data
-        self.data.dfc_instance = init_dfc_instance
-        self.data.file_name = "loaded from script"
-        self.data.dfc_name = init_dfc_instance.name
-        self.data.file_data = np.array([]) # for potential saving to .mat
-
-        # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
-        if isinstance(init_dfc_data, tuple):
-            self.data.dfc_data = init_dfc_data[0]
-            self.data.dfc_state_tc = None
-            self.data.dfc_edge_ts = init_dfc_data[1][0] if isinstance(init_dfc_data[1], tuple) else None
-
-        # Result is DFC object (pydfc methods)
-        elif isinstance(init_dfc_data, pydfc.dfc.DFC):
-            self.data.dfc_data = np.transpose(init_dfc_data.get_dFC_mat(), (1, 2, 0))
-            self.data.dfc_states = init_dfc_data.FCSs_
-            self.data.dfc_state_tc = init_dfc_data.state_TC()
-            self.data.dfc_edge_ts = None
-
-        # Only a single matrix is returned (most cases)
-        else:
-            self.data.dfc_data = init_dfc_data
-            self.data.dfc_state_tc = None
-            self.data.dfc_edge_ts = None
-
-        # Add to data storage TOOD: this does not work yet (why? and is it even needed?)
-        #self.data_storage.add_data(self.data)
-
-        # Disable the GUI elements
-        self.methodComboBox.setEnabled(False)
-        self.calculateButton.setEnabled(False)
-        self.clearMemoryButton.setEnabled(False)
-        self.keepInMemoryCheckbox.setEnabled(False)
-
-        # Set labels
-        self.fileNameLabel.setText(f"Loaded dFC from script")
-        self.calculatingLabel.setText(f"Loaded dFC from script")
-        self.methodComboBox.setCurrentText(self.data.dfc_name)
-
-        # Disable checkboxes
-        self.continuousCheckBox.setChecked(True)
-        self.stateBasedCheckBox.setChecked(True)
-        self.staticCheckBox.setChecked(True)
-        self.continuousCheckBox.setEnabled(False)
-        self.stateBasedCheckBox.setEnabled(False)
-        self.staticCheckBox.setEnabled(False)
-
-        # Set plots
-        self.plotConnectivity()
-        self.plotDistribution()
-        self.plotTimeSeries()
-
-        # Set the slider elements
-        total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
-        position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
-        self.positionLabel.setText(position_text)
-        self.slider.setValue(self.slider.value())
-        self.slider.show()
-
-        # This first gets the parameters from the signature of the method and then fill them with the curent values
-        init_signature = inspect.signature(init_dfc_instance.__init__)
-        self.data.dfc_params = {}
-
-        for param_name in init_signature.parameters:
-            self.data.dfc_params[param_name] = getattr(init_dfc_instance, param_name, None)
-
-        self.setParameters(disable=True)
 
         return
 
@@ -770,6 +683,7 @@ class App(QMainWindow):
         graphTab = QWidget()
         graphLayout = QVBoxLayout()  # Main layout for the tab
         graphTab.setLayout(graphLayout)
+        self.graphStepCounter = 1
 
         ###############################
         #  Left section for settings  #
@@ -2252,7 +2166,6 @@ class App(QMainWindow):
         # Data does not exist, perform calculation
         connectivity_calculator = self.data.dfc_instance(**clean_parameters)
         result = connectivity_calculator.estimate()
-        self.init_flag = False
 
         # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
         if isinstance(result, tuple):
@@ -4072,7 +3985,7 @@ class App(QMainWindow):
 """
 Run the application
 """
-def run(dfc_data=None, method=None):
+def run():
     app = QApplication(sys.argv)
 
     # Set global stylesheet for tooltips
@@ -4082,7 +3995,7 @@ def run(dfc_data=None, method=None):
             border: 1px solid black;
         }
     """)
-    ex = App(init_dfc_data=dfc_data, init_dfc_instance=method)
+    ex = App()
     ex.setStyleSheet(qdarkstyle.load_stylesheet_pyqt6())
 
     default_width = ex.width()
