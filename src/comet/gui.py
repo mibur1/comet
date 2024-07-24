@@ -137,6 +137,130 @@ class CompcorSpinBox(QSpinBox):
             self.setValue(value)
             self.all_selected = False
 
+class ParameterOptions:
+    '''
+    Parameters for the GUI
+    '''
+    PARAM_NAMES = {
+        "self":                 "self",
+        "time_series":          "Time series",
+        "windowsize":           "Window size",
+        "stepsize":             "Step size",
+        "shape":                "Window shape",
+        "std":                  "Window sigma",
+        "diagonal":             "Main diagonal",
+        "fisher_z":             "Fisher z-transform",
+        "num_cores":            "Number of CPU cores",
+        "standardizeData":      "Z-score data",
+        "mu":                   "Weighting parameter μ",
+        "flip_eigenvectors":    "Flip eigenvectors",
+        "crp":                  "Cosine of rel. phase",
+        "pcoh":                 "Phase coherence",
+        "teneto":               "Teneto implementation",
+        "dist":                 "Distance function",
+        "weighted":             "Weighted average",
+        "TR":                   "Repetition Time",
+        "fmin":                 "Minimum frequency",
+        "fmax":                 "Maximum frequency",
+        "n_scales":             "Number of scales",
+        "drop_scales":          "Drop n scales",
+        "drop_timepoints":      "Drop n timepoints",
+        "standardize":          "Z-score connectivity",
+        "tril":                 "Extract lower triangle",
+        "method":               "Specific method",
+        "params":               "Various parameters",
+        "coi_correction":       "COI correction",
+        "clstr_distance":       "Distance metric",
+        "num_bins":             "Number of bins",
+        "n_overlap":            "Window overlap",
+        "tapered_window":       "Tapered window",
+        "n_states":             "Number of states",
+        "n_subj_clusters":      "Number of subjects",
+        "normalization":        "Normalization",
+        "clstr_distance":       "Distance measure",
+        "subject":              "Subject",
+        "clstr_base_measure":   "Base measure",
+        "iterations":           "Iterations",
+        "sw_method":            "Sliding window",
+        "dhmm_obs_state_ratio": "State ratio",
+        "vlim":                 "Color axis limit",
+        "parcellation":         "Parcellation"
+    }
+
+    CONNECTIVITY_METHODS = {
+        'SlidingWindow':                'CONT Sliding Window',
+        'Jackknife':                    'CONT Jackknife Correlation',
+        'FlexibleLeastSquares':         'CONT Flexible Least Squares',
+        'SpatialDistance':              'CONT Spatial Distance',
+        'TemporalDerivatives':          'CONT Multiplication of Temporal Derivatives',
+        'DCC':                          'CONT Dynamic Conditional Correlation',
+        'PhaseSynchrony':               'CONT Phase Synchronization',
+        'LeiDA':                        'CONT Leading Eigenvector Dynamics',
+        'WaveletCoherence':             'CONT Wavelet Coherence',
+        'EdgeTimeSeries':               'CONT Edge-centric Connectivity',
+        'Sliding_Window_Clustr':        'STATE Sliding Window Clustering',
+        'Cap':                          'STATE Co-activation patterns',
+        'HMM_Disc':                     'STATE Discrete Hidden Markov Model',
+        'HM_Cont':                      'STATE Continuous Hidden Markov Model',
+        'Windowless':                   'STATE Windowless',
+        'Static_Pearson':               'STATIC Pearson Correlation',
+        'Static_Partial':               'STATIC Partial Correlation',
+        'Static_Mutual_Info':           'STATIC Mutual Information'
+    }
+
+    GRAPH_OPTIONS = {
+        "handle_negative_weights":      "PREP Negative weights",
+        "threshold":                    "PREP Threshold",
+        "binarise":                     "PREP Binarise",
+        "normalise":                    "PREP Normalise",
+        "invert":                       "PREP Invert",
+        "logtransform":                 "PREP Log-transform",
+        "symmetrise":                   "PREP Symmetrise",
+        "randomise":                    "PREP Randomise",
+        "postproc":                     "PREP Post-processing",
+        "efficiency":                   "COMET Efficiency",
+        "matching_ind_und":             "COMET Matching index",
+        "small_world_propensity":       "COMET Small world propensity",
+        "backbone_wu":                  "BCT Backbone (weighted)",
+        "betweenness":                  "BCT Betweenness centrality",
+        "clustering_coef":              "BCT Clustering coefficient",
+        "degrees_und":                  "BCT Degrees",
+        "density_und":                  "BCT Density",
+        "eigenvector_centrality_und":   "BCT Eigenvector centrality",
+        "gateway_coef_sign":            "BCT Gateway coefficient (sign)",
+        "pagerank_centrality":          "BCT Pagerank centrality",
+        "participation_coef":           "BCT Participation coef",
+        "participation_coef_sign":      "BCT Participation coef (sign)",
+        "transitivity":                 "BCT Transitivity"
+    }
+
+    # Reverse mappings
+    REVERSE_PARAM_NAMES = {v: k for k, v in PARAM_NAMES.items()}
+    REVERSE_CONNECTIVITY_METHODS = {v: k for k, v in CONNECTIVITY_METHODS.items()}
+    REVERSE_GRAPH_OPTIONS = {v: k for k, v in GRAPH_OPTIONS.items()}
+
+    ATLAS_OPTIONS = {
+        "AAL template (SPM 12)":    ["117"],
+        "BASC multiscale":          ["7", "12", "20", "36", "64", "122", "197", "325", "444"],
+        "Destrieux et al. (2009)":  ["148"],
+        "Pauli et al. (2017)":      ["deterministic"],
+        "Schaefer et al. (2018)":   ["100", "200", "300", "400", "500", "600", "700", "800", "900", "1000"],
+        "Talairach atlas":          ["hemisphere"],
+        "Yeo (2011) networks":      ["thin_7", "thick_7", "thin_17", "thick_17"],
+        "Dosenbach et al. (2010)":  ["160"],
+        "Power et al. (2011)":      ["264"],
+        "Seitzmann et al. (2018)":  ["300"]
+    }
+
+    def __init__(self):
+        self.param_names = self.PARAM_NAMES
+        self.reverse_param_names = self.REVERSE_PARAM_NAMES
+        self.connectivityMethods = self.CONNECTIVITY_METHODS
+        self.reverse_connectivityMethods = self.REVERSE_CONNECTIVITY_METHODS
+        self.graphOptions = self.GRAPH_OPTIONS
+        self.reverse_graphOptions = self.REVERSE_GRAPH_OPTIONS
+        self.atlas_options = self.ATLAS_OPTIONS
+
 @dataclass
 class Data:
     '''
@@ -242,9 +366,6 @@ class DataStorage:
 Main class of the GUI
 """
 class App(QMainWindow):
-    """
-    Initialization and GUI setup functions
-    """
     def __init__(self):
         super().__init__()
         self.title = 'Comet Toolbox'
@@ -253,111 +374,16 @@ class App(QMainWindow):
         self.data = Data()
         self.data_storage = DataStorage()
 
-        # Parameter names for the GUI
-        self.param_names = {
-            "self":                 "self",
-            "time_series":          "Time series",
-            "windowsize":           "Window size",
-            "stepsize":             "Step size",
-            "shape":                "Window shape",
-            "std":                  "Window sigma",
-            "diagonal":             "Main diagonal",
-            "fisher_z":             "Fisher z-transform",
-            "num_cores":            "Number of CPU cores",
-            "standardizeData":      "Z-score data",
-            "mu":                   "Weighting parameter μ",
-            "flip_eigenvectors":    "Flip eigenvectors",
-            "crp":                  "Cosine of rel. phase",
-            "pcoh":                 "Phase coherence",
-            "teneto":               "Teneto implementation",
-            "dist":                 "Distance function",
-            "weighted":             "Weighted average",
-            "TR":                   "Repetition Time",
-            "fmin":                 "Minimum frequency",
-            "fmax":                 "Maximum freqency",
-            "n_scales":             "Number of scales",
-            "drop_scales":          "Drop n scales",
-            "drop_timepoints":      "Drop n timepoints",
-            "standardize":          "Z-score connectivity",
-            "tril":                 "Extract lower triangle",
-            "method":               "Specific method",
-
-            "params":               "Various parameters",
-            "coi_correction":       "COI correction",
-            "clstr_distance":       "Distance metric",
-            "num_bins":             "Number of bins",
-            "n_overlap":            "Window overlap",
-            "tapered_window":       "Tapered window",
-            "n_states":             "Number of states",
-            "n_subj_clusters":      "Number of subjects",
-            "normalization":        "Normalization",
-            "clstr_distance":       "Distance measure",
-            "subject":              "Subject",
-            "clstr_base_measure":   "Base measure",
-            "iterations":            "Iterations",
-            "sw_method":            "Sliding window",
-            "dhmm_obs_state_ratio": "State ratio",
-            "vlim":                 "Color axis limit",
-            "parcellation":         "Parcellation"
-
-        }
-        self.reverse_param_names = {v: k for k, v in self.param_names.items()}
-
-        # All availble connectivity methods
-        self.connectivityMethods = {
-            'SlidingWindow':                'CONT Sliding Window',
-            'Jackknife':                    'CONT Jackknife Correlation',
-            'FlexibleLeastSquares':         'CONT Flexible Least Squares',
-            'SpatialDistance':              'CONT Spatial Distance',
-            'TemporalDerivatives':          'CONT Multiplication of Temporal Derivatives',
-            'DCC':                          'CONT Dynamic Conditional Correlation',
-            'PhaseSynchrony':               'CONT Phase Synchronization',
-            'LeiDA':                        'CONT Leading Eigenvector Dynamics',
-            'WaveletCoherence':             'CONT Wavelet Coherence',
-            'EdgeTimeSeries':               'CONT Edge-centric Connectivity',
-
-            'Sliding_Window_Clustr':        'STATE Sliding Window Clustering',
-            'Cap':                          'STATE Co-activation patterns',
-            'HMM_Disc':                     'STATE Discrete Hidden Markov Model',
-            'HM_Cont':                      'STATE Continuous Hidden Markov Model',
-            'Windowless':                   'STATE Windowless',
-
-            'Static_Pearson':               'STATIC Pearson Correlation',
-            'Static_Partial':               'STATIC Partial Correlation',
-            'Static_Mutual_Info':           'STATIC Mutual Information'
-        }
-
-        self.reverse_connectivityMethods = {v: k for k, v in self.connectivityMethods.items()}
-
-        # All availble graph analysis functions
-        self.graphOptions = {
-            "handle_negative_weights":      "PREP Negative weights",
-            "threshold":                    "PREP Threshold",
-            "binarise":                     "PREP Binarise",
-            "normalise":                    "PREP Normalise",
-            "invert":                       "PREP Invert",
-            "logtransform":                 "PREP Log-transform",
-            "symmetrise":                   "PREP Symmetrise",
-            "randomise":                    "PREP Randomise",
-            "postproc":                     "PREP Post-processing",
-
-            "efficiency":                   "COMET Efficiency",
-            "matching_ind_und":             "COMET Matching index",
-            "small_world_propensity":       "COMET Small world propensity",
-
-            "backbone_wu":                  "BCT Backbone (weighted)",
-            "betweenness":                  "BCT Betweenness centrality",
-            "clustering_coef":              "BCT Clustering coefficient",
-            "degrees_und":                  "BCT Degrees",
-            "density_und":                  "BCT Density",
-            "eigenvector_centrality_und":   "BCT Eigenvector centrality",
-            "gateway_coef_sign":            "BCT Gateway coefficient (sign)",
-            "pagerank_centrality":          "BCT Pagerank centrality",
-            "participation_coef":           "BCT Participation coef",
-            "participation_coef_sign":      "BCT Participation coef (sign)",
-            "transitivity":                 "BCT Transitivity",
-        }
-        self.reverse_graphOptions = {v: k for k, v in self.graphOptions.items()}
+        # Parameter names
+        # TODO: integrate in entire script?
+        parameterNames = ParameterOptions()
+        self.param_names = parameterNames.param_names
+        self.reverse_param_names = parameterNames.reverse_param_names
+        self.connectivityMethods = parameterNames.connectivityMethods
+        self.reverse_connectivityMethods = parameterNames.reverse_connectivityMethods
+        self.graphOptions = parameterNames.graphOptions
+        self.reverse_graphOptions = parameterNames.reverse_graphOptions
+        self.atlas_options = parameterNames.atlas_options
 
         # Init the top-level layout which contains connectivity, graph, and multiverse tabs
         self.setWindowTitle(self.title)
@@ -379,9 +405,6 @@ class App(QMainWindow):
 
         return
 
-    """
-    Tab setup functions
-    """
     def dataTab(self):
         dataTab = QWidget()
         dataLayout = QHBoxLayout()
@@ -414,6 +437,30 @@ class App(QMainWindow):
         self.pydfc_subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
         self.pydfc_subjectDropdownContainer.hide()
 
+        # Parcellation Dropdown with Label
+        self.niftiParcellationDropdownContainer = QWidget()
+        self.niftiParcellationDropdownLayout = QHBoxLayout()
+        self.niftiParcellationLabel = QLabel("Parcellation:")
+        self.niftiParcellationLabel.setFixedWidth(100)
+        self.niftiParcellationDropdown = QComboBox()
+        self.niftiParcellationOptionsLabel = QLabel("Type:")
+        self.niftiParcellationOptionsLabel.setFixedWidth(40)
+        self.niftiParcellationOptions = QComboBox()
+        self.niftiParcellationCalculateButton = QPushButton("Calculate")
+        self.niftiParcellationDropdown.addItems(self.atlas_options.keys())
+
+        self.niftiParcellationDropdownLayout.addWidget(self.niftiParcellationLabel, 1)
+        self.niftiParcellationDropdownLayout.addWidget(self.niftiParcellationDropdown, 3)
+        self.niftiParcellationDropdownLayout.addWidget(self.niftiParcellationOptionsLabel, 1)
+        self.niftiParcellationDropdownLayout.addWidget(self.niftiParcellationOptions, 2)
+        self.niftiParcellationDropdownLayout.addWidget(self.niftiParcellationCalculateButton, 1)
+        self.niftiParcellationDropdownContainer.setLayout(self.niftiParcellationDropdownLayout)
+        self.niftiParcellationDropdownContainer.hide()
+
+        self.niftiParcellationCalculateButton.clicked.connect(self.onNiftiParcellationCalculate)
+        self.niftiParcellationDropdown.currentIndexChanged.connect(self.onNiftiAtlasSelected)
+        self.onNiftiAtlasSelected()
+
         self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
         self.transposeCheckbox.hide()
 
@@ -423,6 +470,7 @@ class App(QMainWindow):
         loadLayout.addLayout(buttonLayout)
         loadLayout.addWidget(self.fileNameLabel)
         loadLayout.addWidget(self.pydfc_subjectDropdownContainer)
+        loadLayout.addWidget(self.niftiParcellationDropdownContainer)
         loadLayout.addWidget(self.transposeCheckbox)
 
         leftLayout.addLayout(loadLayout)
@@ -970,18 +1018,22 @@ class App(QMainWindow):
     """
     # Time series
     def loadTS(self):
-        fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
+        # Allowed file types
+        fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.nii *.nii.gz *.dtseries.nii *.ptseries.nii);;\
+                                            MAT files (*.mat);;\
+                                            Text files (*.txt);;\
+                                            NumPy files (*.npy);;\
+                                            Pickle files (*.pkl);;\
+                                            TSV files (*.tsv);;\
+                                            NIFTI files (*.nii, .nii.gz);;\
+                                            CIFTI files (*.dtseries.nii *.ptseries.nii)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
 
         if not file_path:
             QMessageBox.warning(self, "Load Error", f"No valid file selected.")
-            return  # Early exit if no file is selected
+            return
 
-        file_name = file_path.split('/')[-1]
-        self.data.file_name = file_name
-        self.data.file_data = None
-        self.data.sample_mask = None
-
+        self.data.file_name = file_path.split('/')[-1]
         self.subjectDropdown.clear()
         self.subjectDropdown.hide()
 
@@ -1007,7 +1059,7 @@ class App(QMainWindow):
                 self.data.file_data = pickle.load(f)
 
                 if type(self.data.file_data) == pydfc.time_series.TIME_SERIES:
-                    print("Loaded TIME_SERIES object")
+                    print("Loaded TIME_SERIES object from .pkl")
                     self.pydfc_subjectDropdown.addItems(self.data.file_data.data_dict.keys())
                     self.pydfc_subjectDropdownContainer.show()
                     self.pydfc_subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
@@ -1021,26 +1073,21 @@ class App(QMainWindow):
                 rois = data.iloc[0]  # The first row is rois
                 data = data.iloc[1:]  # Remove the header row from the data
 
-            # Convert all data to numeric, making sure 'n/a' and other non-numeric are treated as NaN
-            data = data.apply(pd.to_numeric, errors='coerce')
-
-            # Identify entirely empty columns
+            # Identify empty columns and remove rois
+            data = data.apply(pd.to_numeric, errors='coerce') # Convert all data to numeric so 'n/a' and other non-numerics are treated as NaN
             empty_columns = data.columns[data.isna().all()]
 
-            # Remove corresponding rois if rois exist
             if rois is not None:
                 removed_rois = rois[empty_columns].to_list()
                 print("The following regions were empty and thus removed:", removed_rois)
                 rois = rois.drop(empty_columns)
-
-            # Remove entirely empty columns and rows
             data = data.dropna(axis=1, how='all').dropna(axis=0, how='all')
 
-            # Convert the cleaned data back to numpy array
             self.data.file_data = data.to_numpy()
-
-            # Update header_list if rois exist
             self.data.roi_names = np.array(rois, dtype=object)
+
+        elif file_path.endswith(".nii") or file_path.endswith(".nii.gz"):
+            self.niftiParcellationDropdownContainer.show()
 
         elif file_path.endswith(".dtseries.nii"):
             self.data.cifti_data = nib.load(file_path)
@@ -1065,7 +1112,7 @@ class App(QMainWindow):
             self.fileNameLabel.setText(f"Loaded TIME_SERIES object")
             shape = self.data.file_data.data_dict[list(self.data.file_data.data_dict.keys())[0]]["data"].shape
             self.fileNameLabel2.setText(f"Loaded and parcellated {self.data.file_name} with shape {shape}")
-            self.time_series_textbox.setText(file_name)
+            self.time_series_textbox.setText(self.data.file_name)
 
             self.continuousCheckBox.setEnabled(False)
             self.continuousCheckBox.setChecked(False)
@@ -1079,7 +1126,7 @@ class App(QMainWindow):
             self.transposeCheckbox.setEnabled(True)
 
         else:
-            self.time_series_textbox.setText(file_name)
+            self.time_series_textbox.setText(self.data.file_name)
 
             self.continuousCheckBox.setEnabled(True)
             self.continuousCheckBox.setChecked(True)
@@ -1090,14 +1137,12 @@ class App(QMainWindow):
             self.staticCheckBox.setEnabled(True)
             self.staticCheckBox.setChecked(True)
 
-            if file_path.endswith('.nii'):
-                self.fileNameLabel.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
-                self.fileNameLabel2.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
-                self.transposeCheckbox.setEnabled(False)
-            else:
+            if not (file_path.endswith('.nii') or file_path.endswith('.nii.gz')):
                 self.fileNameLabel.setText(f"Loaded {self.data.file_name} with shape {self.data.file_data.shape}")
                 self.fileNameLabel2.setText(f"Loaded {self.data.file_name} with shape {self.data.file_data.shape}")
                 self.transposeCheckbox.setEnabled(True)
+
+                self.createCarpetPlot()
 
         # Reset and enable the GUI elements
         self.bidsContainer.hide()
@@ -1109,8 +1154,37 @@ class App(QMainWindow):
         self.clearMemoryButton.setEnabled(True)
         self.keepInMemoryCheckbox.setEnabled(True)
 
-        # Create carpet plot
+    def onNiftiParcellationCalculate(self):
+        atlas = self.niftiParcellationDropdown.currentText()
+        option = self.niftiParcellationOptions.currentText()
+
+        if atlas in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
+            rois, networks, labels,  = self.fetchAtlas(atlas, option, self.atlasnames)
+            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize=True, high_variance_confounds=True)
+
+        elif atlas == "Power et al. (2011)":
+            rois = self.fetchAtlas(atlas, option, self.atlasnames)
+            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize=True, high_variance_confounds=True)
+
+        else:
+            atlas, labels = self.fetchAtlas(atlas, option, self.atlasnames)
+            masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize=True, high_variance_confounds=True)
+
+        # Extract time series
+        time_series = masker.fit_transform(self.data.file_name)
+        self.data.file_data = time_series
+
+        self.fileNameLabel.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
+        self.fileNameLabel2.setText(f"Loaded and parcellated {self.data.file_name} with shape {self.data.file_data.shape}")
+        self.transposeCheckbox.setEnabled(False)
+
         self.createCarpetPlot()
+
+    def onNiftiAtlasSelected(self):
+        self.niftiParcellationOptions.clear()
+        self.niftiParcellationOptions.addItems(self.atlas_options[self.niftiParcellationDropdown.currentText()])
+        self.niftiParcellationOptions.show()
+        return
 
     def onTransposeChecked(self, state):
         if self.data.file_data is None:
@@ -1241,9 +1315,7 @@ class App(QMainWindow):
         self.parcellationOptionsLabel = QLabel("Type:")
         self.parcellationOptionsLabel.setFixedWidth(40)
         self.parcellationOptions = QComboBox()
-        self.atlasnames = ["AAL template (SPM 12)", "BASC multiscale", "Destrieux et al. (2009)", "Pauli et al. (2017)", "Schaefer et al. (2018)",
-                           "Talairach atlas", "Yeo (2011) networks", "Dosenbach et al. (2010)", "Power et al. (2011)", "Seitzmann et al. (2018)"]
-        self.parcellationDropdown.addItems(self.atlasnames)
+        self.parcellationDropdown.addItems(self.atlas_options.keys())
 
         self.parcellationDropdownLayout.addWidget(self.parcellationLabel, 1)
         self.parcellationDropdownLayout.addWidget(self.parcellationDropdown, 4)
@@ -1304,15 +1376,14 @@ class App(QMainWindow):
 
         return
 
-    def fetchAtlas(self, atlasname, atlasnames):
+    def fetchAtlas(self, atlasname, option, atlasnames):
         if atlasname in atlasnames:
             if atlasname == "AAL template (SPM 12)":
                 atlas = datasets.fetch_atlas_aal()
                 return atlas["maps"], atlas["labels"]
 
             elif atlasname == "BASC multiscale":
-                resolution = int(self.parcellationOptions.currentText())
-                atlas = datasets.fetch_atlas_basc_multiscale_2015(resolution=resolution)
+                atlas = datasets.fetch_atlas_basc_multiscale_2015(resolution=int(option))
                 return atlas["maps"], None
 
             elif atlasname == "Destrieux et al. (2009)":
@@ -1324,8 +1395,7 @@ class App(QMainWindow):
                 return atlas["maps"], atlas["labels"]
 
             elif atlasname == "Schaefer et al. (2018)":
-                n_rois = int(self.parcellationOptions.currentText())
-                atlas = datasets.fetch_atlas_schaefer_2018(n_rois=n_rois)
+                atlas = datasets.fetch_atlas_schaefer_2018(n_rois=int(option))
                 return atlas["maps"], atlas["labels"]
 
             elif atlasname == "Talairach atlas":
@@ -1482,41 +1552,7 @@ class App(QMainWindow):
 
     def onBIDSAtlasSelected(self):
         self.parcellationOptions.clear()
-
-        if self.parcellationDropdown.currentText() == "AAL template (SPM 12)":
-            self.parcellationOptions.addItems(["117"])
-
-        elif self.parcellationDropdown.currentText() == "BASC multiscale":
-            self.parcellationOptions.addItems(["7", "12", "20", "36", "64", "122", "197", "325", "444"])
-
-        elif self.parcellationDropdown.currentText() == "Destrieux et al. (2009)":
-            self.parcellationOptions.addItems(["148"])
-
-        elif self.parcellationDropdown.currentText() == "Pauli et al. (2017)":
-            self.parcellationOptions.addItems(["deterministic"])
-
-        elif self.parcellationDropdown.currentText() == "Schaefer et al. (2018)":
-            self.parcellationOptions.addItems(["100", "200", "300", "400", "500", "600", "700", "800", "900", "1000"])
-
-        elif self.parcellationDropdown.currentText() == "Talairach atlas":
-            self.parcellationOptions.addItems(["hemisphere"])
-
-        elif self.parcellationDropdown.currentText() == "Yeo (2011) networks":
-            self.parcellationOptions.addItems(["thin_7", "thick_7", "thin_17", "thick_17"])
-
-        elif self.parcellationDropdown.currentText() == "Dosenbach et al. (2010)":
-            self.parcellationOptions.addItems(["160"])
-
-        elif self.parcellationDropdown.currentText() == "Power et al. (2011)":
-            self.parcellationOptions.addItems(["264"])
-
-        elif self.parcellationDropdown.currentText() == "Seitzmann et al. (2018)":
-            self.parcellationOptions.addItems(["300"])
-
-        else:
-            QMessageBox.warning(self, "Error", "Atlas not found")
-            return
-
+        self.parcellationOptions.addItems(self.atlas_options[self.parcellationDropdown.currentText()])
         self.parcellationOptions.show()
         return
 
@@ -1766,17 +1802,19 @@ class App(QMainWindow):
     def extractTimeSeriesThread(self, img_path):
         args = self.collectCleaningArguments()
         confounds, sample_mask = load_confounds(img_path, **args)
+        atlas = self.parcellationDropdown.currentText()
+        option = self.parcellationOptions.currentText()
 
         if self.parcellationDropdown.currentText() in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
-            rois, networks, labels,  = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
+            rois, networks, labels,  = self.fetchAtlas(atlas, option, self.atlasnames)
             masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", mask_img=self.mask_name)
 
         elif self.parcellationDropdown.currentText() == "Power et al. (2011)":
-            rois = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
+            rois = self.fetchAtlas(atlas, option, self.atlasnames)
             masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize="zscore_sample", mask_img=self.mask_name)
 
         else:
-            atlas, labels = self.fetchAtlas(self.parcellationDropdown.currentText(), self.atlasnames)
+            atlas, labels = self.fetchAtlas(atlas, option, self.atlasnames)
             masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize="zscore_sample", mask_img=self.mask_name)
 
         # Extract time series
