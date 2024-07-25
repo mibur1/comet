@@ -43,8 +43,12 @@ def parcellate(dtseries, atlas="glasser", method=np.mean, standardize=True):
         ts = dtseries.get_fdata()
     elif type(dtseries) == np.ndarray or type(dtseries) == np.memmap:
         ts = dtseries
+    elif type(dtseries) == str:
+        data = nib.load(dtseries)
+        ts = data.get_fdata()
     else:
-        sys.exit("Input must be a nibabel cifti image object or a numpy memmap object")
+        print("Error: Input must be a nibabel cifti image object or a numpy memmap object")
+        return
 
     rois, keys, _, _ = _prepare_atlas(atlas)
 
