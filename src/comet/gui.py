@@ -83,12 +83,12 @@ class Worker(QObject):
 
     def run(self):
         try:
-            result = self.func(self.params)
-            self.result.emit(result) # Emit results
+            result = self.func(**self.params)  # Pass parameters as keyword arguments
+            self.result.emit(result)  # Emit results
         except Exception as e:
             self.error.emit(str(e))  # Emit errors
         finally:
-            self.finished.emit()     # Notify completion
+            self.finished.emit()  # Notify completion
 
 class InfoButton(QPushButton):
     '''
@@ -418,70 +418,16 @@ class App(QMainWindow):
         dataLayout = QHBoxLayout()
         dataTab.setLayout(dataLayout)
 
+        # Left section
         leftLayout = QVBoxLayout()
-        rightLayout = QVBoxLayout()
-
-        ##################
-        #  Left section  #
-        ##################
-
-        # Create button and label for file loading
-        loadLayout = QVBoxLayout()
-        loadLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        buttonLayout = QHBoxLayout()
-
-        fileButton = QPushButton('Load single time series')
-        bidsButton = QPushButton('Load BIDS dataset')
-        self.fileNameLabel = QLabel('No data loaded yet.')
-
-        # Create dropdowns for parcellation and subject selection
-        self.dataDropdownLayout()
-
-        self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
-        self.transposeCheckbox.hide()
-
-        buttonLayout.addWidget(fileButton)
-        buttonLayout.addWidget(bidsButton)
-
-        loadLayout.addLayout(buttonLayout)
-        loadLayout.addWidget(self.fileNameLabel)
-        loadLayout.addWidget(self.subjectDropdownContainer)
-        loadLayout.addWidget(self.parcellationContainer)
-        loadLayout.addWidget(self.transposeCheckbox)
-
-        leftLayout.addLayout(loadLayout)
-
-        # Add BIDS layout
+        self.addLoadLayout(leftLayout)
         self.addBidsLayout(leftLayout)
 
-        # Connect widgets
-        self.transposeCheckbox.stateChanged.connect(self.onTransposeChecked)
-        fileButton.clicked.connect(self.loadTS)
-        bidsButton.clicked.connect(self.loadBIDS)
-
-        ###################
-        #  Right section  #
-        ###################
+        # Right section
         rightLayout = QVBoxLayout()
-        plotTabWidget = QTabWidget()
+        self.addDataPlotLayout(rightLayout)
 
-        plotTab = QWidget()
-        plotTab.setLayout(QVBoxLayout())
-        self.boldFigure = Figure()
-        self.boldCanvas = FigureCanvas(self.boldFigure)
-        self.boldFigure.patch.set_facecolor('#E0E0E0')
-        plotTab.layout().addWidget(self.boldCanvas)
-        plotTabWidget.addTab(plotTab, "Carpet Plot")
-
-        # Draw default plot (logo) on the canvas
-        self.plotLogo(self.boldFigure)
-        self.boldCanvas.draw()
-
-        rightLayout.addWidget(plotTabWidget)
-
-        ######################
-        #  Combine sections  #
-        ######################
+        # Combine sections
         dataLayout.addLayout(leftLayout, 1)
         dataLayout.addLayout(rightLayout, 1)
         self.topTabWidget.addTab(dataTab, "Data Preparation")
@@ -987,8 +933,92 @@ class App(QMainWindow):
     """
     Data tab
     """
-    # Time series
-    def loadTS(self):
+    # Single time series functions
+    def addLoadLayout(self, leftLayout):
+        """
+        Add the layout for loading single files to the left layout of the data tab.
+        """
+        # Butttons for file loading
+        loadLayout = QVBoxLayout()
+        loadLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        buttonLayout = QHBoxLayout()
+
+        fileButton = QPushButton('Load single file')
+        bidsButton = QPushButton('Load BIDS dataset')
+        self.fileNameLabel = QLabel('No data loaded yet.')
+
+        self.loadContainer = QGroupBox("Time series extraction")
+        loadContainerLayout = QVBoxLayout()
+
+        # Subject dropdown for pklfiles
+        self.subjectDropdownContainer = QWidget()
+        self.subjectDropdownLayout = QHBoxLayout()
+        self.subjectLabel = QLabel("Available subjects:")
+        self.subjectLabel.setFixedWidth(140)
+        self.subjectDropdown = QComboBox()
+        self.subjectDropdownLayout.addWidget(self.subjectLabel)
+        self.subjectDropdownLayout.addWidget(self.subjectDropdown)
+        self.subjectDropdownContainer.setLayout(self.subjectDropdownLayout)
+        self.subjectDropdownContainer.hide()
+
+        # Parcellation dropdown for nifti files
+        self.parcellationContainer = QWidget()
+        self.parcellationLayout = QHBoxLayout()
+
+        self.parcellationLabel = QLabel("Parcellation:")
+        self.parcellationLabel.setFixedWidth(100)
+
+        self.parcellationOptionsLabel = QLabel("Type:")
+        self.parcellationOptionsLabel.setFixedWidth(40)
+        self.parcellationOptions = QComboBox()
+
+        self.parcellationCalculateButton = QPushButton("Calculate")
+        self.parcellationCalculateButton.clicked.connect(self.extractTimeSeries)
+
+        self.parcellationDropdown = QComboBox()
+        self.parcellationDropdown.addItems(self.atlas_options.keys())
+        self.parcellationLayout.addWidget(self.parcellationLabel, 1)
+        self.parcellationLayout.addWidget(self.parcellationDropdown, 3)
+        self.parcellationLayout.addWidget(self.parcellationOptionsLabel, 1)
+        self.parcellationLayout.addWidget(self.parcellationOptions, 2)
+        self.parcellationLayout.addWidget(self.parcellationCalculateButton, 1)
+        self.parcellationContainer.setLayout(self.parcellationLayout)
+
+        self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
+        self.parcellationContainer.hide()
+
+        # Transpose checkpox
+        self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
+        self.transposeCheckbox.hide()
+
+        # Add widgets to layouts
+        buttonLayout.addWidget(fileButton)
+        buttonLayout.addWidget(bidsButton)
+
+        loadLayout.addLayout(buttonLayout)
+        loadLayout.addWidget(self.fileNameLabel)
+        loadLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        loadContainerLayout.addWidget(self.subjectDropdownContainer)
+        loadContainerLayout.addWidget(self.parcellationContainer)
+        loadContainerLayout.addWidget(self.transposeCheckbox)
+
+        # Connect widgets
+        self.transposeCheckbox.stateChanged.connect(self.onTransposeChecked)
+        fileButton.clicked.connect(self.loadFile)
+        bidsButton.clicked.connect(self.loadBIDS)
+
+        # Add entire layout to the left layout
+        leftLayout.addLayout(loadLayout)
+        self.loadContainer.setLayout(loadContainerLayout)
+        self.loadContainer.hide()
+        leftLayout.addWidget(self.loadContainer)
+
+        return
+
+    def loadFile(self):
+        """
+        Load a single file and display the data in the GUI.
+        """
         # Allowed file types
         fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.nii *.nii.gz *.dtseries.nii *.ptseries.nii);;\
                                             MAT files (*.mat);;\
@@ -1004,10 +1034,14 @@ class App(QMainWindow):
             QMessageBox.warning(self, "Load Error", f"No valid file selected.")
             return
 
+        # Initial setup
         self.data.file_name = file_path.split('/')[-1]
         self.subjectDropdown.clear()
         self.subjectDropdown.hide()
         self.parcellationContainer.hide()
+        self.plotLogo(self.boldFigure)
+        self.boldCanvas.draw()
+        self.bids_layout = None
 
         try:
             self.subjectDropdown.currentIndexChanged.disconnect(self.onSubjectChanged)
@@ -1071,6 +1105,7 @@ class App(QMainWindow):
 
             self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
             self.onAtlasChanged()
+            self.loadContainer.show()
             self.parcellationContainer.show()
             self.transposeCheckbox.hide()
 
@@ -1133,6 +1168,9 @@ class App(QMainWindow):
             self.fileNameLabel.setText(f"Loaded: {self.data.file_name[:20]}...{self.data.file_name[-30:]}")
 
     def onTransposeChecked(self, state):
+        """
+        Transpose checkbox event
+        """
         if self.data.file_data is None:
             return  # No data loaded, so do nothing
 
@@ -1162,50 +1200,16 @@ class App(QMainWindow):
         self.createCarpetPlot()
 
     def onSubjectChanged(self):
+        """
+        Pkl file subject dropdown event
+        """
         self.createCarpetPlot()
         return
 
-    def dataDropdownLayout(self):
-        # Subject dropdown container
-        self.subjectDropdownContainer = QWidget()
-        self.subjectDropdownLayout = QHBoxLayout()
-        self.subjectLabel = QLabel("Available subjects:")
-        self.subjectLabel.setFixedWidth(140)
-        self.subjectDropdown = QComboBox()
-        self.subjectDropdownLayout.addWidget(self.subjectLabel)
-        self.subjectDropdownLayout.addWidget(self.subjectDropdown)
-        self.subjectDropdownContainer.setLayout(self.subjectDropdownLayout)
-        self.subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
-        self.subjectDropdownContainer.hide()
-
-        # Parcellation dropdown container
-        self.parcellationContainer = QWidget()
-        self.parcellationLayout = QHBoxLayout()
-
-        self.parcellationLabel = QLabel("Parcellation:")
-        self.parcellationLabel.setFixedWidth(100)
-
-        self.parcellationOptionsLabel = QLabel("Type:")
-        self.parcellationOptionsLabel.setFixedWidth(40)
-        self.parcellationOptions = QComboBox()
-
-        self.parcellationCalculateButton = QPushButton("Calculate")
-        self.parcellationCalculateButton.clicked.connect(self.extractTimeSeries)
-
-        self.parcellationDropdown = QComboBox()
-        self.parcellationDropdown.addItems(self.atlas_options.keys())
-        self.parcellationLayout.addWidget(self.parcellationLabel, 1)
-        self.parcellationLayout.addWidget(self.parcellationDropdown, 3)
-        self.parcellationLayout.addWidget(self.parcellationOptionsLabel, 1)
-        self.parcellationLayout.addWidget(self.parcellationOptions, 2)
-        self.parcellationLayout.addWidget(self.parcellationCalculateButton, 1)
-        self.parcellationContainer.setLayout(self.parcellationLayout)
-
-        self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
-        self.parcellationContainer.hide()
-
-    # Atlas functions
     def fetchAtlas(self, atlasname, option):
+        """
+        Fetch parcellation with nilearn
+        """
         if atlasname in self.atlas_options.keys():
             if atlasname == "AAL template (SPM 12)":
                 atlas = datasets.fetch_atlas_aal()
@@ -1232,9 +1236,8 @@ class App(QMainWindow):
                 return atlas["maps"], atlas["labels"]
 
             elif atlasname == "Yeo (2011) networks":
-                thickness = str(self.parcellationOptions.currentText())
                 atlas = datasets.fetch_atlas_yeo_2011()
-                return atlas[thickness], None
+                return atlas[option], None
 
             elif atlasname == "Power et al. (2011)":
                 atlas = datasets.fetch_coords_power_2011(legacy_format=False)
@@ -1256,6 +1259,9 @@ class App(QMainWindow):
             return
 
     def onAtlasChanged(self):
+        """
+        Atlas dropdown event
+        """
         self.parcellationOptions.clear()
 
         if self.parcellationDropdown.currentText() in self.atlas_options.keys():
@@ -1269,141 +1275,7 @@ class App(QMainWindow):
 
         return
 
-
-    # Parcellation and cleaning related functions
-    # Single time series and BIDS
-    def extractTimeSeries(self):
-        print("Calculating time series, please wait...")
-        #self.calculateBIDStextbox.setText("Calculating time series, please wait...")
-        QApplication.processEvents()
-
-        # Load BIDS layout in a separate thread
-        self.workerThread = QThread()
-        self.worker = Worker(self.extractTimeSeriesThread, self.data.file_name)
-        self.worker.moveToThread(self.workerThread)
-
-        self.worker.finished.connect(self.workerThread.quit)
-        self.workerThread.started.connect(self.worker.run)
-        self.worker.result.connect(self.handleExtractResult)
-        self.worker.error.connect(self.handleExtractError)
-        self.workerThread.start()
-
-        return
-
-    def extractTimeSeriesThread(self, img_path):
-        mask = None
-        confounds = None
-
-        atlas = self.parcellationDropdown.currentText()
-        option = self.parcellationOptions.currentText()
-
-        self.parcellationCalculateButton.setEnabled(False)
-
-        if "bids_layout" in globals():
-            args = self.collectCleaningArguments()
-            confounds, self.data.sample_mask = load_confounds(img_path, **args)
-            mask = self.mask_name
-
-        if self.parcellationDropdown.currentText() in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
-            rois, networks, self.data.roi_names = self.fetchAtlas(atlas, option)
-            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize=True, mask_img=mask)
-            time_series = masker.fit_transform(img_path, confounds=confounds)
-
-        elif self.parcellationDropdown.currentText() == "Power et al. (2011)":
-            rois = self.fetchAtlas(atlas, option)
-            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize=True, mask_img=mask)
-            time_series = masker.fit_transform(img_path, confounds=confounds)
-
-        elif self.parcellationDropdown.currentText() in ["Glasser MMP", "Schaefer Kong", "Schaefer Tian"]:
-            atlas_map = {
-                "Glasser MMP": "glasser",
-                "Schaefer Kong": "schaefer_kong",
-                "Schaefer Tian": "schaefer_tian"
-            }
-            time_series = data_cifti.parcellate(self.data.file_name, atlas=atlas_map.get(atlas, None))
-
-        else:
-            atlas, labels = self.fetchAtlas(atlas, option)
-            masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize=True, mask_img=mask)
-            time_series = masker.fit_transform(img_path, confounds=confounds)
-
-        # Set data and gui elements
-        self.data.file_data = time_series
-        self.createCarpetPlot()
-        self.parcellationCalculateButton.setEnabled(True)
-
-        return
-
-    def handleExtractResult(self):
-        #self.calculateBIDStextbox.setText(f"Done calculating time series. Shape: {self.data.file_data.shape}\nFile: {self.data.file_name.split('/')[-1]}")
-        print(f"Done calculating time series. Shape: {self.data.file_data.shape} for {self.data.file_name.split('/')[-1]}")
-
-        self.fileNameLabel2.setText(f"Time series data with shape {self.data.file_data.shape} is available for dFC calculation.")
-        self.time_series_textbox.setText(self.data.file_name)
-        self.createCarpetPlot()
-
-        return
-
-    def handleExtractError(self, error):
-        # Handles errors in the worker thread
-        #self.calculateBIDStextbox.setText(f"Error when extracting time series, please try again.")
-        QMessageBox.warning(self, "Error when extracting time series", f"Error when extracting time series: {error}")
-
-        return
-
-
-    # BIDS
-    def loadBIDS(self):
-        # Clear plot and layout
-        self.plotLogo(self.boldFigure)
-        self.parcellationContainer.hide()
-
-        # Open a dialog to select the BIDS directory
-        bids_folder = QFileDialog.getExistingDirectory(self, "Select BIDS Directory")
-
-        # User canceled the selection
-        if not bids_folder:
-            return
-
-        # Initialize a BIDS Layout
-        try:
-            # Initialize BIDS layout
-            self.bidsContainer.hide()
-            self.bids_subjectDropdown.clear()
-            self.bids_subjectDropdown.setEnabled(False)
-            self.fileNameLabel.setText(f"Initializing BIDS layout, please wait...")
-
-            QApplication.processEvents()
-
-            # Load BIDS layout in a separate thread
-            self.workerThread = QThread()
-            self.worker = Worker(self.loadBIDSThread, bids_folder)
-            self.worker.moveToThread(self.workerThread)
-
-            self.worker.finished.connect(self.workerThread.quit)
-            self.workerThread.started.connect(self.worker.run)
-            self.worker.result.connect(lambda: self.onBidsResult(bids_folder))
-            self.worker.error.connect(self.onBidsError)
-            self.workerThread.start()
-
-        except Exception as e:
-            QMessageBox.warning(self, "Load Error", f"Failed to load BIDS data: {str(e)}")
-
-    def loadBIDSThread(self, bids_folder):
-        # Get the layout
-        self.bids_layout = BIDSLayout(bids_folder, derivatives=True)
-
-        # Get subjects and update the dropdown
-        subjects = self.bids_layout.get_subjects()
-        sub_id = [f"sub-{subject}" for subject in subjects]
-        self.subjectDropdown.addItems(sub_id)
-
-        # Update the GUI
-        self.onBIDSLayoutChanged()
-        self.onAtlasChanged()
-
-        return
-
+    # BIDS dataset functions
     def addBidsLayout(self, leftLayout):
         ##########################
         # Main container widget
@@ -1449,6 +1321,7 @@ class App(QMainWindow):
         self.bids_parcellationLabel = QLabel("Parcellation:")
         self.bids_parcellationLabel.setFixedWidth(100)
         self.bids_parcellationDropdown = QComboBox()
+        self.bids_parcellationDropdown.addItems(self.atlas_options.keys())
         self.bids_parcellationOptionsLabel = QLabel("Type:")
         self.bids_parcellationOptionsLabel.setFixedWidth(40)
         self.bids_parcellationOptions = QComboBox()
@@ -1464,7 +1337,7 @@ class App(QMainWindow):
         self.bids_taskDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
         self.bids_sessionDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
         self.bids_runDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
-        self.bids_parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
+        self.bids_parcellationDropdown.currentIndexChanged.connect(self.onBIDSAtlasChanged)
         self.bids_parcellationOptions.currentIndexChanged.connect(self.onBIDSLayoutChanged)
 
         ##############################
@@ -1494,6 +1367,64 @@ class App(QMainWindow):
         # Add the BIDS layout to the main layout
         leftLayout.addWidget(self.bidsContainer)
         self.bidsContainer.hide()
+
+        return
+
+    def loadBIDS(self):
+        # Clear plot and layout
+        self.plotLogo(self.boldFigure)
+        self.boldCanvas.draw()
+        self.parcellationContainer.hide()
+
+        # Open a dialog to select the BIDS directory
+        bids_folder = QFileDialog.getExistingDirectory(self, "Select BIDS Directory")
+
+        # User canceled the selection
+        if not bids_folder:
+            return
+
+        # Initialize a BIDS Layout
+        try:
+            # Reset GUI elements
+            self.currentSliderValue = 0
+            self.slider.setValue(0)
+            self.figure.clear()
+            self.canvas.draw()
+            # Initialize BIDS layout
+            self.bidsContainer.hide()
+            self.bids_subjectDropdown.clear()
+            self.bids_subjectDropdown.setEnabled(False)
+            self.fileNameLabel.setText(f"Initializing BIDS layout, please wait...")
+
+
+            QApplication.processEvents()
+
+            # Load BIDS layout in a separate thread
+            self.workerThread = QThread()
+            self.worker = Worker(self.loadBIDSThread, {'bids_folder': bids_folder})
+            self.worker.moveToThread(self.workerThread)
+
+            self.worker.finished.connect(self.workerThread.quit)
+            self.workerThread.started.connect(self.worker.run)
+            self.worker.result.connect(lambda: self.onBidsResult(bids_folder))
+            self.worker.error.connect(self.onBidsError)
+            self.workerThread.start()
+
+        except Exception as e:
+            QMessageBox.warning(self, "Load Error", f"Failed to load BIDS data: {str(e)}")
+
+    def loadBIDSThread(self, bids_folder):
+        # Get the layout
+        self.bids_layout = BIDSLayout(bids_folder, derivatives=True)
+
+        # Get subjects and update the dropdown
+        subjects = self.bids_layout.get_subjects()
+        sub_id = [f"sub-{subject}" for subject in subjects]
+        self.bids_subjectDropdown.addItems(sub_id)
+
+        # Update the GUI
+        self.onBIDSLayoutChanged()
+        self.onBIDSAtlasChanged()
 
         return
 
@@ -1568,7 +1499,7 @@ class App(QMainWindow):
         """
         try:
             # 1. Get selected subject and sessions
-            selected_subject = self.subjectDropdown.currentText()
+            selected_subject = self.bids_subjectDropdown.currentText()
             subject_id = selected_subject.split('-')[-1]
 
             # 2. Available tasks for the selected subject
@@ -1632,6 +1563,23 @@ class App(QMainWindow):
         self.bids_sessionDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
         self.bids_runDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
         self.bids_parcellationOptions.currentIndexChanged.connect(self.onBIDSLayoutChanged)
+
+        return
+
+    def onBIDSAtlasChanged(self):
+        """
+        Atlas dropdown event
+        """
+        self.bids_parcellationOptions.clear()
+
+        if self.bids_parcellationDropdown.currentText() in self.atlas_options.keys():
+            self.bids_parcellationOptions.addItems(self.atlas_options[self.bids_parcellationDropdown.currentText()])
+
+        elif self.bids_parcellationDropdown.currentText() in self.atlas_options_cifti.keys():
+            self.bids_parcellationOptions.addItems(self.atlas_options_cifti[self.bids_parcellationDropdown.currentText()])
+
+        else:
+            QMessageBox.warning(self, "Error when extracting time series", f"Atlas not found in options list")
 
         return
 
@@ -1859,8 +1807,110 @@ class App(QMainWindow):
 
         return args
 
+    # Parcellation and cleaning functions (all data)
+    def extractTimeSeries(self):
+        print("Calculating time series, please wait...")
+        QApplication.processEvents()
 
-    # Plotting
+        # Load BIDS layout in a separate thread
+        self.workerThread = QThread()
+
+        if self.bids_layout is None:
+            self.worker = Worker(self.extractTimeSeriesThread, {"img_path": self.data.file_name, "atlas": self.parcellationDropdown.currentText(), "option": self.parcellationOptions.currentText()})
+        else:
+            self.worker = Worker(self.extractTimeSeriesThread, {"img_path": self.data.file_name, "atlas": self.bids_parcellationDropdown.currentText(), "option": self.bids_parcellationOptions.currentText()})
+
+        self.worker.moveToThread(self.workerThread)
+        self.worker.finished.connect(self.workerThread.quit)
+        self.workerThread.started.connect(self.worker.run)
+        self.worker.result.connect(self.handleExtractResult)
+        self.worker.error.connect(self.handleExtractError)
+        self.workerThread.start()
+
+        return
+
+    def extractTimeSeriesThread(self, **args):
+        img_path = args["img_path"]
+        atlas = args["atlas"]
+        option = args["option"]
+        mask = None
+        confounds = None
+
+        self.parcellationCalculateButton.setEnabled(False)
+        self.bids_calculateButton.setEnabled(False)
+
+        if self.bids_layout is not None:
+            args = self.collectCleaningArguments()
+            confounds, self.data.sample_mask = load_confounds(img_path, **args)
+            mask = self.mask_name
+
+        if atlas in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
+            rois, networks, self.data.roi_names = self.fetchAtlas(atlas, option)
+            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize=True, mask_img=mask)
+            time_series = masker.fit_transform(img_path, confounds=confounds)
+
+        elif atlas == "Power et al. (2011)":
+            rois = self.fetchAtlas(atlas, option)
+            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize=True, mask_img=mask)
+            time_series = masker.fit_transform(img_path, confounds=confounds)
+
+        elif atlas in ["Glasser MMP", "Schaefer Kong", "Schaefer Tian"]:
+            atlas_map = {
+                "Glasser MMP": "glasser",
+                "Schaefer Kong": "schaefer_kong",
+                "Schaefer Tian": "schaefer_tian"
+            }
+            time_series = data_cifti.parcellate(self.data.file_name, atlas=atlas_map.get(atlas, None))
+
+        else:
+            atlas, labels = self.fetchAtlas(atlas, option)
+            masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize=True, mask_img=mask)
+            time_series = masker.fit_transform(img_path, confounds=confounds)
+
+        self.data.file_data = time_series
+
+        return
+
+    def handleExtractResult(self):
+        #self.calculateBIDStextbox.setText(f"Done calculating time series. Shape: {self.data.file_data.shape}\nFile: {self.data.file_name.split('/')[-1]}")
+        print(f"Done calculating time series. Shape: {self.data.file_data.shape} for {self.data.file_name.split('/')[-1]}")
+
+        self.fileNameLabel2.setText(f"Time series data with shape {self.data.file_data.shape} is available for dFC calculation.")
+        self.time_series_textbox.setText(self.data.file_name)
+        self.createCarpetPlot()
+
+        self.parcellationCalculateButton.setEnabled(True)
+        self.bids_calculateButton.setEnabled(True)
+
+        return
+
+    def handleExtractError(self, error):
+        # Handles errors in the worker thread
+        #self.calculateBIDStextbox.setText(f"Error when extracting time series, please try again.")
+        QMessageBox.warning(self, "Error when extracting time series", f"Error when extracting time series: {error}")
+
+        self.parcellationCalculateButton.setEnabled(True)
+        self.bids_calculateButton.setEnabled(True)
+        return
+
+    # Plotting functions
+    def addDataPlotLayout(self, rightLayout):
+        plotTabWidget = QTabWidget()
+
+        plotTab = QWidget()
+        plotTab.setLayout(QVBoxLayout())
+        self.boldFigure = Figure()
+        self.boldCanvas = FigureCanvas(self.boldFigure)
+        self.boldFigure.patch.set_facecolor('#E0E0E0')
+        plotTab.layout().addWidget(self.boldCanvas)
+        plotTabWidget.addTab(plotTab, "Carpet Plot")
+
+        # Draw default plot (logo) on the canvas
+        self.plotLogo(self.boldFigure)
+        self.boldCanvas.draw()
+
+        rightLayout.addWidget(plotTabWidget)
+
     def createCarpetPlot(self):
         # Clear the current plot
         self.boldFigure.clear()
@@ -2190,7 +2240,7 @@ class App(QMainWindow):
         self.calculatingLabel.setText(f"Calculating {self.methodComboBox.currentText()}, please wait...")
         self.calculateButton.setEnabled(False)
 
-    def calculateConnectivity(self, parameters):
+    def calculateConnectivity(self, **parameters):
         keep_in_memory = self.keepInMemoryCheckbox.isChecked()
 
         # Check if data already exists
@@ -2975,7 +3025,7 @@ class App(QMainWindow):
     def onAddGraphOption(self):
         # Start worker thread for graph calculations
         self.workerThread = QThread()
-        self.worker = Worker(self.calculateGraph, None)
+        self.worker = Worker(self.calculateGraph, {})
         self.worker.moveToThread(self.workerThread)
 
         self.worker.finished.connect(self.workerThread.quit)
