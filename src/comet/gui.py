@@ -274,9 +274,10 @@ class Data:
     Data class which stores all relevant data for the GUI.
     '''
     # File variables
+    file_path:     str        = field(default=None)         # data file path
     file_name:     str        = field(default=None)         # data file name
-    file_data:     np.ndarray = field(default=None)         # input time series data
-    sample_mask:   np.ndarray = field(default=None)         # mask for time series data
+    file_data:     np.ndarray = field(default=None)         # time series data
+    sample_mask:   np.ndarray = field(default=None)         # time series mask
 
     # DFC variables
     dfc_instance:  Any        = field(default=None)         # instance of the dFC class
@@ -422,6 +423,7 @@ class App(QMainWindow):
         leftLayout = QVBoxLayout()
         self.addLoadLayout(leftLayout)
         self.addBidsLayout(leftLayout)
+        leftLayout.addStretch()
 
         # Right section
         rightLayout = QVBoxLayout()
@@ -940,17 +942,15 @@ class App(QMainWindow):
         """
         # Butttons for file loading
         loadLayout = QVBoxLayout()
-        loadLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
         buttonLayout = QHBoxLayout()
 
         fileButton = QPushButton('Load single file')
         bidsButton = QPushButton('Load BIDS dataset')
         self.fileNameLabel = QLabel('No data loaded yet.')
 
-        self.loadContainer = QGroupBox("Time series extraction")
-        loadContainerLayout = QVBoxLayout()
 
-        # Subject dropdown for pklfiles
+
+        # Subject dropdown for pkl files
         self.subjectDropdownContainer = QWidget()
         self.subjectDropdownLayout = QHBoxLayout()
         self.subjectLabel = QLabel("Available subjects:")
@@ -997,7 +997,11 @@ class App(QMainWindow):
 
         loadLayout.addLayout(buttonLayout)
         loadLayout.addWidget(self.fileNameLabel)
-        loadLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+
+        # Container for parcellation
+        self.loadContainer = QGroupBox("Time series extraction")
+        loadContainerLayout = QVBoxLayout()
+
         loadContainerLayout.addWidget(self.subjectDropdownContainer)
         loadContainerLayout.addWidget(self.parcellationContainer)
         loadContainerLayout.addWidget(self.transposeCheckbox)
@@ -1007,10 +1011,14 @@ class App(QMainWindow):
         fileButton.clicked.connect(self.loadFile)
         bidsButton.clicked.connect(self.loadBIDS)
 
-        # Add entire layout to the left layout
+        # Add file loading layout to the left layout
         leftLayout.addLayout(loadLayout)
+        leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+
+        # Add the parcellation container to the left layout
         self.loadContainer.setLayout(loadContainerLayout)
         self.loadContainer.hide()
+
         leftLayout.addWidget(self.loadContainer)
 
         return
@@ -1035,17 +1043,18 @@ class App(QMainWindow):
             return
 
         # Initial setup
+        self.data.file_path = file_path
         self.data.file_name = file_path.split('/')[-1]
-        self.subjectDropdown.clear()
-        self.subjectDropdown.hide()
         self.parcellationContainer.hide()
         self.plotLogo(self.boldFigure)
+        self.loadContainer.hide()
         self.boldCanvas.draw()
         self.bids_layout = None
 
         try:
             self.subjectDropdown.currentIndexChanged.disconnect(self.onSubjectChanged)
             self.subjectDropdown.clear()
+            self.subjectDropdownContainer.hide()
 
         except:
             pass
@@ -1053,22 +1062,28 @@ class App(QMainWindow):
         if file_path.endswith('.mat'):
             data_dict = loadmat(file_path)
             self.data.file_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
+            self.createCarpetPlot()
 
         elif file_path.endswith('.txt'):
             self.data.file_data = np.loadtxt(file_path)
+            self.createCarpetPlot()
 
         elif file_path.endswith('.npy'):
             self.data.file_data = np.load(file_path)
+            self.createCarpetPlot()
 
         elif file_path.endswith('.pkl'):
             with open(file_path, 'rb') as f:
                 self.data.file_data = pickle.load(f)
 
                 if type(self.data.file_data) == pydfc.time_series.TIME_SERIES:
-                    print("Loaded TIME_SERIES object from .pkl")
+                    print("Loaded TIME_SERIES object from .pkl file.")
                     self.subjectDropdown.addItems(self.data.file_data.data_dict.keys())
                     self.subjectDropdownContainer.show()
                     self.subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
+                    self.loadContainer.show()
+                    self.transposeCheckbox.show()
+                    self.createCarpetPlot()
 
         elif file_path.endswith(".tsv"):
             data = pd.read_csv(file_path, sep='\t', header=None, na_values='n/a')
@@ -1091,6 +1106,7 @@ class App(QMainWindow):
 
             self.data.file_data = data.to_numpy()
             self.data.roi_names = np.array(rois, dtype=object)
+            self.createCarpetPlot()
 
         elif file_path.endswith(".nii") or file_path.endswith(".nii.gz"):
             self.parcellationDropdown.currentIndexChanged.disconnect(self.onAtlasChanged)
@@ -1352,7 +1368,6 @@ class App(QMainWindow):
         self.bidsLayout.addWidget(self.bids_fileContainer)
         self.bidsLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
         self.bidsLayout.addWidget(bids_confoundsContainer)
-        self.bidsLayout.addStretch()
 
         ####################
         # Calculation button
@@ -1374,7 +1389,7 @@ class App(QMainWindow):
         # Clear plot and layout
         self.plotLogo(self.boldFigure)
         self.boldCanvas.draw()
-        self.parcellationContainer.hide()
+        self.loadContainer.hide()
 
         # Open a dialog to select the BIDS directory
         bids_folder = QFileDialog.getExistingDirectory(self, "Select BIDS Directory")
@@ -1816,9 +1831,9 @@ class App(QMainWindow):
         self.workerThread = QThread()
 
         if self.bids_layout is None:
-            self.worker = Worker(self.extractTimeSeriesThread, {"img_path": self.data.file_name, "atlas": self.parcellationDropdown.currentText(), "option": self.parcellationOptions.currentText()})
+            self.worker = Worker(self.extractTimeSeriesThread, {"img_path": self.data.file_path, "atlas": self.parcellationDropdown.currentText(), "option": self.parcellationOptions.currentText()})
         else:
-            self.worker = Worker(self.extractTimeSeriesThread, {"img_path": self.data.file_name, "atlas": self.bids_parcellationDropdown.currentText(), "option": self.bids_parcellationOptions.currentText()})
+            self.worker = Worker(self.extractTimeSeriesThread, {"img_path": self.data.file_path, "atlas": self.bids_parcellationDropdown.currentText(), "option": self.bids_parcellationOptions.currentText()})
 
         self.worker.moveToThread(self.workerThread)
         self.worker.finished.connect(self.workerThread.quit)
@@ -1860,7 +1875,7 @@ class App(QMainWindow):
                 "Schaefer Kong": "schaefer_kong",
                 "Schaefer Tian": "schaefer_tian"
             }
-            time_series = data_cifti.parcellate(self.data.file_name, atlas=atlas_map.get(atlas, None))
+            time_series = data_cifti.parcellate(img_path, atlas=atlas_map.get(atlas, None))
 
         else:
             atlas, labels = self.fetchAtlas(atlas, option)
