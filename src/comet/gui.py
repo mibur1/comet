@@ -258,6 +258,89 @@ class ParameterOptions:
         "Schaefer Tian":            ["254"]
     }
 
+    INFO_OPTIONS = {
+        "windowsize":               "Size of the window used by the method. Should typically be an uneven number to have a center.",
+        "shape":                    "Shape of the windowing function.",
+        "std":                      "Width (sigma) of the window.",
+        "diagonal":                 "Values for the main diagonal of the connectivity matrix.",
+        "fisher_z":                 "Fisher z-transform the connectivity values.",
+        "num_cores":                "Parallelize on multiple cores (highly recommended for DCC and FLS).",
+        "standardizeData":          "z-standardize the time series data.",
+        "mu":                       "Weighting parameter for FLS. Smaller values will produce more erratic changes in connectivity estimate.",
+        "flip_eigenvectors":        "Flips the sign of the eigenvectors.",
+        "dist":                     "Distance function",
+        "TR":                       "Repetition time of the data (in seconds)",
+        "fmin":                     "Minimum wavelet frequency",
+        "fmax":                     "Maximum wavelet frequency",
+        "n_scales":                 "Number of wavelet scales",
+        "drop_scales":              "Drop the n largest and smallest scales to account for the cone of influence",
+        "drop_timepoints":          "Drop n first and last time points from the time series to account for the cone of influence",
+        "method":                   "Specific implementation of the method",
+        "params":                   "Various parameters",
+        "coi_correction":           "Cone of influence correction",
+        "clstr_distance":           "Distance metric",
+        "num_bins":                 "Number of bins for discretization",
+        "method":                   "Specific type of method",
+        "n_overlap":                "Window overlap",
+        "tapered_window":           "Tapered window",
+        "n_states":                 "Number of states",
+        "n_subj_clusters":          "Number of subjects",
+        "normalization":            "Normalization",
+        "subject":                  "Subject",
+        "Base measure":             "Base measure for the clustering",
+        "Iterations":               "Number of iterations",
+        "Sliding window":           "Sliding window method",
+        "State ratio":              "Observation/state ratio for the DHMM",
+        "vlim":                     "Limit for color axis (edge time series)"
+    }
+
+    CONFOUND_OPTIONS = {
+            "strategy": ["motion", "wm_csf", "compcor", "global_signal", "high_pass", "ica_aroma", "scrub", "demean"],
+            "motion": ["full", "basic", "power2", "derivatives"],
+            "wm_csf": ["basic", "power2", "derivatives", "full"],
+            "compcor": ["anat_combined", "anat_separated", "temporal", "temporal_anat_combined", "temporal_anat_separated"],
+            "n_compcor": ["all"],
+            "global_signal": ["basic", "power2", "derivatives", "full"],
+            "ica_aroma": ["full", "basic"],
+            "scrub": 5,
+            "fd_threshold": 0.5,
+            "std_dvars_threshold": 1.5,
+        }
+
+    CLEANING_INFO = {
+        "motion": "Type of confounds extracted from head motion estimates\n\
+            - basic: translation/rotation (6 parameters)\n\
+            - power2: translation/rotation + quadratic terms (12 parameters)\n\
+            - derivatives: translation/rotation + derivatives (12 parameters)\n\
+            - full: translation/rotation + derivatives + quadratic terms + power2d derivatives (24 parameters)",
+        "wm_csf": "Type of confounds extracted from masks of white matter and cerebrospinal fluids\n\
+            - basic: the averages in each mask (2 parameters)\n\
+            - power2: averages and quadratic terms (4 parameters)\n\
+            - derivatives: averages and derivatives (4 parameters)\n\
+            - full: averages + derivatives + quadratic terms + power2d derivatives (8 parameters)",
+        "compcor": "Type of confounds extracted from a component based noise correction method\n\
+            - anat_combined: noise components calculated using a white matter and CSF combined anatomical mask\n\
+            - anat_separated: noise components calculated using white matter mask and CSF mask compcor separately; two sets of scores are concatenated\n\
+            - temporal: noise components calculated using temporal compcor\n\
+            - temporal_anat_combined: components of temporal and anat_combined\n\
+            - temporal_anat_separated:  components of temporal and anat_separated",
+        "n_compcor": "The number of noise components to be extracted.\n\
+            - acompcor_combined=False, and/or compcor=full: the number of components per mask.\n\
+            - all: all components (50% variance explained by fMRIPrep defaults)",
+        "global_signal": "Type of confounds xtracted from the global signal\n\
+            - basic: just the global signal (1 parameter)\n\
+            - power2: global signal and quadratic term (2 parameters)\n\
+            - derivatives: global signal and derivative (2 parameters)\n\
+            - full: global signal + derivatives + quadratic terms + power2d derivatives (4 parameters)",
+        "ica_aroma": "ICA-AROMA denoising\n\
+            - full: use fMRIPrep output ~desc-smoothAROMAnonaggr_bold.nii.gz\n\
+            - basic use noise independent components only.",
+        "scrub": "Lenght of segment to remove around time frames with excessive motion.",
+        "fd_threshold": "Framewise displacement threshold for scrub in mm.",
+        "std_dvars_threshold": "Standardized DVARS threshold for scrub.\n\
+            DVARS is the root mean squared intensity difference of volume N to volume N+1"
+    }
+
     def __init__(self):
         self.param_names = self.PARAM_NAMES
         self.reverse_param_names = self.REVERSE_PARAM_NAMES
@@ -267,6 +350,9 @@ class ParameterOptions:
         self.reverse_graphOptions = self.REVERSE_GRAPH_OPTIONS
         self.atlas_options = self.ATLAS_OPTIONS
         self.atlas_options_cifti = self.ATLAS_OPTIONS_CIFTI
+        self.info_options = self.INFO_OPTIONS
+        self.confound_options = self.CONFOUND_OPTIONS
+        self.cleaning_info = self.CLEANING_INFO
 
 @dataclass
 class Data:
@@ -393,6 +479,9 @@ class App(QMainWindow):
         self.reverse_graphOptions = parameterNames.reverse_graphOptions
         self.atlas_options = parameterNames.atlas_options
         self.atlas_options_cifti = parameterNames.atlas_options_cifti
+        self.info_options = parameterNames.info_options
+        self.confound_options = parameterNames.confound_options
+        self.cleaning_info = parameterNames.cleaning_info
 
         # Get all the dFC methods and names
         # TODO: Make better implementation
@@ -544,7 +633,7 @@ class App(QMainWindow):
         self.parcellationOptions = QComboBox()
 
         self.parcellationCalculateButton = QPushButton("Calculate")
-        self.parcellationCalculateButton.clicked.connect(self.extractTimeSeries)
+        self.parcellationCalculateButton.clicked.connect(self.calculateTimeSeries)
 
         self.parcellationDropdown = QComboBox()
         self.parcellationDropdown.addItems(self.atlas_options.keys())
@@ -674,7 +763,7 @@ class App(QMainWindow):
         ####################
         # Calculation button
         self.bids_calculateButton = QPushButton('Extract time series')
-        self.bids_calculateButton.clicked.connect(self.extractTimeSeries)
+        self.bids_calculateButton.clicked.connect(self.calculateTimeSeries)
         self.bidsLayout.addWidget(self.bids_calculateButton)
 
         # Textbox for calculation status
@@ -710,8 +799,9 @@ class App(QMainWindow):
         leftLayout.addWidget(self.fileNameLabel2)
         leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
-        # Method label and combobox
-        self.methodLabel = QLabel("Dynamic functional connectivity method:")
+        # Connectivity method container
+        self.connectivityContainer = QGroupBox("Connectivity method")
+        connectivityContainerLayout = QVBoxLayout()
 
         # Checkboxes for method types
         self.continuousCheckBox = QCheckBox("Continuous")
@@ -725,11 +815,11 @@ class App(QMainWindow):
         checkboxLayout.setSpacing(10)
         checkboxLayout.addStretch()
 
+        connectivityContainerLayout.addLayout(checkboxLayout)
+
         # Connectivity methods
         self.methodComboBox = QComboBox()
-        leftLayout.addWidget(self.methodLabel)
-        leftLayout.addLayout(checkboxLayout)
-        leftLayout.addWidget(self.methodComboBox)
+        connectivityContainerLayout.addWidget(self.methodComboBox)
 
         # Create a layout for dynamic textboxes
         self.parameterLayout = QVBoxLayout()
@@ -740,7 +830,7 @@ class App(QMainWindow):
         self.parameterContainer.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
         # Add the container widget to the left layout directly below the combobox
-        leftLayout.addWidget(self.parameterContainer)
+        connectivityContainerLayout.addWidget(self.parameterContainer)
 
         # Initial population of the combobox, this does the entire initialization
         self.updateMethodComboBox()
@@ -749,6 +839,10 @@ class App(QMainWindow):
         self.time_series_textbox = QLineEdit()
         self.time_series_textbox.setReadOnly(True) # read only as based on the loaded file
 
+        # Add the connectiity container to the layout
+        self.connectivityContainer.setLayout(connectivityContainerLayout)
+        leftLayout.addWidget(self.connectivityContainer)
+
         # Add a stretch after the parameter layout container
         leftLayout.addStretch()
 
@@ -756,16 +850,16 @@ class App(QMainWindow):
         buttonsLayout = QHBoxLayout()
 
         # Calculate connectivity button
-        self.calculateButton = QPushButton('Calculate Connectivity')
-        self.calculateButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        buttonsLayout.addWidget(self.calculateButton, 2)  # 2/3 of the space
-        self.calculateButton.clicked.connect(self.onCalculateButton)
+        self.calculateConnectivityButton = QPushButton('Calculate Connectivity')
+        self.calculateConnectivityButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        buttonsLayout.addWidget(self.calculateConnectivityButton, 2)  # 2/3 of the space
+        self.calculateConnectivityButton.clicked.connect(self.calculateConnectivity)
 
         # Create the "Save" button
-        self.saveButton = QPushButton('Save')
-        self.saveButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        buttonsLayout.addWidget(self.saveButton, 1)  # 1/3 of the space
-        self.saveButton.clicked.connect(self.saveConnectivityFile)
+        self.saveConnectivityButton = QPushButton('Save')
+        self.saveConnectivityButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        buttonsLayout.addWidget(self.saveConnectivityButton, 1)  # 1/3 of the space
+        self.saveConnectivityButton.clicked.connect(self.saveConnectivity)
 
         # Add the buttons layout to the left layout
         leftLayout.addLayout(buttonsLayout)
@@ -797,10 +891,10 @@ class App(QMainWindow):
         imshowLayout = QVBoxLayout()
         imshowTab.setLayout(imshowLayout)
 
-        self.figure = Figure()
-        self.canvas = FigureCanvas(self.figure)
-        self.figure.patch.set_facecolor('#E0E0E0')
-        imshowLayout.addWidget(self.canvas)
+        self.connectivityFigure = Figure()
+        self.connectivityCanvas = FigureCanvas(self.connectivityFigure)
+        self.connectivityFigure.patch.set_facecolor('#E0E0E0')
+        imshowLayout.addWidget(self.connectivityCanvas)
         self.tabWidget.addTab(imshowTab, "Connectivity")
 
         # Tab 2: Time series/course plot
@@ -896,12 +990,12 @@ class App(QMainWindow):
         # Calculate connectivity and save button
         buttonsLayout = QHBoxLayout()
 
-        self.loadGraphFileButton = QPushButton('Load File')
+        self.loadGraphFileButton = QPushButton('Load adjacency matrix')
         self.loadGraphFileButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         buttonsLayout.addWidget(self.loadGraphFileButton, 1)
         self.loadGraphFileButton.clicked.connect(self.loadGraphFile)
 
-        self.takeCurrentButton = QPushButton('From current dFC')
+        self.takeCurrentButton = QPushButton('Use current dFC estimate')
         self.takeCurrentButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         buttonsLayout.addWidget(self.takeCurrentButton, 1)
         self.takeCurrentButton.clicked.connect(self.takeCurrentData)
@@ -1246,14 +1340,11 @@ class App(QMainWindow):
         # New data, reset slider and plot
         self.currentSliderValue = 0
         self.slider.setValue(0)
-        self.figure.clear()
-        self.canvas.draw()
+        self.connectivityFigure.clear()
+        self.connectivityCanvas.draw()
 
         # Set filenames depending on file type
         if file_path.endswith('.pkl'):
-            self.fileNameLabel.setText(f"Loaded TIME_SERIES object")
-            shape = self.data.file_data.data_dict[list(self.data.file_data.data_dict.keys())[0]]["data"].shape
-            self.fileNameLabel2.setText(f"Loaded and parcellated {self.data.file_name} with shape {shape}")
             self.time_series_textbox.setText(self.data.file_name)
 
             self.continuousCheckBox.setEnabled(False)
@@ -1279,23 +1370,29 @@ class App(QMainWindow):
             self.staticCheckBox.setEnabled(True)
             self.staticCheckBox.setChecked(True)
 
-            if not (file_path.endswith('.nii') or file_path.endswith('.nii.gz')):
-                self.fileNameLabel.setText(f"Loaded {self.data.file_name} with shape {self.data.file_data.shape}")
-                self.fileNameLabel2.setText(f"Loaded {self.data.file_name} with shape {self.data.file_data.shape}")
-
-
         # Reset and enable the GUI elements
         self.bidsContainer.hide()
 
         self.methodComboBox.setEnabled(True)
         self.methodComboBox.setEnabled(True)
-        self.calculateButton.setEnabled(True)
+        self.calculateConnectivityButton.setEnabled(True)
         self.clearMemoryButton.setEnabled(True)
         self.keepInMemoryCheckbox.setEnabled(True)
 
         # Update file name label
-        if len(self.data.file_name) > 50:
-            self.fileNameLabel.setText(f"Loaded: {self.data.file_name[:20]}...{self.data.file_name[-30:]}")
+        fname = self.data.file_name[:20] + self.data.file_name[-30:] if len(self.data.file_name) > 50 else self.data.file_name
+
+        if file_path.endswith('.nii') or file_path.endswith('.nii.gz'):
+            self.fileNameLabel.setText(f"Loaded {fname}")
+
+        elif file_path.endswith(".pkl"):
+            fshape = self.data.file_data.data_dict[list(self.data.file_data.data_dict.keys())[0]]["data"].shape
+            self.fileNameLabel.setText(f"Loaded TIME_SERIES object from .pkl file.")
+            self.fileNameLabel2.setText(f"Loaded data from .pkl file with shape {fshape}")
+        else:
+            fshape = self.data.file_data.shape
+            self.fileNameLabel.setText(f"Loaded {fname} with shape {fshape}")
+            self.fileNameLabel2.setText(f"Loaded {fname} with shape {fshape}")
 
     def onTransposeChecked(self, state):
         """
@@ -1424,8 +1521,8 @@ class App(QMainWindow):
             # Reset GUI elements
             self.currentSliderValue = 0
             self.slider.setValue(0)
-            self.figure.clear()
-            self.canvas.draw()
+            self.connectivityFigure.clear()
+            self.connectivityCanvas.draw()
 
             # Initialize BIDS layout
             self.bidsContainer.hide()
@@ -1621,55 +1718,7 @@ class App(QMainWindow):
     def loadConfounds(self):
         confoundsWidget = QWidget()
         layout = QVBoxLayout(confoundsWidget)
-
-        self.confound_options = {
-            "strategy": ["motion", "wm_csf", "compcor", "global_signal", "high_pass", "ica_aroma", "scrub", "demean"],
-            "motion": ["full", "basic", "power2", "derivatives"],
-            "wm_csf": ["basic", "power2", "derivatives", "full"],
-            "compcor": ["anat_combined", "anat_separated", "temporal", "temporal_anat_combined", "temporal_anat_separated"],
-            "n_compcor": ["all"],
-            "global_signal": ["basic", "power2", "derivatives", "full"],
-            "ica_aroma": ["full", "basic"],
-            "scrub": 5,
-            "fd_threshold": 0.5,
-            "std_dvars_threshold": 1.5,
-        }
-
-        cleaning_info = {
-            "motion": "Type of confounds extracted from head motion estimates\n\
-                - basic: translation/rotation (6 parameters)\n\
-                - power2: translation/rotation + quadratic terms (12 parameters)\n\
-                - derivatives: translation/rotation + derivatives (12 parameters)\n\
-                - full: translation/rotation + derivatives + quadratic terms + power2d derivatives (24 parameters)",
-            "wm_csf": "Type of confounds extracted from masks of white matter and cerebrospinal fluids\n\
-                - basic: the averages in each mask (2 parameters)\n\
-                - power2: averages and quadratic terms (4 parameters)\n\
-                - derivatives: averages and derivatives (4 parameters)\n\
-                - full: averages + derivatives + quadratic terms + power2d derivatives (8 parameters)",
-            "compcor": "Type of confounds extracted from a component based noise correction method\n\
-                - anat_combined: noise components calculated using a white matter and CSF combined anatomical mask\n\
-                - anat_separated: noise components calculated using white matter mask and CSF mask compcor separately; two sets of scores are concatenated\n\
-                - temporal: noise components calculated using temporal compcor\n\
-                - temporal_anat_combined: components of temporal and anat_combined\n\
-                - temporal_anat_separated:  components of temporal and anat_separated",
-            "n_compcor": "The number of noise components to be extracted.\n\
-                - acompcor_combined=False, and/or compcor=full: the number of components per mask.\n\
-                - all: all components (50% variance explained by fMRIPrep defaults)",
-            "global_signal": "Type of confounds xtracted from the global signal\n\
-                - basic: just the global signal (1 parameter)\n\
-                - power2: global signal and quadratic term (2 parameters)\n\
-                - derivatives: global signal and derivative (2 parameters)\n\
-                - full: global signal + derivatives + quadratic terms + power2d derivatives (4 parameters)",
-            "ica_aroma": "ICA-AROMA denoising\n\
-                - full: use fMRIPrep output ~desc-smoothAROMAnonaggr_bold.nii.gz\n\
-                - basic use noise independent components only.",
-            "scrub": "Lenght of segment to remove around time frames with excessive motion.",
-            "fd_threshold": "Framewise displacement threshold for scrub in mm.",
-            "std_dvars_threshold": "Standardized DVARS threshold for scrub.\n\
-             DVARS is the root mean squared intensity difference of volume N to volume N+1"
-        }
-
-        self.layouts = {}  # Dictionary to hold the layouts for each strategy
+        self.layouts = {}  # Dict to hold the layouts for each strategy
 
         for key, param in self.confound_options.items():
             h_layout = QHBoxLayout()
@@ -1679,7 +1728,7 @@ class App(QMainWindow):
 
             # Info button content
             if key != "strategy":
-                info_text = cleaning_info[key]
+                info_text = self.cleaning_info[key]
                 info_button = InfoButton(info_text)
 
             # Special cases
@@ -1842,8 +1891,8 @@ class App(QMainWindow):
 
         return args
 
-    # Parcellation and cleaning functions (all data)
-    def extractTimeSeries(self):
+    # Calculations (parcellation and cleaning for all data)
+    def calculateTimeSeries(self):
         print("Calculating time series, please wait...")
         QApplication.processEvents()
 
@@ -1851,20 +1900,20 @@ class App(QMainWindow):
         self.workerThread = QThread()
 
         if self.bids_layout is None:
-            self.worker = Worker(self.extractTimeSeriesThread, {"img_path": self.data.file_path, "atlas": self.parcellationDropdown.currentText(), "option": self.parcellationOptions.currentText()})
+            self.worker = Worker(self.calculateTimeSeriesThread, {"img_path": self.data.file_path, "atlas": self.parcellationDropdown.currentText(), "option": self.parcellationOptions.currentText()})
         else:
-            self.worker = Worker(self.extractTimeSeriesThread, {"img_path": self.data.file_path, "atlas": self.bids_parcellationDropdown.currentText(), "option": self.bids_parcellationOptions.currentText()})
+            self.worker = Worker(self.calculateTimeSeriesThread, {"img_path": self.data.file_path, "atlas": self.bids_parcellationDropdown.currentText(), "option": self.bids_parcellationOptions.currentText()})
 
         self.worker.moveToThread(self.workerThread)
         self.worker.finished.connect(self.workerThread.quit)
         self.workerThread.started.connect(self.worker.run)
-        self.worker.result.connect(self.handleExtractResult)
-        self.worker.error.connect(self.handleExtractError)
+        self.worker.result.connect(self.handleTimeSeriesResult)
+        self.worker.error.connect(self.handleTimeSeriesError)
         self.workerThread.start()
 
         return
 
-    def extractTimeSeriesThread(self, **params):
+    def calculateTimeSeriesThread(self, **params):
         img_path = params["img_path"]
         atlas = params["atlas"]
         option = params["option"]
@@ -1906,7 +1955,7 @@ class App(QMainWindow):
 
         return
 
-    def handleExtractResult(self):
+    def handleTimeSeriesResult(self):
         print(f"Done calculating time series. Shape: {self.data.file_data.shape} for {self.data.file_name.split('/')[-1]}")
 
         self.fileNameLabel2.setText(f"Time series data with shape {self.data.file_data.shape} is available for dFC calculation.")
@@ -1918,7 +1967,7 @@ class App(QMainWindow):
 
         return
 
-    def handleExtractError(self, error):
+    def handleTimeSeriesError(self, error):
         # Handles errors in the worker thread
         QMessageBox.warning(self, "Error when extracting time series", f"Error when extracting time series: {error}")
 
@@ -1926,7 +1975,7 @@ class App(QMainWindow):
         self.bids_calculateButton.setEnabled(True)
         return
 
-    # Plotting functions
+    # Plotting
     def createCarpetPlot(self):
         # Clear the current plot
         self.boldFigure.clear()
@@ -1984,7 +2033,7 @@ class App(QMainWindow):
     """
     Connectivity tab
     """
-    def saveConnectivityFile(self):
+    def saveConnectivity(self):
         if self.data.dfc_data is None:
             QMessageBox.warning(self, "Output Error", "No dFC data available to save.")
             return
@@ -2074,9 +2123,9 @@ class App(QMainWindow):
         # If connectivity data does not exist we reset the figure and slider to prepare for a new calculation
         # This also indicates to the user that this data was not yet calculated/saved
         else:
-            self.figure.clear()
-            self.plotLogo(self.figure)
-            self.canvas.draw()
+            self.connectivityFigure.clear()
+            self.plotLogo(self.connectivityFigure)
+            self.connectivityCanvas.draw()
             self.distributionFigure.clear()
             self.distributionCanvas.draw()
             self.timeSeriesFigure.clear()
@@ -2087,7 +2136,7 @@ class App(QMainWindow):
             self.slider.setValue(self.slider.value())
             self.slider.hide()
 
-        self.update() # Update UI
+        self.update()
 
     def updateMethodComboBox(self):
 
@@ -2154,86 +2203,11 @@ class App(QMainWindow):
         if filtered_and_ordered_classes:
             self.onMethodCombobox(filtered_and_ordered_classes[0])
 
-    def getInfoText(self, param, dfc_method):
-        if param == "windowsize":
-            text = "Size of the window used by the method. Should typically be an uneven number to have a center."
-        elif param == "shape":
-            text = "Shape of the windowing function."
-        elif param == "std":
-            text = "Width (sigma) of the window."
-        elif param == "diagonal":
-            text = "Values for the main diagonal of the connectivity matrix."
-        elif param == "fisher_z":
-            text = "Fisher z-transform the connectivity values."
-        elif param == "num_cores":
-            text = "Parallelize on multiple cores (highly recommended for DCC and FLS)."
-        elif param == "standardizeData":
-            text = "z-standardize the time series data."
-        elif param == "mu":
-            text = "Weighting parameter for FLS. Smaller values will produce more erratic changes in connectivity estimate."
-        elif param == "flip_eigenvectors":
-            text = "Flips the sign of the eigenvectors."
-        elif param == "dist":
-            text = "Distance function"
-        elif param == "TR":
-            text = "Repetition time of the data (in seconds)"
-        elif param == "fmin":
-            text = "Minimum wavelet frequency"
-        elif param == "fmax":
-            text = "Maximum wavelet frequency"
-        elif param == "n_scales":
-            text = "Number of wavelet scales"
-        elif param == "drop_scales":
-            text = "Drop the n largest and smalles scales to account for the cone of influence"
-        elif param == "drop_timepoints":
-            text = "Drop n first and last time points from the time series to account for the cone of influence"
-        elif param == "method" and dfc_method == "WaveletCoherence":
-            text = "Specific implementation of the method"
-        elif param == "method" and dfc_method == "PhaseSynchrony":
-            text = "Specific implementation of the method"
-        elif param == "params":
-            text = "Various parameters"
-        elif param == "coi_correction":
-            text = "Cone of influence correction"
-        elif param == "clstr_distance":
-            text = "Distance metric"
-        elif param == "num_bins":
-            text = "Number of bins for discretization"
-        elif param == "method":
-            text = "Specific type of method"
-        elif param == "n_overlap":
-            text = "Window overlap"
-        elif param == "tapered_window":
-            text = "Tapered window"
-        elif param == "n_states":
-            text = "Number of states"
-        elif param == "n_subj_clusters":
-            text = "Number of subjects"
-        elif param == "normalization":
-            text = "Normalization"
-        elif param == "clstr_distance":
-            text = "Distance measure"
-        elif param == "subject":
-            text = "Subject"
-        elif param == "Base measure":
-            text = "Base measure for the clustering"
-        elif param == "Iterations":
-            text = "Number of iterations"
-        elif param == "Sliding window":
-            text = "Sliding window method"
-        elif param == "State ratio":
-            text = "Observation/state ratio for the DHMM"
-        elif param == "vlim":
-            text = "Limit for color axis (edge time series)"
-        else:
-            text = f"TODO"
-        return text
-
     # Calculations
-    def onCalculateButton(self):
+    def calculateConnectivity(self):
         # Check if ts_data is available
         if self.data.file_data is None:
-            self.calculatingLabel.setText(f"Error. No time series data has been loaded.")
+            QMessageBox.warning(self, "Load Error", f"No time series data is currently available.")
             return
 
         # Get the current parameters from the UI for the upcoming calculation
@@ -2244,19 +2218,19 @@ class App(QMainWindow):
 
         # Start worker thread for dFC calculations and submit for calculation
         self.workerThread = QThread()
-        self.worker = Worker(self.calculateConnectivity, self.data.dfc_params)
+        self.worker = Worker(self.calculateConnectivityThread, self.data.dfc_params)
         self.worker.moveToThread(self.workerThread)
 
         self.worker.finished.connect(self.workerThread.quit)
-        self.worker.result.connect(self.handleResult)
-        self.worker.error.connect(self.handleError)
+        self.worker.result.connect(self.handleConnectivityResult)
+        self.worker.error.connect(self.handleConnectivityError)
 
         self.workerThread.started.connect(self.worker.run)
         self.workerThread.start()
         self.calculatingLabel.setText(f"Calculating {self.methodComboBox.currentText()}, please wait...")
-        self.calculateButton.setEnabled(False)
+        self.calculateConnectivityButton.setEnabled(False)
 
-    def calculateConnectivity(self, **params):
+    def calculateConnectivityThread(self, **params):
         keep_in_memory = self.keepInMemoryCheckbox.isChecked()
 
         # Check if data already exists
@@ -2302,7 +2276,7 @@ class App(QMainWindow):
         print("Finished calculation.")
         return self.data
 
-    def handleResult(self):
+    def handleConnectivityResult(self):
         # Update the sliders and text
         if self.data.dfc_data is not None:
             self.calculatingLabel.setText(f"Calculated {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
@@ -2329,18 +2303,18 @@ class App(QMainWindow):
         self.plotDistribution()
         self.plotTimeSeries()
 
-        self.calculateButton.setEnabled(True)
+        self.calculateConnectivityButton.setEnabled(True)
         self.onTabChanged()
         self.update()
 
-    def handleError(self, error):
+    def handleConnectivityError(self, error):
         # Handles errors in the worker thread
         QMessageBox.warning(self, "Calculation Error", f"Error occurred during calculation: {error}")
-        self.calculateButton.setEnabled(True)
+        self.calculateConnectivityButton.setEnabled(True)
         self.data.clear_dfc_data()
         self.positionLabel.setText("no data available")
-        self.plotLogo(self.figure)
-        self.canvas.draw()
+        self.plotLogo(self.connectivityFigure)
+        self.connectivityCanvas.draw()
 
     # Parameters
     def initParameters(self, class_instance):
@@ -2437,9 +2411,8 @@ class App(QMainWindow):
                     param_input_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
                     param_input_widget.setEnabled(True)
 
-
                 # Create info button with tooltip
-                info_text = self.getInfoText(param.name, self.data.dfc_name)
+                info_text = self.info_options.get(param.name, "No information available")
                 info_button = InfoButton(info_text)
 
                 # Create layout for label, widget, and info button
@@ -2490,10 +2463,9 @@ class App(QMainWindow):
                     if param_key:  # Ensure the key exists in the reverse_param_names dictionary
                         self.data.dfc_params[param_key] = convert_value(value) if isinstance(value, str) else value
                     else:
-                        self.calculatingLabel.setText(f"Error: Unrecognized parameter '{label}'")
+                        QMessageBox.warning(self, "Parameter Error", f"Unrecognized parameter '{label}'")
                 else:
-                    # Value could not be retrieved from the widget
-                    self.calculatingLabel.setText(f"Error: No value entered for parameter '{label}'")
+                    QMessageBox.warning(self, "Parameter Error", f"No value entered for parameter '{label}'") # Value could not be retrieved from the widget
 
     def setParameters(self, disable=False):
         # Converts value to string
@@ -2548,9 +2520,9 @@ class App(QMainWindow):
                             widget.setEnabled(False)
                     else:
                         # Value could not be retrieved from the dictionary
-                        self.calculatingLabel.setText(f"Error: No value entered for parameter '{label}'")
+                        QMessageBox.warning(self, "Parameter Error", f"No value entered for parameter '{label}'")
                 else:
-                    self.calculatingLabel.setText(f"Error: Unrecognized parameter '{label}'")
+                    QMessageBox.warning(self, "Parameter Error", f"Unrecognized parameter(s).")
 
     def clearParameters(self, layout):
         while layout.count():
@@ -2574,8 +2546,8 @@ class App(QMainWindow):
     def onClearMemory(self):
         self.data_storage = DataStorage()
 
-        self.figure.clear()
-        self.canvas.draw()
+        self.connectivityFigure.clear()
+        self.connectivityCanvas.draw()
         self.distributionFigure.clear()
         self.distributionCanvas.draw()
 
@@ -2591,8 +2563,8 @@ class App(QMainWindow):
             QMessageBox.warning(self, "No calculated data available for plotting")
             return
 
-        self.figure.clear()
-        ax = self.figure.add_subplot(111)
+        self.connectivityFigure.clear()
+        ax = self.connectivityFigure.add_subplot(111)
         vmax = np.max(np.abs(current_data))
 
         try:
@@ -2615,14 +2587,14 @@ class App(QMainWindow):
         # Create the colorbar
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.15)
-        cbar = self.figure.colorbar(self.im, cax=cax)
+        cbar = self.connectivityFigure.colorbar(self.im, cax=cax)
         cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
 
         self.slider.setMaximum(current_data.shape[2] - 1 if len(current_data.shape) == 3 else 0)
 
-        self.figure.set_facecolor('#E0E0E0')
-        self.figure.tight_layout()
-        self.canvas.draw()
+        self.connectivityFigure.set_facecolor('#E0E0E0')
+        self.connectivityFigure.tight_layout()
+        self.connectivityCanvas.draw()
 
     def plotTimeSeries(self):
         current_data = self.data.dfc_data
@@ -2763,8 +2735,8 @@ class App(QMainWindow):
         # index 3: Graph analysis
 
         if self.data.dfc_data is None:
-            self.plotLogo(self.figure)
-            self.canvas.draw()
+            self.plotLogo(self.connectivityFigure)
+            self.connectivityCanvas.draw()
             self.distributionFigure.clear()
             self.distributionCanvas.draw()
             self.timeSeriesFigure.clear()
@@ -2858,7 +2830,7 @@ class App(QMainWindow):
             self.im.set_clim(-vlim, vlim)
 
             # Redraw the canvas
-            self.canvas.draw()
+            self.connectivityCanvas.draw()
             self.plotDistribution()
 
             total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
@@ -4058,7 +4030,7 @@ class App(QMainWindow):
             self.loadedScriptDisplay.setText(f"Loaded: {fileName}")
             self.loadedScriptPath = fileName
 
-            # Read the content of the file
+            # Try loading the script
             try:
                 with open(fileName, 'r', encoding='utf-8') as file:
                     scriptContent = file.read()
@@ -4075,7 +4047,6 @@ class App(QMainWindow):
         fileName, _ = QFileDialog.getSaveFileName(self, "Save Script", "", "Python Files (*.py);;All Files (*)")
 
         if fileName:
-            # Ensure the file has the correct extension
             if not fileName.endswith('.py'):
                 fileName += '.py'
 
@@ -4088,15 +4059,17 @@ class App(QMainWindow):
         """
         if hasattr(self, 'loadedScriptPath') and self.loadedScriptPath:
             try:
-                # Run the script
                 subprocess.run(['python', self.loadedScriptPath], check=True)
                 QMessageBox.information(self, "Multiverse Analysis", "Multiverse ran successfully!")
+
             except subprocess.CalledProcessError:
                 QMessageBox.warning(self, "Multiverse Analysis", "Multiverse failed!")
+
             except Exception as e:
                 QMessageBox.warning(self, "Multiverse Analysis", f"Multiverse failed!\n{str(e)}")
+
         else:
-            QMessageBox.warning(self, "Multiverse Analysis", "No script was loaded to run.")
+            QMessageBox.warning(self, "Multiverse Analysis", "No script available.")
 
 
 """
