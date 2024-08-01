@@ -429,8 +429,8 @@ class App(QMainWindow):
 
         # Left section
         leftLayout = QVBoxLayout()
-        self.addLoadLayout(leftLayout)
-        self.addBidsLayout(leftLayout)
+        self.addDataLoadLayout(leftLayout)
+        self.addDataBidsLayout(leftLayout)
         leftLayout.addStretch()
 
         # Right section
@@ -438,8 +438,8 @@ class App(QMainWindow):
         self.addDataPlotLayout(rightLayout)
 
         # Combine sections
-        dataLayout.addLayout(leftLayout, 1)
-        dataLayout.addLayout(rightLayout, 1)
+        dataLayout.addLayout(leftLayout, 3)
+        dataLayout.addLayout(rightLayout, 4)
         self.topTabWidget.addTab(dataTab, "Data Preparation")
 
         return
@@ -458,23 +458,441 @@ class App(QMainWindow):
         self.addConnectivityPlotLayout(rightLayout)
 
         # Combine sections
-        connectivityLayout.addLayout(leftLayout, 2)
-        connectivityLayout.addLayout(rightLayout, 3)
+        connectivityLayout.addLayout(leftLayout, 3)
+        connectivityLayout.addLayout(rightLayout, 4)
         self.topTabWidget.addTab(connectivityTab, "Connectivity Analysis")
 
         return
 
     def graphTab(self):
         graphTab = QWidget()
-        graphLayout = QVBoxLayout()  # Main layout for the tab
+        graphLayout = QVBoxLayout()
         graphTab.setLayout(graphLayout)
-        self.graphStepCounter = 1
 
-        ###############################
-        #  Left section for settings  #
-        ###############################
+        # Left section
         leftLayout = QVBoxLayout()
+        self.addGraphLayout(leftLayout)
 
+        # Right section
+        rightLayout = QVBoxLayout()
+        self.addGraphPlotLayout(rightLayout)
+
+        # Combine sections
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(leftLayout, 3)
+        mainLayout.addLayout(rightLayout, 4)
+        graphLayout.addLayout(mainLayout)
+        self.topTabWidget.addTab(graphTab, "Graph Analysis")
+
+        return
+
+    def multiverseTab(self):
+        multiverseTab = QWidget()
+        multiverseLayout = QVBoxLayout()  # Main layout for the tab
+        multiverseTab.setLayout(multiverseLayout)
+
+        # Left section
+        leftLayout = QVBoxLayout()
+        self.addMultiverseLayout(leftLayout)
+
+        # Right section
+        rightLayout = QVBoxLayout()
+        self.addMultiversePlotLayout(rightLayout)
+
+        # Combine sections
+        mainLayout = QHBoxLayout()
+        mainLayout.addLayout(leftLayout, 1)
+        mainLayout.addLayout(rightLayout, 1)
+        multiverseLayout.addLayout(mainLayout)
+        self.topTabWidget.addTab(multiverseTab, "Multiverse Analysis")
+
+        return
+
+    # Data layouts
+    def addDataLoadLayout(self, leftLayout):
+        """
+        Add the layout for loading single files to the left layout of the data tab.
+        """
+        # Butttons for file loading
+        loadLayout = QVBoxLayout()
+        buttonLayout = QHBoxLayout()
+
+        fileButton = QPushButton('Load single file')
+        bidsButton = QPushButton('Load BIDS dataset')
+        self.fileNameLabel = QLabel('No data loaded yet.')
+
+        # Subject dropdown for pkl files
+        self.subjectDropdownContainer = QWidget()
+        self.subjectDropdownLayout = QHBoxLayout()
+        self.subjectLabel = QLabel("Available subjects:")
+        self.subjectLabel.setFixedWidth(140)
+        self.subjectDropdown = QComboBox()
+        self.subjectDropdownLayout.addWidget(self.subjectLabel)
+        self.subjectDropdownLayout.addWidget(self.subjectDropdown)
+        self.subjectDropdownContainer.setLayout(self.subjectDropdownLayout)
+        self.subjectDropdownContainer.hide()
+
+        # Parcellation dropdown for nifti files
+        self.parcellationContainer = QWidget()
+        self.parcellationLayout = QHBoxLayout()
+
+        self.parcellationLabel = QLabel("Parcellation:")
+        self.parcellationLabel.setFixedWidth(100)
+
+        self.parcellationOptionsLabel = QLabel("Type:")
+        self.parcellationOptionsLabel.setFixedWidth(40)
+        self.parcellationOptions = QComboBox()
+
+        self.parcellationCalculateButton = QPushButton("Calculate")
+        self.parcellationCalculateButton.clicked.connect(self.extractTimeSeries)
+
+        self.parcellationDropdown = QComboBox()
+        self.parcellationDropdown.addItems(self.atlas_options.keys())
+        self.parcellationLayout.addWidget(self.parcellationLabel, 1)
+        self.parcellationLayout.addWidget(self.parcellationDropdown, 3)
+        self.parcellationLayout.addWidget(self.parcellationOptionsLabel, 1)
+        self.parcellationLayout.addWidget(self.parcellationOptions, 2)
+        self.parcellationLayout.addWidget(self.parcellationCalculateButton, 1)
+        self.parcellationContainer.setLayout(self.parcellationLayout)
+
+        self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
+        self.parcellationContainer.hide()
+
+        # Transpose checkpox
+        self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
+        self.transposeCheckbox.hide()
+
+        # Add widgets to layouts
+        buttonLayout.addWidget(fileButton)
+        buttonLayout.addWidget(bidsButton)
+
+        loadLayout.addLayout(buttonLayout)
+        loadLayout.addWidget(self.fileNameLabel)
+
+        # Container for parcellation
+        self.loadContainer = QGroupBox("Time series extraction")
+        loadContainerLayout = QVBoxLayout()
+
+        loadContainerLayout.addWidget(self.subjectDropdownContainer)
+        loadContainerLayout.addWidget(self.parcellationContainer)
+        loadContainerLayout.addWidget(self.transposeCheckbox)
+
+        # Connect widgets
+        self.transposeCheckbox.stateChanged.connect(self.onTransposeChecked)
+        fileButton.clicked.connect(self.loadFile)
+        bidsButton.clicked.connect(self.loadBIDS)
+
+        # Add file loading layout to the left layout
+        leftLayout.addLayout(loadLayout)
+        leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+
+        # Add the parcellation container to the left layout
+        self.loadContainer.setLayout(loadContainerLayout)
+        self.loadContainer.hide()
+
+        leftLayout.addWidget(self.loadContainer)
+
+        return
+
+    def addDataBidsLayout(self, leftLayout):
+        ##########################
+        # Main container widget
+        self.bidsContainer = QWidget()
+        self.bidsLayout = QVBoxLayout(self.bidsContainer)
+
+        ##########################
+        # File selection container
+        self.bids_fileContainer = QGroupBox("File selection")
+        self.bids_fileLayout = QVBoxLayout(self.bids_fileContainer)
+
+        # Subjects Dropdown with Label
+        self.bids_subjectDropdownLayout = QHBoxLayout()
+        self.bids_subjectLabel = QLabel("Subject:")
+        self.bids_subjectLabel.setFixedWidth(100)
+        self.bids_subjectDropdown = QComboBox()
+        self.bids_subjectDropdownLayout.addWidget(self.bids_subjectLabel, 1)
+        self.bids_subjectDropdownLayout.addWidget(self.bids_subjectDropdown, 4)
+        self.bids_fileLayout.addLayout(self.bids_subjectDropdownLayout)
+
+        # Task/run dropdowns with Label
+        self.bids_taskDropdownLayout = QHBoxLayout()
+        self.bids_taskLabel = QLabel("Task:")
+        self.bids_taskLabel.setFixedWidth(100)
+        self.bids_taskDropdown = QComboBox()
+        self.bids_sessionLabel = QLabel("Session:")
+        self.bids_sessionLabel.setFixedWidth(65)
+        self.bids_sessionDropdown = QComboBox()
+        self.bids_runLabel = QLabel("Run:")
+        self.bids_runLabel.setFixedWidth(40)
+        self.bids_runDropdown = QComboBox()
+
+        self.bids_taskDropdownLayout.addWidget(self.bids_taskLabel, 1)
+        self.bids_taskDropdownLayout.addWidget(self.bids_taskDropdown, 4)
+        self.bids_taskDropdownLayout.addWidget(self.bids_sessionLabel, 1)
+        self.bids_taskDropdownLayout.addWidget(self.bids_sessionDropdown, 1)
+        self.bids_taskDropdownLayout.addWidget(self.bids_runLabel, 1)
+        self.bids_taskDropdownLayout.addWidget(self.bids_runDropdown, 1)
+        self.bids_fileLayout.addLayout(self.bids_taskDropdownLayout)
+
+        # Parcellation Dropdown with Label
+        self.bids_parcellationLayout = QHBoxLayout()
+        self.bids_parcellationLabel = QLabel("Parcellation:")
+        self.bids_parcellationLabel.setFixedWidth(100)
+        self.bids_parcellationDropdown = QComboBox()
+        self.bids_parcellationDropdown.addItems(self.atlas_options.keys())
+        self.bids_parcellationOptionsLabel = QLabel("Type:")
+        self.bids_parcellationOptionsLabel.setFixedWidth(40)
+        self.bids_parcellationOptions = QComboBox()
+
+        self.bids_parcellationLayout.addWidget(self.bids_parcellationLabel, 1)
+        self.bids_parcellationLayout.addWidget(self.bids_parcellationDropdown, 4)
+        self.bids_parcellationLayout.addWidget(self.bids_parcellationOptionsLabel, 1)
+        self.bids_parcellationLayout.addWidget(self.bids_parcellationOptions, 3)
+        self.bids_fileLayout.addLayout(self.bids_parcellationLayout)
+
+        # Connect dropdown changes to handler function
+        self.bids_subjectDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
+        self.bids_taskDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
+        self.bids_sessionDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
+        self.bids_runDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
+        self.bids_parcellationDropdown.currentIndexChanged.connect(self.onBIDSAtlasChanged)
+        self.bids_parcellationOptions.currentIndexChanged.connect(self.onBIDSLayoutChanged)
+
+        ##############################
+        # Confound selection container
+        bids_confoundsContainer = QGroupBox("Cleaning options")
+        bids_confoundsLayout = QVBoxLayout(bids_confoundsContainer)
+        bids_confoundsStrategyWidget = self.loadConfounds()
+        bids_confoundsLayout.addWidget(bids_confoundsStrategyWidget)
+
+        ####################
+        # Combine containers
+        self.bidsLayout.addWidget(self.bids_fileContainer)
+        self.bidsLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        self.bidsLayout.addWidget(bids_confoundsContainer)
+
+        ####################
+        # Calculation button
+        self.bids_calculateButton = QPushButton('Extract time series')
+        self.bids_calculateButton.clicked.connect(self.extractTimeSeries)
+        self.bidsLayout.addWidget(self.bids_calculateButton)
+
+        # Textbox for calculation status
+        self.bids_calculateTextbox = QLabel("No time series data extracted yet.")
+        self.bidsLayout.addWidget(self.bids_calculateTextbox)
+
+        # Add the BIDS layout to the main layout
+        leftLayout.addWidget(self.bidsContainer)
+        self.bidsContainer.hide()
+
+        return
+
+    def addDataPlotLayout(self, rightLayout):
+        plotTabWidget = QTabWidget()
+
+        plotTab = QWidget()
+        plotTab.setLayout(QVBoxLayout())
+        self.boldFigure = Figure()
+        self.boldCanvas = FigureCanvas(self.boldFigure)
+        self.boldFigure.patch.set_facecolor('#E0E0E0')
+        plotTab.layout().addWidget(self.boldCanvas)
+        plotTabWidget.addTab(plotTab, "Carpet Plot")
+
+        # Draw default plot (logo) on the canvas
+        self.plotLogo(self.boldFigure)
+        self.boldCanvas.draw()
+
+        rightLayout.addWidget(plotTabWidget)
+
+    # Connectivity layouts
+    def addConnectivityLayout(self, leftLayout):
+        self.fileNameLabel2 = QLabel('No time series data available.')
+        leftLayout.addWidget(self.fileNameLabel2)
+        leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+
+        # Method label and combobox
+        self.methodLabel = QLabel("Dynamic functional connectivity method:")
+
+        # Checkboxes for method types
+        self.continuousCheckBox = QCheckBox("Continuous")
+        self.stateBasedCheckBox = QCheckBox("State-based")
+        self.staticCheckBox = QCheckBox("Static")
+
+        checkboxLayout = QHBoxLayout()
+        checkboxLayout.addWidget(self.continuousCheckBox)
+        checkboxLayout.addWidget(self.stateBasedCheckBox)
+        checkboxLayout.addWidget(self.staticCheckBox)
+        checkboxLayout.setSpacing(10)
+        checkboxLayout.addStretch()
+
+        # Connectivity methods
+        self.methodComboBox = QComboBox()
+        leftLayout.addWidget(self.methodLabel)
+        leftLayout.addLayout(checkboxLayout)
+        leftLayout.addWidget(self.methodComboBox)
+
+        # Create a layout for dynamic textboxes
+        self.parameterLayout = QVBoxLayout()
+
+        # Create a container widget for the parameter layout
+        self.parameterContainer = QWidget()  # Use an instance attribute to access it later
+        self.parameterContainer.setLayout(self.parameterLayout)
+        self.parameterContainer.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+
+        # Add the container widget to the left layout directly below the combobox
+        leftLayout.addWidget(self.parameterContainer)
+
+        # Initial population of the combobox, this does the entire initialization
+        self.updateMethodComboBox()
+
+        # Add parameter textbox for time_series
+        self.time_series_textbox = QLineEdit()
+        self.time_series_textbox.setReadOnly(True) # read only as based on the loaded file
+
+        # Add a stretch after the parameter layout container
+        leftLayout.addStretch()
+
+        # Calculate connectivity and save button
+        buttonsLayout = QHBoxLayout()
+
+        # Calculate connectivity button
+        self.calculateButton = QPushButton('Calculate Connectivity')
+        self.calculateButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        buttonsLayout.addWidget(self.calculateButton, 2)  # 2/3 of the space
+        self.calculateButton.clicked.connect(self.onCalculateButton)
+
+        # Create the "Save" button
+        self.saveButton = QPushButton('Save')
+        self.saveButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        buttonsLayout.addWidget(self.saveButton, 1)  # 1/3 of the space
+        self.saveButton.clicked.connect(self.saveConnectivityFile)
+
+        # Add the buttons layout to the left layout
+        leftLayout.addLayout(buttonsLayout)
+
+        # Memory buttons
+        self.keepInMemoryCheckbox = QCheckBox("Keep in memory")
+        self.keepInMemoryCheckbox.stateChanged.connect(self.onKeepInMemoryChecked)
+        self.clearMemoryButton = QPushButton("Clear Memory")
+        self.clearMemoryButton.clicked.connect(self.onClearMemory)
+
+        buttonLayout = QHBoxLayout()
+        buttonLayout.addWidget(self.keepInMemoryCheckbox)
+        buttonLayout.addWidget(self.clearMemoryButton)
+
+        # Assuming you have a QVBoxLayout named 'leftLayout'
+        leftLayout.addLayout(buttonLayout)
+
+        # Calculation info textbox
+        self.calculatingLabel = QLabel('No data calculated yet')
+        leftLayout.addWidget(self.calculatingLabel)
+
+        return
+
+    def addConnectivityPlotLayout(self, rightLayout):
+        self.tabWidget = QTabWidget()
+
+        # Tab 1: Imshow plot
+        imshowTab = QWidget()
+        imshowLayout = QVBoxLayout()
+        imshowTab.setLayout(imshowLayout)
+
+        self.figure = Figure()
+        self.canvas = FigureCanvas(self.figure)
+        self.figure.patch.set_facecolor('#E0E0E0')
+        imshowLayout.addWidget(self.canvas)
+        self.tabWidget.addTab(imshowTab, "Connectivity")
+
+        # Tab 2: Time series/course plot
+        timeSeriesTab = QWidget()
+        timeSeriesLayout = QVBoxLayout()
+        timeSeriesTab.setLayout(timeSeriesLayout)
+
+        self.timeSeriesFigure = Figure()
+        self.timeSeriesCanvas = FigureCanvas(self.timeSeriesFigure)
+        self.timeSeriesFigure.patch.set_facecolor('#E0E0E0')
+        timeSeriesLayout.addWidget(self.timeSeriesCanvas)
+        self.tabWidget.addTab(timeSeriesTab, "Time course")
+
+        rightLayout.addWidget(self.tabWidget)
+
+        # Tab 3: Distribution plot
+        distributionTab = QWidget()
+        distributionLayout = QVBoxLayout()
+        distributionTab.setLayout(distributionLayout)
+
+        self.distributionFigure = Figure()
+        self.distributionCanvas = FigureCanvas(self.distributionFigure)
+        self.distributionFigure.patch.set_facecolor('#E0E0E0')
+        distributionLayout.addWidget(self.distributionCanvas)
+        self.tabWidget.addTab(distributionTab, "Distribution")
+
+        # Method for doing things if the tab is changed
+        self.tabWidget.currentChanged.connect(self.onTabChanged)
+
+        # Slider
+        self.slider = QSlider(Qt.Orientation.Horizontal)
+        self.slider.setMinimum(0)  # Set the minimum value of the slider
+        self.slider.setMaximum(0)
+        self.slider.valueChanged.connect(self.onSliderValueChanged)
+        rightLayout.addWidget(self.slider)
+
+        # Navigation buttons layout
+        navButtonLayout = QHBoxLayout()
+        navButtonLayout.addStretch(1)  # Spacer to the left of the buttons
+
+        # Creating navigation buttons
+        self.backLargeButton = QPushButton("<<")
+        self.backButton = QPushButton("<")
+        self.positionLabel = QLabel('no data available')
+        self.forwardButton = QPushButton(">")
+        self.forwardLargeButton = QPushButton(">>")
+
+        # Buttons that interact with the slider
+        navButtonLayout.addWidget(self.backLargeButton)
+        navButtonLayout.addWidget(self.backButton)
+        navButtonLayout.addWidget(self.positionLabel)
+        navButtonLayout.addWidget(self.forwardButton)
+        navButtonLayout.addWidget(self.forwardLargeButton)
+
+        self.backLargeButton.clicked.connect(self.onSliderButtonClicked)
+        self.backButton.clicked.connect(self.onSliderButtonClicked)
+        self.forwardButton.clicked.connect(self.onSliderButtonClicked)
+        self.forwardLargeButton.clicked.connect(self.onSliderButtonClicked)
+
+        navButtonLayout.addStretch(1) # Spacer to the right of the buttons
+        rightLayout.addLayout(navButtonLayout)
+
+        # UI elements for dFC time series plotting
+        self.rowSelector = QSpinBox()
+        self.rowSelector.setMaximum(0)
+        self.rowSelector.valueChanged.connect(self.plotTimeSeries)
+
+        self.colSelector = QSpinBox()
+        self.colSelector.setMaximum(0)
+        self.colSelector.valueChanged.connect(self.plotTimeSeries)
+
+        self.timeSeriesSelectorLayout = QHBoxLayout()
+        self.timeSeriesSelectorLayout.addWidget(QLabel("Brain region 1 (row):"))
+        self.timeSeriesSelectorLayout.addWidget(self.rowSelector)
+        self.timeSeriesSelectorLayout.addWidget(QLabel("Brain region 2 (column):"))
+        self.timeSeriesSelectorLayout.addWidget(self.colSelector)
+
+        timeSeriesLayout.addLayout(self.timeSeriesSelectorLayout)
+
+        # Connect the stateChanged signal of checkboxes to the slot
+        self.continuousCheckBox.stateChanged.connect(self.updateMethodComboBox)
+        self.stateBasedCheckBox.stateChanged.connect(self.updateMethodComboBox)
+        self.staticCheckBox.stateChanged.connect(self.updateMethodComboBox)
+
+        self.continuousCheckBox.setChecked(True)
+        self.stateBasedCheckBox.setChecked(True)
+        self.staticCheckBox.setChecked(True)
+
+        return
+
+    # Graph layouts
+    def addGraphLayout(self, leftLayout):
         # Calculate connectivity and save button
         buttonsLayout = QHBoxLayout()
 
@@ -489,6 +907,7 @@ class App(QMainWindow):
         self.takeCurrentButton.clicked.connect(self.takeCurrentData)
 
         self.graphFileNameLabel = QLabel('No file loaded yet')
+        self.graphStepCounter = 1
 
         leftLayout.addLayout(buttonsLayout)
         leftLayout.addWidget(self.graphFileNameLabel)
@@ -567,11 +986,9 @@ class App(QMainWindow):
         leftLayout.addWidget(saveButton)
         saveButton.clicked.connect(self.saveGraphFile)
 
-        ################################
-        #  Right section for plotting  #
-        ################################
-        rightLayout = QVBoxLayout()
+        return
 
+    def addGraphPlotLayout(self, rightLayout):
         # Different plotting tabs
         graphTabWidget = QTabWidget()
 
@@ -622,31 +1039,13 @@ class App(QMainWindow):
         # Add widgets to the right layout
         rightLayout.addWidget(graphTabWidget)
 
-        #####################
-        #  Combine layouts  #
-        #####################
-        mainLayout = QHBoxLayout()
-        mainLayout.addLayout(leftLayout, 2)
-        mainLayout.addLayout(rightLayout, 3)
-        graphLayout.addLayout(mainLayout)
-
-        # Add the tab to the top level tab widget
-        self.topTabWidget.addTab(graphTab, "Graph Analysis")
-
         return
 
-    def multiverseTab(self):
-        multiverseTab = QWidget()
-        multiverseLayout = QVBoxLayout()  # Main layout for the tab
-        multiverseTab.setLayout(multiverseLayout)
-
+    # Multiverse layouts
+    def addMultiverseLayout(self, leftLayout):
+        # Top section
         # Empty list to store container widgets
         self.mv_containers = [] # decision containers for multiverse analysis
-
-        ###############################
-        #  Left section for settings  #
-        ###############################
-        leftLayout = QVBoxLayout()
 
         loadLabel = QLabel('Create multiverse analysis template script:')
         leftLayout.addWidget(loadLabel)
@@ -668,10 +1067,7 @@ class App(QMainWindow):
         leftLayout.addStretch()
 
 
-        #########################
-        #  Bottom left section  #
-        #########################
-
+        # Bottom  section
         # Perform multiverse analysis
         loadLabel = QLabel('Perform multiverse analysis:')
         leftLayout.addWidget(loadLabel)
@@ -696,11 +1092,9 @@ class App(QMainWindow):
         leftLayout.addWidget(runButton)
         runButton.clicked.connect(self.runScript)
 
-        ################################
-        #  Right section for plotting  #
-        ################################
-        rightLayout = QVBoxLayout()
+        return
 
+    def addMultiversePlotLayout(self, rightLayout):
         # Creating a tab widget for different purposes
         multiverseTabWidget = QTabWidget()
 
@@ -738,109 +1132,11 @@ class App(QMainWindow):
         # Add the tab widget to the right layout
         rightLayout.addWidget(multiverseTabWidget)
 
-        #####################
-        #  Combine layouts  #
-        #####################
-        mainLayout = QHBoxLayout()
-        mainLayout.addLayout(leftLayout, 1)
-        mainLayout.addLayout(rightLayout, 1)
-        multiverseLayout.addLayout(mainLayout)
-
-        self.topTabWidget.addTab(multiverseTab, "Multiverse Analysis")
-
-        return
 
     """
     Data tab
     """
     # Single time series functions
-    def addLoadLayout(self, leftLayout):
-        """
-        Add the layout for loading single files to the left layout of the data tab.
-        """
-        # Butttons for file loading
-        loadLayout = QVBoxLayout()
-        buttonLayout = QHBoxLayout()
-
-        fileButton = QPushButton('Load single file')
-        bidsButton = QPushButton('Load BIDS dataset')
-        self.fileNameLabel = QLabel('No data loaded yet.')
-
-
-
-        # Subject dropdown for pkl files
-        self.subjectDropdownContainer = QWidget()
-        self.subjectDropdownLayout = QHBoxLayout()
-        self.subjectLabel = QLabel("Available subjects:")
-        self.subjectLabel.setFixedWidth(140)
-        self.subjectDropdown = QComboBox()
-        self.subjectDropdownLayout.addWidget(self.subjectLabel)
-        self.subjectDropdownLayout.addWidget(self.subjectDropdown)
-        self.subjectDropdownContainer.setLayout(self.subjectDropdownLayout)
-        self.subjectDropdownContainer.hide()
-
-        # Parcellation dropdown for nifti files
-        self.parcellationContainer = QWidget()
-        self.parcellationLayout = QHBoxLayout()
-
-        self.parcellationLabel = QLabel("Parcellation:")
-        self.parcellationLabel.setFixedWidth(100)
-
-        self.parcellationOptionsLabel = QLabel("Type:")
-        self.parcellationOptionsLabel.setFixedWidth(40)
-        self.parcellationOptions = QComboBox()
-
-        self.parcellationCalculateButton = QPushButton("Calculate")
-        self.parcellationCalculateButton.clicked.connect(self.extractTimeSeries)
-
-        self.parcellationDropdown = QComboBox()
-        self.parcellationDropdown.addItems(self.atlas_options.keys())
-        self.parcellationLayout.addWidget(self.parcellationLabel, 1)
-        self.parcellationLayout.addWidget(self.parcellationDropdown, 3)
-        self.parcellationLayout.addWidget(self.parcellationOptionsLabel, 1)
-        self.parcellationLayout.addWidget(self.parcellationOptions, 2)
-        self.parcellationLayout.addWidget(self.parcellationCalculateButton, 1)
-        self.parcellationContainer.setLayout(self.parcellationLayout)
-
-        self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
-        self.parcellationContainer.hide()
-
-        # Transpose checkpox
-        self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
-        self.transposeCheckbox.hide()
-
-        # Add widgets to layouts
-        buttonLayout.addWidget(fileButton)
-        buttonLayout.addWidget(bidsButton)
-
-        loadLayout.addLayout(buttonLayout)
-        loadLayout.addWidget(self.fileNameLabel)
-
-        # Container for parcellation
-        self.loadContainer = QGroupBox("Time series extraction")
-        loadContainerLayout = QVBoxLayout()
-
-        loadContainerLayout.addWidget(self.subjectDropdownContainer)
-        loadContainerLayout.addWidget(self.parcellationContainer)
-        loadContainerLayout.addWidget(self.transposeCheckbox)
-
-        # Connect widgets
-        self.transposeCheckbox.stateChanged.connect(self.onTransposeChecked)
-        fileButton.clicked.connect(self.loadFile)
-        bidsButton.clicked.connect(self.loadBIDS)
-
-        # Add file loading layout to the left layout
-        leftLayout.addLayout(loadLayout)
-        leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
-
-        # Add the parcellation container to the left layout
-        self.loadContainer.setLayout(loadContainerLayout)
-        self.loadContainer.hide()
-
-        leftLayout.addWidget(self.loadContainer)
-
-        return
-
     def loadFile(self):
         """
         Load a single file and display the data in the GUI.
@@ -1110,99 +1406,6 @@ class App(QMainWindow):
         return
 
     # BIDS dataset functions
-    def addBidsLayout(self, leftLayout):
-        ##########################
-        # Main container widget
-        self.bidsContainer = QWidget()
-        self.bidsLayout = QVBoxLayout(self.bidsContainer)
-
-        ##########################
-        # File selection container
-        self.bids_fileContainer = QGroupBox("File selection")
-        self.bids_fileLayout = QVBoxLayout(self.bids_fileContainer)
-
-        # Subjects Dropdown with Label
-        self.bids_subjectDropdownLayout = QHBoxLayout()
-        self.bids_subjectLabel = QLabel("Subject:")
-        self.bids_subjectLabel.setFixedWidth(100)
-        self.bids_subjectDropdown = QComboBox()
-        self.bids_subjectDropdownLayout.addWidget(self.bids_subjectLabel, 1)
-        self.bids_subjectDropdownLayout.addWidget(self.bids_subjectDropdown, 4)
-        self.bids_fileLayout.addLayout(self.bids_subjectDropdownLayout)
-
-        # Task/run dropdowns with Label
-        self.bids_taskDropdownLayout = QHBoxLayout()
-        self.bids_taskLabel = QLabel("Task:")
-        self.bids_taskLabel.setFixedWidth(100)
-        self.bids_taskDropdown = QComboBox()
-        self.bids_sessionLabel = QLabel("Session:")
-        self.bids_sessionLabel.setFixedWidth(65)
-        self.bids_sessionDropdown = QComboBox()
-        self.bids_runLabel = QLabel("Run:")
-        self.bids_runLabel.setFixedWidth(40)
-        self.bids_runDropdown = QComboBox()
-
-        self.bids_taskDropdownLayout.addWidget(self.bids_taskLabel, 1)
-        self.bids_taskDropdownLayout.addWidget(self.bids_taskDropdown, 4)
-        self.bids_taskDropdownLayout.addWidget(self.bids_sessionLabel, 1)
-        self.bids_taskDropdownLayout.addWidget(self.bids_sessionDropdown, 1)
-        self.bids_taskDropdownLayout.addWidget(self.bids_runLabel, 1)
-        self.bids_taskDropdownLayout.addWidget(self.bids_runDropdown, 1)
-        self.bids_fileLayout.addLayout(self.bids_taskDropdownLayout)
-
-        # Parcellation Dropdown with Label
-        self.bids_parcellationLayout = QHBoxLayout()
-        self.bids_parcellationLabel = QLabel("Parcellation:")
-        self.bids_parcellationLabel.setFixedWidth(100)
-        self.bids_parcellationDropdown = QComboBox()
-        self.bids_parcellationDropdown.addItems(self.atlas_options.keys())
-        self.bids_parcellationOptionsLabel = QLabel("Type:")
-        self.bids_parcellationOptionsLabel.setFixedWidth(40)
-        self.bids_parcellationOptions = QComboBox()
-
-        self.bids_parcellationLayout.addWidget(self.bids_parcellationLabel, 1)
-        self.bids_parcellationLayout.addWidget(self.bids_parcellationDropdown, 4)
-        self.bids_parcellationLayout.addWidget(self.bids_parcellationOptionsLabel, 1)
-        self.bids_parcellationLayout.addWidget(self.bids_parcellationOptions, 3)
-        self.bids_fileLayout.addLayout(self.bids_parcellationLayout)
-
-        # Connect dropdown changes to handler function
-        self.bids_subjectDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
-        self.bids_taskDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
-        self.bids_sessionDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
-        self.bids_runDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
-        self.bids_parcellationDropdown.currentIndexChanged.connect(self.onBIDSAtlasChanged)
-        self.bids_parcellationOptions.currentIndexChanged.connect(self.onBIDSLayoutChanged)
-
-        ##############################
-        # Confound selection container
-        bids_confoundsContainer = QGroupBox("Cleaning options")
-        bids_confoundsLayout = QVBoxLayout(bids_confoundsContainer)
-        bids_confoundsStrategyWidget = self.loadConfounds()
-        bids_confoundsLayout.addWidget(bids_confoundsStrategyWidget)
-
-        ####################
-        # Combine containers
-        self.bidsLayout.addWidget(self.bids_fileContainer)
-        self.bidsLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
-        self.bidsLayout.addWidget(bids_confoundsContainer)
-
-        ####################
-        # Calculation button
-        self.bids_calculateButton = QPushButton('Extract time series')
-        self.bids_calculateButton.clicked.connect(self.extractTimeSeries)
-        self.bidsLayout.addWidget(self.bids_calculateButton)
-
-        # Textbox for calculation status
-        self.bids_calculateTextbox = QLabel("No time series data extracted yet.")
-        self.bidsLayout.addWidget(self.bids_calculateTextbox)
-
-        # Add the BIDS layout to the main layout
-        leftLayout.addWidget(self.bidsContainer)
-        self.bidsContainer.hide()
-
-        return
-
     def loadBIDS(self):
         # Clear plot and layout
         self.plotLogo(self.boldFigure)
@@ -1223,12 +1426,12 @@ class App(QMainWindow):
             self.slider.setValue(0)
             self.figure.clear()
             self.canvas.draw()
+
             # Initialize BIDS layout
             self.bidsContainer.hide()
             self.bids_subjectDropdown.clear()
             self.bids_subjectDropdown.setEnabled(False)
             self.fileNameLabel.setText(f"Initializing BIDS layout, please wait...")
-
 
             QApplication.processEvents()
 
@@ -1287,7 +1490,8 @@ class App(QMainWindow):
 
         # result is a list of a single path, we get rid of the list
         if img:
-            self.data.file_name = img[0]
+            self.data.file_path = img[0]
+            self.data.file_name = img[0].split('/')[-1]
         else:
             self.data.file_name = None
 
@@ -1387,8 +1591,6 @@ class App(QMainWindow):
         self.bids_runDropdown.setEnabled(True)
         self.bids_parcellationDropdown.setEnabled(True)
         self.bids_parcellationOptions.setEnabled(True)
-
-        #self.calculateBIDStextbox.setText("No time series data extracted yet.")
 
         # Reconnect the signals
         self.bids_subjectDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
@@ -1662,10 +1864,10 @@ class App(QMainWindow):
 
         return
 
-    def extractTimeSeriesThread(self, **args):
-        img_path = args["img_path"]
-        atlas = args["atlas"]
-        option = args["option"]
+    def extractTimeSeriesThread(self, **params):
+        img_path = params["img_path"]
+        atlas = params["atlas"]
+        option = params["option"]
         mask = None
         confounds = None
 
@@ -1705,7 +1907,6 @@ class App(QMainWindow):
         return
 
     def handleExtractResult(self):
-        #self.calculateBIDStextbox.setText(f"Done calculating time series. Shape: {self.data.file_data.shape}\nFile: {self.data.file_name.split('/')[-1]}")
         print(f"Done calculating time series. Shape: {self.data.file_data.shape} for {self.data.file_name.split('/')[-1]}")
 
         self.fileNameLabel2.setText(f"Time series data with shape {self.data.file_data.shape} is available for dFC calculation.")
@@ -1719,7 +1920,6 @@ class App(QMainWindow):
 
     def handleExtractError(self, error):
         # Handles errors in the worker thread
-        #self.calculateBIDStextbox.setText(f"Error when extracting time series, please try again.")
         QMessageBox.warning(self, "Error when extracting time series", f"Error when extracting time series: {error}")
 
         self.parcellationCalculateButton.setEnabled(True)
@@ -1727,23 +1927,6 @@ class App(QMainWindow):
         return
 
     # Plotting functions
-    def addDataPlotLayout(self, rightLayout):
-        plotTabWidget = QTabWidget()
-
-        plotTab = QWidget()
-        plotTab.setLayout(QVBoxLayout())
-        self.boldFigure = Figure()
-        self.boldCanvas = FigureCanvas(self.boldFigure)
-        self.boldFigure.patch.set_facecolor('#E0E0E0')
-        plotTab.layout().addWidget(self.boldCanvas)
-        plotTabWidget.addTab(plotTab, "Carpet Plot")
-
-        # Draw default plot (logo) on the canvas
-        self.plotLogo(self.boldFigure)
-        self.boldCanvas.draw()
-
-        rightLayout.addWidget(plotTabWidget)
-
     def createCarpetPlot(self):
         # Clear the current plot
         self.boldFigure.clear()
@@ -1801,192 +1984,6 @@ class App(QMainWindow):
     """
     Connectivity tab
     """
-    def addConnectivityLayout(self, leftLayout):
-        self.fileNameLabel2 = QLabel('No time series data available.')
-        leftLayout.addWidget(self.fileNameLabel2)
-        leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
-
-        # Method label and combobox
-        self.methodLabel = QLabel("Dynamic functional connectivity method:")
-
-        # Checkboxes for method types
-        self.continuousCheckBox = QCheckBox("Continuous")
-        self.stateBasedCheckBox = QCheckBox("State-based")
-        self.staticCheckBox = QCheckBox("Static")
-
-        checkboxLayout = QHBoxLayout()
-        checkboxLayout.addWidget(self.continuousCheckBox)
-        checkboxLayout.addWidget(self.stateBasedCheckBox)
-        checkboxLayout.addWidget(self.staticCheckBox)
-        checkboxLayout.setSpacing(10)
-        checkboxLayout.addStretch()
-
-        # Connectivity methods
-        self.methodComboBox = QComboBox()
-        leftLayout.addWidget(self.methodLabel)
-        leftLayout.addLayout(checkboxLayout)
-        leftLayout.addWidget(self.methodComboBox)
-
-        # Create a layout for dynamic textboxes
-        self.parameterLayout = QVBoxLayout()
-
-        # Create a container widget for the parameter layout
-        self.parameterContainer = QWidget()  # Use an instance attribute to access it later
-        self.parameterContainer.setLayout(self.parameterLayout)
-        self.parameterContainer.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
-
-        # Add the container widget to the left layout directly below the combobox
-        leftLayout.addWidget(self.parameterContainer)
-
-        # Initial population of the combobox, this does the entire initialization
-        self.updateMethodComboBox()
-
-        # Add parameter textbox for time_series
-        self.time_series_textbox = QLineEdit()
-        self.time_series_textbox.setReadOnly(True) # read only as based on the loaded file
-
-        # Add a stretch after the parameter layout container
-        leftLayout.addStretch()
-
-        # Calculate connectivity and save button
-        buttonsLayout = QHBoxLayout()
-
-        # Calculate connectivity button
-        self.calculateButton = QPushButton('Calculate Connectivity')
-        self.calculateButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        buttonsLayout.addWidget(self.calculateButton, 2)  # 2/3 of the space
-        self.calculateButton.clicked.connect(self.onCalculateButton)
-
-        # Create the "Save" button
-        self.saveButton = QPushButton('Save')
-        self.saveButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        buttonsLayout.addWidget(self.saveButton, 1)  # 1/3 of the space
-        self.saveButton.clicked.connect(self.saveConnectivityFile)
-
-        # Add the buttons layout to the left layout
-        leftLayout.addLayout(buttonsLayout)
-
-        # Memory buttons
-        self.keepInMemoryCheckbox = QCheckBox("Keep in memory")
-        self.keepInMemoryCheckbox.stateChanged.connect(self.onKeepInMemoryChecked)
-        self.clearMemoryButton = QPushButton("Clear Memory")
-        self.clearMemoryButton.clicked.connect(self.onClearMemory)
-
-        buttonLayout = QHBoxLayout()
-        buttonLayout.addWidget(self.keepInMemoryCheckbox)
-        buttonLayout.addWidget(self.clearMemoryButton)
-
-        # Assuming you have a QVBoxLayout named 'leftLayout'
-        leftLayout.addLayout(buttonLayout)
-
-        # Calculation info textbox
-        self.calculatingLabel = QLabel('No data calculated yet')
-        leftLayout.addWidget(self.calculatingLabel)
-
-        return
-
-    def addConnectivityPlotLayout(self, rightLayout):
-        self.tabWidget = QTabWidget()
-
-        # Tab 1: Imshow plot
-        imshowTab = QWidget()
-        imshowLayout = QVBoxLayout()
-        imshowTab.setLayout(imshowLayout)
-
-        self.figure = Figure()
-        self.canvas = FigureCanvas(self.figure)
-        self.figure.patch.set_facecolor('#E0E0E0')
-        imshowLayout.addWidget(self.canvas)
-        self.tabWidget.addTab(imshowTab, "Connectivity")
-
-        # Tab 2: Time series/course plot
-        timeSeriesTab = QWidget()
-        timeSeriesLayout = QVBoxLayout()
-        timeSeriesTab.setLayout(timeSeriesLayout)
-
-        self.timeSeriesFigure = Figure()
-        self.timeSeriesCanvas = FigureCanvas(self.timeSeriesFigure)
-        self.timeSeriesFigure.patch.set_facecolor('#E0E0E0')
-        timeSeriesLayout.addWidget(self.timeSeriesCanvas)
-        self.tabWidget.addTab(timeSeriesTab, "Time course")
-
-        rightLayout.addWidget(self.tabWidget)
-
-        # Tab 3: Distribution plot
-        distributionTab = QWidget()
-        distributionLayout = QVBoxLayout()
-        distributionTab.setLayout(distributionLayout)
-
-        self.distributionFigure = Figure()
-        self.distributionCanvas = FigureCanvas(self.distributionFigure)
-        self.distributionFigure.patch.set_facecolor('#E0E0E0')
-        distributionLayout.addWidget(self.distributionCanvas)
-        self.tabWidget.addTab(distributionTab, "Distribution")
-
-        # Method for doing things if the tab is changed
-        self.tabWidget.currentChanged.connect(self.onTabChanged)
-
-        # Slider
-        self.slider = QSlider(Qt.Orientation.Horizontal)
-        self.slider.setMinimum(0)  # Set the minimum value of the slider
-        self.slider.setMaximum(0)
-        self.slider.valueChanged.connect(self.onSliderValueChanged)
-        rightLayout.addWidget(self.slider)
-
-        # Navigation buttons layout
-        navButtonLayout = QHBoxLayout()
-        navButtonLayout.addStretch(1)  # Spacer to the left of the buttons
-
-        # Creating navigation buttons
-        self.backLargeButton = QPushButton("<<")
-        self.backButton = QPushButton("<")
-        self.positionLabel = QLabel('no data available')
-        self.forwardButton = QPushButton(">")
-        self.forwardLargeButton = QPushButton(">>")
-
-        # Buttons that interact with the slider
-        navButtonLayout.addWidget(self.backLargeButton)
-        navButtonLayout.addWidget(self.backButton)
-        navButtonLayout.addWidget(self.positionLabel)
-        navButtonLayout.addWidget(self.forwardButton)
-        navButtonLayout.addWidget(self.forwardLargeButton)
-
-        self.backLargeButton.clicked.connect(self.onSliderButtonClicked)
-        self.backButton.clicked.connect(self.onSliderButtonClicked)
-        self.forwardButton.clicked.connect(self.onSliderButtonClicked)
-        self.forwardLargeButton.clicked.connect(self.onSliderButtonClicked)
-
-        navButtonLayout.addStretch(1) # Spacer to the right of the buttons
-        rightLayout.addLayout(navButtonLayout)
-
-        # UI elements for dFC time series plotting
-        self.rowSelector = QSpinBox()
-        self.rowSelector.setMaximum(0)
-        self.rowSelector.valueChanged.connect(self.plotTimeSeries)
-
-        self.colSelector = QSpinBox()
-        self.colSelector.setMaximum(0)
-        self.colSelector.valueChanged.connect(self.plotTimeSeries)
-
-        self.timeSeriesSelectorLayout = QHBoxLayout()
-        self.timeSeriesSelectorLayout.addWidget(QLabel("Brain region 1 (row):"))
-        self.timeSeriesSelectorLayout.addWidget(self.rowSelector)
-        self.timeSeriesSelectorLayout.addWidget(QLabel("Brain region 2 (column):"))
-        self.timeSeriesSelectorLayout.addWidget(self.colSelector)
-
-        timeSeriesLayout.addLayout(self.timeSeriesSelectorLayout)
-
-        # Connect the stateChanged signal of checkboxes to the slot
-        self.continuousCheckBox.stateChanged.connect(self.updateMethodComboBox)
-        self.stateBasedCheckBox.stateChanged.connect(self.updateMethodComboBox)
-        self.staticCheckBox.stateChanged.connect(self.updateMethodComboBox)
-
-        self.continuousCheckBox.setChecked(True)
-        self.stateBasedCheckBox.setChecked(True)
-        self.staticCheckBox.setChecked(True)
-
-        return
-
     def saveConnectivityFile(self):
         if self.data.dfc_data is None:
             QMessageBox.warning(self, "Output Error", "No dFC data available to save.")
@@ -2259,7 +2256,7 @@ class App(QMainWindow):
         self.calculatingLabel.setText(f"Calculating {self.methodComboBox.currentText()}, please wait...")
         self.calculateButton.setEnabled(False)
 
-    def calculateConnectivity(self, **parameters):
+    def calculateConnectivity(self, **params):
         keep_in_memory = self.keepInMemoryCheckbox.isChecked()
 
         # Check if data already exists
@@ -2268,24 +2265,24 @@ class App(QMainWindow):
             return existing_data
 
         # Remove keys not allowed for calculation
-        clean_parameters = parameters.copy()
-        clean_parameters.pop('parcellation', None)
+        clean_params = params.copy()
+        clean_params.pop('parcellation', None)
 
         # Data does not exist, perform calculation
-        connectivity_calculator = self.data.dfc_instance(**clean_parameters)
+        connectivity_calculator = self.data.dfc_instance(**clean_params)
         result = connectivity_calculator.estimate()
 
         # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
         if isinstance(result, tuple):
             self.data.dfc_data = result[0]
-            self.data.dfc_params = parameters
+            self.data.dfc_params = params
             self.data.dfc_state_tc = None
             self.data.dfc_edge_ts = result[1][0] if (isinstance(result[1], tuple) and result[1][0].shape != result[0].shape) else None
 
         # Result is DFC object (pydfc methods)
         elif isinstance(result, pydfc.dfc.DFC):
             self.data.dfc_data = np.transpose(result.get_dFC_mat(), (1, 2, 0))
-            self.data.dfc_params = parameters
+            self.data.dfc_params = params
             self.data.dfc_states = result.FCSs_
             self.data.dfc_state_tc = result.state_TC()
             self.data.dfc_edge_ts = None
@@ -2293,7 +2290,7 @@ class App(QMainWindow):
         # Only a single matrix is returned (most cases)
         else:
             self.data.dfc_data = result
-            self.data.dfc_params = parameters
+            self.data.dfc_params = params
             self.data.dfc_state_tc = None
             self.data.dfc_edge_ts = None
 
@@ -3054,7 +3051,7 @@ class App(QMainWindow):
         self.workerThread.started.connect(self.worker.run)
         self.workerThread.start()
 
-    def calculateGraph(self, unused):
+    def calculateGraph(self, **unused):
         option, params = self.getGraphOptions()
 
         # Get the function
@@ -3425,8 +3422,10 @@ class App(QMainWindow):
     """
     Multiverse tab
     """
-    # Adds a combined container widget for all things related to creating decisions and options
     def addDecisionContainer(self):
+        """
+        Add a combined container widget for all things related to creating decisions and options
+        """
         decisionWidget = QWidget()  # Widget that holds the entire container
         mainLayout = QVBoxLayout(decisionWidget)  # Vertical layout: contains decision layout and function layout
         mainLayout.setContentsMargins(0, 0, 0, 0) # Remove space to remove excessive space between widgets
@@ -3499,8 +3498,10 @@ class App(QMainWindow):
 
         return decisionWidget
 
-    # Handles if the type of the decision is changed
     def onCategoryComboBoxChanged(self, categoryComboBox, functionComboBox, parameterContainer, addOptionButton, collapseButton, decisionNameInput, decisionOptionsInput):
+        """
+        Handle if the type of the decision is changed
+        """
         selected_category = categoryComboBox.currentText()
         self.clearLayout(parameterContainer.layout())
 
@@ -3562,8 +3563,10 @@ class App(QMainWindow):
 
         return
 
-    # Gets a dict with the current function parameters
     def getFunctionParameters(self, parameterContainer):
+        """
+        Get a dict with the current function parameters
+        """
         params_dict = {}
         paramLayout = parameterContainer.layout()
 
@@ -3602,8 +3605,10 @@ class App(QMainWindow):
 
         return params_dict
 
-    # Creates and updates all the parameter widgets based on the selected function
     def updateFunctionParameters(self, functionComboBox, parameterContainer):
+        """
+        Create and update all the parameter widgets based on the selected function
+        """
         if functionComboBox.currentData() is None:
             return
 
@@ -3758,8 +3763,10 @@ class App(QMainWindow):
 
             return
 
-    # "Other" category for custom functions
     def otherOptionCategory(self, parameterContainer):
+        """
+        "Other" category for custom functions
+        """
         # Clear the parameter container
         self.clearLayout(parameterContainer.layout())
 
@@ -3787,8 +3794,10 @@ class App(QMainWindow):
 
         return
 
-    # Adds a new decision widget to the layout
     def addNewDecision(self, layout, buttonLayout):
+        """
+        Add a new decision widget to the layout
+        """
         # Collapse all existing parameter containers before adding a new one
         for container in self.mv_containers:
             parameterContainer = container.findChild(QWidget, "parameterContainer")
@@ -3803,8 +3812,10 @@ class App(QMainWindow):
 
         return
 
-    # Add option to a decision
     def addOption(self, functionComboBox, parameterContainer, nameInputField, optionsInputField):
+        """
+        Add option to a decision
+        """
         # Name for the decision must be provided
         name = nameInputField.text().strip()
         if not name:
@@ -3862,8 +3873,10 @@ class App(QMainWindow):
         self.data.forking_paths[currentName].append(option_dict)
         return
 
-    # Collapse the option layout
     def collapseOption(self, collapseButton, parameterContainer):
+        """
+        Collapse the option layout
+        """
         if collapseButton.text() == " \u25B2 ":
             parameterContainer.hide()
             collapseButton.setText(" \u25BC ")
@@ -3876,8 +3889,10 @@ class App(QMainWindow):
 
         return
 
-    # Adds decision to the script
     def includeDecision(self, categoryComboBox, nameInput, optionsInput):
+        """
+        Adds decision to the script
+        """
         category = categoryComboBox.currentText()
         name = nameInput.text().strip()
 
@@ -3893,8 +3908,10 @@ class App(QMainWindow):
             QMessageBox.warning(self, "Input Error", "Please ensure a name and at least one option are provided.")
         return
 
-    # Handles data conversion based on the input
     def setDtypeForOption(self, option):
+        """
+        Handle data conversion based on the input
+        """
         # Try to convert to integer
         try:
             return int(option)
@@ -3913,8 +3930,10 @@ class App(QMainWindow):
 
         return option
 
-    # Removes one option with each click and finally the entire decision
     def removeDecision(self, decisionNameInput, decisionWidget, optionsInputField):
+        """
+        Remove one option with each click and finally the entire decision
+        """
         key = decisionNameInput.text().strip()
 
         # No key means the decision widget is empty, so clear and delete everything
@@ -3948,8 +3967,10 @@ class App(QMainWindow):
         self.generateScript()
         return
 
-    # Clears the entire decisionWidget layout
     def clearLayout(self, layout):
+        """
+        Clear the entire decisionWidget layout
+        """
         # Recursively delete all items in a layout. This method handles both widgets and sub-layouts.
         while layout.count():
             item = layout.takeAt(0)  # Take the first item in the layout
@@ -3963,8 +3984,11 @@ class App(QMainWindow):
                 # No need to delete spacer items as Qt does it automatically
                 pass
 
-    # Generates the template script
+    # Script functions
     def generateScript(self, init_template=False):
+        """
+        Generate the template script
+        """
         if init_template:
             script_content = (
                 "\"\"\"\n"
@@ -4025,8 +4049,10 @@ class App(QMainWindow):
         self.scriptDisplay.setText(script_content)
         self.scriptDisplay.setReadOnly(True)
 
-    # Loads a multiverse script
     def loadScript(self):
+        """
+        Load a multiverse script
+        """
         fileName, _ = QFileDialog.getOpenFileName(self, "Load Script", "", "Python Files (*.py);;All Files (*)")
         if fileName:
             self.loadedScriptDisplay.setText(f"Loaded: {fileName}")
@@ -4041,8 +4067,10 @@ class App(QMainWindow):
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to read the file: {str(e)}")
 
-    # Saves the current template script
     def saveScript(self):
+        """
+        Save the template script
+        """
         script_text = self.scriptDisplay.toPlainText()
         fileName, _ = QFileDialog.getSaveFileName(self, "Save Script", "", "Python Files (*.py);;All Files (*)")
 
@@ -4054,8 +4082,10 @@ class App(QMainWindow):
             with open(fileName, 'w') as file:
                 file.write(script_text)
 
-    # Runs the script/multiverse analysis
     def runScript(self):
+        """
+        Run the multiverse analysis from the generated/loaded script
+        """
         if hasattr(self, 'loadedScriptPath') and self.loadedScriptPath:
             try:
                 # Run the script
