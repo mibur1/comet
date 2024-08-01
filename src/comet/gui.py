@@ -231,7 +231,6 @@ class ParameterOptions:
         "pagerank_centrality":          "BCT Pagerank centrality",
         "participation_coef":           "BCT Participation coef",
         "participation_coef_sign":      "BCT Participation coef (sign)",
-        "transitivity":                 "BCT Transitivity"
     }
 
     # Reverse mappings
@@ -673,7 +672,7 @@ class App(QMainWindow):
 
         # Add file loading layout to the left layout
         leftLayout.addLayout(loadLayout)
-        leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        leftLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
         # Add the parcellation container to the left layout
         self.loadContainer.setLayout(loadContainerLayout)
@@ -797,7 +796,7 @@ class App(QMainWindow):
     def addConnectivityLayout(self, leftLayout):
         self.fileNameLabel2 = QLabel('No time series data available.')
         leftLayout.addWidget(self.fileNameLabel2)
-        leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        leftLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
         # Connectivity method container
         self.connectivityContainer = QGroupBox("Connectivity method")
@@ -987,7 +986,6 @@ class App(QMainWindow):
 
     # Graph layouts
     def addGraphLayout(self, leftLayout):
-        # Calculate connectivity and save button
         buttonsLayout = QHBoxLayout()
 
         self.loadGraphFileButton = QPushButton('Load adjacency matrix')
@@ -1000,16 +998,16 @@ class App(QMainWindow):
         buttonsLayout.addWidget(self.takeCurrentButton, 1)
         self.takeCurrentButton.clicked.connect(self.takeCurrentData)
 
-        self.graphFileNameLabel = QLabel('No file loaded yet')
+        self.graphFileNameLabel = QLabel('No data available')
         self.graphStepCounter = 1
 
         leftLayout.addLayout(buttonsLayout)
         leftLayout.addWidget(self.graphFileNameLabel)
-        leftLayout.addItem(QSpacerItem(0, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        leftLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
-        # Graph analysis options
-        graphTabLabel = QLabel("Graph analysis options:")
-        leftLayout.addWidget(graphTabLabel)
+        # Graph analysis container
+        self.graphContainer = QGroupBox("Graph analysis options")
+        graphContainerLayout = QVBoxLayout()
 
         # Checkboxes for method types
         self.preprocessingCheckBox = QCheckBox("Preprocessing")
@@ -1028,11 +1026,11 @@ class App(QMainWindow):
         self.preprocessingCheckBox.setChecked(True)
         self.graphCheckBox.setChecked(True)
         self.BCTCheckBox.setChecked(True)
-        leftLayout.addLayout(checkboxLayout)
+        graphContainerLayout.addLayout(checkboxLayout)
 
         # Create the combo box for selecting the graph analysis type
         self.graphAnalysisComboBox = QComboBox()
-        leftLayout.addWidget(self.graphAnalysisComboBox)
+        graphContainerLayout.addWidget(self.graphAnalysisComboBox)
 
         self.graphAnalysisComboBox.currentIndexChanged.connect(self.onGraphCombobox)
         self.graphParameterLayout = QVBoxLayout()
@@ -1050,17 +1048,15 @@ class App(QMainWindow):
         parameterContainer.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
         # Add the container widget to the left layout directly below the combobox
-        leftLayout.addWidget(parameterContainer)
+        graphContainerLayout.addWidget(parameterContainer)
 
         # Stretch empty space
-        leftLayout.addStretch()
+        graphContainerLayout.addStretch()
 
         # Create a layout for the buttons
         buttonsLayout = QHBoxLayout()
-
-        # Create the "Add option" button
         addOptionButton = QPushButton('Add current option')
-        buttonsLayout.addWidget(addOptionButton, 1) # The second parameter is the stretch factor
+        buttonsLayout.addWidget(addOptionButton, 1)
         addOptionButton.clicked.connect(self.onAddGraphOption)
 
         # Create the "Save" button
@@ -1069,16 +1065,27 @@ class App(QMainWindow):
         saveButton.clicked.connect(self.onClearGraphOptions)
 
         # Add the buttons layout to the left layout
-        leftLayout.addLayout(buttonsLayout)
+        graphContainerLayout.addLayout(buttonsLayout)
+        self.graphContainer.setLayout(graphContainerLayout)
+        leftLayout.addWidget(self.graphContainer)
+
+        # Step container
+        leftLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+
+        self.graphStepContainer = QGroupBox("List of performed steps")
+        graphContainerLayout = QVBoxLayout()
 
         self.optionsTextbox = QTextEdit()
-        self.optionsTextbox.setReadOnly(True) # Make the textbox read-only
-        leftLayout.addWidget(self.optionsTextbox)
+        self.optionsTextbox.setReadOnly(True)
+        graphContainerLayout.addWidget(self.optionsTextbox)
 
-        # "Save" button
+        # Save button
         saveButton = QPushButton('Save')
-        leftLayout.addWidget(saveButton)
+        graphContainerLayout.addWidget(saveButton)
         saveButton.clicked.connect(self.saveGraphFile)
+
+        self.graphStepContainer.setLayout(graphContainerLayout)
+        leftLayout.addWidget(self.graphStepContainer)
 
         return
 
@@ -3017,8 +3024,8 @@ class App(QMainWindow):
         self.worker.moveToThread(self.workerThread)
 
         self.worker.finished.connect(self.workerThread.quit)
-        self.worker.result.connect(self.handleGraphResult)  # Ensure you have a slot to handle results
-        self.worker.error.connect(self.handleGraphError)  # And error handling
+        self.worker.result.connect(self.handleGraphResult)
+        self.worker.error.connect(self.handleGraphError)
 
         self.workerThread.started.connect(self.worker.run)
         self.workerThread.start()
@@ -3033,11 +3040,13 @@ class App(QMainWindow):
         option_name = re.sub(r'^\S+\s+', '', option) # regex to remove the PREP/GRAPH part
         self.optionsTextbox.append(f"{self.graphStepCounter}. {option_name}: calculating, please wait...")
 
-        first_param_name = next(iter(params))
-        graph_params = {first_param_name: self.data.graph_data}
-        graph_params.update({k: v for k, v in params.items() if k != first_param_name})
+        first_param = next(iter(params))
+        graph_params = {first_param: self.data.graph_data}
+        graph_params.update({k: v for k, v in params.items() if k != first_param})
 
+        # Calculate graph measure
         graph_data = func(**graph_params)
+
         return f'graph_{option.split()[0].lower()}', graph_data, option_name, graph_params
 
     def handleGraphResult(self, result):
@@ -3082,8 +3091,11 @@ class App(QMainWindow):
         self.graphStepCounter += 1
 
     def handleGraphError(self, error):
-        # Handles errors in the worker thread
-        QMessageBox.warning(self, "Calculation Error", f"Error occurred during calculation: {error}")
+        # Handle errors in the worker thread
+        self.optionsTextbox.clear()
+        QMessageBox.warning(self, "Calculation Error", f"Error calculating graph measure: {error}.")
+
+        return
 
     # Parameters
     def setGraphParameters(self):
