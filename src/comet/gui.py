@@ -1057,7 +1057,7 @@ class App(QMainWindow):
         buttonsLayout = QHBoxLayout()
         addOptionButton = QPushButton('Add current option')
         buttonsLayout.addWidget(addOptionButton, 1)
-        addOptionButton.clicked.connect(self.onAddGraphOption)
+        addOptionButton.clicked.connect(self.calculateGraph)
 
         # Create the "Save" button
         saveButton = QPushButton('Clear options')
@@ -2325,7 +2325,7 @@ class App(QMainWindow):
 
     # Parameters
     def initParameters(self, class_instance):
-        # Now the parameter labels and boxes are set up
+        # Set up the parameter labels and boxes
         labels = []
 
         # Calculate the maximum label width (just a visual thing)
@@ -2474,7 +2474,7 @@ class App(QMainWindow):
                 else:
                     QMessageBox.warning(self, "Parameter Error", f"No value entered for parameter '{label}'") # Value could not be retrieved from the widget
 
-    def setParameters(self, disable=False):
+    def setParameters(self):
         # Converts value to string
         def convert_value_to_string(value):
             if isinstance(value, bool):
@@ -2505,10 +2505,6 @@ class App(QMainWindow):
         # Time series data has to be in the params as we run the dFC method with just these params
         self.data.dfc_params['time_series'] = self.data.file_data
 
-        if disable:
-            self.time_series_textbox.setText(self.data.file_name)
-            self.time_series_textbox.setEnabled(False)
-
         # Set the parameters in the UI based on the stored dictionary
         for i in range(self.parameterLayout.count()):
             layout = self.parameterLayout.itemAt(i).layout()
@@ -2523,8 +2519,7 @@ class App(QMainWindow):
                     if value is not None:  # Ensure there is a value before attempting to convert and set
                         widget = layout.itemAt(1).widget()
                         set_widget_value(widget, convert_value_to_string(value))
-                        if disable:
-                            widget.setEnabled(False)
+
                     else:
                         # Value could not be retrieved from the dictionary
                         QMessageBox.warning(self, "Parameter Error", f"No value entered for parameter '{label}'")
@@ -2907,7 +2902,7 @@ class App(QMainWindow):
         self.data.graph_raw = self.data.graph_data
         self.graphFileNameLabel.setText(f"Loaded {self.data.graph_file} with shape {self.data.graph_data.shape}")
 
-        self.plotGraph()
+        self.plotGraphMatrix()
         self.onGraphCombobox()
 
     def saveGraphFile(self):
@@ -2976,7 +2971,7 @@ class App(QMainWindow):
         print(f"Used current dFC data with shape {self.data.graph_data.shape}")
         self.graphFileNameLabel.setText(f"Used current dFC data with shape {self.data.graph_data.shape}")
         self.data.graph_file = f"dfC from {self.data.file_name}" #with {self.data.dfc_name} at t={self.currentSliderValue}"
-        self.plotGraph()
+        self.plotGraphMatrix()
         self.onGraphCombobox()
 
     def onGraphCombobox(self):
@@ -3017,10 +3012,10 @@ class App(QMainWindow):
         return
 
     # Calculations
-    def onAddGraphOption(self):
+    def calculateGraph(self):
         # Start worker thread for graph calculations
         self.workerThread = QThread()
-        self.worker = Worker(self.calculateGraph, {})
+        self.worker = Worker(self.calculateGraphThread, {})
         self.worker.moveToThread(self.workerThread)
 
         self.worker.finished.connect(self.workerThread.quit)
@@ -3030,7 +3025,7 @@ class App(QMainWindow):
         self.workerThread.started.connect(self.worker.run)
         self.workerThread.start()
 
-    def calculateGraph(self, **unused):
+    def calculateGraphThread(self, **unused):
         option, params = self.getGraphOptions()
 
         # Get the function
@@ -3060,10 +3055,10 @@ class App(QMainWindow):
         # Update self.data.graph_data or self.data.graph_out based on the result
         if output == 'graph_prep':
             self.data.graph_data = data
-            self.plotGraph()
+            self.plotGraphMatrix()
         else:
             self.data.graph_out = data
-            self.plotMeasure(option)
+            self.plotGraphMeasure(option)
 
         # Output step and options to textbox, remove unused parameters
         if option == 'Threshold':
@@ -3264,13 +3259,13 @@ class App(QMainWindow):
 
     def onClearGraphOptions(self):
         self.data.graph_data = self.data.graph_raw
-        self.plotGraph()
+        self.plotGraphMatrix()
         self.optionsTextbox.clear()
         self.graphTextbox.clear()
         self.graphStepCounter = 1
 
     # Plotting
-    def plotGraph(self):
+    def plotGraphMatrix(self):
         current_data = self.data.graph_data
 
         if current_data is None:
@@ -3295,7 +3290,7 @@ class App(QMainWindow):
         self.matrixFigure.tight_layout()
         self.matrixCanvas.draw()
 
-    def plotMeasure(self, measure):
+    def plotGraphMeasure(self, measure):
         self.graphFigure.clear()
         ax = self.graphFigure.add_subplot(111)
 
