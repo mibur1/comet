@@ -1,13 +1,12 @@
 import os
 import re
-import sys
 import pickle
 import numpy as np
 import pandas as pd
+import importlib_resources
 from nilearn import signal
 from scipy.io import loadmat
-import importlib_resources
-from .multiverse import in_notebook
+from filelock import FileLock
 
 def load_timeseries(path=None):
     """
@@ -128,48 +127,46 @@ def load_single_state():
 
     return data
 
-def save_results(data=None, universe=None):
+def save_universe_results(data=None, universe=os.path.abspath(__file__)):
     """
-    Save all kinds of results as .pkl file
+    This saves the results of a universe.
+
+    If it is a single value, it will be saved in the summary .csv file.
+    In any other case the results will be saved in a universe specific .pkl file.
 
     Parameters
     ----------
-    ftype : str, optional
-        File type to load. If specified as "pkl", a .pkl file with additional
-        information is loaded. Otherwise, only time series data is returned.
-        Default is None.
-
-    Returns
-    -------
-    data : np.ndarray or tuple
-        If `ftype` is not specified or is None, the function returns a
-        TxP np.ndarray containing the time series data
-
-        If `ftype` is "pkl", the function returns a tuple containing:
-         - data[0] : TxP np.ndarray
-           Time series data.
-         - data[1] : np.ndarray
-           Time in seconds.
-         - data[2] : np.ndarray
-           Trial onsets in seconds.
-         - data[3] : np.ndarray
-           Trial labels indicating two changing connectivity states.
+    data : any
+        Data to save as .pkl file
+    universe : str
+        File name of the calling script (universe)
     """
-
-    calling_script_dir = os.getcwd() if in_notebook else os.path.dirname(sys.path[0])
+    calling_script_dir = os.path.dirname(universe)
 
     # A bit of regex to get the universe number from the filename
     match = re.search(r'universe_(\d+).py', universe)
     universe_number = int(match.group(1))
 
-    savedir = calling_script_dir + "/universes/results"
+    savedir = calling_script_dir + "/results"
     if not os.path.exists(savedir):
         os.makedirs(savedir)
 
-    # Save as pkl file
-    filepath = savedir + f"/universe_{universe_number}.pkl"
-    with open(filepath, 'wb') as f:
-        pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+    # Single result values are saved in the summary .csv file, otherwise in a .pkl file
+    if type(data) in [int, float, bool, str]:
+            file = os.path.join(savedir, "multiverse_summary.csv")
+            lock_path = file + ".lock"
+
+            with FileLock(lock_path):
+                df = pd.read_csv(file)
+                universe_row = df[df.iloc[:, 0] == f'Universe_{universe_number}']
+                df.loc[universe_row.index, 'result'] = data
+                df.to_csv(file, index=False)
+    else:
+        file = savedir + f"/universe_{universe_number}.pkl"
+        with open(file, 'wb') as f:
+            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    return
 
 def clean(time_series, runs=None, detrend=False, confounds=None, standardize=False, standardize_confounds=True, \
           filter='butterworth', low_pass=None, high_pass=None, t_r=None, ensure_finite=False):

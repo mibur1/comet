@@ -140,7 +140,7 @@ class Multiverse:
 
         # Function for parallel processing, called by joblib.delayed
         def execute_script(file):
-            print(f"Starting {file}")
+            print(f"Running {file}")
             subprocess.run([sys.executable, os.path.join(path, file)], check=True, env=os.environ.copy())
 
         if universe_number is None:
@@ -150,6 +150,11 @@ class Multiverse:
             print(f"Starting analysis for universe {universe_number}...")
             file = f"universe_{universe_number}.py"
             execute_script(file)
+
+        # Delete the lock file if it exists
+        lock_path = os.path.join(path, "results/multiverse_summary.csv.lock")
+        if os.path.exists(lock_path):
+            os.remove(lock_path)
 
         return
 
@@ -305,27 +310,30 @@ class Multiverse:
 
         return
 
-    def specification_curve(self, fname="multiverse_summary.csv", measure=None, cmap="Set2", ci=95, chance_level=None, \
-                            linewidth=2, figsize=(16,9), height_ratio=(2,1), fontsize=10, dotsize=50, label_offset=-0.05):
+    def specification_curve(self, measure, multiverse_summary="multiverse_summary.csv", p_value=None, ci=None, chance_level=None, \
+                            cmap="Set2", linewidth=2, figsize=(16,9), height_ratio=(2,1), fontsize=10, dotsize=50, label_offset=-0.05):
         """
         Create and save a specification curve plot from multiverse results
 
         Parameters
         ----------
-        fname : string
-            Name of the .csv file containing the multiverse summary. Default is "multiverse_summary.csv"
-
         measure : string
-            Name of the measure to plot. Default is None
+            Name of the measure to plot. Needs to be provided
 
-        cmap : string
-            Colormap to use for the nodes. Default is "Set2"
+        multiverse_summary : string or pandas.DataFrame
+            Name of the .csv file or a dataframe containing the multiverse summary. Default is "multiverse_summary.csv"
+
+        p_value : float
+            Calculate and visualize statisticallz significant specification via p-value. Default is None
 
         ci : int
             Confidence interval to plot. Default is 95
 
         chance_level : float
             Chance level to plot. Default is None
+
+        cmap : string
+            Colormap to use for the nodes. Default is "Set2"
 
         linewidth : int
             Width of the boxplots. Default is 2
@@ -346,11 +354,19 @@ class Multiverse:
             Offset of the labels. Needs to be adjusted manually, default is -0.05
         """
 
+        # Get the results directory
         calling_script_dir = os.getcwd() if 'in_notebook' in globals() and in_notebook else os.path.dirname(sys.argv[0])
         results_path = os.path.join(calling_script_dir, f"{self.name}/results")
 
-        sorted_combined, forking_paths = self._load_and_prepare_data(fname, measure, results_path)
+        # Load and prepare the data. This can be done in two ways:
+        #   1. From a .csv file which contains the measure as a column
+        #   2. From .pkl files which were saved in a previously computed multiverse
+        sorted_universes, forking_paths = self._load_and_prepare_data(multiverse_summary, measure, results_path)
 
+        print(sorted_universes)
+        print(forking_paths)
+
+        # Plotting
         sns.set_theme(style="whitegrid")
         fig, ax = plt.subplots(2, 1, figsize=figsize, gridspec_kw={'height_ratios': height_ratio}, sharex=True)
         fig.suptitle('Multiverse Analysis', fontweight="bold", fontsize=fontsize+2)
@@ -409,7 +425,7 @@ class Multiverse:
             ax[1].add_line(line)
             s = line_end + 0.5
 
-        for i, (result, decisions) in enumerate(sorted_combined):
+        for i, (result, decisions) in enumerate(sorted_universes):
             if hasattr(result, '__len__'):
                 mean_val = np.mean(result)
             else:
@@ -460,9 +476,9 @@ class Multiverse:
         trans0 = transforms.blended_transform_factory(ax[0].transAxes, ax[0].transData)
 
         ax[0].xaxis.grid(False)
-        ax[0].set_xticks(np.arange(0, len(sorted_combined), 1))
+        ax[0].set_xticks(np.arange(0, len(sorted_universes), 1))
         ax[0].set_xticklabels([])
-        ax[0].set_xlim(-1, len(sorted_combined) + 1)
+        ax[0].set_xlim(-1, len(sorted_universes) + 1)
 
         ymin, ymax = ax[0].get_ylim()
         ycenter = (ymax + ymin) / 2
@@ -471,7 +487,7 @@ class Multiverse:
         line = mlines.Line2D([label_offset, label_offset], [ymin, ymax], color="black", lw=1, transform=trans0, clip_on=False)
         ax[0].add_line(line)
 
-        ax[0].hlines(chance_level, xmin=-2, xmax=len(sorted_combined) + 1, linestyles="--", lw=2, colors='black', zorder=1)
+        ax[0].hlines(chance_level, xmin=-2, xmax=len(sorted_universes) + 1, linestyles="--", lw=2, colors='black', zorder=1)
 
         legend_items = []
 
@@ -653,14 +669,14 @@ class Multiverse:
 
                 writer.writerow(context)
 
-    def _load_and_prepare_data(self, fname="multiverse_summary.csv", measure=None, results_path=None):
+    def _load_and_prepare_data(self, multiverse_summary="multiverse_summary.csv", measure=None, results_path=None):
         """
         Internal function: Load and prepare the data for the specification curve plotting
 
         Parameters
         ----------
-        fname : string
-            Name of the .csv file containing the multiverse summary. Default is "multiverse_summary.csv"
+        summary_file : string or pandas.DataFrame
+            Name of the .csv file or a dataframe containing the multiverse summary. Default is "multiverse_summary.csv"
 
         measure : string
             Name of the measure to plot. Default is None
@@ -670,21 +686,24 @@ class Multiverse:
 
         Returns
         -------
-        sorted_combined : list
+        sorted_universes : list
             List of sorted universes with their summary
 
         forking_paths : dict
             Dictionary containing the forking paths
         """
-        print("HI", type(fname))
-        if type(fname) == str:
-            csv_path = os.path.join(results_path, fname)
+        # Get the multiverse summary from a string (load the .csv) or use a provided dataframe
+        if type(multiverse_summary) == str:
+            csv_path = os.path.join(results_path, multiverse_summary)
             multiverse_summary = pd.read_csv(csv_path)
+        elif type(multiverse_summary) == pd.DataFrame:
+            multiverse_summary = multiverse_summary
         else:
-            multiverse_summary = fname
+            raise ValueError("multiverse_summary needs to be a path to a summary.csv file or a pandas DataFrame")
 
-        if measure in multiverse_summary.columns:
-            print(f"Getting {measure} from .csv file")
+        # Check if we have results in the summary file
+        if "result" in multiverse_summary.columns:
+            measure = "result"
             forking_paths = {}
 
             for column in multiverse_summary.columns:
@@ -696,10 +715,9 @@ class Multiverse:
             universe_data = multiverse_summary[measure].values
             parameters = multiverse_summary.drop(columns=[measure])
             universes_with_summary = [(data, parameters.iloc[i].to_dict()) for i, data in enumerate(universe_data)]
-            sorted_combined = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
+            sorted_universes = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
 
         else:
-            print(f"Getting {measure} from .pkl files")
             with open(f"{results_path}/forking_paths.pkl", "rb") as file:
                 forking_paths = pickle.load(file)
 
@@ -719,6 +737,6 @@ class Multiverse:
                 if not summary_row.empty:
                     universes_with_summary.append((data, summary_row.iloc[0]))
 
-            sorted_combined = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
+            sorted_universes = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
 
-        return sorted_combined, forking_paths
+        return sorted_universes, forking_paths
