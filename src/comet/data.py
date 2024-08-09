@@ -127,7 +127,7 @@ def load_single_state():
 
     return data
 
-def save_universe_results(data=None, universe=os.path.abspath(__file__)):
+def save_universe_results(data, universe=os.path.abspath(__file__)):
     """
     This saves the results of a universe.
 
@@ -151,20 +151,10 @@ def save_universe_results(data=None, universe=os.path.abspath(__file__)):
     if not os.path.exists(savedir):
         os.makedirs(savedir)
 
-    # Single result values are saved in the summary .csv file, otherwise in a .pkl file
-    if type(data) in [int, float, bool, str]:
-            file = os.path.join(savedir, "multiverse_summary.csv")
-            lock_path = file + ".lock"
-
-            with FileLock(lock_path):
-                df = pd.read_csv(file)
-                universe_row = df[df.iloc[:, 0] == f'Universe_{universe_number}']
-                df.loc[universe_row.index, 'result'] = data
-                df.to_csv(file, index=False)
-    else:
-        file = savedir + f"/universe_{universe_number}.pkl"
-        with open(file, 'wb') as f:
-            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+    # Save the data as a .pkl file
+    file = savedir + f"/universe_{universe_number}.pkl"
+    with open(file, 'wb') as f:
+        pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     return
 

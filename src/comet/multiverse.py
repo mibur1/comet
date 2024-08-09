@@ -151,11 +151,6 @@ class Multiverse:
             file = f"universe_{universe_number}.py"
             execute_script(file)
 
-        # Delete the lock file if it exists
-        lock_path = os.path.join(path, "results/multiverse_summary.csv.lock")
-        if os.path.exists(lock_path):
-            os.remove(lock_path)
-
         return
 
     def summary(self, universe=range(1,5)):
@@ -363,9 +358,6 @@ class Multiverse:
         #   2. From .pkl files which were saved in a previously computed multiverse
         sorted_universes, forking_paths = self._load_and_prepare_data(multiverse_summary, measure, results_path)
 
-        print(sorted_universes)
-        print(forking_paths)
-
         # Plotting
         sns.set_theme(style="whitegrid")
         fig, ax = plt.subplots(2, 1, figsize=figsize, gridspec_kw={'height_ratios': height_ratio}, sharex=True)
@@ -431,10 +423,11 @@ class Multiverse:
             else:
                 mean_val = result
 
-            if hasattr(result, '__len__') and len(result) > 3:
+            if hasattr(result, '__len__') and len(result) > 3 and ci is not None:
                 sem_val = np.std(result) / np.sqrt(len(result))
                 ci_lower = mean_val - sem_val * stats.t.ppf((1 + ci / 100) / 2., len(result) - 1)
                 ci_upper = mean_val + sem_val * stats.t.ppf((1 + ci / 100) / 2., len(result) - 1)
+                print("HI", result, sem_val, ci_lower, ci_upper)
 
                 ax[0].plot([i, i], [ci_lower, ci_upper], color="gray", linewidth=linewidth)
 
@@ -491,14 +484,14 @@ class Multiverse:
 
         legend_items = []
 
-        if hasattr(result, '__len__') and len(result) > 1:
+        """if hasattr(result, '__len__') and len(result) > 1:
             legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=8, \
                                               markerfacecolor="black", markeredgecolor="black", label=f"Mean {measure}"))
         else:
             legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=8, \
-                                              markerfacecolor="black", markeredgecolor="black", label=f"{measure}"))
+                                              markerfacecolor="black", markeredgecolor="black", label=f"{measure}"))"""
 
-        if hasattr(result, '__len__') and len(result) > 3:
+        if hasattr(result, '__len__') and len(result) > 3 and ci is not None:
             legend_items.append(mpatches.Patch(facecolor='gray', edgecolor='white', label=f"{ci}% CI"))
 
         if chance_level is not None:
@@ -701,42 +694,28 @@ class Multiverse:
         else:
             raise ValueError("multiverse_summary needs to be a path to a summary.csv file or a pandas DataFrame")
 
-        # Check if we have results in the summary file
-        if "result" in multiverse_summary.columns:
-            measure = "result"
-            forking_paths = {}
+        # Get forking paths
+        with open(f"{results_path}/forking_paths.pkl", "rb") as file:
+            forking_paths = pickle.load(file)
 
-            for column in multiverse_summary.columns:
-                if column == measure:
-                    continue
-                unique_values = multiverse_summary[column].unique().tolist()
-                forking_paths[column] = unique_values
+        pattern = os.path.join(results_path, "universe_*.pkl")
+        results_files = glob.glob(pattern)
 
-            universe_data = multiverse_summary[measure].values
-            parameters = multiverse_summary.drop(columns=[measure])
-            universes_with_summary = [(data, parameters.iloc[i].to_dict()) for i, data in enumerate(universe_data)]
-            sorted_universes = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
+        # Get the results from the .pkl files
+        universe_data = {}
+        for filename in results_files:
+            universe = os.path.basename(filename).split('.')[0]
 
-        else:
-            with open(f"{results_path}/forking_paths.pkl", "rb") as file:
-                forking_paths = pickle.load(file)
+            with open(filename, "rb") as file:
+                universe_data[universe] = pickle.load(file)[measure]
 
-            pattern = os.path.join(results_path, "universe_*.pkl")
-            results_files = glob.glob(pattern)
+        # Create combined data structure and sort by the measure
+        universes_with_summary = []
+        for universe, data in universe_data.items():
+            summary_row = multiverse_summary[multiverse_summary['Universe'].str.lower() == universe]
+            if not summary_row.empty:
+                universes_with_summary.append((data, summary_row.iloc[0]))
 
-            universe_data = {}
-            for filename in results_files:
-                universe = os.path.basename(filename).split('.')[0]
-
-                with open(filename, "rb") as file:
-                    universe_data[universe] = pickle.load(file)
-
-            universes_with_summary = []
-            for universe, data in universe_data.items():
-                summary_row = multiverse_summary[multiverse_summary['Universe'].str.lower() == universe]
-                if not summary_row.empty:
-                    universes_with_summary.append((data, summary_row.iloc[0]))
-
-            sorted_universes = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
+        sorted_universes = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
 
         return sorted_universes, forking_paths
