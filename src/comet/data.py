@@ -6,7 +6,6 @@ import pandas as pd
 import importlib_resources
 from nilearn import signal
 from scipy.io import loadmat
-from filelock import FileLock
 
 def load_timeseries(path=None):
     """

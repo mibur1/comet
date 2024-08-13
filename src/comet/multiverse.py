@@ -2,6 +2,7 @@ import os
 import sys
 import csv
 import glob
+import shutil
 import pickle
 import inspect
 import itertools
@@ -68,9 +69,15 @@ class Multiverse:
 
         # Create directories
         multiverse_dir = os.path.join(calling_script_dir, self.name)
-        os.makedirs(multiverse_dir, exist_ok=True)
         results_dir = os.path.join(multiverse_dir, "results")
-        os.makedirs(results_dir, exist_ok=True)
+
+        if os.path.exists(multiverse_dir):
+            shutil.rmtree(multiverse_dir)
+        os.makedirs(multiverse_dir)
+
+        if os.path.exists(results_dir):
+            shutil.rmtree(results_dir)
+        os.makedirs(results_dir)
 
         # Template creation
         template_code = inspect.getsource(analysis_template) # Extract the source code
@@ -305,7 +312,7 @@ class Multiverse:
 
         return
 
-    def specification_curve(self, measure, multiverse_summary="multiverse_summary.csv", p_value=None, ci=None, chance_level=None, \
+    def specification_curve(self, measure, p_value=None, ci=None, chance_level=None, \
                             cmap="Set2", linewidth=2, figsize=(16,9), height_ratio=(2,1), fontsize=10, dotsize=50, label_offset=-0.05):
         """
         Create and save a specification curve plot from multiverse results
@@ -314,9 +321,6 @@ class Multiverse:
         ----------
         measure : string
             Name of the measure to plot. Needs to be provided
-
-        multiverse_summary : string or pandas.DataFrame
-            Name of the .csv file or a dataframe containing the multiverse summary. Default is "multiverse_summary.csv"
 
         p_value : float
             Calculate and visualize statisticallz significant specification via p-value. Default is None
@@ -353,10 +357,8 @@ class Multiverse:
         calling_script_dir = os.getcwd() if 'in_notebook' in globals() and in_notebook else os.path.dirname(sys.argv[0])
         results_path = os.path.join(calling_script_dir, f"{self.name}/results")
 
-        # Load and prepare the data. This can be done in two ways:
-        #   1. From a .csv file which contains the measure as a column
-        #   2. From .pkl files which were saved in a previously computed multiverse
-        sorted_universes, forking_paths = self._load_and_prepare_data(multiverse_summary, measure, results_path)
+        # Load and prepare the data
+        sorted_universes, forking_paths = self._load_and_prepare_data(measure, results_path)
 
         # Plotting
         sns.set_theme(style="whitegrid")
@@ -662,15 +664,12 @@ class Multiverse:
 
                 writer.writerow(context)
 
-    def _load_and_prepare_data(self, multiverse_summary="multiverse_summary.csv", measure=None, results_path=None):
+    def _load_and_prepare_data(self, measure=None, results_path=None):
         """
         Internal function: Load and prepare the data for the specification curve plotting
 
         Parameters
         ----------
-        summary_file : string or pandas.DataFrame
-            Name of the .csv file or a dataframe containing the multiverse summary. Default is "multiverse_summary.csv"
-
         measure : string
             Name of the measure to plot. Default is None
 
@@ -685,16 +684,9 @@ class Multiverse:
         forking_paths : dict
             Dictionary containing the forking paths
         """
-        # Get the multiverse summary from a string (load the .csv) or use a provided dataframe
-        if type(multiverse_summary) == str:
-            csv_path = os.path.join(results_path, multiverse_summary)
-            multiverse_summary = pd.read_csv(csv_path)
-        elif type(multiverse_summary) == pd.DataFrame:
-            multiverse_summary = multiverse_summary
-        else:
-            raise ValueError("multiverse_summary needs to be a path to a summary.csv file or a pandas DataFrame")
+        csv_path = os.path.join(results_path, "multiverse_summary.csv")
+        multiverse_summary = pd.read_csv(csv_path)
 
-        # Get forking paths
         with open(f"{results_path}/forking_paths.pkl", "rb") as file:
             forking_paths = pickle.load(file)
 

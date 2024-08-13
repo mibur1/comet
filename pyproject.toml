@@ -36,8 +36,7 @@ dependencies = [
   "pydfc >=1.0.4",
   "ipykernel >=6.29.3",
   "notebook >=7.0.6",
-  "pytest >= 8.2.2",
-  "filelock >= 3.14.0"
+  "pytest >= 8.2.2"
 ]
 
 [project.optional-dependencies]
