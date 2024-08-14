@@ -312,8 +312,8 @@ class Multiverse:
 
         return
 
-    def specification_curve(self, measure, p_value=None, ci=None, chance_level=None, \
-                            cmap="Set2", linewidth=2, figsize=(16,9), height_ratio=(2,1), fontsize=10, dotsize=50, label_offset=-0.05):
+    def specification_curve(self, measure, p_value=None, ci=None, baseline=None, \
+                            title="Specification Curve", cmap="Set2", linewidth=2, figsize=(16,9), height_ratio=(2,1), fontsize=10, dotsize=50, label_offset=-0.05):
         """
         Create and save a specification curve plot from multiverse results
 
@@ -328,8 +328,11 @@ class Multiverse:
         ci : int
             Confidence interval to plot. Default is 95
 
-        chance_level : float
+        baseline : float
             Chance level to plot. Default is None
+
+        title : string
+            Title of the plot. Default is "Specification Curve"
 
         cmap : string
             Colormap to use for the nodes. Default is "Set2"
@@ -357,14 +360,15 @@ class Multiverse:
         calling_script_dir = os.getcwd() if 'in_notebook' in globals() and in_notebook else os.path.dirname(sys.argv[0])
         results_path = os.path.join(calling_script_dir, f"{self.name}/results")
 
-        # Load and prepare the data
+        # Sort the universes based on the measure and get the forking paths
         sorted_universes, forking_paths = self._load_and_prepare_data(measure, results_path)
 
         # Plotting
         sns.set_theme(style="whitegrid")
         fig, ax = plt.subplots(2, 1, figsize=figsize, gridspec_kw={'height_ratios': height_ratio}, sharex=True)
-        fig.suptitle('Multiverse Analysis', fontweight="bold", fontsize=fontsize+2)
+        fig.suptitle(title, fontweight="bold", fontsize=fontsize+2)
 
+        # If the forking path is a single parameter only, we will not plot it and delete it from the forking paths
         single_params = []
         for decision, options in forking_paths.items():
             for i, opt in enumerate(options):
@@ -377,41 +381,47 @@ class Multiverse:
         for param in single_params:
             del forking_paths[param]
 
+        # Setup variables for  the bottom plot
         flat_list = []
         yticks = []
         yticklabels = []
-        current_position = 0
         line_ends = []
+        p_vals = []
         key_positions = {}
+        y_max = 0
         space_between_groups = 1
+        color = "black"
 
         for key, options in forking_paths.items():
-            key_position = current_position + len(options) / 2 - 0.5
+            key_position = y_max + len(options) / 2 - 0.5
             key_positions[key] = key_position
 
             for option in options:
                 flat_list.append((key, option))
-                yticks.append(current_position)
+                yticks.append(y_max)
                 yticklabels.append(option)
-                current_position += 1
+                y_max += 1
 
-            line_ends.append(current_position)
-            current_position += space_between_groups
+            line_ends.append(y_max)
+            y_max += space_between_groups
 
         decision_info = (yticklabels, yticks, line_ends, forking_paths.keys())
 
+        # Ticks and labels for bottom plot
         ax[1].set_yticks(yticks)
         ax[1].set_yticklabels(yticklabels)
         ax[1].tick_params(axis='y', labelsize=10)
-        ax[1].set_ylim(-1, current_position)
-        ax[1].yaxis.grid(False)
+        ax[1].set_ylim(-1, y_max)
+        ax[1].xaxis.grid(False)
 
+        # Labels for the bottom plot
         trans1 = transforms.blended_transform_factory(ax[1].transAxes, ax[1].transData)
 
         for key, pos in key_positions.items():
             ax[1].text(label_offset - 0.01, pos, key, transform=trans1, ha='right', va='center', \
                        fontweight="bold", fontsize=fontsize, rotation=0)
 
+        # Lines for the bottom plot
         s = -0.5
         for i, line_end in enumerate(line_ends):
             e = line_end - 0.5
@@ -419,35 +429,43 @@ class Multiverse:
             ax[1].add_line(line)
             s = line_end + 0.5
 
+        # Plotting of the dots in both plots
         for i, (result, decisions) in enumerate(sorted_universes):
+
+            # If the measure for the top plot contains multiple values (e.g. CV results), we calculate the mean for the plot
             if hasattr(result, '__len__'):
                 mean_val = np.mean(result)
             else:
                 mean_val = result
 
-            if hasattr(result, '__len__') and len(result) > 3 and ci is not None:
-                sem_val = np.std(result) / np.sqrt(len(result))
-                ci_lower = mean_val - sem_val * stats.t.ppf((1 + ci / 100) / 2., len(result) - 1)
-                ci_upper = mean_val + sem_val * stats.t.ppf((1 + ci / 100) / 2., len(result) - 1)
-                print("HI", result, sem_val, ci_lower, ci_upper)
+            # Plot the confidence interval
+            if ci is not None:
+                # Only calculate for more than 3 samples
+                if hasattr(result, '__len__') and len(result) > 3:
+                    sem_val = np.std(result) / np.sqrt(len(result))
+                    ci_lower = mean_val - sem_val * stats.t.ppf((1 + ci / 100) / 2., len(result) - 1)
+                    ci_upper = mean_val + sem_val * stats.t.ppf((1 + ci / 100) / 2., len(result) - 1)
 
-                ax[0].plot([i, i], [ci_lower, ci_upper], color="gray", linewidth=linewidth)
+                    ax[0].plot([i, i], [ci_lower, ci_upper], color="gray", linewidth=linewidth)
 
-                if ci_lower > 0.5:
-                    ax[0].scatter(i, mean_val, zorder=3, color="green", edgecolor="green", s=dotsize)
-                elif ci_upper < 0.5:
-                    ax[0].scatter(i, mean_val, zorder=3, color="red", edgecolor="red", s=dotsize)
                 else:
-                    ax[0].scatter(i, mean_val, zorder=3, color="black", edgecolor="black", s=dotsize)
-            else:
-                if chance_level is not None:
-                    if mean_val > chance_level:
-                        ax[0].scatter(i, mean_val, zorder=3, color="green", edgecolor="green", s=dotsize)
-                    elif mean_val < chance_level:
-                        ax[0].scatter(i, mean_val, zorder=3, color="red", edgecolor="red", s=dotsize)
-                else:
-                    ax[0].scatter(i, mean_val, zorder=3, color="black", edgecolor="black", s=dotsize)
+                    print("Warning: No CI calculation (less than 4 samples.)")
 
+            # Color coding for p-values (only for more than 30 samples)
+            if p_value is not None:
+                baseline = 0 if baseline is None else baseline # Compare against 0 if no baseline is provided
+
+                if  hasattr(result, '__len__') and (len(result) > 29):
+                    t_obs, p_obs = stats.ttest_1samp(result, baseline)
+                    p_vals.append(p_obs)
+
+                    if p_obs < p_value:
+                        color="green"
+
+            # Plot the universe measure
+            ax[0].scatter(i, mean_val, zorder=3, color=color, edgecolor=color, s=dotsize)
+
+            # Colors for the lower plot, each decision group has a different color
             group_ends = decision_info[2]
             num_groups = len(group_ends) + 1
             colormap = plt.cm.get_cmap(cmap, num_groups)
@@ -468,6 +486,7 @@ class Multiverse:
 
                     ax[1].scatter(i, plot_pos, color=current_color, marker='o', s=dotsize)
 
+        # Upper plot settings
         trans0 = transforms.blended_transform_factory(ax[0].transAxes, ax[0].transData)
 
         ax[0].xaxis.grid(False)
@@ -475,6 +494,7 @@ class Multiverse:
         ax[0].set_xticklabels([])
         ax[0].set_xlim(-1, len(sorted_universes) + 1)
 
+        # Upper plot label
         ymin, ymax = ax[0].get_ylim()
         ycenter = (ymax + ymin) / 2
         ax[0].text(label_offset - 0.01, ycenter, measure, transform=trans0, ha='right', va='center', \
@@ -482,27 +502,35 @@ class Multiverse:
         line = mlines.Line2D([label_offset, label_offset], [ymin, ymax], color="black", lw=1, transform=trans0, clip_on=False)
         ax[0].add_line(line)
 
-        ax[0].hlines(chance_level, xmin=-2, xmax=len(sorted_universes) + 1, linestyles="--", lw=2, colors='black', zorder=1)
-
+        # List for legend items
         legend_items = []
 
-        """if hasattr(result, '__len__') and len(result) > 1:
-            legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=8, \
-                                              markerfacecolor="black", markeredgecolor="black", label=f"Mean {measure}"))
-        else:
-            legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=8, \
-                                              markerfacecolor="black", markeredgecolor="black", label=f"{measure}"))"""
+        # If the chance level is whithin the range of the measure, we plot it as a dashed line, otherwise we skip it for visualization purposes
+        if baseline is not None and baseline > np.mean(sorted_universes[0][0]) and baseline < np.mean(sorted_universes[-1][0]):
+            ax[0].hlines(baseline, xmin=-2, xmax=len(sorted_universes) + 1, linestyles="--", lw=2, colors='black', zorder=1)
+            legend_items.append(mlines.Line2D([], [], linestyle='--', color='black', linewidth=2, label=f"Baseline"))
 
+        # Legend items for confidence interval
         if hasattr(result, '__len__') and len(result) > 3 and ci is not None:
             legend_items.append(mpatches.Patch(facecolor='gray', edgecolor='white', label=f"{ci}% CI"))
 
-        if chance_level is not None:
-            legend_items.append(mlines.Line2D([], [], color='black', linestyle='--', lw=linewidth, label='Chance level'))
+        # Legend items for t-tests
+        if p_value is not None:
+            if len(p_vals) > 0:
+                if min(p_vals) <= p_value:
+                    legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=9, markerfacecolor="green", markeredgecolor="green", label=f"p < 0.05"))
+                if max(p_vals) > p_value:
+                    legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=9, markerfacecolor="black", markeredgecolor="black", label=f"p > 0.05"))
+            else:
+                print("Warning: No p-values were calculated (less than 30 samples.)")
 
-        ax[0].legend(handles=legend_items, loc='upper left', fontsize=fontsize)
+        # Add the legend to the plot if it contains at least one item
+        if len(legend_items) > 0:
+            ax[0].legend(handles=legend_items, loc='upper left', fontsize=fontsize)
 
+        # Show and save the plot
         plt.tight_layout()
-        #plt.savefig(f"{results_path}/specification_curve.png")
+        plt.savefig(f"{results_path}/specification_curve.png")
         plt.show()
 
         return
@@ -684,16 +712,17 @@ class Multiverse:
         forking_paths : dict
             Dictionary containing the forking paths
         """
-        csv_path = os.path.join(results_path, "multiverse_summary.csv")
-        multiverse_summary = pd.read_csv(csv_path)
+        summary_path = os.path.join(results_path, "multiverse_summary.csv")
+        multiverse_summary = pd.read_csv(summary_path)
 
         with open(f"{results_path}/forking_paths.pkl", "rb") as file:
             forking_paths = pickle.load(file)
 
+        # Get the results files
         pattern = os.path.join(results_path, "universe_*.pkl")
         results_files = glob.glob(pattern)
 
-        # Get the results from the .pkl files
+        # Get the specified mesure from the .pkl files
         universe_data = {}
         for filename in results_files:
             universe = os.path.basename(filename).split('.')[0]
@@ -701,7 +730,7 @@ class Multiverse:
             with open(filename, "rb") as file:
                 universe_data[universe] = pickle.load(file)[measure]
 
-        # Create combined data structure and sort by the measure
+        # Create combined data structure and sort by the measure by mean
         universes_with_summary = []
         for universe, data in universe_data.items():
             summary_row = multiverse_summary[multiverse_summary['Universe'].str.lower() == universe]
@@ -711,3 +740,4 @@ class Multiverse:
         sorted_universes = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
 
         return sorted_universes, forking_paths
+
