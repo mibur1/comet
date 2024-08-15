@@ -431,7 +431,6 @@ class Multiverse:
 
         # Plotting of the dots in both plots
         for i, (result, decisions) in enumerate(sorted_universes):
-
             # If the measure for the top plot contains multiple values (e.g. CV results), we calculate the mean for the plot
             if hasattr(result, '__len__'):
                 mean_val = np.mean(result)
@@ -448,6 +447,12 @@ class Multiverse:
 
                     ax[0].plot([i, i], [ci_lower, ci_upper], color="gray", linewidth=linewidth)
 
+                    if ci_lower > baseline:
+                        color = "green"
+                    elif ci_upper < baseline:
+                        color = "red"
+                    else:
+                        color = "black"
                 else:
                     print("Warning: No CI calculation (less than 4 samples.)")
 

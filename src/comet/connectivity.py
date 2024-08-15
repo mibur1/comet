@@ -782,7 +782,7 @@ class LeiDA(ConnectivityMethod):
         self.N_estimates = self.T
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
         self.flip_eigenvectors = flip_eigenvectors
-        self.res = []
+        self.V1 = None
 
     def estimate(self):
         """
@@ -813,8 +813,8 @@ class LeiDA(ConnectivityMethod):
             self.R_mat[:, :, n] = np.outer(V1, V1)
 
         self.R_mat = self.postproc(self.R_mat)
-
-        return self.R_mat, V1
+        self.V1 = V1
+        return self.R_mat
 
 class WaveletCoherence(ConnectivityMethod):
     """
@@ -880,6 +880,7 @@ class WaveletCoherence(ConnectivityMethod):
         self.n_scales = n_scales
         self.drop_scales = drop_scales
         self.drop_timepoints = drop_timepoints
+        self.iwc = None
 
     def estimate(self):
         """
@@ -949,10 +950,9 @@ class WaveletCoherence(ConnectivityMethod):
 
         # Get rid of empty time points
         dfc = dfc[:,:, self.drop_timepoints:-self.drop_timepoints]
-
         dfc = self.postproc(dfc)
+        self.iwc = iwc
 
-        #return iwc, dfc
         return dfc
 
 class DCC(ConnectivityMethod):
@@ -999,6 +999,10 @@ class DCC(ConnectivityMethod):
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
         self.standardizeData = standardizeData
         self.num_cores = num_cores
+
+        self.H = None # dynamic conditional covariance tensor
+        self.Theta = None # GARCH(1,1) parameters
+        self.X = None # DCC parameters
 
     def _loglikelihood_garch11(self, theta, data):
         """
@@ -1159,10 +1163,6 @@ class DCC(ConnectivityMethod):
         -------
         R : N*N*T np.ndarray
             estimated dynamic conditional correlation tensor
-        tuple
-            - H : dynamic conditional covariance tensor
-            - Theta : GARCH(1,1) parameters
-            - X : DCC parameters
         """
         print("Calculating Dynamic Conditional Correlation, please wait...")
         T, N = self.time_series.shape # T timepoints x N parcels
@@ -1211,7 +1211,11 @@ class DCC(ConnectivityMethod):
 
         R = self.postproc(R)
 
-        return R, (H, Theta, X)
+        self.H = H
+        self.Theta = Theta
+        self.X = X
+
+        return R
 
 class EdgeTimeSeries(ConnectivityMethod):
     """
@@ -1244,6 +1248,9 @@ class EdgeTimeSeries(ConnectivityMethod):
 
         super().__init__(time_series, 0, standardize, False, False)
         self.standardizeData = standardizeData
+        self.eTS = None
+        self.u = None # Indices of the upper triangle of the connectivity matrix.
+        self.v = None # Indices of the upper triangle of the connectivity matrix.
 
     def estimate(self):
         """
@@ -1252,15 +1259,11 @@ class EdgeTimeSeries(ConnectivityMethod):
         Returns
         -------
         np.ndarray
-            Dynamic functional connectivity as a PxPxN array.
-        tuple
-            - np.ndarray : Edge time series.
-            - np.ndarray : Indices of the upper triangle of the connectivity matrix.
-            - np.ndarray : Indices of the upper triangle of the connectivity matrix.
+            Dynamic functional connectivity as an Edge x Eedge x Time array.
         """
         z = zscore(self.time_series, axis=0, ddof=1) if self.standardizeData else self.time_series
-        u, v = np.triu_indices(self.time_series.shape[1], k=1)
-        a = np.multiply(z[:, u], z[:, v]) # edge time series
+        self.u, self.v = np.triu_indices(self.time_series.shape[1], k=1)
+        a = np.multiply(z[:, self.u], z[:, self.v]) # edge time series
 
         b = a.T @ a # inner product
         c = np.sqrt(np.diag(b)) # Square root of the diagonal elements (variance) to normalize
@@ -1268,8 +1271,9 @@ class EdgeTimeSeries(ConnectivityMethod):
         dfc = b / d # Element-wise division to get the correlation matrix
 
         dfc = self.postproc(dfc)
+        self.eTS = a
 
-        return dfc, (a, u, v)
+        return dfc
 
 
 """
