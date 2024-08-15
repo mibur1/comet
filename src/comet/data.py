@@ -140,6 +140,9 @@ def save_universe_results(data, universe=os.path.abspath(__file__)):
     universe : str
         File name of the calling script (universe)
     """
+    if type(data) is not dict:
+        raise ValueError("Data must be povided as a dictionary.")
+
     calling_script_dir = os.path.dirname(universe)
 
     # A bit of regex to get the universe number from the filename

@@ -2156,33 +2156,6 @@ class App(QMainWindow):
                     return True
             return False
 
-        class_mappings = {
-            'CONT': [
-                'Sliding Window', 'Jackknife Correlation', 'Flexible Least Squares', 'Spatial Distance',
-                'Multiplication of Temporal Derivatives', 'Dynamic Conditional Correlation',
-                'Phase Synchronization', 'Leading Eigenvector Dynamics', 'Wavelet Coherence', 'Edge Time Series'
-            ],
-            'STATE': [
-                'Sliding Window Clustering', 'Co-activation patterns', 'Discrete Hidden Markov Model',
-                'Continuous Hidden Markov Model', 'Windowless'
-            ],
-            'STATIC': [
-                'Pearson Correlation', 'Partial Correlation', 'Mutual Information'
-            ]
-        }
-
-        # Dynamically generate the ordered classes based on available mappings
-        ordered_classes = [
-            f"{prefix} {name}" for prefix, names in class_mappings.items() for name in names
-        ]
-
-        # Generic filtering function
-        filtered_and_ordered_classes = [
-            class_name for class_name in ordered_classes
-            if shouldIncludeClass(class_name) and class_name in self.class_info
-        ]
-
-
         # Disconnect existing connections to avoid multiple calls
         try:
             self.methodComboBox.currentTextChanged.disconnect(self.onMethodCombobox)
@@ -2190,8 +2163,10 @@ class App(QMainWindow):
             pass
 
         # Update the combobox
+        methods_to_include = [method for method in self.reverse_connectivityMethods.keys() if shouldIncludeClass(method)]
+
         self.methodComboBox.clear()
-        self.methodComboBox.addItems(filtered_and_ordered_classes)
+        self.methodComboBox.addItems(methods_to_include)
 
         # Adjust combobox width
         if self.methodComboBox.count() > 0:
@@ -2207,8 +2182,8 @@ class App(QMainWindow):
         self.methodComboBox.currentTextChanged.connect(self.onMethodCombobox)
 
         # Trigger the onMethodCombobox for the initial setup
-        if filtered_and_ordered_classes:
-            self.onMethodCombobox(filtered_and_ordered_classes[0])
+        if methods_to_include:
+            self.onMethodCombobox(methods_to_include[0])
 
     # Calculations
     def calculateConnectivity(self):
@@ -2250,30 +2225,24 @@ class App(QMainWindow):
         clean_params.pop('parcellation', None)
 
         # Data does not exist, perform calculation
-        connectivity_calculator = self.data.dfc_instance(**clean_params)
-        result = connectivity_calculator.estimate()
+        connectivityObject = self.data.dfc_instance(**clean_params)
+        result = connectivityObject.estimate()
 
-        # In case the method returns multiple values. The first one is always the NxNxT dfc matrix
-        if isinstance(result, tuple):
-            self.data.dfc_data = result[0]
-            self.data.dfc_params = params
-            self.data.dfc_state_tc = None
-            self.data.dfc_edge_ts = result[1][0] if (isinstance(result[1], tuple) and result[1][0].shape != result[0].shape) else None
+        self.data.dfc_data = result
+        self.data.dfc_params = params
+        self.data.dfc_state_tc = None
+        self.data.dfc_edge_ts = None
+
+        # Edge time series contains multiple connectivity estimates (eFC and eTS)
+        print(self.data.dfc_instance)
+        if self.data.dfc_instance == connectivity.EdgeTimeSeries:
+            self.data.dfc_edge_ts = connectivityObject.eTS
 
         # Result is DFC object (pydfc methods)
-        elif isinstance(result, pydfc.dfc.DFC):
+        if isinstance(result, pydfc.dfc.DFC):
             self.data.dfc_data = np.transpose(result.get_dFC_mat(), (1, 2, 0))
-            self.data.dfc_params = params
             self.data.dfc_states = result.FCSs_
             self.data.dfc_state_tc = result.state_TC()
-            self.data.dfc_edge_ts = None
-
-        # Only a single matrix is returned (most cases)
-        else:
-            self.data.dfc_data = result
-            self.data.dfc_params = params
-            self.data.dfc_state_tc = None
-            self.data.dfc_edge_ts = None
 
         # Store in memory if checkbox is checked
         if keep_in_memory:
