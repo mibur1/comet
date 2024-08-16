@@ -14,7 +14,6 @@ from importlib import resources as pkg_resources
 from typing import Any, Dict, get_type_hints, get_origin, Literal
 
 # BIDS data imports
-import nibabel as nib
 from bids import BIDSLayout
 from nilearn import datasets, maskers
 from nilearn.interfaces.fmriprep import load_confounds
@@ -30,8 +29,8 @@ import matplotlib.gridspec as gridspec
 
 # Qt imports
 import qdarkstyle
-from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject
-from PyQt6.QtGui import QEnterEvent, QFontMetrics
+from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject, QRegularExpression
+from PyQt6.QtGui import QEnterEvent, QFontMetrics, QSyntaxHighlighter, QTextCharFormat
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
      QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, QGridLayout, \
      QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QGroupBox
@@ -353,6 +352,101 @@ class ParameterOptions:
         self.confound_options = self.CONFOUND_OPTIONS
         self.cleaning_info = self.CLEANING_INFO
 
+class PythonHighlighter(QSyntaxHighlighter):
+    def __init__(self, parent=None):
+        super(PythonHighlighter, self).__init__(parent)
+
+        # Define the formats for different types of syntax elements
+        self.keywordFormat = QTextCharFormat()
+        self.keywordFormat.setForeground(Qt.GlobalColor.darkMagenta)
+
+        self.classFormat = QTextCharFormat()
+        self.classFormat.setForeground(Qt.GlobalColor.darkMagenta)
+
+        self.singleLineCommentFormat = QTextCharFormat()
+        self.singleLineCommentFormat.setForeground(Qt.GlobalColor.darkGreen)
+        self.singleLineCommentFormat.setFontItalic(True)
+
+        self.stringFormat = QTextCharFormat()
+        self.stringFormat.setForeground(Qt.GlobalColor.darkRed)
+
+        self.functionFormat = QTextCharFormat()
+        self.functionFormat.setForeground(Qt.GlobalColor.darkCyan)
+
+        self.tripleQuoteFormat = QTextCharFormat()
+        self.tripleQuoteFormat.setForeground(Qt.GlobalColor.darkGreen)
+
+        # Create the rules for Python syntax
+        self.rules = []
+
+        keywords = [
+            'and', 'as', 'assert', 'break', 'class', 'continue', 'def', 'del', 'elif', 'else', 'except',
+            'False', 'finally', 'for', 'from', 'global', 'if', 'import', 'in', 'is', 'lambda', 'None',
+            'nonlocal', 'not', 'or', 'pass', 'raise', 'return', 'True', 'try', 'while', 'with', 'yield'
+        ]
+        keywordPatterns = [f"\\b{keyword}\\b" for keyword in keywords]
+        self.rules += [(QRegularExpression(pattern), self.keywordFormat) for pattern in keywordPatterns]
+
+        classPattern = QRegularExpression("\\bQ[A-Za-z]+\\b")
+        self.rules.append((classPattern, self.classFormat))
+
+        stringPattern = QRegularExpression("\".*\"|'.*'")
+        self.rules.append((stringPattern, self.stringFormat))
+
+        functionPattern = QRegularExpression("\\b[A-Za-z0-9_]+(?=\\()")
+        self.rules.append((functionPattern, self.functionFormat))
+
+        singleLineCommentPattern = QRegularExpression("#[^\n]*")
+        self.commentRule = (singleLineCommentPattern, self.singleLineCommentFormat)
+
+    def highlightBlock(self, text):
+        # Apply all regular expression rules first, except for comments
+        if self.previousBlockState() != 1:
+            for pattern, fmt in self.rules:
+                matchIterator = pattern.globalMatch(text)
+                while matchIterator.hasNext():
+                    match = matchIterator.next()
+                    start = match.capturedStart()
+                    length = match.capturedLength()
+                    self.setFormat(start, length, fmt)
+
+        # Check for triple-quoted strings (''' or """)
+        startTripleSingle = text.find("'''")
+        startTripleDouble = text.find('"""')
+
+        if self.previousBlockState() == 1:
+            # We're continuing from a previous block with an open triple-quoted string
+            self.setFormat(0, len(text), self.tripleQuoteFormat)
+            endTripleSingle = text.find("'''")
+            endTripleDouble = text.find('"""')
+            if endTripleSingle != -1 or endTripleDouble != -1:
+                self.setCurrentBlockState(0)  # End of the triple-quoted string
+            else:
+                self.setCurrentBlockState(1)  # Continue in the next block
+        elif startTripleSingle != -1 or startTripleDouble != -1:
+            # Starting a new triple-quoted string
+            startTriple = startTripleSingle if startTripleSingle != -1 else startTripleDouble
+            endTripleSingle = text.find("'''", startTriple + 3)
+            endTripleDouble = text.find('"""', startTriple + 3)
+
+            if endTripleSingle != -1 or endTripleDouble != -1:
+                endTriple = endTripleSingle if endTripleSingle != -1 else endTripleDouble
+                self.setFormat(startTriple, endTriple + 3 - startTriple, self.tripleQuoteFormat)
+                self.setCurrentBlockState(0)  # Triple-quoted string ends in the same block
+            else:
+                self.setFormat(startTriple, len(text) - startTriple, self.tripleQuoteFormat)
+                self.setCurrentBlockState(1)  # Triple-quoted string continues in the next block
+        else:
+            self.setCurrentBlockState(0)  # No triple-quoted string detected
+
+        # Apply the single-line comment rule last to ensure it overrides other formats
+        matchIterator = self.commentRule[0].globalMatch(text)
+        while matchIterator.hasNext():
+            match = matchIterator.next()
+            start = match.capturedStart()
+            length = match.capturedLength()
+            self.setFormat(start, length, self.commentRule[1])
+
 @dataclass
 class Data:
     '''
@@ -589,8 +683,8 @@ class App(QMainWindow):
 
         # Combine sections
         mainLayout = QHBoxLayout()
-        mainLayout.addLayout(leftLayout, 1)
-        mainLayout.addLayout(rightLayout, 1)
+        mainLayout.addLayout(leftLayout, 3)
+        mainLayout.addLayout(rightLayout, 4)
         multiverseLayout.addLayout(mainLayout)
         self.topTabWidget.addTab(multiverseTab, "Multiverse Analysis")
 
@@ -782,7 +876,7 @@ class App(QMainWindow):
         plotTab.setLayout(QVBoxLayout())
         self.boldFigure = Figure()
         self.boldCanvas = FigureCanvas(self.boldFigure)
-        self.boldFigure.patch.set_facecolor('#E0E0E0')
+        self.boldFigure.patch.set_facecolor('#f3f1f5')
         plotTab.layout().addWidget(self.boldCanvas)
         plotTabWidget.addTab(plotTab, "Carpet Plot")
 
@@ -892,7 +986,7 @@ class App(QMainWindow):
 
         self.connectivityFigure = Figure()
         self.connectivityCanvas = FigureCanvas(self.connectivityFigure)
-        self.connectivityFigure.patch.set_facecolor('#E0E0E0')
+        self.connectivityFigure.patch.set_facecolor('#f3f1f5')
         imshowLayout.addWidget(self.connectivityCanvas)
         self.tabWidget.addTab(imshowTab, "Connectivity")
 
@@ -903,7 +997,7 @@ class App(QMainWindow):
 
         self.timeSeriesFigure = Figure()
         self.timeSeriesCanvas = FigureCanvas(self.timeSeriesFigure)
-        self.timeSeriesFigure.patch.set_facecolor('#E0E0E0')
+        self.timeSeriesFigure.patch.set_facecolor('#f3f1f5')
         timeSeriesLayout.addWidget(self.timeSeriesCanvas)
         self.tabWidget.addTab(timeSeriesTab, "Time course")
 
@@ -916,7 +1010,7 @@ class App(QMainWindow):
 
         self.distributionFigure = Figure()
         self.distributionCanvas = FigureCanvas(self.distributionFigure)
-        self.distributionFigure.patch.set_facecolor('#E0E0E0')
+        self.distributionFigure.patch.set_facecolor('#f3f1f5')
         distributionLayout.addWidget(self.distributionCanvas)
         self.tabWidget.addTab(distributionTab, "Distribution")
 
@@ -1100,7 +1194,7 @@ class App(QMainWindow):
 
         self.matrixFigure = Figure()
         self.matrixCanvas = FigureCanvas(self.matrixFigure)
-        self.matrixFigure.patch.set_facecolor('#E0E0E0')
+        self.matrixFigure.patch.set_facecolor('#f3f1f5')
         matrixLayout.addWidget(self.matrixCanvas)
         graphTabWidget.addTab(matrixTab, "Adjacency Matrix")
 
@@ -1121,7 +1215,7 @@ class App(QMainWindow):
         # Add the graph canvas to the plot layout
         self.graphFigure = Figure()
         self.graphCanvas = FigureCanvas(self.graphFigure)
-        self.graphFigure.patch.set_facecolor('#E0E0E0')
+        self.graphFigure.patch.set_facecolor('#f3f1f5')
         plotLayout.addWidget(self.graphCanvas)
 
         # Widget for the textbox
@@ -1145,53 +1239,56 @@ class App(QMainWindow):
     # Multiverse layouts
     def addMultiverseLayout(self, leftLayout):
         # Top section
-        # Empty list to store container widgets
         self.mv_containers = [] # decision containers for multiverse analysis
 
-        loadLabel = QLabel('Create multiverse analysis template script:')
-        leftLayout.addWidget(loadLabel)
+        createMvContainer = QGroupBox("Create multiverse analysis template")
+        createMvContainerLayout = QVBoxLayout()
+        createMvContainerLayout.addItem(QSpacerItem(0, 5, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
         # Creating a first decision container
         decisionWidget = self.addDecisionContainer()
-        leftLayout.addWidget(decisionWidget)
+        createMvContainerLayout.addWidget(decisionWidget)
 
         # Horizontal layout for add/collapse buttons
         buttonLayout = QHBoxLayout()
 
         newDecisionButton = QPushButton("\u2795")
-        newDecisionButton.clicked.connect(lambda: self.addNewDecision(leftLayout, buttonLayout))
+        newDecisionButton.clicked.connect(lambda: self.addNewDecision(createMvContainerLayout, buttonLayout))
         buttonLayout.addWidget(newDecisionButton, 5)
         buttonLayout.addStretch(21)
 
-        leftLayout.addLayout(buttonLayout)
-
+        createMvContainerLayout.addLayout(buttonLayout)
+        createMvContainer.setLayout(createMvContainerLayout)
+        leftLayout.addWidget(createMvContainer)
         leftLayout.addStretch()
 
-
         # Bottom  section
-        # Perform multiverse analysis
-        loadLabel = QLabel('Perform multiverse analysis:')
-        leftLayout.addWidget(loadLabel)
+        performMvContainer = QGroupBox("Perform multiverse analysis")
+        performMvContainerLayout = QVBoxLayout()
+        performMvContainerLayout.addItem(QSpacerItem(0, 5, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
         loadLayout = QHBoxLayout()
-        loadScriptButton = QPushButton('Load Script')
-        loadLayout.addWidget(loadScriptButton, 1)
+        loadMultiverseScriptButton = QPushButton('Load multiverse template')
+        loadLayout.addWidget(loadMultiverseScriptButton, 3)
 
         # Textbox to display the loaded script path
         self.loadedScriptDisplay = QLineEdit()
-        self.loadedScriptDisplay.setPlaceholderText("No script loaded yet")
+        self.loadedScriptDisplay.setPlaceholderText("No multiverse template loaded yet")
         self.loadedScriptDisplay.setReadOnly(True)
-        loadLayout.addWidget(self.loadedScriptDisplay, 3)
+        loadLayout.addWidget(self.loadedScriptDisplay, 5)
 
-        # Add the horizontal layout to the main left layout
-        leftLayout.addLayout(loadLayout)
+        # Add the horizontal layout
+        performMvContainerLayout.addLayout(loadLayout)
+        performMvContainer.setLayout(performMvContainerLayout)
 
         # Connect the button to the method that handles file loading
-        loadScriptButton.clicked.connect(self.loadScript)
+        loadMultiverseScriptButton.clicked.connect(self.loadMultiverseScript)
 
         runButton = QPushButton('Run multiverse analysis')
-        leftLayout.addWidget(runButton)
-        runButton.clicked.connect(self.runScript)
+        performMvContainerLayout.addWidget(runButton)
+        runButton.clicked.connect(self.runMultiverseScript)
+
+        leftLayout.addWidget(performMvContainer)
 
         return
 
@@ -1205,26 +1302,48 @@ class App(QMainWindow):
         templateTab.setLayout(templateLayout)
 
         self.scriptDisplay = QTextEdit()
+        self.scriptDisplay.setStyleSheet("""QTextEdit { background-color: #f3f1f5; color: #19232d;}""")
         self.scriptDisplay.setReadOnly(True)
         templateLayout.addWidget(self.scriptDisplay)
 
-        # Create and add the save button
-        saveScriptButton = QPushButton('Save template script')
-        saveScriptButton.clicked.connect(self.saveScript)
-        templateLayout.addWidget(saveScriptButton)
+        # Add syntax highlighting to the script
+        self.highlighter = PythonHighlighter(self.scriptDisplay.document())
 
-        # Add the complete tab to the multiverseTabWidget
+        # Create the toggle button and add it inside the QTextEdit
+        self.toggleButton = QPushButton(" 🔒 ", self.scriptDisplay)
+        self.toggleButton.setFixedSize(30, 20)
+        self.toggleButton.clicked.connect(self.toggleReadOnly)
+
+        # Position the button at the top right corner inside the QTextEdit
+        self.toggleButton.move(self.scriptDisplay.width() - self.toggleButton.width() - 5, 5)
+
+        # Adjust button position when the QTextEdit is resized
+        self.scriptDisplay.resizeEvent = self.updateToggleButtonPosition
+
+        # Create a layout for the buttons (reset, save))
+        scriptButtonLayout = QHBoxLayout()
+
+        resetMultiverseScriptButton = QPushButton('Reset template script')
+        resetMultiverseScriptButton.clicked.connect(self.resetMultiverseScript)
+        scriptButtonLayout.addWidget(resetMultiverseScriptButton)
+
+        saveMultiverseScriptButton = QPushButton('Save template script')
+        saveMultiverseScriptButton.clicked.connect(self.saveMultiverseScript)
+        scriptButtonLayout.addWidget(saveMultiverseScriptButton)
+
+        # Add to the layout
+        templateLayout.addLayout(scriptButtonLayout)
         multiverseTabWidget.addTab(templateTab, "Template")
-        self.generateScript(init_template=True) # Generate the template script
+        self.generateMultiverseScript(init_template=True)
 
         # Tab 2: Plot for visualizations
-        plotTab = QWidget()
-        plotTab.setLayout(QVBoxLayout())
+        specificationCurveTab = QWidget()
+        specificationCurveTab.setLayout(QVBoxLayout())
         self.multiverseFigure = Figure()
         self.multiverseCanvas = FigureCanvas(self.multiverseFigure)
-        self.multiverseFigure.patch.set_facecolor('#E0E0E0')
-        plotTab.layout().addWidget(self.multiverseCanvas)
-        multiverseTabWidget.addTab(plotTab, "Multiverse Plot")
+        self.multiverseFigure.patch.set_facecolor('#f3f1f5')
+        specificationCurveTab.layout().addWidget(self.multiverseCanvas)
+        multiverseTabWidget.addTab(specificationCurveTab, "Specification curve")
 
         # Draw default plot (logo) on the canvas
         self.plotLogo(self.multiverseFigure)
@@ -2020,7 +2139,7 @@ class App(QMainWindow):
         cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
 
         # Adjust and draw
-        self.boldFigure.set_facecolor('#E0E0E0')
+        self.boldFigure.set_facecolor('#f3f1f5')
         self.boldFigure.tight_layout()
         self.boldCanvas.draw()
 
@@ -2563,7 +2682,7 @@ class App(QMainWindow):
 
         self.slider.setMaximum(current_data.shape[2] - 1 if len(current_data.shape) == 3 else 0)
 
-        self.connectivityFigure.set_facecolor('#E0E0E0')
+        self.connectivityFigure.set_facecolor('#f3f1f5')
         self.connectivityFigure.tight_layout()
         self.connectivityCanvas.draw()
 
@@ -2641,7 +2760,7 @@ class App(QMainWindow):
             # Clear the plot if the data is not available
             self.timeSeriesFigure.clear()
 
-        self.timeSeriesFigure.set_facecolor('#E0E0E0')
+        self.timeSeriesFigure.set_facecolor('#f3f1f5')
         self.timeSeriesFigure.tight_layout()
         self.timeSeriesCanvas.draw()
 
@@ -2664,7 +2783,7 @@ class App(QMainWindow):
         ax.set_xlabel("dFC values")
         ax.set_ylabel("frequency")
 
-        self.distributionFigure.set_facecolor('#E0E0E0')
+        self.distributionFigure.set_facecolor('#f3f1f5')
         self.distributionFigure.tight_layout()
         self.distributionCanvas.draw()
 
@@ -3255,7 +3374,7 @@ class App(QMainWindow):
         cbar = self.matrixFigure.colorbar(self.im, cax=cax)
         cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
 
-        self.matrixFigure.set_facecolor('#E0E0E0')
+        self.matrixFigure.set_facecolor('#f3f1f5')
         self.matrixFigure.tight_layout()
         self.matrixCanvas.draw()
 
@@ -3360,7 +3479,7 @@ class App(QMainWindow):
             self.graphTextbox.append("Graph output data is not in expected format.")
 
         # Draw the plot
-        self.graphFigure.set_facecolor('#E0E0E0')
+        self.graphFigure.set_facecolor('#f3f1f5')
         self.graphFigure.tight_layout()
         self.graphCanvas.draw()
 
@@ -3488,7 +3607,7 @@ class App(QMainWindow):
                 decisionOptionsInput.setText(', '.join(map(str, last_entry)))"""
 
         # Sets up the layout and input fields for the new category/options
-        decisionOptionsInput.setPlaceholderText("Enter options, comma-separated" if selected_category == "General" else "Define options below")
+        decisionOptionsInput.setPlaceholderText("Options (comma-separated)" if selected_category == "General" else "Define options below")
         decisionOptionsInput.setReadOnly(selected_category != "General")
 
         if selected_category in ["FC", "Graph"]:
@@ -3617,7 +3736,6 @@ class App(QMainWindow):
                 # Horizontal layout for each parameter
                 param_layout = QHBoxLayout()
                 param_type = type_hints.get(name)
-                print(name, param_type)
                 param_default = 1 if isinstance(param.default, inspect._empty) else param.default
 
                 if param_default == None:
@@ -3770,6 +3888,7 @@ class App(QMainWindow):
             QMessageBox.warning(self, "Input Error", "Please ensure a name is provided for the decision.")
             return
 
+
         # Retrieve the selected function key and determine its module prefix
         func_key = functionComboBox.currentData()
 
@@ -3844,6 +3963,10 @@ class App(QMainWindow):
         category = categoryComboBox.currentText()
         name = nameInput.text().strip()
 
+        if not name:
+            QMessageBox.warning(self, "Input Error", "Please ensure a name is provided for the decision.")
+            return
+
         if category == "General":
             options = [self.setDtypeForOption(option.strip()) for option in optionsInput.text().split(',') if option.strip()]
             self.data.forking_paths[name] = options
@@ -3851,7 +3974,7 @@ class App(QMainWindow):
             options = self.data.forking_paths[name]
 
         if name and options:
-            self.generateScript()
+            self.generateMultiverseScript()
         else:
             QMessageBox.warning(self, "Input Error", "Please ensure a name and at least one option are provided.")
         return
@@ -3891,7 +4014,7 @@ class App(QMainWindow):
                 decisionWidget.deleteLater()
                 optionsInputField.clear()
                 self.mv_containers.remove(decisionWidget)
-                self.generateScript()
+                self.generateMultiverseScript()
                 return
 
         if key in self.data.forking_paths:
@@ -3912,7 +4035,7 @@ class App(QMainWindow):
                 optionsInputField.clear()  # Clear the options input field
                 self.mv_containers.remove(decisionWidget)
 
-        self.generateScript()
+        self.generateMultiverseScript()
         return
 
     def clearLayout(self, layout):
@@ -3933,10 +4056,21 @@ class App(QMainWindow):
                 pass
 
     # Script functions
-    def generateScript(self, init_template=False):
-        """
-        Generate the template script
-        """
+    def toggleReadOnly(self):
+        if self.scriptDisplay.isReadOnly():
+            self.scriptDisplay.setReadOnly(False)
+            self.toggleButton.setText(" 🔓 ")  # editable
+        else:
+            self.scriptDisplay.setReadOnly(True)
+            self.toggleButton.setText(" 🔒 ")  # read-only
+
+    def updateToggleButtonPosition(self, event):
+        # Update the position of the toggle button when the QTextEdit is resized
+        self.toggleButton.move(self.scriptDisplay.width() - self.toggleButton.width() - 5, 5)
+        QTextEdit.resizeEvent(self.scriptDisplay, event)
+
+    def generateMultiverseScript(self, init_template=False):
+        # Your existing generateMultiverseScript function
         if init_template:
             script_content = (
                 "\"\"\"\n"
@@ -3970,12 +4104,10 @@ class App(QMainWindow):
             )
             for name, options in self.data.forking_paths.items():
                 if isinstance(options, list) and all(isinstance(item, dict) for item in options):
-                    # Format as JSON only if it's a list of dictionaries
                     formatted_options = json.dumps(options, indent=4)
                     formatted_options = formatted_options.replace('true', 'True').replace('false', 'False').replace('null', 'None')
                     script_content += f'    "{name}": {formatted_options},\n'
                 else:
-                    # Simple list of primitives or a single dictionary
                     script_content += f'    "{name}": {options},\n'
 
             script_content += (
@@ -3985,7 +4117,7 @@ class App(QMainWindow):
             )
 
             for name in self.data.forking_paths:
-                script_content += f"    {{{{{name}}}}}\n"  # placeholder variables are in double curly braces {{variable}}
+                script_content += f"    {{{{{name}}}}}\n"
 
             script_content += (
                 "\nmultiverse = Multiverse(name=\"example_multiverse\")\n"
@@ -3996,26 +4128,48 @@ class App(QMainWindow):
 
         self.scriptDisplay.setText(script_content)
         self.scriptDisplay.setReadOnly(True)
+        self.toggleButton.setText("🔒")
 
-    def loadScript(self):
+    def loadMultiverseScript(self):
         """
         Load a multiverse script
         """
-        fileName, _ = QFileDialog.getOpenFileName(self, "Load Script", "", "Python Files (*.py);;All Files (*)")
+        fileFilter = "All Supported Files (*.py *.ipynb);;MAT files (*.mat);;Python files (*.py);;Jupyter notebooks (*.ipynb)"
+        fileName, _ = QFileDialog.getOpenFileName(self, "Load multiverse template file", "", fileFilter)
         if fileName:
-            self.loadedScriptDisplay.setText(f"Loaded: {fileName}")
-            self.loadedScriptPath = fileName
-
-            # Try loading the script
             try:
-                with open(fileName, 'r', encoding='utf-8') as file:
-                    scriptContent = file.read()
-                    self.scriptDisplay.setText(scriptContent)
-                    self.scriptDisplay.setReadOnly(False)
+                if fileName.endswith('.ipynb'):
+                    # Convert .ipynb to Python script
+                    with open(fileName, 'r', encoding='utf-8') as file:
+                        notebook = json.load(file)
+                        scriptContent = self.convertNotebookToScript(notebook)
+                else:
+                    # Load as a normal Python script
+                    with open(fileName, 'r', encoding='utf-8') as file:
+                        scriptContent = file.read()
+
+                self.scriptDisplay.setText(scriptContent)
+                self.scriptDisplay.setReadOnly(False)
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to read the file: {str(e)}")
 
-    def saveScript(self):
+    def convertNotebookToScript(self, notebook):
+        """
+        Convert a Jupyter notebook JSON to a Python script.
+        """
+        scriptContent = ""
+        try:
+            for cell in notebook['cells']:
+                if cell['cell_type'] == 'code':
+                    scriptContent += ''.join(cell['source']) + '\n\n'
+        except KeyError as e:
+            QMessageBox.critical(self, "Error", f"Invalid notebook format: {str(e)}")
+        return scriptContent
+
+    def resetMultiverseScript(self):
+        self.generateMultiverseScript(init_template=True)
+
+    def saveMultiverseScript(self):
         """
         Save the template script
         """
@@ -4029,7 +4183,7 @@ class App(QMainWindow):
             with open(fileName, 'w') as file:
                 file.write(script_text)
 
-    def runScript(self):
+    def runMultiverseScript(self):
         """
         Run the multiverse analysis from the generated/loaded script
         """
@@ -4045,7 +4199,7 @@ class App(QMainWindow):
                 QMessageBox.warning(self, "Multiverse Analysis", f"Multiverse failed!\n{str(e)}")
 
         else:
-            QMessageBox.warning(self, "Multiverse Analysis", "No script available.")
+            QMessageBox.warning(self, "Multiverse Analysis", "No multiverse template script was provided.")
 
 
 """
@@ -4057,7 +4211,7 @@ def run():
     # Set global stylesheet for tooltips
     QApplication.instance().setStyleSheet("""
         QToolTip {
-            background-color: #E0E0E0;
+            background-color: #f3f1f5;
             border: 1px solid black;
         }
     """)
