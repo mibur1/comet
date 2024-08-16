@@ -4066,7 +4066,7 @@ class App(QMainWindow):
 
     def updateToggleButtonPosition(self, event):
         # Update the position of the toggle button when the QTextEdit is resized
-        self.toggleButton.move(self.scriptDisplay.width() - self.toggleButton.width() - 5, 5)
+        self.toggleButton.move(self.scriptDisplay.width() - self.toggleButton.width() - 25, 5)
         QTextEdit.resizeEvent(self.scriptDisplay, event)
 
     def generateMultiverseScript(self, init_template=False):
@@ -4093,7 +4093,7 @@ class App(QMainWindow):
                 "multiverse = Multiverse(name=\"multiverse_example\")\n"
                 "multiverse.create(analysis_template, forking_paths)\n"
                 "multiverse.summary()\n"
-                "#multiverse.run()\n"
+                "multiverse.run()\n"
             )
 
         else:
@@ -4123,7 +4123,7 @@ class App(QMainWindow):
                 "\nmultiverse = Multiverse(name=\"example_multiverse\")\n"
                 "multiverse.create(analysis_template, forking_paths)\n"
                 "multiverse.summary()\n"
-                "#multiverse.run()\n"
+                "multiverse.run()\n"
             )
 
         self.scriptDisplay.setText(script_content)

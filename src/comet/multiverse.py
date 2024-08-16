@@ -2,8 +2,8 @@ import os
 import sys
 import csv
 import glob
-import shutil
 import pickle
+import pprint
 import inspect
 import itertools
 import subprocess
@@ -71,13 +71,18 @@ class Multiverse:
         multiverse_dir = os.path.join(calling_script_dir, self.name)
         results_dir = os.path.join(multiverse_dir, "results")
 
+        # If multiverse directory exists, remove all files but keep folders (in case they contain results)
         if os.path.exists(multiverse_dir):
-            shutil.rmtree(multiverse_dir)
-        os.makedirs(multiverse_dir)
+            for item in os.listdir(multiverse_dir):
+                item_path = os.path.join(multiverse_dir, item)
+                if os.path.isfile(item_path):
+                    os.remove(item_path)
+        else:
+            os.makedirs(multiverse_dir)
 
-        if os.path.exists(results_dir):
-            shutil.rmtree(results_dir)
-        os.makedirs(results_dir)
+        # Ensure the results directory exists
+        if not os.path.exists(results_dir):
+            os.makedirs(results_dir)
 
         # Template creation
         template_code = inspect.getsource(analysis_template) # Extract the source code
@@ -119,17 +124,32 @@ class Multiverse:
         with open(f"{results_dir}/forking_paths.pkl", "wb") as file:
             pickle.dump(forking_paths, file)
 
+        # Create a template script which is used by the GUI
+        template_path = os.path.join(multiverse_dir, "template.py")
+        with open(template_path, "w") as file:
+            file.write("# Template script containing the required data for multiverse analysis.\n")
+            file.write("# This file is used by the GUI, users should directly interact with their own multiverse script.\n\n")
+            file.write("forking_paths = ")
+
+            pprint_dict = pprint.pformat(forking_paths, indent=4)
+            formatted_pprint_dict = pprint_dict.replace('{', '{\n ', 1)
+            file.write(formatted_pprint_dict)
+
+            if invalid_paths is not None:
+                file.write("\n\n")
+                file.write("invalid_paths = ")
+                pprint.pprint(invalid_paths, stream=file, indent=4)
+            file.write("\n")
+            file.write(template_code)
+
         return
 
-    def run(self, path=None, universe_number=None, parallel=1):
+    def run(self, universe_number=None, parallel=1):
         """
         Run either an individual universe or the entire multiverse
 
         Parameters
         ----------
-        path : string
-            Path of the multiverse directory
-
         universe_number : int
             Number of the universe to run. Default is None, which runs all universes
 
@@ -137,18 +157,22 @@ class Multiverse:
             Number of universes to run in parallel
         """
 
-        if path is None:
-            calling_script_dir = os.getcwd() if in_notebook else os.path.dirname(sys.path[0])
-            multiverse_dir = os.path.join(calling_script_dir, self.name)
-            os.makedirs(multiverse_dir, exist_ok=True)
-            path = multiverse_dir
+        calling_script_dir = os.getcwd() if in_notebook else os.path.dirname(sys.path[0])
+        multiverse_dir = os.path.join(calling_script_dir, self.name)
+        os.makedirs(multiverse_dir, exist_ok=True)
+        sorted_files = sorted(os.listdir(multiverse_dir))
 
-        sorted_files = sorted(os.listdir(path))
+        # Delete previous results (.pkl files)
+        results_dir = os.path.join(multiverse_dir, "results")
+        for item in os.listdir(results_dir):
+            item_path = os.path.join(results_dir, item)
+            if os.path.isfile(item_path) and item_path.endswith('.pkl') and not item_path.endswith('forking_paths.pkl'):
+                os.remove(item_path)
 
         # Function for parallel processing, called by joblib.delayed
         def execute_script(file):
             print(f"Running {file}")
-            subprocess.run([sys.executable, os.path.join(path, file)], check=True, env=os.environ.copy())
+            subprocess.run([sys.executable, os.path.join(multiverse_dir, file)], check=True, env=os.environ.copy())
 
         if universe_number is None:
             print("Starting multiverse analysis for all universes...")
@@ -359,6 +383,11 @@ class Multiverse:
         # Get the results directory
         calling_script_dir = os.getcwd() if 'in_notebook' in globals() and in_notebook else os.path.dirname(sys.argv[0])
         results_path = os.path.join(calling_script_dir, f"{self.name}/results")
+
+        # Check if the results directory exists
+        universe_files = [f for f in os.listdir(results_path) if f.startswith('universe_') and f.endswith('.pkl')]
+        if not universe_files:
+            raise ValueError("No results found. Please run the multiverse analysis first.")
 
         # Sort the universes based on the measure and get the forking paths
         sorted_universes, forking_paths = self._load_and_prepare_data(measure, results_path)
