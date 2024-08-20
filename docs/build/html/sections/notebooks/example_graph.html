@@ -24,9 +24,7 @@
         <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
-    <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Programming API" href="../api.html" />
-    <link rel="prev" title="Usage example: Simulation multiverse" href="example_analysis.html" /> 
+    <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -48,16 +46,10 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
+              <ul>
 <li class="toctree-l1"><a class="reference internal" href="../overview.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="example_dfc.html">Usage example: Dynamic functional connectivity</a></li>
-<li class="toctree-l2"><a class="reference internal" href="example_multiverse.html">Usage example: Multiverse Analysis</a></li>
-<li class="toctree-l2"><a class="reference internal" href="example_analysis.html">Usage example: Simulation multiverse</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Usage example: Graph measures</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api.html">Programming API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../contribute.html">Contributing</a></li>
 </ul>
@@ -76,7 +68,6 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
-          <li class="breadcrumb-item"><a href="../tutorials.html">Tutorials</a></li>
       <li class="breadcrumb-item active">Usage example: Graph measures</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../_sources/sections/notebooks/example_graph.ipynb.txt" rel="nofollow"> View page source</a>
@@ -135,7 +126,7 @@
 </div>
 <p>Graph construction and plotting of the resulting adjacency matrices:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
@@ -161,7 +152,7 @@
 </div>
 <p>Calculate small-world sigma:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">sub</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">subjects</span><span class="p">):</span>
@@ -175,7 +166,7 @@
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/home/mibur/dfc-multiverse/src/comet/graph.py:424: UserWarning: The graph is not fully connected and infinite path lenghts were set to NaN
+/home/mibur/dfc-multiverse/src/comet/graph.py:425: UserWarning: The graph is not fully connected and infinite path lenghts were set to NaN
   warnings.warn(issue)
 </pre></div></div>
 </div>
@@ -184,7 +175,7 @@
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Subject 50008 small-world propensity: 0.70
+Subject 50008 small-world propensity: 0.71
 Subject 50010 small-world propensity: 0.51
 Subject 50012 small-world propensity: 0.65
 Subject 50014 small-world propensity: 0.59
@@ -250,7 +241,7 @@ Time comet: [0.0020532608032226562, 0.004190206527709961, 0.008028984069824219, 
 </div>
 <p>Calculate local efficiency:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">eff</span> <span class="o">=</span> <span class="p">[]</span>
@@ -324,7 +315,7 @@ Time comet: [0.0020532608032226562, 0.004190206527709961, 0.008028984069824219, 
 </div>
 <p>Matching index calculations are also significantly faster:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Random graph with 400 nodes and 50% density</span>
@@ -374,10 +365,7 @@ Time comet: [0.0020532608032226562, 0.004190206527709961, 0.008028984069824219, 
 
            </div>
           </div>
-          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="example_analysis.html" class="btn btn-neutral float-left" title="Usage example: Simulation multiverse" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../api.html" class="btn btn-neutral float-right" title="Programming API" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-    </div>
+          <footer>
 
   <hr/>
 

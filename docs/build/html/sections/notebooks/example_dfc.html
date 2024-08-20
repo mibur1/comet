@@ -7,7 +7,7 @@
   <title>Usage example: Dynamic functional connectivity &mdash; Comet Toolbox 2024 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
-      <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+      <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css" />
 
   
   <!--[if lt IE 9]>
@@ -24,9 +24,7 @@
         <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
-    <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Usage example: Multiverse Analysis" href="example_multiverse.html" />
-    <link rel="prev" title="Tutorials" href="../tutorials.html" /> 
+    <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -48,16 +46,10 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
+              <ul>
 <li class="toctree-l1"><a class="reference internal" href="../overview.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a><ul class="current">
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Usage example: Dynamic functional connectivity</a></li>
-<li class="toctree-l2"><a class="reference internal" href="example_multiverse.html">Usage example: Multiverse Analysis</a></li>
-<li class="toctree-l2"><a class="reference internal" href="example_analysis.html">Usage example: Simulation multiverse</a></li>
-<li class="toctree-l2"><a class="reference internal" href="example_graph.html">Usage example: Graph measures</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api.html">Programming API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../contribute.html">Contributing</a></li>
 </ul>
@@ -76,7 +68,6 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
-          <li class="breadcrumb-item"><a href="../tutorials.html">Tutorials</a></li>
       <li class="breadcrumb-item active">Usage example: Dynamic functional connectivity</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../_sources/sections/notebooks/example_dfc.ipynb.txt" rel="nofollow"> View page source</a>
@@ -115,8 +106,7 @@
 (1040, 10)
 </pre></div></div>
 </div>
-<p>dFC can then be estimated with any of the included methods. If required, the resulting dFC estimates can then be inspected in the GUI before further analysis.</p>
-<p>Note: The GUI can only be opened once and will crash the kernel if you try to close it for a second time. So currently, it is more appropriate to run the GUI by itself from a terminal or a normal Python script.</p>
+<p>dFC can then be estimated with any of the included methods:</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
@@ -132,8 +122,6 @@
 <span class="n">jc</span> <span class="o">=</span> <span class="n">connectivity</span><span class="o">.</span><span class="n">Jackknife</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">windowsize</span><span class="o">=</span><span class="mi">11</span><span class="p">)</span>
 <span class="n">dfc_jc</span> <span class="o">=</span> <span class="n">jc</span><span class="o">.</span><span class="n">estimate</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;JC dFC has shape: </span><span class="si">{</span><span class="n">dfc_jc</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-<span class="n">gui</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">dfc_data</span><span class="o">=</span><span class="n">dfc_jc</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">jc</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -144,26 +132,20 @@
 <div class="highlight"><pre>
 Calculating Jackknife Correlation, please wait...
 JC dFC has shape: (161, 161, 186)
-GUI closed with status 0
 </pre></div></div>
 </div>
 <p>Other examples:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Tapered sliding window</span>
-<span class="n">tsw</span> <span class="o">=</span> <span class="n">connectivity</span><span class="o">.</span><span class="n">SlidingWindow</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">windowsize</span><span class="o">=</span><span class="mi">21</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;gaussian&quot;</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
-<span class="n">dfc_tsw</span> <span class="o">=</span> <span class="n">tsw</span><span class="o">.</span><span class="n">estimate</span><span class="p">()</span>
-
-<span class="c1"># Flexible Least Squares</span>
-<span class="n">fls</span> <span class="o">=</span> <span class="n">connectivity</span><span class="o">.</span><span class="n">FlexibleLeastSquares</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
-<span class="n">dfc_fls</span> <span class="o">=</span> <span class="n">fls</span><span class="o">.</span><span class="n">estimate</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;FLS dFC has shape: </span><span class="si">{</span><span class="n">dfc_fls</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">sd</span> <span class="o">=</span> <span class="n">connectivity</span><span class="o">.</span><span class="n">SpatialDistance</span><span class="p">(</span><span class="n">ts</span><span class="p">)</span>
+<span class="n">dfc_sd</span> <span class="o">=</span> <span class="n">sd</span><span class="o">.</span><span class="n">estimate</span><span class="p">()</span>
 
 <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">dfc_fls</span><span class="p">[:,:,</span><span class="mi">100</span><span class="p">],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;coolwarm&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">);</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Flexible Least Squares dFC at t = 100&quot;</span><span class="p">);</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">dfc_sd</span><span class="p">[:,:,</span><span class="mi">100</span><span class="p">],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;coolwarm&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">);</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Spatial Distance dFC at t = 100&quot;</span><span class="p">);</span>
 </pre></div>
 </div>
 </div>
@@ -172,34 +154,17 @@ GUI closed with status 0
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Calculating Sliding Window Correlation, please wait...
-Calculating Flexible Least Squares, please wait...
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-100%|██████████| 161/161 [00:14&lt;00:00, 11.50it/s]
-</pre></div></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-FLS dFC has shape: (161, 161, 196)
+Calculating Spatial Distance, please wait...
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../../_images/sections_notebooks_example_dfc_5_3.png" src="../../_images/sections_notebooks_example_dfc_5_3.png" />
+<img alt="../../_images/sections_notebooks_example_dfc_5_1.png" src="../../_images/sections_notebooks_example_dfc_5_1.png" />
 </div>
 </div>
-<p>Methods relying on windowing also contain a centers() method, which returns the corresponding BOLD time series indices of the dFC data:</p>
+<p>Methods which rely on windowing techniques also contain a centers() method, which returns the corresponding BOLD time series indices of the dFC data:</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
@@ -231,10 +196,7 @@ Centers of the sliding window (in BOLD time points): [ 22  32  42  52  62  72  8
 
            </div>
           </div>
-          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../tutorials.html" class="btn btn-neutral float-left" title="Tutorials" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="example_multiverse.html" class="btn btn-neutral float-right" title="Usage example: Multiverse Analysis" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-    </div>
+          <footer>
 
   <hr/>
 

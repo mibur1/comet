@@ -389,17 +389,10 @@ in resting-state fMRI: a comparison study and a new approach. NeuroImage, 101, 5
 <dd class="field-odd"><p><strong>theta</strong> (<em>T-by-N matrix</em>) – fMRI time series data</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><ul class="simple">
-<li><p><strong>R</strong> (<em>N*N*T np.ndarray</em>) – estimated dynamic conditional correlation tensor</p></li>
-<li><p><em>tuple</em> –</p>
-<ul>
-<li><p>H : dynamic conditional covariance tensor</p></li>
-<li><p>Theta : GARCH(1,1) parameters</p></li>
-<li><p>X : DCC parameters</p></li>
-</ul>
-</li>
-</ul>
-</p>
+<dd class="field-even"><p><strong>R</strong> – estimated dynamic conditional correlation tensor</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>N*N*T np.ndarray</p>
 </dd>
 </dl>
 </dd></dl>
@@ -436,17 +429,10 @@ Nature neuroscience, 23(12), 1644–1654. DOI: <a class="reference external" hre
 <dd><p>Calculate edge-centric connectivity.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p><ul class="simple">
-<li><p><em>np.ndarray</em> – Dynamic functional connectivity as a PxPxN array.</p></li>
-<li><p><em>tuple</em> –</p>
-<ul>
-<li><p>np.ndarray : Edge time series.</p></li>
-<li><p>np.ndarray : Indices of the upper triangle of the connectivity matrix.</p></li>
-<li><p>np.ndarray : Indices of the upper triangle of the connectivity matrix.</p></li>
-</ul>
-</li>
-</ul>
-</p>
+<dd class="field-odd"><p>Dynamic functional connectivity as an Edge x Eedge x Time array.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray</p>
 </dd>
 </dl>
 </dd></dl>

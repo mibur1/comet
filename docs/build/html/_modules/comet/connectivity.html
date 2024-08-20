@@ -915,7 +915,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">N_estimates</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">R_mat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">P</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">P</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_estimates</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">flip_eigenvectors</span> <span class="o">=</span> <span class="n">flip_eigenvectors</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">V1</span> <span class="o">=</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="LeiDA.estimate">
 <a class="viewcode-back" href="../../sections/modules/connectivity.html#comet.connectivity.LeiDA.estimate">[docs]</a>
@@ -948,8 +948,8 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">R_mat</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">V1</span><span class="p">,</span> <span class="n">V1</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">R_mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">postproc</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">R_mat</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_mat</span><span class="p">,</span> <span class="n">V1</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">V1</span> <span class="o">=</span> <span class="n">V1</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_mat</span></div>
 </div>
 
 
@@ -1019,6 +1019,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">n_scales</span> <span class="o">=</span> <span class="n">n_scales</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">drop_scales</span> <span class="o">=</span> <span class="n">drop_scales</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">drop_timepoints</span> <span class="o">=</span> <span class="n">drop_timepoints</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">iwc</span> <span class="o">=</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="WaveletCoherence.estimate">
 <a class="viewcode-back" href="../../sections/modules/connectivity.html#comet.connectivity.WaveletCoherence.estimate">[docs]</a>
@@ -1090,10 +1091,9 @@
 
         <span class="c1"># Get rid of empty time points</span>
         <span class="n">dfc</span> <span class="o">=</span> <span class="n">dfc</span><span class="p">[:,:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_timepoints</span><span class="p">:</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">drop_timepoints</span><span class="p">]</span>
-
         <span class="n">dfc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">postproc</span><span class="p">(</span><span class="n">dfc</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">iwc</span> <span class="o">=</span> <span class="n">iwc</span>
 
-        <span class="c1">#return iwc, dfc</span>
         <span class="k">return</span> <span class="n">dfc</span></div>
 </div>
 
@@ -1144,6 +1144,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">R_mat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">P</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">P</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_estimates</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">standardizeData</span> <span class="o">=</span> <span class="n">standardizeData</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">num_cores</span> <span class="o">=</span> <span class="n">num_cores</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">H</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># dynamic conditional covariance tensor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Theta</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># GARCH(1,1) parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># DCC parameters</span>
 
     <span class="k">def</span> <span class="nf">_loglikelihood_garch11</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -1306,10 +1310,6 @@
 <span class="sd">        -------</span>
 <span class="sd">        R : N*N*T np.ndarray</span>
 <span class="sd">            estimated dynamic conditional correlation tensor</span>
-<span class="sd">        tuple</span>
-<span class="sd">            - H : dynamic conditional covariance tensor</span>
-<span class="sd">            - Theta : GARCH(1,1) parameters</span>
-<span class="sd">            - X : DCC parameters</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating Dynamic Conditional Correlation, please wait...&quot;</span><span class="p">)</span>
         <span class="n">T</span><span class="p">,</span> <span class="n">N</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="o">.</span><span class="n">shape</span> <span class="c1"># T timepoints x N parcels</span>
@@ -1358,7 +1358,11 @@
 
         <span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">postproc</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">R</span><span class="p">,</span> <span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">Theta</span><span class="p">,</span> <span class="n">X</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">H</span> <span class="o">=</span> <span class="n">H</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Theta</span> <span class="o">=</span> <span class="n">Theta</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">X</span>
+
+        <span class="k">return</span> <span class="n">R</span></div>
 </div>
 
 
@@ -1395,6 +1399,9 @@
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">time_series</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">standardize</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">standardizeData</span> <span class="o">=</span> <span class="n">standardizeData</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eTS</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">u</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># Indices of the upper triangle of the connectivity matrix.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># Indices of the upper triangle of the connectivity matrix.</span>
 
 <div class="viewcode-block" id="EdgeTimeSeries.estimate">
 <a class="viewcode-back" href="../../sections/modules/connectivity.html#comet.connectivity.EdgeTimeSeries.estimate">[docs]</a>
@@ -1405,15 +1412,11 @@
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        np.ndarray</span>
-<span class="sd">            Dynamic functional connectivity as a PxPxN array.</span>
-<span class="sd">        tuple</span>
-<span class="sd">            - np.ndarray : Edge time series.</span>
-<span class="sd">            - np.ndarray : Indices of the upper triangle of the connectivity matrix.</span>
-<span class="sd">            - np.ndarray : Indices of the upper triangle of the connectivity matrix.</span>
+<span class="sd">            Dynamic functional connectivity as an Edge x Eedge x Time array.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">z</span> <span class="o">=</span> <span class="n">zscore</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">standardizeData</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series</span>
-        <span class="n">u</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">triu_indices</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">k</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">z</span><span class="p">[:,</span> <span class="n">u</span><span class="p">],</span> <span class="n">z</span><span class="p">[:,</span> <span class="n">v</span><span class="p">])</span> <span class="c1"># edge time series</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">u</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">triu_indices</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">k</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">z</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">u</span><span class="p">],</span> <span class="n">z</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">])</span> <span class="c1"># edge time series</span>
 
         <span class="n">b</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">a</span> <span class="c1"># inner product</span>
         <span class="n">c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">b</span><span class="p">))</span> <span class="c1"># Square root of the diagonal elements (variance) to normalize</span>
@@ -1421,8 +1424,9 @@
         <span class="n">dfc</span> <span class="o">=</span> <span class="n">b</span> <span class="o">/</span> <span class="n">d</span> <span class="c1"># Element-wise division to get the correlation matrix</span>
 
         <span class="n">dfc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">postproc</span><span class="p">(</span><span class="n">dfc</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eTS</span> <span class="o">=</span> <span class="n">a</span>
 
-        <span class="k">return</span> <span class="n">dfc</span><span class="p">,</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">dfc</span></div>
 </div>
 
 

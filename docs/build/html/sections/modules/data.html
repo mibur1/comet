@@ -58,7 +58,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#comet.data.load_example"><code class="docutils literal notranslate"><span class="pre">load_example()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#comet.data.load_single_state"><code class="docutils literal notranslate"><span class="pre">load_single_state()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#comet.data.load_timeseries"><code class="docutils literal notranslate"><span class="pre">load_timeseries()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#comet.data.save_results"><code class="docutils literal notranslate"><span class="pre">save_results()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comet.data.save_universe_results"><code class="docutils literal notranslate"><span class="pre">save_universe_results()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -192,35 +192,17 @@ Supported file formats are: .pkl, .txt, .npy, .mat, and .tsv</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="comet.data.save_results">
-<span class="sig-prename descclassname"><span class="pre">comet.data.</span></span><span class="sig-name descname"><span class="pre">save_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">universe</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/comet/data.html#save_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.data.save_results" title="Link to this definition"></a></dt>
-<dd><p>Save all kinds of results as .pkl file</p>
+<dt class="sig sig-object py" id="comet.data.save_universe_results">
+<span class="sig-prename descclassname"><span class="pre">comet.data.</span></span><span class="sig-name descname"><span class="pre">save_universe_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">universe</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/home/mibur/dfc-multiverse/src/comet/data.py'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/comet/data.html#save_universe_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comet.data.save_universe_results" title="Link to this definition"></a></dt>
+<dd><p>This saves the results of a universe.</p>
+<p>If it is a single value, it will be saved in the summary .csv file.
+In any other case the results will be saved in a universe specific .pkl file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>ftype</strong> (<em>str</em><em>, </em><em>optional</em>) – File type to load. If specified as “pkl”, a .pkl file with additional
-information is loaded. Otherwise, only time series data is returned.
-Default is None.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><p><strong>data</strong> – If <cite>ftype</cite> is not specified or is None, the function returns a
-TxP np.ndarray containing the time series data</p>
-<dl class="simple">
-<dt>If <cite>ftype</cite> is “pkl”, the function returns a tuple containing:</dt><dd><ul class="simple">
-<li><p>data[0] : TxP np.ndarray
-Time series data.</p></li>
-<li><p>data[1] : np.ndarray
-Time in seconds.</p></li>
-<li><p>data[2] : np.ndarray
-Trial onsets in seconds.</p></li>
-<li><p>data[3] : np.ndarray
-Trial labels indicating two changing connectivity states.</p></li>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>any</em>) – Data to save as .pkl file</p></li>
+<li><p><strong>universe</strong> (<em>str</em>) – File name of the calling script (universe)</p></li>
 </ul>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>np.ndarray or tuple</p>
 </dd>
 </dl>
 </dd></dl>
