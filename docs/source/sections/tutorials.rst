@@ -13,8 +13,8 @@ If you intend to use the toolbox in a standard Python script, tutorials are prov
    :maxdepth: 1
    :hidden:
 
-notebooks/example_dfc
-notebooks/example_eeg
-notebooks/example_fmri
-notebooks/example_multiverse
-notebooks/example_graph
+   notebooks/example_dfc
+   notebooks/example_eeg
+   notebooks/example_fmri
+   notebooks/example_multiverse
+   notebooks/example_graph
