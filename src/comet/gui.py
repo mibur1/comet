@@ -714,6 +714,58 @@ class App(QMainWindow):
         self.subjectDropdownContainer.setLayout(self.subjectDropdownLayout)
         self.subjectDropdownContainer.hide()
 
+        # Cleaning container
+        self.cleaningContainer = QWidget()
+        self.cleaningLayout = QVBoxLayout()  # Change to QVBoxLayout to allow stacking rows
+
+        # First row (Checkboxes)
+        self.firstRowLayout = QHBoxLayout()
+        self.detrendCheckbox = QCheckBox("Detrend")
+        self.detrendCheckbox.setChecked(False)
+        self.standardizeCheckbox = QCheckBox("Standardize")
+        self.standardizeCheckbox.setChecked(False)
+        self.globalSignalCheckbox = QCheckBox("Global Signal Regression")
+        self.globalSignalCheckbox.setChecked(False)
+
+        self.firstRowLayout.addWidget(self.detrendCheckbox)
+        self.firstRowLayout.addWidget(self.standardizeCheckbox)
+        self.firstRowLayout.addWidget(self.globalSignalCheckbox)
+
+        # Second row (High Pass, Low Pass, and TR)
+        self.secondRowLayout = QHBoxLayout()
+        self.highPassLabel = QLabel("High Pass:")
+        self.highPassCutoff = QDoubleSpinBox()
+        self.highPassCutoff.setRange(0, 1)
+        self.highPassCutoff.setSingleStep(0.01)
+        self.highPassCutoff.setValue(0.01)  # Default value
+
+        self.lowPassLabel = QLabel("Low Pass:")
+        self.lowPassCutoff = QDoubleSpinBox()
+        self.lowPassCutoff.setRange(0, 1)
+        self.lowPassCutoff.setSingleStep(0.01)
+        self.lowPassCutoff.setValue(0.1)
+
+        self.trLabel = QLabel("TR:")
+        self.trValue = QDoubleSpinBox()
+        self.trValue.setRange(0.1, 5.0)
+        self.trValue.setSingleStep(0.01)
+        self.trValue.setValue(2.0)
+
+        self.secondRowLayout.addWidget(self.highPassLabel)
+        self.secondRowLayout.addWidget(self.highPassCutoff)
+        self.secondRowLayout.addWidget(self.lowPassLabel)
+        self.secondRowLayout.addWidget(self.lowPassCutoff)
+        self.secondRowLayout.addWidget(self.trLabel)
+        self.secondRowLayout.addWidget(self.trValue)
+
+        # Add the rows to the main layout
+        self.cleaningLayout.addLayout(self.firstRowLayout)
+        self.cleaningLayout.addLayout(self.secondRowLayout)
+
+        self.cleaningContainer.setLayout(self.cleaningLayout)
+        self.cleaningContainer.hide()
+
+
         # Parcellation dropdown for nifti files
         self.parcellationContainer = QWidget()
         self.parcellationLayout = QHBoxLayout()
@@ -756,6 +808,7 @@ class App(QMainWindow):
         loadContainerLayout = QVBoxLayout()
 
         loadContainerLayout.addWidget(self.subjectDropdownContainer)
+        loadContainerLayout.addWidget(self.cleaningContainer)
         loadContainerLayout.addWidget(self.parcellationContainer)
         loadContainerLayout.addWidget(self.transposeCheckbox)
 
@@ -1379,6 +1432,7 @@ class App(QMainWindow):
         # Initial setup
         self.data.file_path = file_path
         self.data.file_name = file_path.split('/')[-1]
+        self.cleaningContainer.hide()
         self.parcellationContainer.hide()
         self.plotLogo(self.boldFigure)
         self.loadContainer.hide()
@@ -1452,6 +1506,7 @@ class App(QMainWindow):
                 self.parcellationDropdown.addItems(self.atlas_options_cifti.keys())
             else:
                 self.parcellationDropdown.addItems(self.atlas_options.keys())
+                self.cleaningContainer.show()
 
             self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
             self.onAtlasChanged()
