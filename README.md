@@ -1,4 +1,4 @@
-# Comet - A dynamic functional connectivity toolbox for multiverse analysis
+# Comet - A toolbox for dynamic functional connectivity and multiverse analysis
 
 
 [![DOI](https://img.shields.io/badge/DOI-10.1101%2F2024.01.21.576546-blue?logo=arxiv)](https://doi.org/10.1101/2024.01.21.576546) [![PyPI](https://img.shields.io/badge/PyPI-comet--toolbox-orange?logo=PyPI)](https://pypi.org/project/comet-toolbox/)
