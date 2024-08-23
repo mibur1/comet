@@ -36,7 +36,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout,
      QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QGroupBox
 
 # Comet imports and state-based dFC methods from pydfc
-from . import connectivity, data_cifti, graph
+from . import connectivity, data, data_cifti, graph
 import pydfc
 
 
@@ -776,11 +776,8 @@ class App(QMainWindow):
         self.miscCleaningContainer = QWidget()
         miscCleaningLayout = QHBoxLayout(self.miscCleaningContainer)
         self.standardizeCheckbox = QCheckBox("Standardize")
-        self.standardizeCheckbox.setChecked(True)
         self.detrendCheckbox = QCheckBox("Detrend")
-        self.detrendCheckbox.setChecked(True)
         self.highVarianceCheckbox = QCheckBox("Regress high variance confounds")
-        self.highVarianceCheckbox.setChecked(True)
 
         miscCleaningLayout.addItem(QSpacerItem(5, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
         miscCleaningLayout.addWidget(self.detrendCheckbox)
@@ -1578,12 +1575,15 @@ class App(QMainWindow):
             self.parcellationDropdown.currentIndexChanged.disconnect(self.onAtlasChanged)
             self.parcellationDropdown.clear()
 
-            if file_path.endswith(".dtseries.nii"):
+            if file_path.endswith(".dtseries.nii") or file_path.endswith(".ptseries.nii"):
                 self.parcellationDropdown.addItems(self.atlas_options_cifti.keys())
-            elif file_path.endswith(".ptseries.nii"):
-                self.parcellationDropdown.addItems(self.atlas_options_cifti.keys())
+                self.sphereContainer.hide()
+                self.smoothingContainer.hide()
+                self.cleaningContainer.show()
             else:
                 self.parcellationDropdown.addItems(self.atlas_options.keys())
+                self.sphereContainer.show()
+                self.smoothingContainer.show()
                 self.cleaningContainer.show()
 
             self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
@@ -1759,6 +1759,7 @@ class App(QMainWindow):
         else:
             QMessageBox.warning(self, "Error when extracting time series", f"Atlas not found in options list")
 
+        # Enable/disable cleaning options depending on the atlas
         current_atlas = self.parcellationDropdown.currentText()
         if current_atlas in ["Power et al. (2011)", "Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
             self.sphereContainer.show()
@@ -2186,7 +2187,7 @@ class App(QMainWindow):
         confounds = None
 
         # Collect cleaning arguments
-        radius = self.sphereRadius.value() if self.sphereRadius.value() > 0 else None # none is single voxel
+        radius = self.sphereRadiusSpinbox.value() if self.sphereRadiusSpinbox.value() > 0 else None # none is single voxel
         allow_ovelap = self.overlapCheckbox.isChecked()
 
         standardize = self.standardizeCheckbox.isChecked()
@@ -2225,7 +2226,8 @@ class App(QMainWindow):
                 "Schaefer Kong": "schaefer_kong",
                 "Schaefer Tian": "schaefer_tian"
             }
-            time_series = data_cifti.parcellate(img_path, atlas=atlas_map.get(atlas, None))
+            time_series_raw = data_cifti.parcellate(img_path, atlas=atlas_map.get(atlas, None))
+            time_series = data.clean(time_series_raw, standardize=standardize, detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
 
         else:
             atlas, labels = self.fetchAtlas(atlas, option)
