@@ -46,6 +46,9 @@ class Multiverse:
 
     def __init__(self, name="multiverse"):
         self.name = name
+        self.calling_script_dir = os.getcwd() if in_notebook() else os.path.abspath(sys.modules['__main__'].__file__).rsplit('/', 1)[0]
+        self.multiverse_dir = os.path.join(self.calling_script_dir, self.name) if in_notebook() else self.calling_script_dir
+        self.results_dir = os.path.join(self.multiverse_dir, "results")
 
     # Public methods
     def create(self, analysis_template, forking_paths, invalid_paths=None):
@@ -64,25 +67,18 @@ class Multiverse:
             List of invalid paths that should be excluded from the multiverse
         """
 
-        # Get the directory of the calling script
-        calling_script_dir = os.getcwd() if in_notebook else os.path.dirname(sys.path[0])
-
-        # Create directories
-        multiverse_dir = os.path.join(calling_script_dir, self.name)
-        results_dir = os.path.join(multiverse_dir, "results")
-
-        # If multiverse directory exists, remove all files but keep folders (in case they contain results)
-        if os.path.exists(multiverse_dir):
-            for item in os.listdir(multiverse_dir):
-                item_path = os.path.join(multiverse_dir, item)
-                if os.path.isfile(item_path):
+        # If multiverse directory exists, remove all files but keep folders and template
+        if os.path.exists(self.multiverse_dir):
+            for item in os.listdir(self.multiverse_dir):
+                item_path = os.path.join(self.multiverse_dir, item)
+                if os.path.isfile(item_path) and item != "template.py":
                     os.remove(item_path)
         else:
-            os.makedirs(multiverse_dir)
+            os.makedirs(self.multiverse_dir)
 
         # Ensure the results directory exists
-        if not os.path.exists(results_dir):
-            os.makedirs(results_dir)
+        if not os.path.exists(self.results_dir):
+            os.makedirs(self.results_dir)
 
         # Template creation
         template_code = inspect.getsource(analysis_template) # Extract the source code
@@ -113,34 +109,16 @@ class Multiverse:
             rendered_content = jinja_template.render(**context)
 
             # Write to Python script
-            save_path = os.path.join(multiverse_dir, f"universe_{i}.py")
+            save_path = os.path.join(self.multiverse_dir, f"universe_{i}.py")
             with open(save_path, "w") as file:
                 file.write(rendered_content)
 
         # Generate CSV file with the decisions of all universes
-        self._create_csv(results_dir, valid_universes, keys)
+        self._create_csv(self.results_dir, valid_universes, keys)
 
         # Save forking paths
-        with open(f"{results_dir}/forking_paths.pkl", "wb") as file:
+        with open(f"{self.results_dir}/forking_paths.pkl", "wb") as file:
             pickle.dump(forking_paths, file)
-
-        # Create a template script which is used by the GUI
-        template_path = os.path.join(multiverse_dir, "template.py")
-        with open(template_path, "w") as file:
-            file.write("# Template script containing the required data for multiverse analysis.\n")
-            file.write("# This file is used by the GUI, users should directly interact with their own multiverse script.\n\n")
-            file.write("forking_paths = ")
-
-            pprint_dict = pprint.pformat(forking_paths, indent=4)
-            formatted_pprint_dict = pprint_dict.replace('{', '{\n ', 1)
-            file.write(formatted_pprint_dict)
-
-            if invalid_paths is not None:
-                file.write("\n\n")
-                file.write("invalid_paths = ")
-                pprint.pprint(invalid_paths, stream=file, indent=4)
-            file.write("\n")
-            file.write(template_code)
 
         return
 
@@ -157,22 +135,19 @@ class Multiverse:
             Number of universes to run in parallel
         """
 
-        calling_script_dir = os.getcwd() if in_notebook else os.path.dirname(sys.path[0])
-        multiverse_dir = os.path.join(calling_script_dir, self.name)
-        os.makedirs(multiverse_dir, exist_ok=True)
-        sorted_files = sorted(os.listdir(multiverse_dir))
+        os.makedirs(self.multiverse_dir, exist_ok=True)
+        sorted_files = sorted(os.listdir(self.multiverse_dir))
 
         # Delete previous results (.pkl files)
-        results_dir = os.path.join(multiverse_dir, "results")
-        for item in os.listdir(results_dir):
-            item_path = os.path.join(results_dir, item)
+        for item in os.listdir(self.results_dir):
+            item_path = os.path.join(self.results_dir, item)
             if os.path.isfile(item_path) and item_path.endswith('.pkl') and not item_path.endswith('forking_paths.pkl'):
                 os.remove(item_path)
 
         # Function for parallel processing, called by joblib.delayed
         def execute_script(file):
             print(f"Running {file}")
-            subprocess.run([sys.executable, os.path.join(multiverse_dir, file)], check=True, env=os.environ.copy())
+            subprocess.run([sys.executable, os.path.join(self.multiverse_dir, file)], check=True, env=os.environ.copy())
 
         if universe_number is None:
             print("Starting multiverse analysis for all universes...")
@@ -201,11 +176,11 @@ class Multiverse:
         elif isinstance(universe, range):
             multiverse_summary = multiverse_summary.iloc[universe.start-1:universe.stop]
 
-        if in_notebook:
+        if in_notebook():
             from IPython.display import display
             display(multiverse_summary)
         else:
-            print(multiverse_summary + "\n")
+            print(multiverse_summary)
 
     def visualize(self, universe=None, cmap="Set2", node_size=1500, figsize=(8,5)):
         """
@@ -380,17 +355,13 @@ class Multiverse:
             Offset of the labels. Needs to be adjusted manually, default is -0.05
         """
 
-        # Get the results directory
-        calling_script_dir = os.getcwd() if 'in_notebook' in globals() and in_notebook else os.path.dirname(sys.argv[0])
-        results_path = os.path.join(calling_script_dir, f"{self.name}/results")
-
         # Check if the results directory exists
-        universe_files = [f for f in os.listdir(results_path) if f.startswith('universe_') and f.endswith('.pkl')]
+        universe_files = [f for f in os.listdir(self.results_dir) if f.startswith('universe_') and f.endswith('.pkl')]
         if not universe_files:
             raise ValueError("No results found. Please run the multiverse analysis first.")
 
         # Sort the universes based on the measure and get the forking paths
-        sorted_universes, forking_paths = self._load_and_prepare_data(measure, results_path)
+        sorted_universes, forking_paths = self._load_and_prepare_data(measure, self.results_dir)
 
         # Plotting
         sns.set_theme(style="whitegrid")
@@ -564,7 +535,7 @@ class Multiverse:
 
         # Show and save the plot
         plt.tight_layout()
-        plt.savefig(f"{results_path}/specification_curve.png")
+        plt.savefig(f"{self.results_dir}/specification_curve.png")
         plt.show()
 
         return
@@ -615,9 +586,8 @@ class Multiverse:
         summary : pandas.DataFrame
             Pandas datframe containing the multiverse summary
         """
+        csv_path = os.path.join(self.results_dir, "multiverse_summary.csv")
 
-        calling_script_dir = os.getcwd() if in_notebook else os.path.dirname(sys.path[0])
-        csv_path = os.path.join(calling_script_dir, f"{self.name}/results/multiverse_summary.csv")
         return pd.read_csv(csv_path)
 
     def _format_type(self, value):
@@ -774,4 +744,3 @@ class Multiverse:
         sorted_universes = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
 
         return sorted_universes, forking_paths
-

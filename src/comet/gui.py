@@ -1,3 +1,4 @@
+import os
 import re
 import sys
 import copy
@@ -4294,21 +4295,30 @@ class App(QMainWindow):
         Load a multiverse script
         """
         fileFilter = "All Supported Files (*.py *.ipynb);;MAT files (*.mat);;Python files (*.py);;Jupyter notebooks (*.ipynb)"
-        fileName, _ = QFileDialog.getOpenFileName(self, "Load multiverse template file", "", fileFilter)
-        if fileName:
+        self.multiverseFileName, _ = QFileDialog.getOpenFileName(self, "Load multiverse template file", "", fileFilter)
+        if self.multiverseFileName:
             try:
-                if fileName.endswith('.ipynb'):
+                if self.multiverseFileName.endswith('.ipynb'):
                     # Convert .ipynb to Python script
-                    with open(fileName, 'r', encoding='utf-8') as file:
+                    with open(self.multiverseFileName, 'r', encoding='utf-8') as file:
                         notebook = json.load(file)
-                        scriptContent = self.convertNotebookToScript(notebook)
+                        self.multiverseScriptContent = self.convertNotebookToScript(notebook)
                 else:
                     # Load as a normal Python script
-                    with open(fileName, 'r', encoding='utf-8') as file:
-                        scriptContent = file.read()
+                    with open(self.multiverseFileName, 'r', encoding='utf-8') as file:
+                        self.multiverseScriptContent = file.read()
 
-                self.scriptDisplay.setText(scriptContent)
+                self.scriptDisplay.setText(self.multiverseScriptContent)
                 self.scriptDisplay.setReadOnly(False)
+
+                # Get the multiverse name from the script
+                pattern = r'Multiverse\s*\(\s*name\s*=\s*\"(.*?)\"\s*\)'
+                match = re.search(pattern, self.multiverseScriptContent)
+                self.multiverseName = match.group(1) if match else QMessageBox.warning(self, "Error", "Failed to extract multiverse name from the script.")
+
+                # Update the text box
+                self.loadedScriptDisplay.setText(self.multiverseFileName.split('/')[-1])
+
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to read the file: {str(e)}")
 
@@ -4346,9 +4356,21 @@ class App(QMainWindow):
         """
         Run the multiverse analysis from the generated/loaded script
         """
-        if hasattr(self, 'loadedScriptPath') and self.loadedScriptPath:
+        if hasattr(self, 'multiverseFileName'):
+            multiverse_template_path = self.multiverseFileName.rsplit('/', 1)[0]
+            multiverse_save_path = os.path.join(multiverse_template_path, self.multiverseName)
+            os.makedirs(multiverse_save_path, exist_ok=True)
+
+            # Create a runnable script in the multiverse folder (the script content is taken from the GUI)
+            template_file = os.path.join(multiverse_save_path, "template.py")
+            with open(template_file, "w") as file:
+                file.write("# Template script containing the required data for multiverse analysis.\n")
+                file.write("# This file is used by the GUI, users should directly interact with their own multiverse script.\n\n")
+                file.write(self.scriptDisplay.toPlainText())
+
+            # Run the script
             try:
-                subprocess.run(['python', self.loadedScriptPath], check=True)
+                subprocess.run(['python', template_file], check=True)
                 QMessageBox.information(self, "Multiverse Analysis", "Multiverse ran successfully!")
 
             except subprocess.CalledProcessError:
