@@ -104,15 +104,16 @@ class InfoButton(QPushButton):
         QToolTip.showText(tooltip_pos, self.info_text)
         super().enterEvent(event)
 
-class CompcorSpinBox(QSpinBox):
+class CustomSpinBox(QSpinBox):
     '''
     Subclass of QSpinBox to allow for a special value "all" to be selected.
     Used for the number of components in the CompCor method.
     '''
-    def __init__(self, parent=None):
-        super(CompcorSpinBox, self).__init__(parent)
+    def __init__(self, special_value="all", parent=None):
+        super(CustomSpinBox, self).__init__(parent)
         self.all_selected = False
-        self.setSpecialValueText("all")
+        self.special_value = special_value
+        self.setSpecialValueText(self.special_value)
         self.setRange(0, 999)
         self.valueChanged.connect(self.check_all)
 
@@ -124,17 +125,49 @@ class CompcorSpinBox(QSpinBox):
 
     def get_value(self):
         if self.all_selected:
-            return "all"
+            return self.special_value
         else:
-            return super(CompcorSpinBox, self).value()
+            return super(CustomSpinBox, self).value()
 
     def set_value(self, value):
-        if value == "all":
+        if value == self.special_value:
             self.setValue(0)
             self.all_selected = True
         else:
             self.setValue(value)
             self.all_selected = False
+
+class CustomDoubleSpinbox(QDoubleSpinBox):
+    '''
+    Subclass of QSpinBox to allow for a special value None to be selected.
+    Used when cleaning nifti/cifti files.
+    '''
+    def __init__(self, special_value=None, parent=None):
+        super(CustomDoubleSpinbox, self).__init__(parent)
+        self.none_selected = False
+        self.special_value = special_value
+        self.setSpecialValueText(str(self.special_value))
+        self.valueChanged.connect(self.check_all)
+
+    def check_all(self, value):
+        if value == 0.0:
+            self.none_selected = True
+        else:
+            self.none_selected = False
+
+    def get_value(self):
+        if self.none_selected:
+            return self.special_value
+        else:
+            return super(CustomDoubleSpinbox, self).value()
+
+    def set_value(self, value):
+        if value == self.special_value:
+            self.setValue(0.0)
+            self.none_selected = True
+        else:
+            self.setValue(value)
+            self.none_selected = False
 
 class ParameterOptions:
     '''
@@ -703,6 +736,12 @@ class App(QMainWindow):
         bidsButton = QPushButton('Load BIDS dataset')
         self.fileNameLabel = QLabel('No data loaded yet.')
 
+        buttonLayout.addWidget(fileButton)
+        buttonLayout.addWidget(bidsButton)
+
+        loadLayout.addLayout(buttonLayout)
+        loadLayout.addWidget(self.fileNameLabel)
+
         # Subject dropdown for pkl files
         self.subjectDropdownContainer = QWidget()
         self.subjectDropdownLayout = QHBoxLayout()
@@ -714,61 +753,99 @@ class App(QMainWindow):
         self.subjectDropdownContainer.setLayout(self.subjectDropdownLayout)
         self.subjectDropdownContainer.hide()
 
-        # Cleaning container
+        # Cleaning container options for nifti/cifti files
         self.cleaningContainer = QWidget()
-        self.cleaningLayout = QVBoxLayout()  # Change to QVBoxLayout to allow stacking rows
+        cleaningLayout = QVBoxLayout()
+        cleaningLayout.setContentsMargins(5, 5, 5, 0)
 
-        # First row (Checkboxes)
-        self.firstRowLayout = QHBoxLayout()
-        self.detrendCheckbox = QCheckBox("Detrend")
-        self.detrendCheckbox.setChecked(False)
+        # Sphere Layout Container
+        self.sphereContainer = QWidget()
+        sphereLayout = QHBoxLayout(self.sphereContainer)
+        sphereLayoutLabel = QLabel("Sphere radius (mm):")
+        self.sphereRadiusSpinbox = CustomDoubleSpinbox(special_value="single voxel")
+        self.sphereRadiusSpinbox.setValue(5.0)
+        self.overlapCheckbox = QCheckBox("Allow overlap")
+        sphereLayout.addWidget(sphereLayoutLabel)
+        sphereLayout.addWidget(self.sphereRadiusSpinbox)
+        sphereLayout.addWidget(self.overlapCheckbox)
+        sphereLayout.addStretch(1)
+        sphereLayout.setContentsMargins(0, 0, 0, 0)
+        self.sphereContainer.setLayout(sphereLayout)
+
+        # Misc Cleaning Layout Container
+        self.miscCleaningContainer = QWidget()
+        miscCleaningLayout = QHBoxLayout(self.miscCleaningContainer)
         self.standardizeCheckbox = QCheckBox("Standardize")
-        self.standardizeCheckbox.setChecked(False)
-        self.globalSignalCheckbox = QCheckBox("Global Signal Regression")
-        self.globalSignalCheckbox.setChecked(False)
+        self.standardizeCheckbox.setChecked(True)
+        self.detrendCheckbox = QCheckBox("Detrend")
+        self.detrendCheckbox.setChecked(True)
+        self.highVarianceCheckbox = QCheckBox("Regress high variance confounds")
+        self.highVarianceCheckbox.setChecked(True)
 
-        self.firstRowLayout.addWidget(self.detrendCheckbox)
-        self.firstRowLayout.addWidget(self.standardizeCheckbox)
-        self.firstRowLayout.addWidget(self.globalSignalCheckbox)
+        miscCleaningLayout.addItem(QSpacerItem(5, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        miscCleaningLayout.addWidget(self.detrendCheckbox)
+        miscCleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        miscCleaningLayout.addWidget(self.standardizeCheckbox)
+        miscCleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        miscCleaningLayout.addWidget(self.highVarianceCheckbox)
+        miscCleaningLayout.addStretch(1)
+        miscCleaningLayout.setContentsMargins(0, 0, 0, 0)
+        self.miscCleaningContainer.setLayout(miscCleaningLayout)
 
-        # Second row (High Pass, Low Pass, and TR)
-        self.secondRowLayout = QHBoxLayout()
-        self.highPassLabel = QLabel("High Pass:")
-        self.highPassCutoff = QDoubleSpinBox()
-        self.highPassCutoff.setRange(0, 1)
-        self.highPassCutoff.setSingleStep(0.01)
-        self.highPassCutoff.setValue(0.01)  # Default value
+        # Smoothing Layout Container
+        self.smoothingContainer = QWidget()
+        smoothingLayout = QHBoxLayout(self.smoothingContainer)
+        smoothingLabel = QLabel("Smoothing fwhm (mm):")
+        self.smoothingSpinbox = CustomDoubleSpinbox(special_value=None)
+        self.smoothingSpinbox.setDecimals(2)
+        self.smoothingSpinbox.setSingleStep(1.0)
+        smoothingLayout.addWidget(smoothingLabel)
+        smoothingLayout.addWidget(self.smoothingSpinbox)
+        smoothingLayout.addStretch(1)
+        smoothingLayout.setContentsMargins(0, 0, 0, 0)
+        self.smoothingContainer.setLayout(smoothingLayout)
 
-        self.lowPassLabel = QLabel("Low Pass:")
-        self.lowPassCutoff = QDoubleSpinBox()
-        self.lowPassCutoff.setRange(0, 1)
-        self.lowPassCutoff.setSingleStep(0.01)
-        self.lowPassCutoff.setValue(0.1)
+        # Filtering Layout Container
+        self.filteringContainer = QWidget()
+        filteringLayout = QHBoxLayout(self.filteringContainer)
+        highPassLabel = QLabel("High Pass:")
+        self.highPassCutoff = CustomDoubleSpinbox(special_value=None)
+        self.highPassCutoff.setDecimals(3)
+        self.highPassCutoff.setSingleStep(0.001)
 
-        self.trLabel = QLabel("TR:")
-        self.trValue = QDoubleSpinBox()
-        self.trValue.setRange(0.1, 5.0)
-        self.trValue.setSingleStep(0.01)
-        self.trValue.setValue(2.0)
+        lowPassLabel = QLabel("Low Pass:")
+        self.lowPassCutoff = CustomDoubleSpinbox(special_value=None)
+        self.lowPassCutoff.setDecimals(3)
+        self.lowPassCutoff.setSingleStep(0.001)
 
-        self.secondRowLayout.addWidget(self.highPassLabel)
-        self.secondRowLayout.addWidget(self.highPassCutoff)
-        self.secondRowLayout.addWidget(self.lowPassLabel)
-        self.secondRowLayout.addWidget(self.lowPassCutoff)
-        self.secondRowLayout.addWidget(self.trLabel)
-        self.secondRowLayout.addWidget(self.trValue)
+        trLabel = QLabel("TR:")
+        self.trValue = CustomDoubleSpinbox(special_value=None)
+        self.trValue.setDecimals(3)
+        self.trValue.setSingleStep(0.5)
 
-        # Add the rows to the main layout
-        self.cleaningLayout.addLayout(self.firstRowLayout)
-        self.cleaningLayout.addLayout(self.secondRowLayout)
+        filteringLayout.addWidget(highPassLabel)
+        filteringLayout.addWidget(self.highPassCutoff)
+        filteringLayout.addWidget(lowPassLabel)
+        filteringLayout.addWidget(self.lowPassCutoff)
+        filteringLayout.addWidget(trLabel)
+        filteringLayout.addWidget(self.trValue)
+        filteringLayout.addStretch(1)
+        filteringLayout.setContentsMargins(0, 0, 0, 0)
+        self.filteringContainer.setLayout(filteringLayout)
 
-        self.cleaningContainer.setLayout(self.cleaningLayout)
+        # Add containers to the main cleaning layout
+        cleaningLayout.addWidget(self.miscCleaningContainer)
+        cleaningLayout.addWidget(self.sphereContainer)
+        cleaningLayout.addWidget(self.smoothingContainer)
+        cleaningLayout.addWidget(self.filteringContainer)
+
+        self.cleaningContainer.setLayout(cleaningLayout)
         self.cleaningContainer.hide()
-
 
         # Parcellation dropdown for nifti files
         self.parcellationContainer = QWidget()
         self.parcellationLayout = QHBoxLayout()
+        self.parcellationLayout.setContentsMargins(5, 5, 5, 10)
 
         self.parcellationLabel = QLabel("Parcellation:")
         self.parcellationLabel.setFixedWidth(100)
@@ -777,31 +854,31 @@ class App(QMainWindow):
         self.parcellationOptionsLabel.setFixedWidth(40)
         self.parcellationOptions = QComboBox()
 
-        self.parcellationCalculateButton = QPushButton("Calculate")
-        self.parcellationCalculateButton.clicked.connect(self.calculateTimeSeries)
-
         self.parcellationDropdown = QComboBox()
         self.parcellationDropdown.addItems(self.atlas_options.keys())
         self.parcellationLayout.addWidget(self.parcellationLabel, 1)
         self.parcellationLayout.addWidget(self.parcellationDropdown, 3)
         self.parcellationLayout.addWidget(self.parcellationOptionsLabel, 1)
         self.parcellationLayout.addWidget(self.parcellationOptions, 2)
-        self.parcellationLayout.addWidget(self.parcellationCalculateButton, 1)
         self.parcellationContainer.setLayout(self.parcellationLayout)
 
         self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
         self.parcellationContainer.hide()
 
+        # Calculate button
+        self.calculateContainer = QWidget()
+        self.calculateLayout = QHBoxLayout()
+        self.calculateLayout.setContentsMargins(5, 5, 5, 0)
+
+        self.parcellationCalculateButton = QPushButton("Calculate")
+        self.parcellationCalculateButton.clicked.connect(self.calculateTimeSeries)
+        self.calculateLayout.addStretch(2)
+        self.calculateLayout.addWidget(self.parcellationCalculateButton, 1)
+        self.calculateContainer.setLayout(self.calculateLayout)
+
         # Transpose checkpox
         self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
         self.transposeCheckbox.hide()
-
-        # Add widgets to layouts
-        buttonLayout.addWidget(fileButton)
-        buttonLayout.addWidget(bidsButton)
-
-        loadLayout.addLayout(buttonLayout)
-        loadLayout.addWidget(self.fileNameLabel)
 
         # Container for parcellation
         self.loadContainer = QGroupBox("Time series extraction")
@@ -810,6 +887,7 @@ class App(QMainWindow):
         loadContainerLayout.addWidget(self.subjectDropdownContainer)
         loadContainerLayout.addWidget(self.cleaningContainer)
         loadContainerLayout.addWidget(self.parcellationContainer)
+        loadContainerLayout.addWidget(self.calculateContainer)
         loadContainerLayout.addWidget(self.transposeCheckbox)
 
         # Connect widgets
@@ -1681,6 +1759,12 @@ class App(QMainWindow):
         else:
             QMessageBox.warning(self, "Error when extracting time series", f"Atlas not found in options list")
 
+        current_atlas = self.parcellationDropdown.currentText()
+        if current_atlas in ["Power et al. (2011)", "Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
+            self.sphereContainer.show()
+        else:
+            self.sphereContainer.hide()
+
         return
 
     # BIDS dataset functions
@@ -1914,7 +1998,7 @@ class App(QMainWindow):
 
             # Special cases
             if key == "n_compcor":
-                input_widget = CompcorSpinBox()
+                input_widget = CustomSpinBox()
                 input_widget.setObjectName(f"{key}_input")
                 h_layout.addWidget(input_widget)
                 h_layout.setObjectName("compcor")
@@ -2101,6 +2185,20 @@ class App(QMainWindow):
         mask = None
         confounds = None
 
+        # Collect cleaning arguments
+        radius = self.sphereRadius.value() if self.sphereRadius.value() > 0 else None # none is single voxel
+        allow_ovelap = self.overlapCheckbox.isChecked()
+
+        standardize = self.standardizeCheckbox.isChecked()
+        detrend = self.detrendCheckbox.isChecked()
+        smoothing_fwhm = self.smoothingSpinbox.value() if self.smoothingSpinbox.value() > 0 else None
+        high_variance_confounds = self.highVarianceCheckbox.isChecked()
+
+        high_pass = self.highPassCutoff.value() if self.highPassCutoff.value() > 0 else None
+        low_pass = self.lowPassCutoff.value() if self.lowPassCutoff.value() > 0 else None
+        tr = self.trValue.value() if self.trValue.value() > 0 else None
+
+        # Parcellation procedure
         self.parcellationCalculateButton.setEnabled(False)
         self.bids_calculateButton.setEnabled(False)
 
@@ -2109,16 +2207,18 @@ class App(QMainWindow):
             confounds, self.data.sample_mask = load_confounds(img_path, **args)
             mask = self.mask_name
 
-        if atlas in ["Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
-            rois, networks, self.data.roi_names = self.fetchAtlas(atlas, option)
-            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize=True, mask_img=mask)
+        if atlas in ["Power et al. (2011)", "Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
+            if atlas == "Power et al. (2011)":
+                rois = self.fetchAtlas(atlas, option)
+            else:
+                rois, networks, self.data.roi_names = self.fetchAtlas(atlas, option)
+
+            masker = maskers.NiftiSpheresMasker(seeds=rois, mask_img=mask, radius=radius, allow_overlap=allow_ovelap,
+                                                standardize=standardize, detrend=detrend, smoothing_fwhm=smoothing_fwhm, high_variance_confounds=high_variance_confounds,
+                                                low_pass=low_pass, high_pass=high_pass, t_r=tr)
             time_series = masker.fit_transform(img_path, confounds=confounds)
 
-        elif atlas == "Power et al. (2011)":
-            rois = self.fetchAtlas(atlas, option)
-            masker = maskers.NiftiSpheresMasker(seeds=rois, radius=5, standardize=True, mask_img=mask)
-            time_series = masker.fit_transform(img_path, confounds=confounds)
-
+        # TODO: Add support for other resolutions (e.g. automatically download them)
         elif atlas in ["Glasser MMP", "Schaefer Kong", "Schaefer Tian"]:
             atlas_map = {
                 "Glasser MMP": "glasser",
@@ -2129,7 +2229,9 @@ class App(QMainWindow):
 
         else:
             atlas, labels = self.fetchAtlas(atlas, option)
-            masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, standardize=True, mask_img=mask)
+            masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, mask_img=mask, background_label=0,
+                                               standardize=standardize, detrend=detrend, smoothing_fwhm=smoothing_fwhm, high_variance_confounds=high_variance_confounds,
+                                               low_pass=low_pass, high_pass=high_pass, t_r=tr)
             time_series = masker.fit_transform(img_path, confounds=confounds)
 
         self.data.file_data = time_series
