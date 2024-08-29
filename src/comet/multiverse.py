@@ -17,6 +17,7 @@ from matplotlib import transforms
 from matplotlib import pyplot as plt
 from matplotlib import lines as mlines
 from matplotlib import patches as mpatches
+from scipy.interpolate import make_interp_spline
 from joblib import Parallel, delayed
 
 def in_notebook():
@@ -311,8 +312,8 @@ class Multiverse:
 
         return
 
-    def specification_curve(self, measure, p_value=None, ci=None, baseline=None, \
-                            title="Specification Curve", cmap="Set2", linewidth=2, figsize=(16,9), height_ratio=(2,1), fontsize=10, dotsize=50, label_offset=-0.05):
+    def specification_curve(self, measure, baseline=None, p_value=None, ci=None, smooth_ci=False, \
+                            title="Specification Curve", name_map=None, cmap="Set3", linewidth=2, figsize=(16,9), height_ratio=(2,1), fontsize=10, dotsize=50, label_offset=-0.05):
         """
         Create and save a specification curve plot from multiverse results
 
@@ -321,20 +322,26 @@ class Multiverse:
         measure : string
             Name of the measure to plot. Needs to be provided
 
+        baseline : float
+            Plot baseline/chance level as a dashed line. Default is None
+
         p_value : float
             Calculate and visualize statisticallz significant specification via p-value. Default is None
 
         ci : int
             Confidence interval to plot. Default is 95
 
-        baseline : float
-            Chance level to plot. Default is None
+        ci_smooth : bool
+            Plot a smoothed confidence interval. Default is False
 
         title : string
             Title of the plot. Default is "Specification Curve"
 
+        name_map : dict
+            Dictionary to map the decision names to custom names. Default is None
+
         cmap : string
-            Colormap to use for the nodes. Default is "Set2"
+            Colormap to use for the nodes. Default is "Set3"
 
         linewidth : int
             Width of the boxplots. Default is 2
@@ -381,7 +388,7 @@ class Multiverse:
         for param in single_params:
             del forking_paths[param]
 
-        # Setup variables for  the bottom plot
+        # Setup variables for the bottom plot
         flat_list = []
         yticks = []
         yticklabels = []
@@ -391,10 +398,17 @@ class Multiverse:
         y_max = 0
         space_between_groups = 1
         color = "black"
+        sig_color = "#018532"
 
         for key, options in forking_paths.items():
+            # Get custom labels if a name map is provided
+            if name_map is not None and key in name_map.keys():
+                key_label = name_map[key]
+            else:
+                key_label = key
+
             key_position = y_max + len(options) / 2 - 0.5
-            key_positions[key] = key_position
+            key_positions[key_label] = key_position
 
             for option in options:
                 flat_list.append((key, option))
@@ -429,6 +443,11 @@ class Multiverse:
             ax[1].add_line(line)
             s = line_end + 0.5
 
+        # Setup variables for the CI
+        ci_lower_values = []
+        ci_upper_values = []
+        x_values = np.arange(len(sorted_universes))
+
         # Plotting of the dots in both plots
         for i, (result, decisions) in enumerate(sorted_universes):
             # If the measure for the top plot contains multiple values (e.g. CV results), we calculate the mean for the plot
@@ -436,6 +455,15 @@ class Multiverse:
                 mean_val = np.mean(result)
             else:
                 mean_val = result
+
+            # Color coding for p-values (only for more than 30 samples)
+            if p_value is not None:
+                baseline = 0 if baseline is None else baseline # Compare against 0 if no baseline is provided
+
+                if hasattr(result, '__len__') and (len(result) > 29):
+                    t_obs, p_obs = stats.ttest_1samp(result, baseline)
+                    p_vals.append(p_obs)
+                    color = sig_color if p_obs < p_value else "black"
 
             # Plot the confidence interval
             if ci is not None:
@@ -445,27 +473,17 @@ class Multiverse:
                     ci_lower = mean_val - sem_val * stats.t.ppf((1 + ci / 100) / 2., len(result) - 1)
                     ci_upper = mean_val + sem_val * stats.t.ppf((1 + ci / 100) / 2., len(result) - 1)
 
-                    ax[0].plot([i, i], [ci_lower, ci_upper], color="gray", linewidth=linewidth)
+                    ci_lower_values.append(ci_lower)
+                    ci_upper_values.append(ci_upper)
 
-                    if ci_lower > baseline:
-                        color = "green"
-                    elif ci_upper < baseline:
-                        color = "red"
-                    else:
-                        color = "black"
+                    # Optional: Plot individual CIs if smooth_ci is False
+                    if not smooth_ci:
+                        ax[0].plot([i, i], [ci_lower, ci_upper], color="gray", linewidth=linewidth)
+
                 else:
                     print("Warning: No CI calculation (less than 4 samples.)")
-
-            # Color coding for p-values (only for more than 30 samples)
-            if p_value is not None:
-                baseline = 0 if baseline is None else baseline # Compare against 0 if no baseline is provided
-
-                if  hasattr(result, '__len__') and (len(result) > 29):
-                    t_obs, p_obs = stats.ttest_1samp(result, baseline)
-                    p_vals.append(p_obs)
-
-                    if p_obs < p_value:
-                        color="green"
+                    ci_lower_values.append(mean_val)  # In case of no CI, just use the mean value
+                    ci_upper_values.append(mean_val)
 
             # Plot the universe measure
             ax[0].scatter(i, mean_val, zorder=3, color=color, edgecolor=color, s=dotsize)
@@ -491,6 +509,20 @@ class Multiverse:
 
                     ax[1].scatter(i, plot_pos, color=current_color, marker='o', s=dotsize)
 
+        # Plot the smooth CI band after the loop
+        if smooth_ci and ci is not None:
+            # Smoothing the CI bounds
+            spline_lower = make_interp_spline(x_values, ci_lower_values, k=3)  # cubic spline
+            spline_upper = make_interp_spline(x_values, ci_upper_values, k=3)
+
+            x_smooth = np.linspace(x_values.min(), x_values.max(), 500)
+            ci_lower_smooth = spline_lower(x_smooth)
+            ci_upper_smooth = spline_upper(x_smooth)
+
+            # Plot the smooth CI band
+            ax[0].fill_between(x_smooth, ci_lower_smooth, ci_upper_smooth, color='gray', alpha=0.3)
+
+
         # Upper plot settings
         trans0 = transforms.blended_transform_factory(ax[0].transAxes, ax[0].transData)
 
@@ -502,7 +534,14 @@ class Multiverse:
         # Upper plot label
         ymin, ymax = ax[0].get_ylim()
         ycenter = (ymax + ymin) / 2
-        ax[0].text(label_offset - 0.01, ycenter, measure, transform=trans0, ha='right', va='center', \
+
+        # Get custom label if provided
+        if name_map is not None and measure in name_map.keys():
+            measure_label = name_map[measure]
+        else:
+            measure_label = measure
+
+        ax[0].text(label_offset - 0.01, ycenter, measure_label, transform=trans0, ha='right', va='center', \
                    fontweight="bold", fontsize=fontsize, rotation=0)
         line = mlines.Line2D([label_offset, label_offset], [ymin, ymax], color="black", lw=1, transform=trans0, clip_on=False)
         ax[0].add_line(line)
@@ -523,7 +562,7 @@ class Multiverse:
         if p_value is not None:
             if len(p_vals) > 0:
                 if min(p_vals) <= p_value:
-                    legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=9, markerfacecolor="green", markeredgecolor="green", label=f"p < 0.05"))
+                    legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=9, markerfacecolor=sig_color, markeredgecolor=sig_color, label=f"p < 0.05"))
                 if max(p_vals) > p_value:
                     legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=9, markerfacecolor="black", markeredgecolor="black", label=f"p > 0.05"))
             else:
