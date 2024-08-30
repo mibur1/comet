@@ -9,6 +9,7 @@ import subprocess
 import numpy as np
 import pandas as pd
 
+import mat73
 from scipy.io import loadmat, savemat
 from dataclasses import dataclass, field
 from importlib import resources as pkg_resources
@@ -1524,7 +1525,11 @@ class App(QMainWindow):
             pass
 
         if file_path.endswith('.mat'):
-            data_dict = loadmat(file_path)
+            try:
+                data_dict = loadmat(file_path)
+            except:
+                data_dict = mat73.loadmat(file_path)
+
             self.data.file_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
             self.createCarpetPlot()
 
@@ -3125,7 +3130,11 @@ class App(QMainWindow):
             return  # Early exit if no file is selected
 
         if file_path.endswith('.mat'):
-            data_dict = loadmat(file_path)
+            try:
+                data_dict = loadmat(file_path)
+            except:
+                data_dict = mat73.loadmat(file_path)
+
             try:
                 self.data.graph_data = data_dict["graph_data"] # Try to load graph_data (saving files with comet will create this field)
             except:

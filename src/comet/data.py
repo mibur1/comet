@@ -1,11 +1,13 @@
 import os
 import re
+import mat73
 import pickle
 import numpy as np
 import pandas as pd
 import importlib_resources
 from nilearn import signal
 from scipy.io import loadmat
+
 
 def load_timeseries(path=None):
     """
@@ -34,7 +36,10 @@ def load_timeseries(path=None):
     elif path.endswith(".npy"):
         data = np.load(path)
     elif path.endswith(".mat"):
-        data = loadmat(path)
+        try:
+            data = loadmat(path)
+        except:
+            data = mat73.loadmat(path)
     elif path.endswith(".tsv"):
         data = pd.read_csv(path, sep='\t', header=None, na_values='n/a')
 
