@@ -7,7 +7,7 @@
   <title>Usage example: Multiverse Analysis &mdash; Comet Toolbox 2024 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
-      <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
 
   
   <!--[if lt IE 9]>
@@ -24,7 +24,9 @@
         <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
-    <link rel="search" title="Search" href="../../search.html" /> 
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Usage example: Graph measures" href="example_graph.html" />
+    <link rel="prev" title="Usage example: Simulation multiverse" href="example_fmri.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -46,10 +48,17 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../overview.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="example_dfc.html">Usage example: Dynamic functional connectivity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_eeg.html">Usage example: EEG preprocessing multiverse</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_fmri.html">Usage example: Simulation multiverse</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Usage example: Multiverse Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_graph.html">Usage example: Graph measures</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="../api.html">Programming API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../contribute.html">Contributing</a></li>
 </ul>
@@ -68,6 +77,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../tutorials.html">Tutorials</a></li>
       <li class="breadcrumb-item active">Usage example: Multiverse Analysis</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../_sources/sections/notebooks/example_multiverse.ipynb.txt" rel="nofollow"> View page source</a>
@@ -93,7 +103,7 @@
 <li><p>comet and bct graph measures</p></li>
 </ul>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">comet.multiverse</span> <span class="kn">import</span> <span class="n">Multiverse</span>
@@ -151,10 +161,11 @@
 </ul>
 <p>In this brief example, the corresponding string, number, and boolean decision will be printed in each universe. Then, connevtivity will be estimated with the corresponding dFC method, and local efficiency is calculated with either the BCT or Comet implementation:</p>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">analysis_template</span><span class="p">():</span>
+    <span class="kn">import</span> <span class="nn">os</span>
     <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
     <span class="kn">import</span> <span class="nn">bct</span>
     <span class="kn">import</span> <span class="nn">comet</span>
@@ -174,7 +185,8 @@
         <span class="n">W</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
         <span class="n">efficiency</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">{{</span><span class="n">graph_measures</span><span class="p">}}</span>
 
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Universe finished.&quot;</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;efficiency&quot;</span><span class="p">:</span> <span class="n">efficiency</span><span class="p">}</span>
+    <span class="n">comet</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">save_universe_results</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">universe</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -185,7 +197,7 @@
 <li><p><code class="docutils literal notranslate"><span class="pre">multiverse.run()</span></code> will either run all or individual universes. If the computational resources allow for it, this can be parallelized by using e.g. <code class="docutils literal notranslate"><span class="pre">multiverse.run(parallel=4)</span></code></p></li>
 </ul>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">multiverse</span> <span class="o">=</span> <span class="n">Multiverse</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;example_decisions&quot;</span><span class="p">)</span>
@@ -283,21 +295,36 @@
 </div>
 </div>
 <p>You can now run individual universes by specifying a number, or run all of them (parallelization is then also supported):</p>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1">#multiverse.run(universe_number=1)</span>
-<span class="c1">#multiverse.run(parallel=4)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">multiverse</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">universe_number</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </pre></div>
 </div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Starting analysis for universe 1...
+Running universe_1.py
+Decision 1: &#39;Hello&#39;
+Decision 2: 1
+Decision 3:True
+Calculating LeiDA, please wait...
+</pre></div></div>
 </div>
 </section>
 
 
            </div>
           </div>
-          <footer>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="example_fmri.html" class="btn btn-neutral float-left" title="Usage example: Simulation multiverse" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="example_graph.html" class="btn btn-neutral float-right" title="Usage example: Graph measures" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
 
   <hr/>
 
