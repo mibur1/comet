@@ -189,8 +189,8 @@ class Multiverse:
 
         Parameters
         ----------
-        universe : int
-            The universe to highlight in the network. Default is None
+        universe : int or None
+            The universe to highlight in the network. If None, no path will be highlighted. Default is None
 
         cmap : str
             Colormap to use for the nodes. Default is "Set2"
@@ -237,23 +237,24 @@ class Multiverse:
         G.add_node(root_node, level=0, label="Start")  # Ensure the root node has the 'level' attribute and label
         G = add_hierarchical_decision_nodes(G, root_node, parameters)
 
-        # Get the decisions for the desired universe
-        filtered_df = multiverse_summary[multiverse_summary['Universe'] == f"Universe_{universe}"]
-        for column in filtered_df.columns:
-            if column not in [param_name for param_name, _ in parameters]:
-                filtered_df = filtered_df.drop(columns=column)
-
-        row_dict = filtered_df.iloc[0].to_dict()
         values = ["Start"]  # Initialize the list with the "Start: Start" value
-        values.extend([f"{column}: {value}" for column, value in row_dict.items()])
+        if universe is not None:
+            # Get the decisions for the desired universe
+            filtered_df = multiverse_summary[multiverse_summary['Universe'] == f"Universe_{universe}"]
+            for column in filtered_df.columns:
+                if column not in [param_name for param_name, _ in parameters]:
+                    filtered_df = filtered_df.drop(columns=column)
+
+            row_dict = filtered_df.iloc[0].to_dict()
+            values.extend([f"{column}: {value}" for column, value in row_dict.items()])
 
 
         # Red edge colors for the edges that are part of the universe
-        red_edges = [(source_value, target_value) for source_value, target_value in G.edges if source_value in values and target_value in values]
+        universe_edges = [(source_value, target_value) for source_value, target_value in G.edges if source_value in values and target_value in values]
         edge_colors = ["black"] * len(G.edges)
         edge_widths = [1.0] * len(G.edges)
         for i, edge in enumerate(G.edges):
-            if edge in red_edges:
+            if edge in universe_edges:
                 edge_colors[i] = "black"
                 edge_widths[i] = 2.5
             else:
@@ -261,8 +262,10 @@ class Multiverse:
                 edge_widths[i] = 1.0
 
         # Visualize the graph
+        title_str = f"Universe {universe}" if universe is not None else "Multiverse"
+
         plt.figure(figsize=figsize)
-        plt.title(f"Universe {universe}", size=14, fontweight='bold')
+        plt.title(title_str, size=14, fontweight='bold')
         pos = nx.multipartite_layout(G, subset_key="level")
 
         # Assigning colors based on levels using a colormap
@@ -313,7 +316,7 @@ class Multiverse:
         return
 
     def specification_curve(self, measure, baseline=None, p_value=None, ci=None, smooth_ci=False, \
-                            title="Specification Curve", name_map=None, cmap="Set3", linewidth=2, figsize=(16,9), height_ratio=(2,1), fontsize=10, dotsize=50, label_offset=-0.05):
+                            title="Specification Curve", name_map=None, cmap="Set3", linewidth=2, figsize=(16,9), height_ratio=(2,1), fontsize=10, dotsize=50, ftype="png"):
         """
         Create and save a specification curve plot from multiverse results
 
@@ -358,8 +361,8 @@ class Multiverse:
         dotsize : int
             Size of the dots. Default is 50
 
-        label_offset : float
-            Offset of the labels. Needs to be adjusted manually, default is -0.05
+        ftype : string
+            File type to save the plot. Default is "png"
         """
 
         # Check if the results directory exists
@@ -373,7 +376,6 @@ class Multiverse:
         # Plotting
         sns.set_theme(style="whitegrid")
         fig, ax = plt.subplots(2, 1, figsize=figsize, gridspec_kw={'height_ratios': height_ratio}, sharex=True)
-        fig.suptitle(title, fontweight="bold", fontsize=fontsize+2)
 
         # If the forking path is a single parameter only, we will not plot it and delete it from the forking paths
         single_params = []
@@ -428,18 +430,32 @@ class Multiverse:
         ax[1].set_ylim(-1, y_max)
         ax[1].xaxis.grid(False)
 
-        # Labels for the bottom plot
+        # Calculate the padding for the lines and labels
+        fig.canvas.draw()
         trans1 = transforms.blended_transform_factory(ax[1].transAxes, ax[1].transData)
 
+        # Get the bounding box of the y-tick labels
+        renderer = fig.canvas.get_renderer()
+        tick_label_extents = [label.get_window_extent(renderer=renderer) for label in ax[1].get_yticklabels()]
+        max_extent = max(tick_label_extents, key=lambda bbox: bbox.width)
+
+        # Convert the right edge of the bounding box to axis coordinates
+        x_start_pixel = max_extent.x0  # leftmost edge of the bounding box
+        x_start_axes = ax[1].transAxes.inverted().transform((x_start_pixel, 0))[0]
+
+        padding = 0.01
+        line_offset =  x_start_axes - padding
+
+        # Plot the key labels
         for key, pos in key_positions.items():
-            ax[1].text(label_offset - 0.01, pos, key, transform=trans1, ha='right', va='center', \
-                       fontweight="bold", fontsize=fontsize, rotation=0)
+            ax[1].text(line_offset - padding, pos, key, transform=trans1, ha='right', va='center',
+                    fontweight="bold", fontsize=fontsize, rotation=0)
 
         # Lines for the bottom plot
         s = -0.5
         for i, line_end in enumerate(line_ends):
             e = line_end - 0.5
-            line = mlines.Line2D([label_offset, label_offset], [s, e], color="black", lw=1, transform=trans1, clip_on=False)
+            line = mlines.Line2D([line_offset, line_offset], [s, e], color="black", lw=1, transform=trans1, clip_on=False)
             ax[1].add_line(line)
             s = line_end + 0.5
 
@@ -447,6 +463,11 @@ class Multiverse:
         ci_lower_values = []
         ci_upper_values = []
         x_values = np.arange(len(sorted_universes))
+
+        # Check the length of the results
+        result, decisions = sorted_universes[0]
+        if hasattr(result, '__len__') and len(result) < 30:
+            print(f"Warning: Only {len(result)} samples were available for the t-test and CI.")
 
         # Plotting of the dots in both plots
         for i, (result, decisions) in enumerate(sorted_universes):
@@ -460,7 +481,7 @@ class Multiverse:
             if p_value is not None:
                 baseline = 0 if baseline is None else baseline # Compare against 0 if no baseline is provided
 
-                if hasattr(result, '__len__') and (len(result) > 29):
+                if hasattr(result, '__len__'):
                     t_obs, p_obs = stats.ttest_1samp(result, baseline)
                     p_vals.append(p_obs)
                     color = sig_color if p_obs < p_value else "black"
@@ -481,7 +502,6 @@ class Multiverse:
                         ax[0].plot([i, i], [ci_lower, ci_upper], color="gray", linewidth=linewidth)
 
                 else:
-                    print("Warning: No CI calculation (less than 4 samples.)")
                     ci_lower_values.append(mean_val)  # In case of no CI, just use the mean value
                     ci_upper_values.append(mean_val)
 
@@ -522,10 +542,10 @@ class Multiverse:
             # Plot the smooth CI band
             ax[0].fill_between(x_smooth, ci_lower_smooth, ci_upper_smooth, color='gray', alpha=0.3)
 
-
         # Upper plot settings
         trans0 = transforms.blended_transform_factory(ax[0].transAxes, ax[0].transData)
 
+        ax[0].set_title(title, fontweight="bold", fontsize=fontsize+2)
         ax[0].xaxis.grid(False)
         ax[0].set_xticks(np.arange(0, len(sorted_universes), 1))
         ax[0].set_xticklabels([])
@@ -541,16 +561,18 @@ class Multiverse:
         else:
             measure_label = measure
 
-        ax[0].text(label_offset - 0.01, ycenter, measure_label, transform=trans0, ha='right', va='center', \
+        ax[0].text(line_offset - padding, ycenter, measure_label, transform=trans0, ha='right', va='center', \
                    fontweight="bold", fontsize=fontsize, rotation=0)
-        line = mlines.Line2D([label_offset, label_offset], [ymin, ymax], color="black", lw=1, transform=trans0, clip_on=False)
+        line = mlines.Line2D([line_offset, line_offset], [ymin, ymax], color="black", lw=1, transform=trans0, clip_on=False)
         ax[0].add_line(line)
 
         # List for legend items
         legend_items = []
 
-        # If the chance level is whithin the range of the measure, we plot it as a dashed line, otherwise we skip it for visualization purposes
-        if baseline is not None and baseline > np.mean(sorted_universes[0][0]) and baseline < np.mean(sorted_universes[-1][0]):
+        # If the chance level is whithin the range of the measure, we plot it as a dashed line, otherwise we skip it for visualization purpose
+        y_lim = ax[0].get_ylim()
+
+        if baseline is not None and y_lim[0] <= baseline <= y_lim[1]:
             ax[0].hlines(baseline, xmin=-2, xmax=len(sorted_universes) + 1, linestyles="--", lw=2, colors='black', zorder=1)
             legend_items.append(mlines.Line2D([], [], linestyle='--', color='black', linewidth=2, label=f"Baseline"))
 
@@ -566,15 +588,14 @@ class Multiverse:
                 if max(p_vals) > p_value:
                     legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=9, markerfacecolor="black", markeredgecolor="black", label=f"p > 0.05"))
             else:
-                print("Warning: No p-values were calculated (less than 30 samples.)")
+                print("Warning: No p-values were calculated (less than 30 samples)")
 
         # Add the legend to the plot if it contains at least one item
         if len(legend_items) > 0:
             ax[0].legend(handles=legend_items, loc='upper left', fontsize=fontsize)
 
-        # Show and save the plot
-        plt.tight_layout()
-        plt.savefig(f"{self.results_dir}/specification_curve.png")
+        # Save the plot
+        plt.savefig(f"{self.results_dir}/specification_curve.{ftype}", bbox_inches='tight')
         plt.show()
 
         return
