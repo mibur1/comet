@@ -12,7 +12,7 @@ import pandas as pd
 import mat73
 from scipy.io import loadmat, savemat
 from dataclasses import dataclass, field
-from importlib import resources as pkg_resources
+from importlib import resources as pkg_resources, util
 from typing import Any, Dict, get_type_hints, get_origin, Literal
 
 # BIDS data imports
@@ -38,7 +38,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout,
      QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QGroupBox
 
 # Comet imports and state-based dFC methods from pydfc
-from . import connectivity, data, data_cifti, graph
+from . import connectivity, data, data_cifti, graph, multiverse
 import pydfc
 
 
@@ -1392,11 +1392,14 @@ class App(QMainWindow):
         leftLayout.addWidget(createMvContainer)
         leftLayout.addStretch()
 
-        # Bottom  section
+
+
+        # Bottom section
         performMvContainer = QGroupBox("Perform multiverse analysis")
         performMvContainerLayout = QVBoxLayout()
         performMvContainerLayout.addItem(QSpacerItem(0, 5, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
+        # Load script layout
         loadLayout = QHBoxLayout()
         loadMultiverseScriptButton = QPushButton('Load multiverse template')
         loadLayout.addWidget(loadMultiverseScriptButton, 3)
@@ -1407,20 +1410,44 @@ class App(QMainWindow):
         self.loadedScriptDisplay.setReadOnly(True)
         loadLayout.addWidget(self.loadedScriptDisplay, 5)
 
-        # Add the horizontal layout
+        # Add the horizontal layout to the container layout
         performMvContainerLayout.addLayout(loadLayout)
+
+        # Row with the three buttons
+        buttonLayout = QHBoxLayout()
+
+        createMultiverseButton = QPushButton('Create multiverse')
+        buttonLayout.addWidget(createMultiverseButton)
+
+        showSummaryButton = QPushButton('Show summary')
+        buttonLayout.addWidget(showSummaryButton)
+
+        visualizeMultiverseButton = QPushButton('Visualize multiverse')
+        buttonLayout.addWidget(visualizeMultiverseButton)
+
+        # Add the buttons layout to the container layout
+        performMvContainerLayout.addLayout(buttonLayout)
+
+        # Add the 'Run multiverse' button
+        runButton = QPushButton('Run multiverse')
+        performMvContainerLayout.addWidget(runButton)
+
+        # Set the layout for the container
         performMvContainer.setLayout(performMvContainerLayout)
 
-        # Connect the button to the method that handles file loading
-        loadMultiverseScriptButton.clicked.connect(self.loadMultiverseScript)
-
-        runButton = QPushButton('Run multiverse analysis')
-        performMvContainerLayout.addWidget(runButton)
-        runButton.clicked.connect(self.runMultiverseScript)
-
+        # Add the container to the main layout (leftLayout)
         leftLayout.addWidget(performMvContainer)
 
+        # Connect the buttons to their respective methods
+        loadMultiverseScriptButton.clicked.connect(self.loadMultiverseScript)
+        createMultiverseButton.clicked.connect(self.createMultiverse)
+        showSummaryButton.clicked.connect(self.showSummary)
+        visualizeMultiverseButton.clicked.connect(self.visualizeMultiverse)
+        runButton.clicked.connect(self.runMultiverseScript)
+
         return
+
+
 
     def addMultiversePlotLayout(self, rightLayout):
         # Creating a tab widget for different purposes
@@ -4259,10 +4286,6 @@ class App(QMainWindow):
                 "def analysis_template():\n"
                 "    print({{numbers}})\n"
                 "\n"
-                "multiverse = Multiverse(name=\"multiverse_example\")\n"
-                "multiverse.create(analysis_template, forking_paths)\n"
-                "multiverse.summary()\n"
-                "multiverse.run()\n"
             )
 
         else:
@@ -4288,13 +4311,6 @@ class App(QMainWindow):
             for name in self.data.forking_paths:
                 script_content += f"    {{{{{name}}}}}\n"
 
-            script_content += (
-                "\nmultiverse = Multiverse(name=\"example_multiverse\")\n"
-                "multiverse.create(analysis_template, forking_paths)\n"
-                "multiverse.summary()\n"
-                "multiverse.run()\n"
-            )
-
         self.scriptDisplay.setText(script_content)
         self.scriptDisplay.setReadOnly(True)
         self.toggleButton.setText("🔒")
@@ -4305,6 +4321,7 @@ class App(QMainWindow):
         """
         fileFilter = "All Supported Files (*.py *.ipynb);;MAT files (*.mat);;Python files (*.py);;Jupyter notebooks (*.ipynb)"
         self.multiverseFileName, _ = QFileDialog.getOpenFileName(self, "Load multiverse template file", "", fileFilter)
+        self.multiverseName = self.multiverseFileName.split('/')[-1].split('.')[0]
         if self.multiverseFileName:
             try:
                 if self.multiverseFileName.endswith('.ipynb'):
@@ -4320,11 +4337,6 @@ class App(QMainWindow):
                 self.scriptDisplay.setText(self.multiverseScriptContent)
                 self.scriptDisplay.setReadOnly(False)
 
-                # Get the multiverse name from the script
-                pattern = r'Multiverse\s*\(\s*name\s*=\s*\"(.*?)\"\s*\)'
-                match = re.search(pattern, self.multiverseScriptContent)
-                self.multiverseName = match.group(1) if match else QMessageBox.warning(self, "Error", "Failed to extract multiverse name from the script.")
-
                 # Update the text box
                 self.loadedScriptDisplay.setText(self.multiverseFileName.split('/')[-1])
 
@@ -4335,11 +4347,9 @@ class App(QMainWindow):
         """
         Convert a Jupyter notebook JSON to a Python script.
         """
-        scriptContent = ""
+        scriptContent = "error"
         try:
-            for cell in notebook['cells']:
-                if cell['cell_type'] == 'code':
-                    scriptContent += ''.join(cell['source']) + '\n\n'
+            scriptContent = multiverse.notebookToScript(notebook)
         except KeyError as e:
             QMessageBox.critical(self, "Error", f"Invalid notebook format: {str(e)}")
         return scriptContent
@@ -4365,31 +4375,59 @@ class App(QMainWindow):
         """
         Run the multiverse analysis from the generated/loaded script
         """
+        # Run the script
+        multiverse_template_path = self.multiverseFileName.rsplit('/', 1)[0]
+        multiverse_save_path = os.path.join(multiverse_template_path, self.multiverseName)
+        template_file = os.path.join(multiverse_save_path, "template.py")
+
+        try:
+            subprocess.run(['python', template_file], check=True)
+            QMessageBox.information(self, "Multiverse Analysis", "Multiverse ran successfully!")
+
+        except Exception as e:
+            QMessageBox.warning(self, "Multiverse Analysis", f"Multiverse failed!\n{str(e)}")
+
+    def createMultiverse(self):
+        """
+        Create the multiverse from the template file
+        """
         if hasattr(self, 'multiverseFileName'):
             multiverse_template_path = self.multiverseFileName.rsplit('/', 1)[0]
             multiverse_save_path = os.path.join(multiverse_template_path, self.multiverseName)
             os.makedirs(multiverse_save_path, exist_ok=True)
 
-            # Create a runnable script in the multiverse folder (the script content is taken from the GUI)
+            # Create a template script in the multiverse folder (the script content is taken from the GUI)
             template_file = os.path.join(multiverse_save_path, "template.py")
             with open(template_file, "w") as file:
                 file.write("# Template script containing the required data for multiverse analysis.\n")
                 file.write("# This file is used by the GUI, users should directly interact with their own multiverse script.\n\n")
                 file.write(self.scriptDisplay.toPlainText())
 
-            # Run the script
-            try:
-                subprocess.run(['python', template_file], check=True)
-                QMessageBox.information(self, "Multiverse Analysis", "Multiverse ran successfully!")
+            # Load the forking paths and the analysis template function
+            module_name = os.path.splitext(os.path.basename(template_file))[0]
+            spec = util.spec_from_file_location(module_name, template_file)
+            module = util.module_from_spec(spec)
+            spec.loader.exec_module(module)
 
-            except subprocess.CalledProcessError:
-                QMessageBox.warning(self, "Multiverse Analysis", "Multiverse failed!")
+            forking_paths = getattr(module, 'forking_paths', None)
+            analysis_template = getattr(module, 'analysis_template', None)
 
-            except Exception as e:
-                QMessageBox.warning(self, "Multiverse Analysis", f"Multiverse failed!\n{str(e)}")
+            self.mverse = multiverse.Multiverse(name=self.multiverseFileName)
+            self.mverse.create(analysis_template, forking_paths)
+            self.mverse.summary()
 
         else:
             QMessageBox.warning(self, "Multiverse Analysis", "No multiverse template script was provided.")
+
+    def showSummary(self):
+        pass
+
+    def visualizeMultiverse(self):
+        pass
+
+    def plotSpecificationCurve(self):
+        pass
+
 
 
 """

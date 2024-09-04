@@ -20,18 +20,6 @@ from matplotlib import patches as mpatches
 from scipy.interpolate import make_interp_spline
 from joblib import Parallel, delayed
 
-def in_notebook():
-    """
-    Helper function to check if the code is running in a Jupyter notebook
-    """
-    try:
-        from IPython import get_ipython
-        if 'IPKernelApp' not in get_ipython().config:
-            return False
-    except Exception:
-        return False
-    return True
-
 class Multiverse:
     """
     Multiverse class for creating, running, and visualizing the multiverse analysis.
@@ -76,6 +64,7 @@ class Multiverse:
                     os.remove(item_path)
         else:
             os.makedirs(self.multiverse_dir)
+            print("DIR", self.multiverse_dir)
 
         # Ensure the results directory exists
         if not os.path.exists(self.results_dir):
@@ -152,6 +141,7 @@ class Multiverse:
 
         if universe_number is None:
             print("Starting multiverse analysis for all universes...")
+            print("HI", sorted_files)
             Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in sorted_files if file.endswith(".py"))
         else:
             print(f"Starting analysis for universe {universe_number}...")
@@ -804,3 +794,31 @@ class Multiverse:
         sorted_universes = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
 
         return sorted_universes, forking_paths
+
+
+# Helper function
+def in_notebook():
+    """
+    Helper function to check if the code is running in a Jupyter notebook
+    """
+    try:
+        from IPython import get_ipython
+        if 'IPKernelApp' not in get_ipython().config:
+            return False
+    except Exception:
+        return False
+    return True
+
+def notebookToScript(notebook):
+        """
+        Convert a Jupyter notebook JSON to a Python script.
+        """
+        scriptContent = ""
+        try:
+            for cell in notebook['cells']:
+                if cell['cell_type'] == 'code':
+                    scriptContent += ''.join(cell['source']) + '\n\n'
+        except KeyError as e:
+            print("Error", f"Invalid notebook format: {str(e)}")
+
+        return scriptContent
