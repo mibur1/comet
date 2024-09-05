@@ -692,7 +692,7 @@ def small_world_propensity(G: np.ndarray) -> np.ndarray:
     G_rand = randomise(G)
 
     # Path length calculations for the network, ignore divide by zero warnings
-    with np.errstate(divide='ignore', invalid='ignore'):
+    with np.errstate(divide='ignore'):
             G_reg_inv = np.divide(1.0, G_reg)
             G_rand_inv = np.divide(1.0, G_rand)
             G_inv = np.divide(1.0, G)
@@ -720,8 +720,10 @@ def small_world_propensity(G: np.ndarray) -> np.ndarray:
     delta_C = diff_clus
     delta_L = diff_path
 
-    alpha = np.arctan(delta_L / delta_C)
-    delta = (4 * alpha / np.pi) - 1
+    # We ignore divide by zero warnings here as arctan(inf) is pi/2
+    with np.errstate(divide='ignore'):
+        alpha = np.arctan(delta_L / delta_C)
+        delta = (4 * alpha / np.pi) - 1
 
     return SWP, delta_C, delta_L, alpha, delta
 
