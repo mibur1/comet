@@ -3,7 +3,6 @@ import sys
 import csv
 import glob
 import pickle
-import pprint
 import inspect
 import itertools
 import subprocess
@@ -34,8 +33,16 @@ class Multiverse:
     """
 
     def __init__(self, name="multiverse"):
-        self.name = name
-        self.calling_script_dir = os.getcwd() if in_notebook() else os.path.abspath(sys.modules['__main__'].__file__).rsplit('/', 1)[0]
+
+        # If the  multiverse is instantiated in the GUI, the name will be the path of the template script
+        if os.path.exists(name):
+            self.name = name.split('/')[-1].split('.')[0]
+            self.calling_script_dir = name.split('.')[0]
+        # If the name is not a valid path, we set up the multiverse in the current working directory
+        else:
+            self.name = name
+            self.calling_script_dir = os.getcwd() if in_notebook() else os.path.abspath(sys.modules['__main__'].__file__).rsplit('/', 1)[0]
+
         self.multiverse_dir = os.path.join(self.calling_script_dir, self.name) if in_notebook() else self.calling_script_dir
         self.results_dir = os.path.join(self.multiverse_dir, "results")
 
@@ -60,11 +67,10 @@ class Multiverse:
         if os.path.exists(self.multiverse_dir):
             for item in os.listdir(self.multiverse_dir):
                 item_path = os.path.join(self.multiverse_dir, item)
-                if os.path.isfile(item_path) and item != "template.py":
+                if os.path.isfile(item_path) and item.endswith(".py") and item != "template.py":
                     os.remove(item_path)
         else:
             os.makedirs(self.multiverse_dir)
-            print("DIR", self.multiverse_dir)
 
         # Ensure the results directory exists
         if not os.path.exists(self.results_dir):

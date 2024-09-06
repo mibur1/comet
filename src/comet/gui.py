@@ -1,5 +1,6 @@
 import os
 import re
+import ast
 import sys
 import copy
 import json
@@ -4317,7 +4318,7 @@ class App(QMainWindow):
 
     def loadMultiverseScript(self):
         """
-        Load a multiverse script
+        Load a multiverse script and extract specific components.
         """
         fileFilter = "All Supported Files (*.py *.ipynb);;MAT files (*.mat);;Python files (*.py);;Jupyter notebooks (*.ipynb)"
         self.multiverseFileName, _ = QFileDialog.getOpenFileName(self, "Load multiverse template file", "", fileFilter)
@@ -4334,7 +4335,10 @@ class App(QMainWindow):
                     with open(self.multiverseFileName, 'r', encoding='utf-8') as file:
                         self.multiverseScriptContent = file.read()
 
-                self.scriptDisplay.setText(self.multiverseScriptContent)
+                # Parse the script and extract components
+                extracted_content = self.extractScriptComponents(self.multiverseScriptContent)
+
+                self.scriptDisplay.setText(extracted_content)
                 self.scriptDisplay.setReadOnly(False)
 
                 # Update the text box
@@ -4342,6 +4346,42 @@ class App(QMainWindow):
 
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to read the file: {str(e)}")
+
+    def extractScriptComponents(self, script_content):
+        """
+        Extract the forking paths dict and analysis_template function.
+        """
+        tree = ast.parse(script_content)
+        extracted_content = ["from comet.multiverse import Multiverse"]
+
+        # Initialize placeholders for the extracted components
+        forking_paths = None
+        analysis_template = None
+
+        for node in tree.body:
+            # Extract the forking_paths dictionary
+            if isinstance(node, ast.Assign):
+                if isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'forking_paths':
+                    forking_paths = ast.get_source_segment(script_content, node)
+                    extracted_content.append(forking_paths)
+
+            # Extract the analysis_template function
+            if isinstance(node, ast.FunctionDef) and node.name == 'analysis_template':
+                analysis_template = ast.get_source_segment(script_content, node)
+                extracted_content.append(analysis_template)
+
+        # Add empty forking_paths dictionary if missing
+        if not forking_paths:
+            extracted_content.append("forking_paths = {}")
+
+        # Add empty analysis_template function if missing
+        if not analysis_template:
+            extracted_content.append("def analysis_template():\n    pass")
+
+        if not forking_paths or not analysis_template:
+            QMessageBox.warning(self, "Error", "Failed to extract the forking_paths dictionary and/or analysis_template function. Empty placeholders were added.")
+
+        return "\n\n".join(extracted_content)
 
     def convertNotebookToScript(self, notebook):
         """
@@ -4353,6 +4393,41 @@ class App(QMainWindow):
         except KeyError as e:
             QMessageBox.critical(self, "Error", f"Invalid notebook format: {str(e)}")
         return scriptContent
+
+    def createMultiverse(self):
+        """
+        Create the multiverse from the template file
+        """
+        if hasattr(self, 'multiverseFileName'):
+            multiverse_template_path = self.multiverseFileName.rsplit('/', 1)[0]
+            multiverse_save_path = os.path.join(multiverse_template_path, self.multiverseName)
+            os.makedirs(multiverse_save_path, exist_ok=True)
+
+            # Create a template script in the multiverse folder (the script content is taken from the GUI)
+            template_file = os.path.join(multiverse_save_path, "template.py")
+            with open(template_file, "w") as file:
+                file.write("# Template script containing the required data for multiverse analysis.\n")
+                file.write("# This file is used/overwritten by the GUI, users should usually directly interact with their own multiverse script.\n\n")
+                file.write(self.scriptDisplay.toPlainText())
+
+            # Load the forking paths and the analysis template function
+            module_name = os.path.splitext(os.path.basename(template_file))[0]
+            spec = util.spec_from_file_location(module_name, template_file)
+            module = util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            forking_paths = getattr(module, 'forking_paths', None)
+            analysis_template = getattr(module, 'analysis_template', None)
+
+            self.mverse = multiverse.Multiverse(name=self.multiverseFileName)
+            self.mverse.create(analysis_template, forking_paths)
+            print("\n\033[1m\033[92mCreated multiverse from template script:\033[0m")
+            self.mverse.summary()
+
+        else:
+            QMessageBox.warning(self, "Multiverse Analysis", "No multiverse template script was provided.")
+
+
 
     def resetMultiverseScript(self):
         self.generateMultiverseScript(init_template=True)
@@ -4387,37 +4462,7 @@ class App(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, "Multiverse Analysis", f"Multiverse failed!\n{str(e)}")
 
-    def createMultiverse(self):
-        """
-        Create the multiverse from the template file
-        """
-        if hasattr(self, 'multiverseFileName'):
-            multiverse_template_path = self.multiverseFileName.rsplit('/', 1)[0]
-            multiverse_save_path = os.path.join(multiverse_template_path, self.multiverseName)
-            os.makedirs(multiverse_save_path, exist_ok=True)
 
-            # Create a template script in the multiverse folder (the script content is taken from the GUI)
-            template_file = os.path.join(multiverse_save_path, "template.py")
-            with open(template_file, "w") as file:
-                file.write("# Template script containing the required data for multiverse analysis.\n")
-                file.write("# This file is used by the GUI, users should directly interact with their own multiverse script.\n\n")
-                file.write(self.scriptDisplay.toPlainText())
-
-            # Load the forking paths and the analysis template function
-            module_name = os.path.splitext(os.path.basename(template_file))[0]
-            spec = util.spec_from_file_location(module_name, template_file)
-            module = util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-
-            forking_paths = getattr(module, 'forking_paths', None)
-            analysis_template = getattr(module, 'analysis_template', None)
-
-            self.mverse = multiverse.Multiverse(name=self.multiverseFileName)
-            self.mverse.create(analysis_template, forking_paths)
-            self.mverse.summary()
-
-        else:
-            QMessageBox.warning(self, "Multiverse Analysis", "No multiverse template script was provided.")
 
     def showSummary(self):
         pass
