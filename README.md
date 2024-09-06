@@ -1,5 +1,5 @@
 <div style="padding-top:1em; padding-bottom: 0.5em;">
-<img src="src/comet/resources/img/logo.svg" width = 100 align="right" />
+<img src="src/comet/resources/img/logo.svg" width = 150 align="right" />
 </div>
 
 # Comet - A toolbox for dynamic functional connectivity and multiverse analysis
