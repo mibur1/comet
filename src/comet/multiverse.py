@@ -63,7 +63,7 @@ class Multiverse:
             List of invalid paths that should be excluded from the multiverse
         """
 
-        # If multiverse directory exists, remove all files but keep folders and template
+        # If multiverse directory exists, remove all Python files but keep folders and template
         if os.path.exists(self.multiverse_dir):
             for item in os.listdir(self.multiverse_dir):
                 item_path = os.path.join(self.multiverse_dir, item)

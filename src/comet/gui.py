@@ -35,7 +35,7 @@ import qdarkstyle
 from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject, QRegularExpression
 from PyQt6.QtGui import QEnterEvent, QFontMetrics, QSyntaxHighlighter, QTextCharFormat
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
-     QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, QGridLayout, \
+     QSlider, QToolTip, QWidget, QLabel, QLayout, QFileDialog, QComboBox, QLineEdit, QSizePolicy, QGridLayout, \
      QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QGroupBox
 
 # Comet imports and state-based dFC methods from pydfc
@@ -1370,30 +1370,28 @@ class App(QMainWindow):
     # Multiverse layouts
     def addMultiverseLayout(self, leftLayout):
         # Top section
-        self.mv_containers = [] # decision containers for multiverse analysis
+        self.mv_containers = []  # decision containers for multiverse analysis
 
         createMvContainer = QGroupBox("Create multiverse analysis template")
-        createMvContainerLayout = QVBoxLayout()
-        createMvContainerLayout.addItem(QSpacerItem(0, 5, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
-
-        # Creating a first decision container
-        decisionWidget = self.addDecisionContainer()
-        createMvContainerLayout.addWidget(decisionWidget)
+        self.createMvContainerLayout = QVBoxLayout()  # Make it an instance variable to access it globally
+        self.createMvContainerLayout.addItem(QSpacerItem(0, 5, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
         # Horizontal layout for add/collapse buttons
         buttonLayout = QHBoxLayout()
 
         newDecisionButton = QPushButton("\u2795")
-        newDecisionButton.clicked.connect(lambda: self.addNewDecision(createMvContainerLayout, buttonLayout))
+        newDecisionButton.clicked.connect(lambda: self.addNewDecision(self.createMvContainerLayout, buttonLayoutWidget))
         buttonLayout.addWidget(newDecisionButton, 5)
         buttonLayout.addStretch(21)
 
-        createMvContainerLayout.addLayout(buttonLayout)
-        createMvContainer.setLayout(createMvContainerLayout)
+        # Wrap the buttonLayout in a QWidget
+        buttonLayoutWidget = QWidget()
+        buttonLayoutWidget.setLayout(buttonLayout)
+        self.createMvContainerLayout.addWidget(buttonLayoutWidget)
+
+        createMvContainer.setLayout(self.createMvContainerLayout)
         leftLayout.addWidget(createMvContainer)
         leftLayout.addStretch()
-
-
 
         # Bottom section
         performMvContainer = QGroupBox("Perform multiverse analysis")
@@ -1447,8 +1445,6 @@ class App(QMainWindow):
         runButton.clicked.connect(self.runMultiverseScript)
 
         return
-
-
 
     def addMultiversePlotLayout(self, rightLayout):
         # Creating a tab widget for different purposes
@@ -3699,14 +3695,17 @@ class App(QMainWindow):
         # Create the dropdown menu
         categoryComboBox = QComboBox()
         categoryComboBox.addItems(["General", "FC", "Graph", "Other"])
+        categoryComboBox.setObjectName("categoryComboBox")
 
         # Decision name input field
         decisionNameInput = QLineEdit()
         decisionNameInput.setPlaceholderText("Decision name")
+        decisionNameInput.setObjectName("decisionNameInput")
 
         # Decision options input field
         decisionOptionsInput = QLineEdit()
         decisionOptionsInput.setPlaceholderText("Options (comma-separated)")
+        decisionOptionsInput.setObjectName("decisionOptionsInput")
 
         # Collapse button to hide/show the function and parameter widgets
         collapseButton = QPushButton(" \u25B2 ")
@@ -3715,6 +3714,7 @@ class App(QMainWindow):
 
         # Add option button to add a new option to the decision
         addOptionButton = QPushButton(' \u25B6 ')
+        self.addOptionButton = addOptionButton
         addOptionButton.hide()
 
         # Include button to confirm the decision
@@ -3762,6 +3762,115 @@ class App(QMainWindow):
 
         return decisionWidget
 
+    def populateMultiverseContainers(self, forking_paths):
+        """
+        Populate multiverse containers with decisions and options from the forking paths dictionary.
+        """
+        # Clear any previous containers
+        for container in self.mv_containers:
+            container.deleteLater()
+        self.mv_containers.clear()
+
+        # Loop through the forking_paths dictionary and create a container for each entry
+        for decision_name, options in forking_paths.items():
+            # Create a new decision container
+            decisionWidget = self.addDecisionContainer()
+
+            # Get the widgets from the container to update them
+            decisionOptionsInput = decisionWidget.findChild(QLineEdit, "decisionOptionsInput")
+            categoryComboBox = decisionWidget.findChild(QComboBox, "categoryComboBox")
+
+            # Check if the options list contains dictionaries
+            if isinstance(options, list) and len(options) > 0 and isinstance(options[0], dict):
+                first_dict = options[0]
+
+                if 'func' in first_dict:
+                    # Check if the func key corresponds to comet.connectivity
+                    func_value = first_dict['func']
+                    if func_value.startswith("comet.connectivity"):
+                        # Set the category to FC
+                        categoryComboBox.setCurrentText("FC")
+                        self.populateFunctionParameters(decisionWidget, decision_name, options)
+
+                    elif func_value.startswith("comet.graph"):
+                        # Set the category to FC
+                        categoryComboBox.setCurrentText("Graph")
+                        self.populateFunctionParameters(decisionWidget, decision_name, options)
+                    else:
+                        # Handle other categories or leave it empty
+                        categoryComboBox.setCurrentText("Other")
+                else:
+                    QMessageBox.warning(self, "Warning", "Something went wrong when trying to populate the multiverse containers, please check the forking paths.")
+            else:
+                # Non-dict options, treat as General category
+                categoryComboBox.setCurrentText("General")
+                decisionOptionsInput.setText(", ".join([str(option) for option in options]))  # Convert options list to strings
+
+            # Add the decision widget to the main layout
+            self.createMvContainerLayout.insertWidget(self.createMvContainerLayout.count() - 1, decisionWidget)  # Insert before the button layout widget
+            #self.includeDecision(categoryComboBox, decisionNameInput, decisionOptionsInput)
+
+        print("\n\033[1m\033[92mMultiverse containers populated with decisions and options:\033[0m")
+
+    def populateFunctionParameters(self, decisionWidget, decisionName, options):
+        """
+        Populate the function parameter container with parameters from the given dictionary.
+        """
+
+        for option in options:
+            # Find the decision name input and set it
+            decisionNameInput = decisionWidget.findChild(QLineEdit, "decisionNameInput")
+            functionComboBox = decisionWidget.findChild(QComboBox, "functionComboBox")
+
+            # Get the func name and update the functionComboBox
+            func_name = option['func'].split('.')[-1]
+            comboboxItem = self.connectivityMethods.get(func_name, None)
+            if comboboxItem:
+                functionComboBox.setCurrentText(comboboxItem)
+            decisionNameInput.setText(decisionName)
+
+            # Get the parameter container and update its widgets with the dict contents
+            parameterContainer = decisionWidget.findChild(QWidget, comboboxItem)
+
+            # Set the name
+            name_edit = parameterContainer.findChild(QLineEdit, f"name_edit_{comboboxItem}")
+            name_edit.setText(option['name'])
+
+            # Set the args
+            args = option.get('args', {})
+            for arg_name, arg_value in args.items():
+                # Ensure that when you created the widgets, the object name was set as arg_name
+                widget = parameterContainer.findChild(QWidget, f"{arg_name}_{comboboxItem}")
+                if isinstance(widget, QLineEdit):
+                    widget.setText(str(arg_value))
+                elif isinstance(widget, QComboBox):
+                    widget.setCurrentText(str(arg_value))
+                elif isinstance(widget, QSpinBox):
+                    widget.setValue(arg_value)
+                elif isinstance(widget, QDoubleSpinBox):
+                    widget.setValue(arg_value)
+
+            self.addOptionButton.click()
+
+    def addNewDecision(self, layout, buttonLayoutWidget):
+        """
+        Add a new decision widget to the layout
+        """
+        # Collapse all existing parameter containers before adding a new one
+        for container in self.mv_containers:
+            parameterContainer = container.findChild(QWidget, "parameterContainer")
+            collapseButton = container.findChild(QPushButton, "collapseButton")
+            if parameterContainer and collapseButton and parameterContainer.isVisible():
+                self.collapseOption(collapseButton, parameterContainer)
+
+        # Add new decision container
+        newDecisionWidget = self.addDecisionContainer()
+
+        # Insert the new decision widget before the buttonLayoutWidget
+        layout.insertWidget(layout.indexOf(buttonLayoutWidget), newDecisionWidget)
+
+        return
+
     def onCategoryComboBoxChanged(self, categoryComboBox, functionComboBox, parameterContainer, addOptionButton, collapseButton, decisionNameInput, decisionOptionsInput):
         """
         Handle if the type of the decision is changed
@@ -3777,31 +3886,6 @@ class App(QMainWindow):
         parameterContainer.hide()
         addOptionButton.hide()
         collapseButton.hide()
-
-        """
-        # Re-populate fields based on the last entry in forking_paths for the selected category
-        last_key, last_entry = None, None
-        if selected_category in ['FC', 'Graph']:
-            # Filter entries by prefix in "Option" within args dict
-            prefix = 'PREP' if selected_category == 'Graph' else 'CONT'
-            for key, entries in reversed(list(self.data.forking_paths.items())):
-                if isinstance(entries, list) and any(isinstance(d, dict) and 'args' in d and 'Option' in d['args'] and prefix in d['args']['Option'] for d in entries):
-                    last_key, last_entry = key, entries
-                    break
-        elif selected_category == 'General':
-            # General is simply the last key in the dictionary where value is a list of ints
-            for key, value in reversed(list(self.data.forking_paths.items())):
-                if isinstance(value, list) and all(isinstance(x, int) for x in value):
-                    last_key, last_entry = key, value
-                    break
-
-        # Set the inputs if there was an entry found
-        if last_key:
-            decisionNameInput.setText(last_key)
-            if isinstance(last_entry, list) and all(isinstance(x, dict) for x in last_entry):
-                decisionOptionsInput.setText(', '.join(d['name'] for d in last_entry if 'name' in d))
-            elif isinstance(last_entry, list):
-                decisionOptionsInput.setText(', '.join(map(str, last_entry)))"""
 
         # Sets up the layout and input fields for the new category/options
         decisionOptionsInput.setPlaceholderText("Options (comma-separated)" if selected_category == "General" else "Define options below")
@@ -3869,6 +3953,14 @@ class App(QMainWindow):
 
         return params_dict
 
+    def listAllWidgets(self, container):
+        """
+        List all widgets and their memory addresses within a given container.
+        """
+        widgets = container.findChildren(QWidget)
+        for widget in widgets:
+            print(f"Widget: {widget.objectName()}, Type: {type(widget).__name__}, Address: {hex(id(widget))}")
+
     def updateFunctionParameters(self, functionComboBox, parameterContainer):
         """
         Create and update all the parameter widgets based on the selected function
@@ -3919,6 +4011,7 @@ class App(QMainWindow):
         name_label = QLabel("Name:")
         name_label.setFixedWidth(max_label_width + 20)
         name_edit = QLineEdit()
+        name_edit.setObjectName(f"name_edit_{functionComboBox.currentText()}")
         name_edit.setPlaceholderText("Option name")
         name_layout.addWidget(name_label)
         name_layout.addWidget(name_edit)
@@ -3951,7 +4044,7 @@ class App(QMainWindow):
                 # For the first parameter, set its value based on the data source and lock it
                 if is_first_parameter:
                     param_widget = QLineEdit()
-                    param_widget.setPlaceholderText("Input data (name of the variable in the script)")
+                    param_widget.setPlaceholderText("Time series data (name of the variable in the script)")
                     is_first_parameter = False  # Update the flag so this block runs only for the first parameter
                 else:
                     # Bool
@@ -3992,9 +4085,11 @@ class App(QMainWindow):
                     else:
                         param_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
 
+                param_widget.setObjectName(f"{name}_{functionComboBox.currentText()}") # Set object name to allow us to find the widgets later when e.g. populating it from a template script
                 temp_widgets[name] = (param_label, param_widget)
                 param_layout.addWidget(param_widget)
                 parameterContainer.layout().addLayout(param_layout)
+                parameterContainer.setObjectName(functionComboBox.currentText())
 
         # Adjust visibility based on 'type' parameter
         type_widget = None
@@ -4024,7 +4119,7 @@ class App(QMainWindow):
             type_widget.currentIndexChanged.connect(updateVisibility)
             updateVisibility()
 
-            return
+        return
 
     def otherOptionCategory(self, parameterContainer):
         """
@@ -4041,6 +4136,8 @@ class App(QMainWindow):
         option_label = QLabel("Function:")
         option_label.setFixedWidth(label_width + 20)
         option_edit = QLineEdit()
+        option_edit.setObjectName("option_edit")
+
         option_edit.setPlaceholderText("Name of the function (e.g. np.mean)")
         option_layout.addWidget(option_label)
         option_layout.addWidget(option_edit)
@@ -4050,28 +4147,11 @@ class App(QMainWindow):
         param_label = QLabel("Parameters:")
         param_label.setFixedWidth(label_width + 20)
         param_edit = QLineEdit()
+        param_edit.setObjectName("param_edit")
         param_edit.setPlaceholderText("Function parameters as dict (e.g. {'axis': 0})")
         param_layout.addWidget(param_label)
         param_layout.addWidget(param_edit)
         parameterContainer.layout().addLayout(param_layout)
-
-        return
-
-    def addNewDecision(self, layout, buttonLayout):
-        """
-        Add a new decision widget to the layout
-        """
-        # Collapse all existing parameter containers before adding a new one
-        for container in self.mv_containers:
-            parameterContainer = container.findChild(QWidget, "parameterContainer")
-            collapseButton = container.findChild(QPushButton, "collapseButton")
-            if parameterContainer and collapseButton and parameterContainer.isVisible():
-                self.collapseOption(collapseButton, parameterContainer)
-
-        # Add new decision container
-        newDecisionWidget = self.addDecisionContainer()
-        buttonLayoutIndex = layout.indexOf(buttonLayout)
-        layout.insertWidget(buttonLayoutIndex, newDecisionWidget)
 
         return
 
@@ -4248,9 +4328,6 @@ class App(QMainWindow):
             elif item.layout():
                 self.clearLayout(item.layout())  # Recursively clear if the item is a layout
                 item.layout().deleteLater()  # Delete the sub-layout after clearing it
-            elif item.spacerItem():
-                # No need to delete spacer items as Qt does it automatically
-                pass
 
     # Script functions
     def toggleReadOnly(self):
@@ -4344,6 +4421,19 @@ class App(QMainWindow):
                 # Update the text box
                 self.loadedScriptDisplay.setText(self.multiverseFileName.split('/')[-1])
 
+                # Load the forking paths and populate the decision containers
+                tree = ast.parse(extracted_content)
+
+                # Traverse the AST to find the forking_paths assignment
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.Assign):
+                        for target in node.targets:
+                            if isinstance(target, ast.Name) and target.id == 'forking_paths':
+                                # Safely evaluate the forking_paths dictionary (node.value)
+                                forking_paths = ast.literal_eval(node.value)
+
+                self.populateMultiverseContainers(forking_paths)
+
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to read the file: {str(e)}")
 
@@ -4427,8 +4517,6 @@ class App(QMainWindow):
         else:
             QMessageBox.warning(self, "Multiverse Analysis", "No multiverse template script was provided.")
 
-
-
     def resetMultiverseScript(self):
         self.generateMultiverseScript(init_template=True)
 
@@ -4461,8 +4549,6 @@ class App(QMainWindow):
 
         except Exception as e:
             QMessageBox.warning(self, "Multiverse Analysis", f"Multiverse failed!\n{str(e)}")
-
-
 
     def showSummary(self):
         pass
