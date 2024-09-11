@@ -1371,6 +1371,7 @@ class App(QMainWindow):
     def addMultiverseLayout(self, leftLayout):
         # Top section
         self.mv_containers = []  # decision containers for multiverse analysis
+        self.mv_from_file = False
 
         createMvContainer = QGroupBox("Create multiverse analysis template")
         self.createMvContainerLayout = QVBoxLayout()  # Make it an instance variable to access it globally
@@ -1382,6 +1383,7 @@ class App(QMainWindow):
 
         # Horizontal layout for add/collapse buttons
         buttonLayout = QHBoxLayout()
+        buttonLayout.setContentsMargins(0, 2, 0, 0)
 
         newDecisionButton = QPushButton("\u2795")
         newDecisionButton.clicked.connect(lambda: self.addNewDecision(self.createMvContainerLayout, buttonLayoutWidget))
@@ -1422,18 +1424,18 @@ class App(QMainWindow):
         createMultiverseButton = QPushButton('Create multiverse')
         buttonLayout.addWidget(createMultiverseButton)
 
-        showSummaryButton = QPushButton('Show summary')
-        buttonLayout.addWidget(showSummaryButton)
+        self.mv_showSummaryButton = QPushButton('Show summary')
+        buttonLayout.addWidget(self.self.mv_showSummaryButton)
 
-        visualizeMultiverseButton = QPushButton('Visualize multiverse')
-        buttonLayout.addWidget(visualizeMultiverseButton)
+        self.mv_visualizeMultiverseButton = QPushButton('Visualize multiverse')
+        buttonLayout.addWidget(self.mv_visualizeMultiverseButton)
 
         # Add the buttons layout to the container layout
         performMvContainerLayout.addLayout(buttonLayout)
 
         # Add the 'Run multiverse' button
-        runButton = QPushButton('Run multiverse')
-        performMvContainerLayout.addWidget(runButton)
+        self.mv_runButton = QPushButton('Run multiverse')
+        performMvContainerLayout.addWidget(self.mv_runButton)
 
         # Set the layout for the container
         performMvContainer.setLayout(performMvContainerLayout)
@@ -1441,12 +1443,17 @@ class App(QMainWindow):
         # Add the container to the main layout (leftLayout)
         leftLayout.addWidget(performMvContainer)
 
+        # Disable some buttons
+        self.mv_showSummaryButton.setEnabled(False)
+        self.mv_visualizeMultiverseButton.setEnabled(False)
+        self.mv_runButton.setEnabled(False)
+
         # Connect the buttons to their respective methods
         loadMultiverseScriptButton.clicked.connect(self.loadMultiverseScript)
         createMultiverseButton.clicked.connect(self.createMultiverse)
-        showSummaryButton.clicked.connect(self.showSummary)
-        visualizeMultiverseButton.clicked.connect(self.visualizeMultiverse)
-        runButton.clicked.connect(self.runMultiverseScript)
+        self.mv_showSummaryButton.clicked.connect(self.showSummary)
+        self.mv_visualizeMultiverseButton.clicked.connect(self.visualizeMultiverse)
+        self.mv_runButton.clicked.connect(self.runMultiverseScript)
 
         return
 
@@ -4323,6 +4330,7 @@ class App(QMainWindow):
                 decisionWidget.deleteLater()  # Delete the decision widget
                 optionsInputField.clear()  # Clear the options input field
                 self.mv_containers.remove(decisionWidget)
+
         self.generateMultiverseScript()
         return
 
@@ -4340,7 +4348,7 @@ class App(QMainWindow):
                 self.clearLayout(item.layout())  # Recursively clear if the item is a layout
                 item.layout().deleteLater()  # Delete the sub-layout after clearing it
 
-    # Script functions
+    # Template script functions
     def toggleReadOnly(self):
         if self.scriptDisplay.isReadOnly():
             self.scriptDisplay.setReadOnly(False)
@@ -4355,29 +4363,11 @@ class App(QMainWindow):
         QTextEdit.resizeEvent(self.scriptDisplay, event)
 
     def generateMultiverseScript(self, init_template=False):
-        # Your existing generateMultiverseScript function
-        if init_template:
-            script_content = (
-                "\"\"\"\n"
-                "Running Multiverse analysis\n"
-                "\n"
-                "Multiverse analysis requires a Python script to be created by the user.\n"
-                "An initial template for this can be created through the GUI, with forking paths being stored in a dict and later used through double curly braces in the template function.\n\n"
-                "This example shows how one would create and run a multiverse analysis which will generate 3 Python scripts (universes) printing the numbers 1, 2, and 3, respectively.\n"
-                "\"\"\"\n"
-                "\n"
-                "from comet.multiverse import Multiverse\n"
-                "\n"
-                "forking_paths = {\n"
-                "    \"numbers\": [1, 2, 3]\n"
-                "}\n"
-                "\n"
-                "def analysis_template():\n"
-                "    print({{numbers}})\n"
-                "\n"
-            )
-
-        else:
+        """
+        Generates the multiverse script on the right side of the tab
+        """
+        # If we loaded a template from file we will not overwrite the analysis_template() function
+        if self.mv_from_file:
             script_content = (
                 "from comet.multiverse import Multiverse\n"
                 "\n"
@@ -4393,12 +4383,54 @@ class App(QMainWindow):
 
             script_content += (
                 "}\n\n"
-                "def analysis_template():\n"
-                "    # The following forking paths are available for multiverse analysis:\n"
+                f"{self.analysis_template}"
             )
 
-            for name in self.data.forking_paths:
-                script_content += f"    {{{{{name}}}}}\n"
+        # Create temnplate from scratch, analysis_template() function is empty
+        else:
+            if init_template:
+                script_content = (
+                    "\"\"\"\n"
+                    "Running Multiverse analysis\n"
+                    "\n"
+                    "Multiverse analysis requires a Python script to be created by the user.\n"
+                    "An initial template for this can be created through the GUI, with forking paths being stored in a dict and later used through double curly braces in the template function.\n\n"
+                    "This example shows how one would create and run a multiverse analysis which will generate 3 Python scripts (universes) printing the numbers 1, 2, and 3, respectively.\n"
+                    "\"\"\"\n"
+                    "\n"
+                    "from comet.multiverse import Multiverse\n"
+                    "\n"
+                    "forking_paths = {\n"
+                    "    \"numbers\": [1, 2, 3]\n"
+                    "}\n"
+                    "\n"
+                    "def analysis_template():\n"
+                    "    print({{numbers}})\n"
+                    "\n"
+                )
+
+            else:
+                script_content = (
+                    "from comet.multiverse import Multiverse\n"
+                    "\n"
+                    "forking_paths = {\n"
+                )
+                for name, options in self.data.forking_paths.items():
+                    if isinstance(options, list) and all(isinstance(item, dict) for item in options):
+                        formatted_options = json.dumps(options, indent=4)
+                        formatted_options = formatted_options.replace('true', 'True').replace('false', 'False').replace('null', 'None')
+                        script_content += f'    "{name}": {formatted_options},\n'
+                    else:
+                        script_content += f'    "{name}": {options},\n'
+
+                script_content += (
+                    "}\n\n"
+                    "def analysis_template():\n"
+                    "    # The following forking paths are available for multiverse analysis:\n"
+                )
+
+                for name in self.data.forking_paths:
+                    script_content += f"    {{{{{name}}}}}\n"
 
         self.scriptDisplay.setText(script_content)
         self.scriptDisplay.setReadOnly(True)
@@ -4411,6 +4443,8 @@ class App(QMainWindow):
         fileFilter = "All Supported Files (*.py *.ipynb);;MAT files (*.mat);;Python files (*.py);;Jupyter notebooks (*.ipynb)"
         self.multiverseFileName, _ = QFileDialog.getOpenFileName(self, "Load multiverse template file", "", fileFilter)
         self.multiverseName = self.multiverseFileName.split('/')[-1].split('.')[0]
+        self.mv_from_file = True
+
         if self.multiverseFileName:
             try:
                 if self.multiverseFileName.endswith('.ipynb'):
@@ -4469,6 +4503,7 @@ class App(QMainWindow):
             # Extract the analysis_template function
             if isinstance(node, ast.FunctionDef) and node.name == 'analysis_template':
                 analysis_template = ast.get_source_segment(script_content, node)
+                self.analysis_template = analysis_template
                 extracted_content.append(analysis_template)
 
         # Add empty forking_paths dictionary if missing
@@ -4525,10 +4560,16 @@ class App(QMainWindow):
             print("\n\033[1m\033[92mCreated multiverse from template script:\033[0m")
             self.mverse.summary()
 
+            # Disable the buttons
+            self.mv_showSummaryButton.setEnabled(True)
+            self.mv_visualizeMultiverseButton.setEnabled(True)
+            self.mv_runButton.setEnabled(True)
+
         else:
             QMessageBox.warning(self, "Multiverse Analysis", "No multiverse template script was provided.")
 
     def resetMultiverseScript(self):
+        self.mv_from_file = False
         self.generateMultiverseScript(init_template=True)
 
     def saveMultiverseScript(self):
