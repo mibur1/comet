@@ -1376,6 +1376,10 @@ class App(QMainWindow):
         self.createMvContainerLayout = QVBoxLayout()  # Make it an instance variable to access it globally
         self.createMvContainerLayout.addItem(QSpacerItem(0, 5, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
+        # Creating a first decision container
+        decisionWidget = self.addDecisionContainer()
+        self.createMvContainerLayout.addWidget(decisionWidget)
+
         # Horizontal layout for add/collapse buttons
         buttonLayout = QHBoxLayout()
 
@@ -3714,7 +3718,7 @@ class App(QMainWindow):
 
         # Add option button to add a new option to the decision
         addOptionButton = QPushButton(' \u25B6 ')
-        self.addOptionButton = addOptionButton
+        addOptionButton.setObjectName("addOptionButton")
         addOptionButton.hide()
 
         # Include button to confirm the decision
@@ -3777,8 +3781,9 @@ class App(QMainWindow):
             decisionWidget = self.addDecisionContainer()
 
             # Get the widgets from the container to update them
-            decisionOptionsInput = decisionWidget.findChild(QLineEdit, "decisionOptionsInput")
             categoryComboBox = decisionWidget.findChild(QComboBox, "categoryComboBox")
+            decisionNameInput = decisionWidget.findChild(QLineEdit, "decisionNameInput")
+            decisionOptionsInput = decisionWidget.findChild(QLineEdit, "decisionOptionsInput")
 
             # Check if the options list contains dictionaries
             if isinstance(options, list) and len(options) > 0 and isinstance(options[0], dict):
@@ -3804,11 +3809,12 @@ class App(QMainWindow):
             else:
                 # Non-dict options, treat as General category
                 categoryComboBox.setCurrentText("General")
+                decisionNameInput.setText(decision_name)
                 decisionOptionsInput.setText(", ".join([str(option) for option in options]))  # Convert options list to strings
 
             # Add the decision widget to the main layout
             self.createMvContainerLayout.insertWidget(self.createMvContainerLayout.count() - 1, decisionWidget)  # Insert before the button layout widget
-            #self.includeDecision(categoryComboBox, decisionNameInput, decisionOptionsInput)
+            self.includeDecision(categoryComboBox, decisionNameInput, decisionOptionsInput)
 
         print("\n\033[1m\033[92mMultiverse containers populated with decisions and options:\033[0m")
 
@@ -3816,17 +3822,17 @@ class App(QMainWindow):
         """
         Populate the function parameter container with parameters from the given dictionary.
         """
-
         for option in options:
-            # Find the decision name input and set it
+            # Gert the widgets
             decisionNameInput = decisionWidget.findChild(QLineEdit, "decisionNameInput")
             functionComboBox = decisionWidget.findChild(QComboBox, "functionComboBox")
+            addOptionButton = decisionWidget.findChild(QPushButton, "addOptionButton")
+            collapseButton = decisionWidget.findChild(QPushButton, "collapseButton")
 
             # Get the func name and update the functionComboBox
             func_name = option['func'].split('.')[-1]
             comboboxItem = self.connectivityMethods.get(func_name, None)
-            if comboboxItem:
-                functionComboBox.setCurrentText(comboboxItem)
+            functionComboBox.setCurrentText(comboboxItem)
             decisionNameInput.setText(decisionName)
 
             # Get the parameter container and update its widgets with the dict contents
@@ -3850,7 +3856,13 @@ class App(QMainWindow):
                 elif isinstance(widget, QDoubleSpinBox):
                     widget.setValue(arg_value)
 
-            self.addOptionButton.click()
+            # Add options and collapse the container
+            addOptionButton.click()
+            collapseButton.click()
+
+        functionComboBox.setCurrentText("CONT Sliding Window")
+
+        return
 
     def addNewDecision(self, layout, buttonLayoutWidget):
         """
@@ -4311,7 +4323,6 @@ class App(QMainWindow):
                 decisionWidget.deleteLater()  # Delete the decision widget
                 optionsInputField.clear()  # Clear the options input field
                 self.mv_containers.remove(decisionWidget)
-
         self.generateMultiverseScript()
         return
 
