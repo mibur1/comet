@@ -147,7 +147,6 @@ class Multiverse:
 
         if universe_number is None:
             print("Starting multiverse analysis for all universes...")
-            print("HI", sorted_files)
             Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in sorted_files if file.endswith(".py"))
         else:
             print(f"Starting analysis for universe {universe_number}...")
@@ -306,7 +305,7 @@ class Multiverse:
                     x, y = pos[bottom_node]
                     plt.text(x, y-label_offset, decision, horizontalalignment='center', fontsize=12, fontweight='bold')
 
-        plt.tight_layout()
+        plt.savefig(f"{self.results_dir}/multiverse.png", bbox_inches='tight')
         plt.show()
 
         return

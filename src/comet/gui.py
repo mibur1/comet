@@ -1421,11 +1421,11 @@ class App(QMainWindow):
         # Row with the three buttons
         buttonLayout = QHBoxLayout()
 
-        createMultiverseButton = QPushButton('Create multiverse')
-        buttonLayout.addWidget(createMultiverseButton)
+        self.createMultiverseButton = QPushButton('Create multiverse')
+        buttonLayout.addWidget(self.createMultiverseButton)
 
         self.mv_showSummaryButton = QPushButton('Show summary')
-        buttonLayout.addWidget(self.self.mv_showSummaryButton)
+        buttonLayout.addWidget(self.mv_showSummaryButton)
 
         self.mv_visualizeMultiverseButton = QPushButton('Visualize multiverse')
         buttonLayout.addWidget(self.mv_visualizeMultiverseButton)
@@ -1444,13 +1444,14 @@ class App(QMainWindow):
         leftLayout.addWidget(performMvContainer)
 
         # Disable some buttons
+        self.createMultiverseButton.setEnabled(False)
         self.mv_showSummaryButton.setEnabled(False)
         self.mv_visualizeMultiverseButton.setEnabled(False)
         self.mv_runButton.setEnabled(False)
 
         # Connect the buttons to their respective methods
         loadMultiverseScriptButton.clicked.connect(self.loadMultiverseScript)
-        createMultiverseButton.clicked.connect(self.createMultiverse)
+        self.createMultiverseButton.clicked.connect(self.createMultiverse)
         self.mv_showSummaryButton.clicked.connect(self.showSummary)
         self.mv_visualizeMultiverseButton.clicked.connect(self.visualizeMultiverse)
         self.mv_runButton.clicked.connect(self.runMultiverseScript)
@@ -1498,19 +1499,36 @@ class App(QMainWindow):
 
         # Add to the layout
         templateLayout.addLayout(scriptButtonLayout)
-        multiverseTabWidget.addTab(templateTab, "Template")
+        multiverseTabWidget.addTab(templateTab, "Multiverse template")
         self.generateMultiverseScript(init_template=True)
 
         # Tab 2: Plot for visualizations
-        specificationCurveTab = QWidget()
-        specificationCurveTab.setLayout(QVBoxLayout())
+        plotMvTab = QWidget()
+        plotMvTab.setLayout(QVBoxLayout())
+
+        # Create and add the canvas for the multiverse plot
         self.multiverseFigure = Figure()
         self.multiverseCanvas = FigureCanvas(self.multiverseFigure)
         self.multiverseFigure.patch.set_facecolor('#f3f1f5')
-        specificationCurveTab.layout().addWidget(self.multiverseCanvas)
-        multiverseTabWidget.addTab(specificationCurveTab, "Specification curve")
+        plotMvTab.layout().addWidget(self.multiverseCanvas)
 
-        # Draw default plot (logo) on the canvas
+        # Create a layout for the "Next" and "Previous" buttons below the plot
+        plotButtonLayout = QHBoxLayout()
+
+        self.previousMvPlotButton = QPushButton('Previous')
+        self.previousMvPlotButton.clicked.connect(self.showPreviousMvPlot)
+        plotButtonLayout.addWidget(self.previousMvPlotButton)
+        self.previousMvPlotButton.setEnabled(False)
+
+        self.nextMvPlotButton = QPushButton('Next')
+        self.nextMvPlotButton.clicked.connect(self.showNextMvPlot)
+        plotButtonLayout.addWidget(self.nextMvPlotButton)
+        self.nextMvPlotButton.setEnabled(False)
+
+        # Add layout to the plot layout
+        plotMvTab.layout().addLayout(plotButtonLayout)
+        multiverseTabWidget.addTab(plotMvTab, "Visualization")
+
         self.plotLogo(self.multiverseFigure)
         self.multiverseCanvas.draw()
 
@@ -3823,8 +3841,6 @@ class App(QMainWindow):
             self.createMvContainerLayout.insertWidget(self.createMvContainerLayout.count() - 1, decisionWidget)  # Insert before the button layout widget
             self.includeDecision(categoryComboBox, decisionNameInput, decisionOptionsInput)
 
-        print("\n\033[1m\033[92mMultiverse containers populated with decisions and options:\033[0m")
-
     def populateFunctionParameters(self, decisionWidget, decisionName, options):
         """
         Populate the function parameter container with parameters from the given dictionary.
@@ -4063,7 +4079,7 @@ class App(QMainWindow):
                 # For the first parameter, set its value based on the data source and lock it
                 if is_first_parameter:
                     param_widget = QLineEdit()
-                    param_widget.setPlaceholderText("Time series data (name of the variable in the script)")
+                    param_widget.setPlaceholderText("Data (name of the variable in the script)")
                     is_first_parameter = False  # Update the flag so this block runs only for the first parameter
                 else:
                     # Bool
@@ -4331,7 +4347,12 @@ class App(QMainWindow):
                 optionsInputField.clear()  # Clear the options input field
                 self.mv_containers.remove(decisionWidget)
 
-        self.generateMultiverseScript()
+        # If all containers have been deleted, we reset everything
+        if len(self.mv_containers) == 0:
+            self.resetMultiverseAnalysis()
+        else:
+            self.generateMultiverseScript()
+
         return
 
     def clearLayout(self, layout):
@@ -4347,6 +4368,19 @@ class App(QMainWindow):
             elif item.layout():
                 self.clearLayout(item.layout())  # Recursively clear if the item is a layout
                 item.layout().deleteLater()  # Delete the sub-layout after clearing it
+
+    def resetMultiverseAnalysis(self):
+            self.mv_from_file = False
+            self.multiverseName = None
+            self.multiverseName = None
+            self.loadedScriptDisplay.clear()
+
+            self.createMultiverseButton.setEnabled(False)
+            self.mv_showSummaryButton.setEnabled(False)
+            self.mv_visualizeMultiverseButton.setEnabled(False)
+            self.mv_runButton.setEnabled(False)
+
+            self.generateMultiverseScript(init_template=True)
 
     # Template script functions
     def toggleReadOnly(self):
@@ -4444,6 +4478,7 @@ class App(QMainWindow):
         self.multiverseFileName, _ = QFileDialog.getOpenFileName(self, "Load multiverse template file", "", fileFilter)
         self.multiverseName = self.multiverseFileName.split('/')[-1].split('.')[0]
         self.mv_from_file = True
+        self.createMultiverseButton.setEnabled(True)
 
         if self.multiverseFileName:
             try:
@@ -4557,10 +4592,10 @@ class App(QMainWindow):
 
             self.mverse = multiverse.Multiverse(name=self.multiverseFileName)
             self.mverse.create(analysis_template, forking_paths)
-            print("\n\033[1m\033[92mCreated multiverse from template script:\033[0m")
-            self.mverse.summary()
+            #print("\n\033[1m\033[92mCreated multiverse from template script:\033[0m")
 
             # Disable the buttons
+            self.createMultiverseButton.setEnabled(True)
             self.mv_showSummaryButton.setEnabled(True)
             self.mv_visualizeMultiverseButton.setEnabled(True)
             self.mv_runButton.setEnabled(True)
@@ -4591,7 +4626,9 @@ class App(QMainWindow):
         Run the multiverse analysis from the generated/loaded script
         """
         # Run the script
-        multiverse_template_path = self.multiverseFileName.rsplit('/', 1)[0]
+        self.mverse.run()
+
+        """multiverse_template_path = self.multiverseFileName.rsplit('/', 1)[0]
         multiverse_save_path = os.path.join(multiverse_template_path, self.multiverseName)
         template_file = os.path.join(multiverse_save_path, "template.py")
 
@@ -4600,18 +4637,30 @@ class App(QMainWindow):
             QMessageBox.information(self, "Multiverse Analysis", "Multiverse ran successfully!")
 
         except Exception as e:
-            QMessageBox.warning(self, "Multiverse Analysis", f"Multiverse failed!\n{str(e)}")
+            QMessageBox.warning(self, "Multiverse Analysis", f"Multiverse failed!\n{str(e)}")"""
 
     def showSummary(self):
-        pass
+       pass
 
     def visualizeMultiverse(self):
-        pass
+
+        self.mverse.visualize()
+        self.multiverseFigure.clear()
+        ax = self.multiverseFigure.add_subplot(111)
+        img = imread('/home/mibur/dfc-multiverse/tutorials/TEST/results/multiverse.png')
+        ax.imshow(img)
+        ax.axis('off')
+
+        self.multiverseCanvas.draw()
 
     def plotSpecificationCurve(self):
         pass
 
+    def showPreviousMvPlot(self):
+        pass
 
+    def showNextMvPlot(self):
+        pass
 
 """
 Run the application
