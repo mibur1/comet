@@ -6,7 +6,7 @@ import copy
 import json
 import pickle
 import inspect
-import subprocess
+import tempfile
 import numpy as np
 import pandas as pd
 
@@ -22,7 +22,7 @@ from nilearn import datasets, maskers
 from nilearn.interfaces.fmriprep import load_confounds
 
 # Plotting imports
-from matplotlib.pyplot import cm
+from matplotlib import pyplot as plt
 from matplotlib.image import imread
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -33,7 +33,7 @@ import matplotlib.gridspec as gridspec
 # Qt imports
 import qdarkstyle
 from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject, QRegularExpression
-from PyQt6.QtGui import QEnterEvent, QFontMetrics, QSyntaxHighlighter, QTextCharFormat
+from PyQt6.QtGui import QEnterEvent, QFontMetrics, QSyntaxHighlighter, QTextCharFormat, QPixmap
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
      QSlider, QToolTip, QWidget, QLabel, QLayout, QFileDialog, QComboBox, QLineEdit, QSizePolicy, QGridLayout, \
      QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QGroupBox
@@ -110,67 +110,34 @@ class InfoButton(QPushButton):
 class CustomSpinBox(QSpinBox):
     '''
     Subclass of QSpinBox to allow for a special value "all" to be selected.
-    Used for the number of components in the CompCor method.
+    Used for the number of components in the CompCor method and for plotting.
     '''
-    def __init__(self, special_value="all", parent=None):
+    def __init__(self, special_value="all", min=0, max=100, parent=None):
         super(CustomSpinBox, self).__init__(parent)
-        self.all_selected = False
         self.special_value = special_value
-        self.setSpecialValueText(self.special_value)
-        self.setRange(0, 999)
-        self.valueChanged.connect(self.check_all)
-
-    def check_all(self, value):
-        if value == 0:
-            self.all_selected = True
-        else:
-            self.all_selected = False
+        self.special_selected = False
+        self.setRange(min, max)
+        self.setValue(min)
+        self.setSpecialValueText(str(self.special_value))
 
     def get_value(self):
-        if self.all_selected:
-            return self.special_value
-        else:
-            return super(CustomSpinBox, self).value()
-
-    def set_value(self, value):
-        if value == self.special_value:
-            self.setValue(0)
-            self.all_selected = True
-        else:
-            self.setValue(value)
-            self.all_selected = False
+        return self.special_value if self.special_selected else super(CustomSpinBox, self).value()
 
 class CustomDoubleSpinbox(QDoubleSpinBox):
     '''
     Subclass of QSpinBox to allow for a special value None to be selected.
-    Used when cleaning nifti/cifti files.
+    Used when cleaning nifti/cifti files and for plotting.
     '''
-    def __init__(self, special_value=None, parent=None):
+    def __init__(self, special_value=None, min=-0.1, max=999.0, parent=None):
         super(CustomDoubleSpinbox, self).__init__(parent)
-        self.none_selected = False
         self.special_value = special_value
+        self.special_selected = False
+        self.setRange(min, max)
+        self.setValue(min)
         self.setSpecialValueText(str(self.special_value))
-        self.valueChanged.connect(self.check_all)
-
-    def check_all(self, value):
-        if value == 0.0:
-            self.none_selected = True
-        else:
-            self.none_selected = False
 
     def get_value(self):
-        if self.none_selected:
-            return self.special_value
-        else:
-            return super(CustomDoubleSpinbox, self).value()
-
-    def set_value(self, value):
-        if value == self.special_value:
-            self.setValue(0.0)
-            self.none_selected = True
-        else:
-            self.setValue(value)
-            self.none_selected = False
+        return self.special_value if self.special_selected else super(CustomDoubleSpinbox, self).value()
 
 class ParameterOptions:
     '''
@@ -1406,12 +1373,12 @@ class App(QMainWindow):
 
         # Load script layout
         loadLayout = QHBoxLayout()
-        loadMultiverseScriptButton = QPushButton('Load multiverse template')
+        loadMultiverseScriptButton = QPushButton('Load multiverse script')
         loadLayout.addWidget(loadMultiverseScriptButton, 3)
 
         # Textbox to display the loaded script path
         self.loadedScriptDisplay = QLineEdit()
-        self.loadedScriptDisplay.setPlaceholderText("No multiverse template loaded yet")
+        self.loadedScriptDisplay.setPlaceholderText("No multiverse script loaded yet")
         self.loadedScriptDisplay.setReadOnly(True)
         loadLayout.addWidget(self.loadedScriptDisplay, 5)
 
@@ -1424,18 +1391,22 @@ class App(QMainWindow):
         self.createMultiverseButton = QPushButton('Create multiverse')
         buttonLayout.addWidget(self.createMultiverseButton)
 
-        self.mv_showSummaryButton = QPushButton('Show summary')
-        buttonLayout.addWidget(self.mv_showSummaryButton)
+        self.runMultiverseButton = QPushButton('Run multiverse')
+        buttonLayout.addWidget(self.runMultiverseButton)
 
-        self.mv_visualizeMultiverseButton = QPushButton('Visualize multiverse')
-        buttonLayout.addWidget(self.mv_visualizeMultiverseButton)
+        # Label an spinbox for parallelisation
+        parallelLabel = QLabel('Parallel:')
+        parallelLabel.setFixedWidth(60)
+        buttonLayout.addWidget(parallelLabel)
+
+        self.paralleliseMultiverseSpinbox = QSpinBox()
+        self.paralleliseMultiverseSpinbox.setRange(1, 64)
+        self.paralleliseMultiverseSpinbox.setValue(1)
+        self.paralleliseMultiverseSpinbox.setFixedWidth(45)
+        buttonLayout.addWidget(self.paralleliseMultiverseSpinbox)
 
         # Add the buttons layout to the container layout
         performMvContainerLayout.addLayout(buttonLayout)
-
-        # Add the 'Run multiverse' button
-        self.mv_runButton = QPushButton('Run multiverse')
-        performMvContainerLayout.addWidget(self.mv_runButton)
 
         # Set the layout for the container
         performMvContainer.setLayout(performMvContainerLayout)
@@ -1443,18 +1414,14 @@ class App(QMainWindow):
         # Add the container to the main layout (leftLayout)
         leftLayout.addWidget(performMvContainer)
 
-        # Disable some buttons
+        # Disable and connect
         self.createMultiverseButton.setEnabled(False)
-        self.mv_showSummaryButton.setEnabled(False)
-        self.mv_visualizeMultiverseButton.setEnabled(False)
-        self.mv_runButton.setEnabled(False)
+        self.runMultiverseButton.setEnabled(False)
+        self.paralleliseMultiverseSpinbox.setEnabled(False)
 
-        # Connect the buttons to their respective methods
         loadMultiverseScriptButton.clicked.connect(self.loadMultiverseScript)
         self.createMultiverseButton.clicked.connect(self.createMultiverse)
-        self.mv_showSummaryButton.clicked.connect(self.showSummary)
-        self.mv_visualizeMultiverseButton.clicked.connect(self.visualizeMultiverse)
-        self.mv_runButton.clicked.connect(self.runMultiverseScript)
+        self.runMultiverseButton.clicked.connect(self.runMultiverseScript)
 
         return
 
@@ -1502,36 +1469,35 @@ class App(QMainWindow):
         multiverseTabWidget.addTab(templateTab, "Multiverse template")
         self.generateMultiverseScript(init_template=True)
 
-        # Tab 2: Plot for visualizations
-        plotMvTab = QWidget()
-        plotMvTab.setLayout(QVBoxLayout())
+        # Tab 2: Plot for visualization
+        self.plotMvTab = QWidget()
+        self.plotMvTab.setLayout(QVBoxLayout())
 
         # Create and add the canvas for the multiverse plot
         self.multiverseFigure = Figure()
         self.multiverseCanvas = FigureCanvas(self.multiverseFigure)
         self.multiverseFigure.patch.set_facecolor('#f3f1f5')
-        plotMvTab.layout().addWidget(self.multiverseCanvas)
-
-        # Create a layout for the "Next" and "Previous" buttons below the plot
-        plotButtonLayout = QHBoxLayout()
-
-        self.previousMvPlotButton = QPushButton('Previous')
-        self.previousMvPlotButton.clicked.connect(self.showPreviousMvPlot)
-        plotButtonLayout.addWidget(self.previousMvPlotButton)
-        self.previousMvPlotButton.setEnabled(False)
-
-        self.nextMvPlotButton = QPushButton('Next')
-        self.nextMvPlotButton.clicked.connect(self.showNextMvPlot)
-        plotButtonLayout.addWidget(self.nextMvPlotButton)
-        self.nextMvPlotButton.setEnabled(False)
-
-        # Add layout to the plot layout
-        plotMvTab.layout().addLayout(plotButtonLayout)
-        multiverseTabWidget.addTab(plotMvTab, "Visualization")
+        self.plotMvTab.layout().addWidget(self.multiverseCanvas)
+        multiverseTabWidget.addTab(self.plotMvTab, "Multiverse Overview")
 
         self.plotLogo(self.multiverseFigure)
         self.multiverseCanvas.draw()
 
+        # Tab 3: Plot for specification curve
+        self.specTab = QWidget()
+        self.specTab.setLayout(QVBoxLayout())
+
+        # Create and add the canvas for the specification curve
+        self.specFigure = Figure()
+        self.specCanvas = FigureCanvas(self.specFigure)
+        self.specFigure.patch.set_facecolor('#f3f1f5')
+        self.specTab.layout().addWidget(self.specCanvas)
+
+        # Add tab to the multiverse tab widget
+        multiverseTabWidget.addTab(self.specTab, "Specification Curve")
+        self.createSpecificationCurveWidgets()
+
+        ########################################
         # Add the tab widget to the right layout
         rightLayout.addWidget(multiverseTabWidget)
 
@@ -2058,7 +2024,7 @@ class App(QMainWindow):
 
             # Special cases
             if key == "n_compcor":
-                input_widget = CustomSpinBox()
+                input_widget = CustomSpinBox(special_value="all", min=0, max=100)
                 input_widget.setObjectName(f"{key}_input")
                 h_layout.addWidget(input_widget)
                 h_layout.setObjectName("compcor")
@@ -2325,7 +2291,7 @@ class App(QMainWindow):
         self.boldFigure.clear()
         ax = self.boldFigure.add_subplot(111)
         ts = np.copy(self.data.file_data)
-        cmap = cm.gray
+        cmap = plt.cm.gray
 
         if type(self.data.file_data) == pydfc.time_series.TIME_SERIES:
             current_subject = self.subjectDropdown.currentText()
@@ -2339,7 +2305,7 @@ class App(QMainWindow):
             ts[mask] = 0
 
             # Create a custom colormap
-            cmap = cm.gray
+            cmap = plt.cm.gray
             cmap.set_bad(color='red')  # Set color for masked/invalid data points
 
             # Mask the data array where sample_mask is False
@@ -2536,16 +2502,19 @@ class App(QMainWindow):
         QApplication.processEvents()
 
         # Start worker thread for dFC calculations and submit for calculation
-        self.workerThread = QThread()
-        self.worker = Worker(self.calculateConnectivityThread, self.data.dfc_params)
-        self.worker.moveToThread(self.workerThread)
+        self.fcThread = QThread()
+        self.fcWorker = Worker(self.calculateConnectivityThread, self.data.dfc_params)
+        self.fcWorker.moveToThread(self.fcThread)
 
-        self.worker.finished.connect(self.workerThread.quit)
-        self.worker.result.connect(self.handleConnectivityResult)
-        self.worker.error.connect(self.handleConnectivityError)
+        self.fcWorker.finished.connect(self.fcThread.quit)
+        self.fcWorker.finished.connect(self.fcWorker.deleteLater)
+        self.fcThread.finished.connect(self.fcThread.deleteLater)
+        self.fcWorker.result.connect(self.handleConnectivityResult)
+        self.fcWorker.error.connect(self.handleConnectivityError)
 
-        self.workerThread.started.connect(self.worker.run)
-        self.workerThread.start()
+        self.fcThread.started.connect(self.fcWorker.run)
+        self.fcThread.start()
+
         self.calculatingLabel.setText(f"Calculating {self.methodComboBox.currentText()}, please wait...")
         self.calculateConnectivityButton.setEnabled(False)
 
@@ -3323,17 +3292,19 @@ class App(QMainWindow):
 
     # Calculations
     def calculateGraph(self):
-        # Start worker thread for graph calculations
-        self.workerThread = QThread()
-        self.worker = Worker(self.calculateGraphThread, {})
-        self.worker.moveToThread(self.workerThread)
+    # Start worker thread for graph calculations
+        self.graphThread = QThread()
+        self.graphWorker = Worker(self.calculateGraphThread, {})
+        self.graphWorker.moveToThread(self.graphThread)
 
-        self.worker.finished.connect(self.workerThread.quit)
-        self.worker.result.connect(self.handleGraphResult)
-        self.worker.error.connect(self.handleGraphError)
+        self.graphWorker.finished.connect(self.graphThread.quit)
+        self.graphWorker.finished.connect(self.graphWorker.deleteLater)
+        self.graphThread.finished.connect(self.graphThread.deleteLater)
+        self.graphWorker.result.connect(self.handleGraphResult)
+        self.graphWorker.error.connect(self.handleGraphError)
 
-        self.workerThread.started.connect(self.worker.run)
-        self.workerThread.start()
+        self.graphThread.started.connect(self.graphWorker.run)
+        self.graphThread.start()
 
     def calculateGraphThread(self, **unused):
         option, params = self.getGraphOptions()
@@ -3820,12 +3791,12 @@ class App(QMainWindow):
                     if func_value.startswith("comet.connectivity"):
                         # Set the category to FC
                         categoryComboBox.setCurrentText("FC")
-                        self.populateFunctionParameters(decisionWidget, decision_name, options)
+                        self.populateFunctionParameters(decisionWidget, decision_name, options, type="FC")
 
-                    elif func_value.startswith("comet.graph"):
+                    elif func_value.startswith("comet.graph") or func_value.startswith("bct."):
                         # Set the category to FC
                         categoryComboBox.setCurrentText("Graph")
-                        self.populateFunctionParameters(decisionWidget, decision_name, options)
+                        self.populateFunctionParameters(decisionWidget, decision_name, options, type="Graph")
                     else:
                         # Handle other categories or leave it empty
                         categoryComboBox.setCurrentText("Other")
@@ -3841,12 +3812,12 @@ class App(QMainWindow):
             self.createMvContainerLayout.insertWidget(self.createMvContainerLayout.count() - 1, decisionWidget)  # Insert before the button layout widget
             self.includeDecision(categoryComboBox, decisionNameInput, decisionOptionsInput)
 
-    def populateFunctionParameters(self, decisionWidget, decisionName, options):
+    def populateFunctionParameters(self, decisionWidget, decisionName, options, type=None):
         """
         Populate the function parameter container with parameters from the given dictionary.
         """
         for option in options:
-            # Gert the widgets
+            # Get the widgets
             decisionNameInput = decisionWidget.findChild(QLineEdit, "decisionNameInput")
             functionComboBox = decisionWidget.findChild(QComboBox, "functionComboBox")
             addOptionButton = decisionWidget.findChild(QPushButton, "addOptionButton")
@@ -3854,7 +3825,12 @@ class App(QMainWindow):
 
             # Get the func name and update the functionComboBox
             func_name = option['func'].split('.')[-1]
-            comboboxItem = self.connectivityMethods.get(func_name, None)
+
+            if type == "FC":
+                comboboxItem = self.connectivityMethods.get(func_name, None)
+            elif type == "Graph":
+                comboboxItem = self.graphOptions.get(func_name, None)
+
             functionComboBox.setCurrentText(comboboxItem)
             decisionNameInput.setText(decisionName)
 
@@ -3881,9 +3857,9 @@ class App(QMainWindow):
 
             # Add options and collapse the container
             addOptionButton.click()
-            collapseButton.click()
 
-        functionComboBox.setCurrentText("CONT Sliding Window")
+        #functionComboBox.setCurrentText("CONT Sliding Window")
+        collapseButton.click()
 
         return
 
@@ -4376,9 +4352,7 @@ class App(QMainWindow):
             self.loadedScriptDisplay.clear()
 
             self.createMultiverseButton.setEnabled(False)
-            self.mv_showSummaryButton.setEnabled(False)
-            self.mv_visualizeMultiverseButton.setEnabled(False)
-            self.mv_runButton.setEnabled(False)
+            self.runMultiverseButton.setEnabled(False)
 
             self.generateMultiverseScript(init_template=True)
 
@@ -4479,6 +4453,7 @@ class App(QMainWindow):
         self.multiverseName = self.multiverseFileName.split('/')[-1].split('.')[0]
         self.mv_from_file = True
         self.createMultiverseButton.setEnabled(True)
+        self.data.forking_paths = {}
 
         if self.multiverseFileName:
             try:
@@ -4513,6 +4488,10 @@ class App(QMainWindow):
                                 forking_paths = ast.literal_eval(node.value)
 
                 self.populateMultiverseContainers(forking_paths)
+
+                self.specFigure.clf()
+                self.specCanvas.draw()
+
 
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to read the file: {str(e)}")
@@ -4592,13 +4571,20 @@ class App(QMainWindow):
 
             self.mverse = multiverse.Multiverse(name=self.multiverseFileName)
             self.mverse.create(analysis_template, forking_paths)
-            #print("\n\033[1m\033[92mCreated multiverse from template script:\033[0m")
 
-            # Disable the buttons
-            self.createMultiverseButton.setEnabled(True)
-            self.mv_showSummaryButton.setEnabled(True)
-            self.mv_visualizeMultiverseButton.setEnabled(True)
-            self.mv_runButton.setEnabled(True)
+            # If we already have results, we can populate the measure input
+            results_file = os.path.join(self.mverse.results_dir, 'universe_1.pkl')
+            if os.path.exists(results_file):
+                with open(results_file, 'rb') as file:
+                    universe_data = pickle.load(file)
+
+                variable_names = list(universe_data.keys())
+                self.measureInput.clear()
+                self.measureInput.addItems(variable_names)
+
+            # Enable the buttons
+            self.runMultiverseButton.setEnabled(True)
+            self.paralleliseMultiverseSpinbox.setEnabled(True)
 
         else:
             QMessageBox.warning(self, "Multiverse Analysis", "No multiverse template script was provided.")
@@ -4625,42 +4611,175 @@ class App(QMainWindow):
         """
         Run the multiverse analysis from the generated/loaded script
         """
-        # Run the script
-        self.mverse.run()
+        self.createMultiverseButton.setEnabled(False)
+        self.runMultiverseButton.setEnabled(False)
+        self.paralleliseMultiverseSpinbox.setEnabled(False)
 
-        """multiverse_template_path = self.multiverseFileName.rsplit('/', 1)[0]
-        multiverse_save_path = os.path.join(multiverse_template_path, self.multiverseName)
-        template_file = os.path.join(multiverse_save_path, "template.py")
+        self.mvThread = QThread()
+        self.mvWorker = Worker(self.mverse.run, {"parallel": self.paralleliseMultiverseSpinbox.value()})
+        self.mvWorker.moveToThread(self.mvThread)
 
-        try:
-            subprocess.run(['python', template_file], check=True)
-            QMessageBox.information(self, "Multiverse Analysis", "Multiverse ran successfully!")
+        self.mvThread.started.connect(self.mvWorker.run)
+        self.mvWorker.finished.connect(self.mvThread.quit)
+        self.mvWorker.finished.connect(self.mvWorker.deleteLater)
+        self.mvThread.finished.connect(self.mvThread.deleteLater)
 
-        except Exception as e:
-            QMessageBox.warning(self, "Multiverse Analysis", f"Multiverse failed!\n{str(e)}")"""
+        self.mvWorker.result.connect(self.handleMultiverseResult)
+        self.mvWorker.error.connect(self.handleMultiverseError)
 
-    def showSummary(self):
-       pass
+        self.mvThread.start()
 
-    def visualizeMultiverse(self):
+    def handleMultiverseResult(self, result):
+        QMessageBox.information(self, "Multiverse Analysis", "Multiverse analysis completed successfully.")
+        self.createMultiverseButton.setEnabled(True)
+        self.runMultiverseButton.setEnabled(True)
+        self.paralleliseMultiverseSpinbox.setEnabled(True)
 
-        self.mverse.visualize()
-        self.multiverseFigure.clear()
-        ax = self.multiverseFigure.add_subplot(111)
-        img = imread('/home/mibur/dfc-multiverse/tutorials/TEST/results/multiverse.png')
-        ax.imshow(img)
-        ax.axis('off')
+        # Populate the measure input
+        results_file = os.path.join(self.mverse.results_dir, 'universe_1.pkl')
+        if os.path.exists(results_file):
+            with open(results_file, 'rb') as file:
+                universe_data = pickle.load(file)
 
+            variable_names = list(universe_data.keys())
+            self.measureInput.clear()
+            self.measureInput.addItems(variable_names)
+
+    def handleMultiverseError(self, error):
+        QMessageBox.warning(self, "Multiverse Analysis", f"An error occurred during multiverse analysis: {error}")
+        self.createMultiverseButton.setEnabled(True)
+        self.runMultiverseButton.setEnabled(True)
+        self.paralleliseMultiverseSpinbox.setEnabled(True)
+
+    def plotMultiverse(self):
+        # Remove the old canvas from the layout if it exists
+        if hasattr(self, 'multiverseCanvas'):
+            self.plotMvTab.layout().removeWidget(self.multiverseCanvas)
+            self.multiverseCanvas.setParent(None)
+
+        fig = self.mverse.visualize()
+        self.multiverseCanvas = FigureCanvas(fig)
+
+        self.plotMvTab.layout().addWidget(self.multiverseCanvas)
         self.multiverseCanvas.draw()
 
+    def createSpecificationCurveWidgets(self):
+        # Create a layout for the parameter inputs
+        paramLayout = QVBoxLayout()
+
+        # First Row: Measure, Title
+        firstRowLayout = QHBoxLayout()
+
+        # Measure
+        firstRowLayout.addWidget(QLabel('Measure:'))
+        self.measureInput = QComboBox(self)
+        firstRowLayout.addWidget(self.measureInput)
+
+        # Title (string)
+        firstRowLayout.addWidget(QLabel('Title:'))
+        self.titleInput = QLineEdit(self)
+        self.titleInput.setText("Specification Curve")
+        firstRowLayout.addWidget(self.titleInput)
+
+        firstRowLayout.setStretch(1, 1)
+        firstRowLayout.setStretch(3, 1)
+
+        paramLayout.addLayout(firstRowLayout)
+
+        # Second Row: Baseline, P-value, CI, Smooth CI, Figure Size, Plot Button
+        secondRowLayout = QHBoxLayout()
+
+        # Baseline (float spin box)
+        secondRowLayout.addWidget(QLabel('Baseline:'))
+        self.baselineInput = CustomDoubleSpinbox(special_value=None, min=-0.1, max=999.0)
+        self.baselineInput.setSingleStep(0.1)
+        secondRowLayout.addWidget(self.baselineInput)
+
+        # P-value (float spin box)
+        secondRowLayout.addWidget(QLabel('P-value:'))
+        self.pValueInput = CustomDoubleSpinbox(special_value=None, min=0.0, max=1.0)
+        self.pValueInput.setSingleStep(0.01)
+        secondRowLayout.addWidget(self.pValueInput)
+
+        # CI (int spin box)
+        secondRowLayout.addWidget(QLabel('CI:'))
+        self.ciInput = CustomSpinBox(special_value=None, min=89, max=100)
+        self.ciInput.setSingleStep(1)
+        secondRowLayout.addWidget(self.ciInput)
+
+        # Smooth CI (checkbox)
+        self.smoothCiCheckbox = QCheckBox('Smooth', self)
+        self.smoothCiCheckbox.setChecked(True)  # Default is True
+        secondRowLayout.addWidget(self.smoothCiCheckbox)
+
+        # Figure Size (two numbers for width and height)
+        secondRowLayout.addWidget(QLabel('Figsize:'))
+        self.figsizeInput = QLineEdit(self)
+        self.figsizeInput.setText("5,6")
+        secondRowLayout.addWidget(self.figsizeInput)
+
+        # Plot Button
+        self.plotButton = QPushButton('   Create Plot   ', self)
+        self.plotButton.clicked.connect(self.plotSpecificationCurve)
+        secondRowLayout.addWidget(self.plotButton)
+
+        # Add layouts
+        paramLayout.addLayout(secondRowLayout)
+        self.specTab.layout().addLayout(paramLayout)
+
     def plotSpecificationCurve(self):
-        pass
+        """
+        Run the multiverse analysis from the generated/loaded script
+        """
+        measure = self.measureInput.currentText()
+        title = self.titleInput.text()
+        baseline = None if self.baselineInput.value() == self.baselineInput.minimum() else self.baselineInput.value()
+        p_value = None if self.pValueInput.value() == self.pValueInput.minimum() else self.pValueInput.value()
+        ci = None if self.ciInput.value() == self.ciInput.minimum() else self.ciInput.value()
+        smooth_ci = self.smoothCiCheckbox.isChecked()
+        figsize = tuple(map(int, self.figsizeInput.text().split(',')))  # make string a tuple
 
-    def showPreviousMvPlot(self):
-        pass
+        self.plotButton.setEnabled(False)
 
-    def showNextMvPlot(self):
-        pass
+        self.plotSpecificationCurveThread = QThread()
+        self.plotSpecificationCurveWorker = Worker(self.mverse.specification_curve, {"measure": measure, "title": title, "baseline": baseline, \
+                                                                                     "p_value": p_value, "ci": ci, "smooth_ci": smooth_ci, "figsize": figsize})
+        self.plotSpecificationCurveWorker.moveToThread(self.plotSpecificationCurveThread)
+
+        self.plotSpecificationCurveThread.started.connect(self.plotSpecificationCurveWorker.run)
+        self.plotSpecificationCurveWorker.finished.connect(self.plotSpecificationCurveThread.quit)
+        self.plotSpecificationCurveWorker.finished.connect(self.plotSpecificationCurveWorker.deleteLater)
+        self.plotSpecificationCurveThread.finished.connect(self.plotSpecificationCurveWorker.deleteLater)
+
+        self.plotSpecificationCurveWorker.result.connect(self.handleSpecificationCurveResult)
+        self.plotSpecificationCurveWorker.error.connect(self.handleSpecificationCurveError)
+
+        self.plotSpecificationCurveThread.start()
+
+    def handleSpecificationCurveResult(self, result):
+        # Remove the old canvas from the layout if it exists
+        if hasattr(self, 'specCanvas'):
+            self.specTab.layout().removeWidget(self.specCanvas)
+            self.specCanvas.setParent(None)
+            plt.close(self.specCanvas.figure)  # Close the old figure
+
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=True) as tmpfile:
+            result.savefig(tmpfile.name, bbox_inches='tight')
+
+            fig = plt.figure()
+            img = plt.imread(tmpfile.name)
+            plt.imshow(img)
+            plt.tight_layout()
+            plt.axis('off')
+
+            self.specCanvas = FigureCanvas(fig)
+            self.specTab.layout().insertWidget(0, self.specCanvas)  # Insert the canvas at the top
+            self.specCanvas.draw()
+            self.plotButton.setEnabled(True)
+
+    def handleSpecificationCurveError(self, error):
+        QMessageBox.warning(self, "Specification Curve", f"An error occurred while plotting the specification curve: {error}")
+        self.plotButton.setEnabled(True)
 
 """
 Run the application

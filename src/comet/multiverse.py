@@ -147,7 +147,7 @@ class Multiverse:
 
         if universe_number is None:
             print("Starting multiverse analysis for all universes...")
-            Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in sorted_files if file.endswith(".py"))
+            Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in sorted_files if file.endswith(".py") and not file.startswith("template"))
         else:
             print(f"Starting analysis for universe {universe_number}...")
             file = f"universe_{universe_number}.py"
@@ -178,9 +178,9 @@ class Multiverse:
         else:
             print(multiverse_summary)
 
-    def visualize(self, universe=None, cmap="Set2", node_size=1500, figsize=(8,5)):
+    def visualize(self, universe=None, cmap="Set2", node_size=1500, figsize=(8,5), label_offset=0.04):
         """
-        Visualize the multiverse as a network
+        Visualize the multiverse as a network.
 
         Parameters
         ----------
@@ -199,7 +199,7 @@ class Multiverse:
 
         multiverse_summary = self._read_csv()
 
-        # Function that recursively add nodes and edges excluding single-option parameters
+        # Function to recursively add nodes and edges excluding single-option parameters
         def add_hierarchical_decision_nodes(G, root_node, parameters, level=0):
             if level >= len(parameters):
                 return G  # No more parameters to process
@@ -232,7 +232,7 @@ class Multiverse:
         G.add_node(root_node, level=0, label="Start")  # Ensure the root node has the 'level' attribute and label
         G = add_hierarchical_decision_nodes(G, root_node, parameters)
 
-        values = ["Start"]  # Initialize the list with the "Start: Start" value
+        values = ["Start"]  # Initialize the list with the "Start" value
         if universe is not None:
             # Get the decisions for the desired universe
             filtered_df = multiverse_summary[multiverse_summary['Universe'] == f"Universe_{universe}"]
@@ -242,7 +242,6 @@ class Multiverse:
 
             row_dict = filtered_df.iloc[0].to_dict()
             values.extend([f"{column}: {value}" for column, value in row_dict.items()])
-
 
         # Red edge colors for the edges that are part of the universe
         universe_edges = [(source_value, target_value) for source_value, target_value in G.edges if source_value in values and target_value in values]
@@ -256,11 +255,11 @@ class Multiverse:
                 edge_colors[i] = "gray"
                 edge_widths[i] = 1.0
 
-        # Visualize the graph
+        # Create a figure and axis
+        fig, ax = plt.subplots(figsize=figsize)
         title_str = f"Universe {universe}" if universe is not None else "Multiverse"
+        ax.set_title(title_str, size=14, fontweight='bold')
 
-        plt.figure(figsize=figsize)
-        plt.title(title_str, size=14, fontweight='bold')
         pos = nx.multipartite_layout(G, subset_key="level")
 
         # Assigning colors based on levels using a colormap
@@ -272,17 +271,17 @@ class Multiverse:
         level_colors = {level: colors[i] for i, level in enumerate(sorted(levels))}
 
         # Draw edges first because of the node size
-        nx.draw(G, pos, with_labels=False, node_size=node_size-10, node_color="white", arrows=True, edge_color=edge_colors, width=edge_widths)
+        nx.draw(G, pos, with_labels=False, node_size=node_size-10, node_color="white", arrows=True, edge_color=edge_colors, width=edge_widths, ax=ax)
 
         # Draw nodes with colors based on their level
         for level in levels:
             nodes_at_level = [node for node in G.nodes if G.nodes[node].get('level') == level]
-            nx.draw_networkx_nodes(G, pos, nodelist=nodes_at_level, node_size=node_size, node_color=[level_colors[level] for _ in nodes_at_level])
+            nx.draw_networkx_nodes(G, pos, nodelist=nodes_at_level, node_size=node_size, node_color=[level_colors[level] for _ in nodes_at_level], ax=ax)
 
         # Draw labels
         node_labels = {node: G.nodes[node]['option'] if node != root_node \
-                       else G.nodes[node]['label'] for node in G.nodes} # Use only the option as a node label
-        nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=12)
+                    else G.nodes[node]['label'] for node in G.nodes}  # Use only the option as a node label
+        nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=12, ax=ax)
 
         # Identify and annotate the bottom-most node at each level with the decision label
         levels = set(nx.get_node_attributes(G, 'level').values())
@@ -292,7 +291,6 @@ class Multiverse:
         for level in levels:
             nodes_at_level = [node for node in G.nodes if G.nodes[node].get('level') == level]
             node_nums.append(len(nodes_at_level))
-        label_offset = 0.04 * max(node_nums)
 
         # Draw the labels
         for level in levels:
@@ -303,15 +301,15 @@ class Multiverse:
                 if bottom_node != root_node and 'decision' in G.nodes[bottom_node]:
                     decision = G.nodes[bottom_node]['decision']
                     x, y = pos[bottom_node]
-                    plt.text(x, y-label_offset, decision, horizontalalignment='center', fontsize=12, fontweight='bold')
+                    ax.text(x, y-label_offset * max(node_nums), decision, horizontalalignment='center', fontsize=12, fontweight='bold')
 
         plt.savefig(f"{self.results_dir}/multiverse.png", bbox_inches='tight')
-        plt.show()
 
-        return
+        return fig
 
-    def specification_curve(self, measure, baseline=None, p_value=None, ci=None, smooth_ci=False, \
-                            title="Specification Curve", name_map=None, cmap="Set3", linewidth=2, figsize=(16,9), height_ratio=(2,1), fontsize=10, dotsize=50, ftype="png"):
+    def specification_curve(self, measure, baseline=None, p_value=None, ci=None, smooth_ci=True, \
+                            title="Specification Curve", name_map=None, cmap="Set3", linewidth=2, figsize=(16,9), \
+                            height_ratio=(2,1), fontsize=10, dotsize=50, ftype="png"):
         """
         Create and save a specification curve plot from multiverse results
 
@@ -591,9 +589,8 @@ class Multiverse:
 
         # Save the plot
         plt.savefig(f"{self.results_dir}/specification_curve.{ftype}", bbox_inches='tight')
-        plt.show()
 
-        return
+        return fig
 
     # Internal methods
     def _check_paths(self, universe_path, invalid_paths):
