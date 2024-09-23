@@ -168,15 +168,17 @@ class Multiverse:
         multiverse_summary = self._read_csv()
 
         if isinstance(universe, int):
-            multiverse_summary = multiverse_summary.iloc[universe-1]
+            multiverse_selection = multiverse_summary.iloc[universe-1]
         elif isinstance(universe, range):
-            multiverse_summary = multiverse_summary.iloc[universe.start-1:universe.stop]
+            multiverse_selection = multiverse_summary.iloc[universe.start-1:universe.stop]
 
         if in_notebook():
             from IPython.display import display
-            display(multiverse_summary)
+            display(multiverse_selection)
         else:
-            print(multiverse_summary)
+            print(multiverse_selection)
+
+        return multiverse_summary
 
     def visualize(self, universe=None, cmap="Set2", node_size=1500, figsize=(8,5), label_offset=0.04):
         """

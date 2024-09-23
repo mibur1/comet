@@ -4590,6 +4590,14 @@ class App(QMainWindow):
             # Create the summary plot
             self.plotMultiverseSummary()
 
+            # Check size of the multiverse. If we have an identical amount of results we take this as a heuristic that the multiverse was already run
+            summary_df = self.mverse.summary()
+            all_files = os.listdir(self.mverse.results_dir)
+            num_results = len([f for f in all_files if f.startswith('universe_') and f.endswith('.pkl')])
+
+            if num_results == len(summary_df):
+                self.plotSpecificationCurve()
+
             # Enable the buttons
             self.runMultiverseButton.setEnabled(True)
             self.paralleliseMultiverseSpinbox.setEnabled(True)
@@ -4763,7 +4771,7 @@ class App(QMainWindow):
         # Figure Size (two numbers for width and height)
         firstRowLayout.addWidget(QLabel('Figsize:'))
         self.figsizeInput = QLineEdit(self)
-        self.figsizeInput.setText("5,6")
+        self.figsizeInput.setText("8,6")
         firstRowLayout.addWidget(self.figsizeInput)
 
         # Label Offset (float spin box)
