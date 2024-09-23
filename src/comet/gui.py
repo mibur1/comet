@@ -1496,6 +1496,7 @@ class App(QMainWindow):
         # Add tab to the multiverse tab widget
         multiverseTabWidget.addTab(self.specTab, "Specification Curve")
         self.createSpecificationCurveWidgets()
+        self.createSummaryWidgets()
 
         ########################################
         # Add the tab widget to the right layout
@@ -4453,6 +4454,10 @@ class App(QMainWindow):
         self.multiverseName = self.multiverseFileName.split('/')[-1].split('.')[0]
         self.mv_from_file = True
         self.createMultiverseButton.setEnabled(True)
+        self.runMultiverseButton.setEnabled(False)
+        self.paralleliseMultiverseSpinbox.setEnabled(False)
+        self.plotButton.setEnabled(False)
+
         self.data.forking_paths = {}
 
         if self.multiverseFileName:
@@ -4582,6 +4587,9 @@ class App(QMainWindow):
                 self.measureInput.clear()
                 self.measureInput.addItems(variable_names)
 
+            # Create the summary plot
+            self.plotMultiverseSummary()
+
             # Enable the buttons
             self.runMultiverseButton.setEnabled(True)
             self.paralleliseMultiverseSpinbox.setEnabled(True)
@@ -4614,6 +4622,7 @@ class App(QMainWindow):
         self.createMultiverseButton.setEnabled(False)
         self.runMultiverseButton.setEnabled(False)
         self.paralleliseMultiverseSpinbox.setEnabled(False)
+        self.plotButton.setEnabled(False)
 
         self.mvThread = QThread()
         self.mvWorker = Worker(self.mverse.run, {"parallel": self.paralleliseMultiverseSpinbox.value()})
@@ -4634,6 +4643,7 @@ class App(QMainWindow):
         self.createMultiverseButton.setEnabled(True)
         self.runMultiverseButton.setEnabled(True)
         self.paralleliseMultiverseSpinbox.setEnabled(True)
+        self.plotButton.setEnabled(True)
 
         # Populate the measure input
         results_file = os.path.join(self.mverse.results_dir, 'universe_1.pkl')
@@ -4722,10 +4732,85 @@ class App(QMainWindow):
         self.plotButton = QPushButton('   Create Plot   ', self)
         self.plotButton.clicked.connect(self.plotSpecificationCurve)
         secondRowLayout.addWidget(self.plotButton)
+        self.plotButton.setEnabled(False)
 
         # Add layouts
         paramLayout.addLayout(secondRowLayout)
         self.specTab.layout().addLayout(paramLayout)
+
+    def createSummaryWidgets(self):
+        # Create a layout for the parameter inputs
+        paramLayout = QVBoxLayout()
+
+        # First Row: Universe, Node Size
+        firstRowLayout = QHBoxLayout()
+
+        # Universe (int spin box)
+        firstRowLayout.addWidget(QLabel('Universe:'))
+        self.universeInput = CustomSpinBox(special_value=None, min=0, max=999)
+        self.universeInput.setSingleStep(1)
+        firstRowLayout.addWidget(self.universeInput)
+
+        # Node Size (int spin box)
+        firstRowLayout.addWidget(QLabel('Node Size:'))
+        self.nodeSizeInput = QSpinBox()
+        self.nodeSizeInput.setMinimum(200)
+        self.nodeSizeInput.setMaximum(5000)
+        self.nodeSizeInput.setSingleStep(200)
+        self.nodeSizeInput.setValue(1000)
+        firstRowLayout.addWidget(self.nodeSizeInput)
+
+        # Figure Size (two numbers for width and height)
+        firstRowLayout.addWidget(QLabel('Figsize:'))
+        self.figsizeInput = QLineEdit(self)
+        self.figsizeInput.setText("5,6")
+        firstRowLayout.addWidget(self.figsizeInput)
+
+        # Label Offset (float spin box)
+        firstRowLayout.addWidget(QLabel('Label Offset:'))
+        self.labelOffsetInput = QDoubleSpinBox()
+        self.labelOffsetInput.setMinimum(0.0)
+        self.labelOffsetInput.setMaximum(1.0)
+        self.labelOffsetInput.setSingleStep(0.01)
+        self.labelOffsetInput.setValue(0.04)
+        firstRowLayout.addWidget(self.labelOffsetInput)
+
+        # Plot Button
+        self.plotMvButton = QPushButton('   Update Plot   ', self)
+        self.plotMvButton.clicked.connect(self.plotMultiverseSummary)
+        firstRowLayout.addWidget(self.plotMvButton)
+
+        # Add layouts
+        paramLayout.addLayout(firstRowLayout)
+        self.plotMvTab.layout().addLayout(paramLayout)
+
+    def plotMultiverseSummary(self):
+        # Get input values
+        universe = None if self.universeInput.value() == 0 else self.universeInput.value()
+        node_size = self.nodeSizeInput.value()
+        figsize = tuple(map(int, self.figsizeInput.text().split(',')))
+        label_offset = self.labelOffsetInput.value()
+
+        # Plot the multiverse summary
+        fig = self.mverse.visualize(universe=universe, node_size=node_size, figsize=figsize, label_offset=label_offset)
+
+        if hasattr(self, 'multiverseCanvas'):
+            self.plotMvTab.layout().removeWidget(self.multiverseCanvas)
+            self.multiverseCanvas.setParent(None)
+            plt.close(self.multiverseCanvas.figure)  # Close the old figure
+
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=True) as tmpfile:
+            fig.savefig(tmpfile.name, bbox_inches='tight')
+
+            fig = plt.figure()
+            img = plt.imread(tmpfile.name)
+            plt.imshow(img)
+            plt.tight_layout()
+            plt.axis('off')
+
+            self.multiverseCanvas = FigureCanvas(fig)
+            self.plotMvTab.layout().insertWidget(0, self.multiverseCanvas)  # Insert the canvas at the top
+            self.multiverseCanvas.draw()
 
     def plotSpecificationCurve(self):
         """
