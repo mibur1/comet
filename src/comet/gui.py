@@ -33,9 +33,9 @@ import matplotlib.gridspec as gridspec
 # Qt imports
 import qdarkstyle
 from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject, QRegularExpression
-from PyQt6.QtGui import QEnterEvent, QFontMetrics, QSyntaxHighlighter, QTextCharFormat, QPixmap
+from PyQt6.QtGui import QEnterEvent, QFontMetrics, QSyntaxHighlighter, QTextCharFormat
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
-     QSlider, QToolTip, QWidget, QLabel, QLayout, QFileDialog, QComboBox, QLineEdit, QSizePolicy, QGridLayout, \
+     QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, QGridLayout, \
      QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QGroupBox
 
 # Comet imports and state-based dFC methods from pydfc
@@ -296,7 +296,7 @@ class ParameterOptions:
     }
 
     CONFOUND_OPTIONS = {
-            "strategy": ["motion", "wm_csf", "compcor", "global_signal", "high_pass", "ica_aroma", "scrub", "demean"],
+            "Cleaning\nstrategy": ["motion", "wm_csf", "compcor", "global_signal", "high_pass", "demean", "scrub", "ica_aroma"],
             "motion": ["full", "basic", "power2", "derivatives"],
             "wm_csf": ["basic", "power2", "derivatives", "full"],
             "compcor": ["anat_combined", "anat_separated", "temporal", "temporal_anat_combined", "temporal_anat_separated"],
@@ -702,8 +702,8 @@ class App(QMainWindow):
         loadLayout = QVBoxLayout()
         buttonLayout = QHBoxLayout()
 
-        fileButton = QPushButton('Load single file')
-        bidsButton = QPushButton('Load BIDS dataset')
+        fileButton = QPushButton('Load from single file')
+        bidsButton = QPushButton('Load from fMRIprep outputs')
         self.fileNameLabel = QLabel('No data loaded yet.')
 
         buttonLayout.addWidget(fileButton)
@@ -732,7 +732,7 @@ class App(QMainWindow):
         self.sphereContainer = QWidget()
         sphereLayout = QHBoxLayout(self.sphereContainer)
         sphereLayoutLabel = QLabel("Sphere radius (mm):")
-        self.sphereRadiusSpinbox = CustomDoubleSpinbox(special_value="single voxel")
+        self.sphereRadiusSpinbox = CustomDoubleSpinbox(special_value="single voxel", min=0.0, max=20.0)
         self.sphereRadiusSpinbox.setValue(5.0)
         self.overlapCheckbox = QCheckBox("Allow overlap")
         sphereLayout.addWidget(sphereLayoutLabel)
@@ -759,11 +759,15 @@ class App(QMainWindow):
         miscCleaningLayout.setContentsMargins(0, 0, 0, 0)
         self.miscCleaningContainer.setLayout(miscCleaningLayout)
 
+        self.standardizeCheckbox.stateChanged.connect(self.updateCleaningOptions)
+        self.detrendCheckbox.stateChanged.connect(self.updateCleaningOptions)
+        self.highVarianceCheckbox.stateChanged.connect(self.updateCleaningOptions)
+
         # Smoothing Layout Container
         self.smoothingContainer = QWidget()
         smoothingLayout = QHBoxLayout(self.smoothingContainer)
         smoothingLabel = QLabel("Smoothing fwhm (mm):")
-        self.smoothingSpinbox = CustomDoubleSpinbox(special_value=None)
+        self.smoothingSpinbox = CustomDoubleSpinbox(special_value=None, min=0.0, max=20.0)
         self.smoothingSpinbox.setDecimals(2)
         self.smoothingSpinbox.setSingleStep(1.0)
         smoothingLayout.addWidget(smoothingLabel)
@@ -776,17 +780,17 @@ class App(QMainWindow):
         self.filteringContainer = QWidget()
         filteringLayout = QHBoxLayout(self.filteringContainer)
         highPassLabel = QLabel("High Pass:")
-        self.highPassCutoff = CustomDoubleSpinbox(special_value=None)
+        self.highPassCutoff = CustomDoubleSpinbox(special_value=None, min=0.0, max=1.0)
         self.highPassCutoff.setDecimals(3)
         self.highPassCutoff.setSingleStep(0.001)
 
         lowPassLabel = QLabel("Low Pass:")
-        self.lowPassCutoff = CustomDoubleSpinbox(special_value=None)
+        self.lowPassCutoff = CustomDoubleSpinbox(special_value=None, min=0.0, max=1.0)
         self.lowPassCutoff.setDecimals(3)
         self.lowPassCutoff.setSingleStep(0.001)
 
         trLabel = QLabel("TR:")
-        self.trValue = CustomDoubleSpinbox(special_value=None)
+        self.trValue = CustomDoubleSpinbox(special_value=None, min=0.0, max=5.0)
         self.trValue.setDecimals(3)
         self.trValue.setSingleStep(0.5)
 
@@ -888,7 +892,7 @@ class App(QMainWindow):
         # Subjects Dropdown with Label
         self.bids_subjectDropdownLayout = QHBoxLayout()
         self.bids_subjectLabel = QLabel("Subject:")
-        self.bids_subjectLabel.setFixedWidth(100)
+        self.bids_subjectLabel.setFixedWidth(90)
         self.bids_subjectDropdown = QComboBox()
         self.bids_subjectDropdownLayout.addWidget(self.bids_subjectLabel, 1)
         self.bids_subjectDropdownLayout.addWidget(self.bids_subjectDropdown, 4)
@@ -897,7 +901,7 @@ class App(QMainWindow):
         # Task/run dropdowns with Label
         self.bids_taskDropdownLayout = QHBoxLayout()
         self.bids_taskLabel = QLabel("Task:")
-        self.bids_taskLabel.setFixedWidth(100)
+        self.bids_taskLabel.setFixedWidth(90)
         self.bids_taskDropdown = QComboBox()
         self.bids_sessionLabel = QLabel("Session:")
         self.bids_sessionLabel.setFixedWidth(65)
@@ -917,11 +921,11 @@ class App(QMainWindow):
         # Parcellation Dropdown with Label
         self.bids_parcellationLayout = QHBoxLayout()
         self.bids_parcellationLabel = QLabel("Parcellation:")
-        self.bids_parcellationLabel.setFixedWidth(100)
+        self.bids_parcellationLabel.setFixedWidth(90)
         self.bids_parcellationDropdown = QComboBox()
         self.bids_parcellationDropdown.addItems(self.atlas_options.keys())
         self.bids_parcellationOptionsLabel = QLabel("Type:")
-        self.bids_parcellationOptionsLabel.setFixedWidth(40)
+        self.bids_parcellationOptionsLabel.setFixedWidth(30)
         self.bids_parcellationOptions = QComboBox()
 
         self.bids_parcellationLayout.addWidget(self.bids_parcellationLabel, 1)
@@ -929,6 +933,21 @@ class App(QMainWindow):
         self.bids_parcellationLayout.addWidget(self.bids_parcellationOptionsLabel, 1)
         self.bids_parcellationLayout.addWidget(self.bids_parcellationOptions, 3)
         self.bids_fileLayout.addLayout(self.bids_parcellationLayout)
+
+        # Sphere Layout Container
+        self.bids_sphereContainer = QWidget()
+        bids_sphereLayout = QHBoxLayout(self.bids_sphereContainer)
+        bids_sphereLayoutLabel = QLabel("Sphere radius (mm):")
+        self.bids_sphereRadiusSpinbox = CustomDoubleSpinbox(special_value="single voxel", min=0.0, max=20.0)
+        self.bids_sphereRadiusSpinbox.setValue(5.0)
+        self.bids_overlapCheckbox = QCheckBox("Allow overlap")
+        bids_sphereLayout.addWidget(bids_sphereLayoutLabel)
+        bids_sphereLayout.addWidget(self.bids_sphereRadiusSpinbox)
+        bids_sphereLayout.addWidget(self.bids_overlapCheckbox)
+        bids_sphereLayout.addStretch(1)
+        bids_sphereLayout.setContentsMargins(0, 0, 0, 0)
+        self.bids_sphereContainer.setLayout(bids_sphereLayout)
+        self.bids_fileLayout.addWidget(self.bids_sphereContainer)
 
         # Connect dropdown changes to handler function
         self.bids_subjectDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
@@ -942,6 +961,69 @@ class App(QMainWindow):
         # Confound selection container
         bids_confoundsContainer = QGroupBox("Cleaning options")
         bids_confoundsLayout = QVBoxLayout(bids_confoundsContainer)
+
+        # Checkbox container widget
+        self.generalCleaningContainer = QWidget()
+        generalCleaningLayout = QHBoxLayout(self.generalCleaningContainer)
+        self.bids_standardizeCheckbox = QCheckBox("Standardize")
+        self.bids_detrendCheckbox = QCheckBox("Detrend")
+        self.bids_highVarianceCheckbox = QCheckBox("Regress high variance confounds")
+
+        generalCleaningLayout.addItem(QSpacerItem(5, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        generalCleaningLayout.addWidget(self.bids_standardizeCheckbox)
+        generalCleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        generalCleaningLayout.addWidget(self.bids_detrendCheckbox)
+        generalCleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        generalCleaningLayout.addWidget(self.highVarianceCheckbox)
+        generalCleaningLayout.addStretch(1)
+        generalCleaningLayout.setContentsMargins(0, 10, 0, 0)
+        bids_confoundsLayout.addWidget(self.generalCleaningContainer)
+
+        # Smoothing and filtering container widget
+        self.bids_smoothingContainer = QWidget()
+        bids_smoothingLayout = QHBoxLayout(self.bids_smoothingContainer)
+        smoothingLabel = QLabel("Smoothing fwhm (mm):")
+        self.bids_smoothingSpinbox = CustomDoubleSpinbox(special_value=None, min=0.0, max=20.0)
+        self.bids_smoothingSpinbox.setDecimals(2)
+        self.bids_smoothingSpinbox.setSingleStep(1.0)
+        bids_smoothingLayout.addWidget(smoothingLabel)
+        bids_smoothingLayout.addWidget(self.bids_smoothingSpinbox)
+        bids_smoothingLayout.addStretch(1)
+        bids_smoothingLayout.setContentsMargins(0, 0, 0, 0)
+        self.bids_smoothingContainer.setLayout(bids_smoothingLayout)
+        bids_confoundsLayout.addWidget(self.bids_smoothingContainer)
+
+        # Filtering Layout Container
+        self.bids_filteringContainer = QWidget()
+        bids_filteringLayout = QHBoxLayout(self.bids_filteringContainer)
+        bids_highPassLabel = QLabel("High Pass:")
+        self.bids_highPassCutoff = CustomDoubleSpinbox(special_value=None, min=0.0, max=1.0)
+        self.bids_highPassCutoff.setDecimals(3)
+        self.bids_highPassCutoff.setSingleStep(0.001)
+
+        bids_lowPassLabel = QLabel("Low Pass:")
+        self.bids_lowPassCutoff = CustomDoubleSpinbox(special_value=None, min=0.0, max=1.0)
+        self.bids_lowPassCutoff.setDecimals(3)
+        self.bids_lowPassCutoff.setSingleStep(0.001)
+
+        bids_trLabel = QLabel("TR:")
+        self.bids_trValue = CustomDoubleSpinbox(special_value=None, min=0.0, max=5.0)
+        self.bids_trValue.setDecimals(3)
+        self.bids_trValue.setSingleStep(0.5)
+
+        bids_filteringLayout.addWidget(bids_highPassLabel)
+        bids_filteringLayout.addWidget(self.bids_highPassCutoff)
+        bids_filteringLayout.addWidget(bids_lowPassLabel)
+        bids_filteringLayout.addWidget(self.bids_lowPassCutoff)
+        bids_filteringLayout.addWidget(bids_trLabel)
+        bids_filteringLayout.addWidget(self.bids_trValue)
+        bids_filteringLayout.addStretch(1)
+        bids_filteringLayout.setContentsMargins(0, 0, 0, 0)
+        self.bids_filteringContainer.setLayout(bids_filteringLayout)
+        bids_confoundsLayout.addWidget(self.bids_filteringContainer)
+
+
+        # Confound strategy container widget
         bids_confoundsStrategyWidget = self.loadConfounds()
         bids_confoundsLayout.addWidget(bids_confoundsStrategyWidget)
 
@@ -1605,13 +1687,12 @@ class App(QMainWindow):
                 self.parcellationDropdown.addItems(self.atlas_options_cifti.keys())
                 self.sphereContainer.hide()
                 self.smoothingContainer.hide()
-                self.cleaningContainer.show()
             else:
                 self.parcellationDropdown.addItems(self.atlas_options.keys())
                 self.sphereContainer.show()
                 self.smoothingContainer.show()
-                self.cleaningContainer.show()
 
+            self.cleaningContainer.show()
             self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
             self.onAtlasChanged()
             self.loadContainer.show()
@@ -1802,7 +1883,7 @@ class App(QMainWindow):
         self.loadContainer.hide()
 
         # Open a dialog to select the BIDS directory
-        bids_folder = QFileDialog.getExistingDirectory(self, "Select BIDS Directory")
+        bids_folder = QFileDialog.getExistingDirectory(self, "Select fMRIprep directory")
 
         # User canceled the selection
         if not bids_folder:
@@ -1836,11 +1917,12 @@ class App(QMainWindow):
             self.workerThread.start()
 
         except Exception as e:
-            QMessageBox.warning(self, "Load Error", f"Failed to load BIDS data: {str(e)}")
+            QMessageBox.warning(self, "Load Error", f"Failed to load fMRIprep data: {str(e)}")
 
     def loadBIDSThread(self, bids_folder):
         # Get the layout
-        self.bids_layout = BIDSLayout(bids_folder, derivatives=True)
+        print(f"Loading fMRIprep output from {bids_folder}")
+        self.bids_layout = BIDSLayout(bids_folder, is_derivative=True)
 
         # Get subjects and update the dropdown
         subjects = self.bids_layout.get_subjects()
@@ -1904,11 +1986,19 @@ class App(QMainWindow):
 
     def onBIDSLayoutChanged(self):
         # Disconnect the signal to avoid recursive calls
-        self.bids_subjectDropdown.currentIndexChanged.disconnect(self.onBIDSLayoutChanged)
-        self.bids_taskDropdown.currentIndexChanged.disconnect(self.onBIDSLayoutChanged)
-        self.bids_sessionDropdown.currentIndexChanged.disconnect(self.onBIDSLayoutChanged)
-        self.bids_runDropdown.currentIndexChanged.disconnect(self.onBIDSLayoutChanged)
-        self.bids_parcellationOptions.currentIndexChanged.disconnect(self.onBIDSLayoutChanged)
+        dropdowns = [
+            self.bids_subjectDropdown,
+            self.bids_taskDropdown,
+            self.bids_sessionDropdown,
+            self.bids_runDropdown,
+            self.bids_parcellationOptions
+        ]
+
+        for dropdown in dropdowns:
+            try:
+                dropdown.currentIndexChanged.disconnect(self.onBIDSLayoutChanged)
+            except TypeError:
+                pass
 
         # Disable inputs while loading
         self.bids_taskDropdown.setEnabled(False)
@@ -2005,6 +2095,13 @@ class App(QMainWindow):
         else:
             QMessageBox.warning(self, "Error when extracting time series", f"Atlas not found in options list")
 
+        # Enable/disable cleaning options depending on the atlas
+        current_atlas = self.bids_parcellationDropdown.currentText()
+        if current_atlas in ["Power et al. (2011)", "Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
+            self.bids_sphereContainer.show()
+        else:
+            self.bids_sphereContainer.hide()
+
         return
 
     def loadConfounds(self):
@@ -2015,11 +2112,12 @@ class App(QMainWindow):
         for key, param in self.confound_options.items():
             h_layout = QHBoxLayout()
             label = QLabel(f"{key}:")
-            label.setFixedWidth(145)
+            label.setFixedWidth(65)
             h_layout.addWidget(label)
+            h_layout.setContentsMargins(0, 0, 0, 0)
 
             # Info button content
-            if key != "strategy":
+            if key != "Cleaning\nstrategy":
                 info_text = self.cleaning_info[key]
                 info_button = InfoButton(info_text)
 
@@ -2041,7 +2139,7 @@ class App(QMainWindow):
                 h_layout.setObjectName("scrub")
                 h_layout.addWidget(info_button)
 
-            elif key == "strategy":
+            elif key == "Cleaning\nstrategy":
                 strategy_group = QGroupBox()
                 strategy_layout = QGridLayout(strategy_group)
                 self.strategy_checkboxes = {}
@@ -2086,7 +2184,7 @@ class App(QMainWindow):
 
             # Store the layout in the dictionary
             self.layouts[key] = h_layout
-            if key != "strategy":
+            if key != "Cleaning\nstrategy":
                 self.hideCleaningLayout(h_layout)  # Initially hide all options except "strategy"
             layout.addLayout(h_layout)
 
@@ -2192,9 +2290,9 @@ class App(QMainWindow):
         self.workerThread = QThread()
 
         if self.bids_layout is None:
-            self.worker = Worker(self.calculateTimeSeriesThread, {"img_path": self.data.file_path, "atlas": self.parcellationDropdown.currentText(), "option": self.parcellationOptions.currentText()})
+            self.worker = Worker(self.calculateTimeSeriesThread, {"bids": False, "img_path": self.data.file_path, "atlas": self.parcellationDropdown.currentText(), "option": self.parcellationOptions.currentText()})
         else:
-            self.worker = Worker(self.calculateTimeSeriesThread, {"img_path": self.data.file_path, "atlas": self.bids_parcellationDropdown.currentText(), "option": self.bids_parcellationOptions.currentText()})
+            self.worker = Worker(self.calculateTimeSeriesThread, {"bids": True, "img_path": self.data.file_path, "atlas": self.bids_parcellationDropdown.currentText(), "option": self.bids_parcellationOptions.currentText()})
 
         self.worker.moveToThread(self.workerThread)
         self.worker.finished.connect(self.workerThread.quit)
@@ -2206,6 +2304,7 @@ class App(QMainWindow):
         return
 
     def calculateTimeSeriesThread(self, **params):
+        bids_flag = params["bids"]
         img_path = params["img_path"]
         atlas = params["atlas"]
         option = params["option"]
@@ -2213,17 +2312,31 @@ class App(QMainWindow):
         confounds = None
 
         # Collect cleaning arguments
-        radius = self.sphereRadiusSpinbox.value() if self.sphereRadiusSpinbox.value() > 0 else None # none is single voxel
-        allow_ovelap = self.overlapCheckbox.isChecked()
+        if bids_flag:
+            radius = self.bids_sphereRadiusSpinbox.value() if self.bids_sphereRadiusSpinbox.value() > 0 else None # none is single voxel
+            allow_ovelap = self.bids_overlapCheckbox.isChecked()
 
-        standardize = self.standardizeCheckbox.isChecked()
-        detrend = self.detrendCheckbox.isChecked()
-        smoothing_fwhm = self.smoothingSpinbox.value() if self.smoothingSpinbox.value() > 0 else None
-        high_variance_confounds = self.highVarianceCheckbox.isChecked()
+            standardize = self.bids_standardizeCheckbox.isChecked()
+            detrend = self.bids_detrendCheckbox.isChecked()
+            smoothing_fwhm = self.bids_smoothingSpinbox.value() if self.bids_smoothingSpinbox.value() > 0 else None
+            high_variance_confounds = self.bids_highVarianceCheckbox.isChecked()
 
-        high_pass = self.highPassCutoff.value() if self.highPassCutoff.value() > 0 else None
-        low_pass = self.lowPassCutoff.value() if self.lowPassCutoff.value() > 0 else None
-        tr = self.trValue.value() if self.trValue.value() > 0 else None
+            high_pass = self.bids_highPassCutoff.value() if self.bids_highPassCutoff.value() > 0 else None
+            low_pass = self.bids_lowPassCutoff.value() if self.bids_lowPassCutoff.value() > 0 else None
+            tr = self.bids_trValue.value() if self.bids_trValue.value() > 0 else None
+
+        else:
+            radius = self.sphereRadiusSpinbox.value() if self.sphereRadiusSpinbox.value() > 0 else None # none is single voxel
+            allow_ovelap = self.overlapCheckbox.isChecked()
+
+            standardize = self.standardizeCheckbox.isChecked()
+            detrend = self.detrendCheckbox.isChecked()
+            smoothing_fwhm = self.smoothingSpinbox.value() if self.smoothingSpinbox.value() > 0 else None
+            high_variance_confounds = self.highVarianceCheckbox.isChecked()
+
+            high_pass = self.highPassCutoff.value() if self.highPassCutoff.value() > 0 else None
+            low_pass = self.lowPassCutoff.value() if self.lowPassCutoff.value() > 0 else None
+            tr = self.trValue.value() if self.trValue.value() > 0 else None
 
         # Parcellation procedure
         self.parcellationCalculateButton.setEnabled(False)
@@ -2240,6 +2353,7 @@ class App(QMainWindow):
             else:
                 rois, networks, self.data.roi_names = self.fetchAtlas(atlas, option)
 
+            print("Cleaing options:", rois, mask, radius, allow_ovelap, standardize, detrend, smoothing_fwhm, high_variance_confounds, low_pass, high_pass, tr)
             masker = maskers.NiftiSpheresMasker(seeds=rois, mask_img=mask, radius=radius, allow_overlap=allow_ovelap,
                                                 standardize=standardize, detrend=detrend, smoothing_fwhm=smoothing_fwhm, high_variance_confounds=high_variance_confounds,
                                                 low_pass=low_pass, high_pass=high_pass, t_r=tr)
@@ -2257,11 +2371,14 @@ class App(QMainWindow):
 
         else:
             atlas, labels = self.fetchAtlas(atlas, option)
+            print(atlas)
+            print("standardize:", standardize, "detrend:", detrend, "smoothing_fwhm:", smoothing_fwhm, "high_variance_confounds:", high_variance_confounds, "low_pass:", low_pass, "high_pass:", high_pass, "t_r:", tr)
+            print("confounds:", confounds)
             masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, mask_img=mask, background_label=0,
                                                standardize=standardize, detrend=detrend, smoothing_fwhm=smoothing_fwhm, high_variance_confounds=high_variance_confounds,
                                                low_pass=low_pass, high_pass=high_pass, t_r=tr)
             time_series = masker.fit_transform(img_path, confounds=confounds)
-
+            print(img_path)
         self.data.file_data = time_series
 
         return
