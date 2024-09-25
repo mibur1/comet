@@ -296,7 +296,7 @@ class ParameterOptions:
     }
 
     CONFOUND_OPTIONS = {
-            "Cleaning\nstrategy": ["motion", "wm_csf", "compcor", "global_signal", "high_pass", "demean", "scrub", "ica_aroma"],
+            "Cleaning\nstrategy": ["motion", "wm_csf", "compcor", "global_signal", "scrub", "demean", "high_pass", "ica_aroma"],
             "motion": ["full", "basic", "power2", "derivatives"],
             "wm_csf": ["basic", "power2", "derivatives", "full"],
             "compcor": ["anat_combined", "anat_separated", "temporal", "temporal_anat_combined", "temporal_anat_separated"],
@@ -1530,7 +1530,7 @@ class App(QMainWindow):
         self.toggleButton.clicked.connect(self.toggleReadOnly)
 
         # Position the button at the top right corner inside the QTextEdit
-        self.toggleButton.move(self.scriptDisplay.width() - self.toggleButton.width() - 5, 5)
+        self.toggleButton.move(self.scriptDisplay.width() - self.toggleButton.width() - 25, 5)
 
         # Adjust button position when the QTextEdit is resized
         self.scriptDisplay.resizeEvent = self.updateToggleButtonPosition
@@ -1564,6 +1564,7 @@ class App(QMainWindow):
 
         self.plotLogo(self.multiverseFigure)
         self.multiverseCanvas.draw()
+        self.createSummaryWidgets()
 
         # Tab 3: Plot for specification curve
         self.specTab = QWidget()
@@ -1575,10 +1576,11 @@ class App(QMainWindow):
         self.specFigure.patch.set_facecolor('#f3f1f5')
         self.specTab.layout().addWidget(self.specCanvas)
 
-        # Add tab to the multiverse tab widget
         multiverseTabWidget.addTab(self.specTab, "Specification Curve")
+        self.plotLogo(self.specFigure)
+        self.specCanvas.draw()
         self.createSpecificationCurveWidgets()
-        self.createSummaryWidgets()
+
 
         ########################################
         # Add the tab widget to the right layout
@@ -2107,17 +2109,18 @@ class App(QMainWindow):
     def loadConfounds(self):
         confoundsWidget = QWidget()
         layout = QVBoxLayout(confoundsWidget)
-        self.layouts = {}  # Dict to hold the layouts for each strategy
+        self.strategy_layouts = {}  # Dict to hold the layouts for each strategy
 
         for key, param in self.confound_options.items():
             h_layout = QHBoxLayout()
             label = QLabel(f"{key}:")
-            label.setFixedWidth(65)
+            label.setFixedWidth(70)
             h_layout.addWidget(label)
             h_layout.setContentsMargins(0, 0, 0, 0)
 
             # Info button content
             if key != "Cleaning\nstrategy":
+                label.setFixedWidth(145)
                 info_text = self.cleaning_info[key]
                 info_button = InfoButton(info_text)
 
@@ -2183,7 +2186,7 @@ class App(QMainWindow):
                 h_layout.addWidget(info_button)
 
             # Store the layout in the dictionary
-            self.layouts[key] = h_layout
+            self.strategy_layouts[key] = h_layout
             if key != "Cleaning\nstrategy":
                 self.hideCleaningLayout(h_layout)  # Initially hide all options except "strategy"
             layout.addLayout(h_layout)
@@ -2196,11 +2199,11 @@ class App(QMainWindow):
 
     def updateCleaningOptions(self):
         for strategy, checkbox in self.strategy_checkboxes.items():
-            if strategy in self.layouts:
+            if strategy in self.strategy_layouts:
                 if checkbox.isChecked():
-                    self.showCleaningLayout(self.layouts[strategy])
+                    self.showCleaningLayout(self.strategy_layouts[strategy])
                 else:
-                    self.hideCleaningLayout(self.layouts[strategy])
+                    self.hideCleaningLayout(self.strategy_layouts[strategy])
 
             # Compcor requires high pass
             if self.strategy_checkboxes["compcor"].isChecked():
@@ -2208,16 +2211,16 @@ class App(QMainWindow):
 
         # Handle special cases for scrub and compcor
         if "scrub" in self.strategy_checkboxes and self.strategy_checkboxes["scrub"].isChecked():
-            self.showCleaningLayout(self.layouts["fd_threshold"])
-            self.showCleaningLayout(self.layouts["std_dvars_threshold"])
+            self.showCleaningLayout(self.strategy_layouts["fd_threshold"])
+            self.showCleaningLayout(self.strategy_layouts["std_dvars_threshold"])
         else:
-            self.hideCleaningLayout(self.layouts["fd_threshold"])
-            self.hideCleaningLayout(self.layouts["std_dvars_threshold"])
+            self.hideCleaningLayout(self.strategy_layouts["fd_threshold"])
+            self.hideCleaningLayout(self.strategy_layouts["std_dvars_threshold"])
 
         if "compcor" in self.strategy_checkboxes and self.strategy_checkboxes["compcor"].isChecked():
-            self.showCleaningLayout(self.layouts["n_compcor"])
+            self.showCleaningLayout(self.strategy_layouts["n_compcor"])
         else:
-            self.hideCleaningLayout(self.layouts["n_compcor"])
+            self.hideCleaningLayout(self.strategy_layouts["n_compcor"])
 
     def showCleaningLayout(self, layout):
         for i in range(layout.count()):
@@ -2261,20 +2264,20 @@ class App(QMainWindow):
         # Set specific options for each strategy
         for strategy in strategy_list:
             if strategy == "motion":
-                args[strategy] = self.layouts[strategy].itemAt(1).widget().currentText()
+                args[strategy] = self.strategy_layouts[strategy].itemAt(1).widget().currentText()
             elif strategy == "wm_csf":
-                args[strategy] = self.layouts[strategy].itemAt(1).widget().currentText()
+                args[strategy] = self.strategy_layouts[strategy].itemAt(1).widget().currentText()
             elif strategy == "compcor":
-                args[strategy] = self.layouts[strategy].itemAt(1).widget().currentText()
-                args["n_compcor"] = self.layouts["n_compcor"].itemAt(1).widget().get_value()
+                args[strategy] = self.strategy_layouts[strategy].itemAt(1).widget().currentText()
+                args["n_compcor"] = self.strategy_layouts["n_compcor"].itemAt(1).widget().get_value()
             elif strategy == "global_signal":
-                args[strategy] = self.layouts[strategy].itemAt(1).widget().currentText()
+                args[strategy] = self.strategy_layouts[strategy].itemAt(1).widget().currentText()
             elif strategy == "ica_aroma":
-                args[strategy] = self.layouts[strategy].itemAt(1).widget().currentText()
+                args[strategy] = self.strategy_layouts[strategy].itemAt(1).widget().currentText()
             elif strategy == "scrub":
-                args[strategy] = self.layouts[strategy].itemAt(1).widget().value()
-                args["fd_threshold"] = self.layouts["fd_threshold"].itemAt(1).widget().value()
-                args["std_dvars_threshold"] = self.layouts["std_dvars_threshold"].itemAt(1).widget().value()
+                args[strategy] = self.strategy_layouts[strategy].itemAt(1).widget().value()
+                args["fd_threshold"] = self.strategy_layouts["fd_threshold"].itemAt(1).widget().value()
+                args["std_dvars_threshold"] = self.strategy_layouts["std_dvars_threshold"].itemAt(1).widget().value()
 
         # Demean is not a strategy, but a separate option
         args["demean"] = True if self.strategy_checkboxes["demean"].isChecked() else False
@@ -2344,6 +2347,7 @@ class App(QMainWindow):
 
         if self.bids_layout is not None:
             args = self.collectCleaningArguments()
+            print("HI", args)
             confounds, self.data.sample_mask = load_confounds(img_path, **args)
             mask = self.mask_name
 
@@ -4854,7 +4858,7 @@ class App(QMainWindow):
         secondRowLayout.addWidget(self.figsizeInput)
 
         # Plot Button
-        self.plotButton = QPushButton('   Create Plot   ', self)
+        self.plotButton = QPushButton(' Create Plot ', self)
         self.plotButton.clicked.connect(self.plotSpecificationCurve)
         secondRowLayout.addWidget(self.plotButton)
         self.plotButton.setEnabled(False)
@@ -4901,7 +4905,7 @@ class App(QMainWindow):
         firstRowLayout.addWidget(self.labelOffsetInput)
 
         # Plot Button
-        self.plotMvButton = QPushButton('   Update Plot   ', self)
+        self.plotMvButton = QPushButton(' Update Plot ', self)
         self.plotMvButton.clicked.connect(self.plotMultiverseSummary)
         firstRowLayout.addWidget(self.plotMvButton)
 
