@@ -2347,9 +2347,12 @@ class App(QMainWindow):
 
         if self.bids_layout is not None:
             args = self.collectCleaningArguments()
-            print("HI", args)
             confounds, self.data.sample_mask = load_confounds(img_path, **args)
             mask = self.mask_name
+
+            # Workaround for nilearn bug when later performing cleaning with an empty confounds df
+            if confounds.empty:
+                confounds = None
 
         if atlas in ["Power et al. (2011)", "Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
             if atlas == "Power et al. (2011)":
@@ -2357,7 +2360,6 @@ class App(QMainWindow):
             else:
                 rois, networks, self.data.roi_names = self.fetchAtlas(atlas, option)
 
-            print("Cleaing options:", rois, mask, radius, allow_ovelap, standardize, detrend, smoothing_fwhm, high_variance_confounds, low_pass, high_pass, tr)
             masker = maskers.NiftiSpheresMasker(seeds=rois, mask_img=mask, radius=radius, allow_overlap=allow_ovelap,
                                                 standardize=standardize, detrend=detrend, smoothing_fwhm=smoothing_fwhm, high_variance_confounds=high_variance_confounds,
                                                 low_pass=low_pass, high_pass=high_pass, t_r=tr)
@@ -2375,14 +2377,11 @@ class App(QMainWindow):
 
         else:
             atlas, labels = self.fetchAtlas(atlas, option)
-            print(atlas)
-            print("standardize:", standardize, "detrend:", detrend, "smoothing_fwhm:", smoothing_fwhm, "high_variance_confounds:", high_variance_confounds, "low_pass:", low_pass, "high_pass:", high_pass, "t_r:", tr)
-            print("confounds:", confounds)
             masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, mask_img=mask, background_label=0,
                                                standardize=standardize, detrend=detrend, smoothing_fwhm=smoothing_fwhm, high_variance_confounds=high_variance_confounds,
                                                low_pass=low_pass, high_pass=high_pass, t_r=tr)
             time_series = masker.fit_transform(img_path, confounds=confounds)
-            print(img_path)
+
         self.data.file_data = time_series
 
         return
