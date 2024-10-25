@@ -969,6 +969,10 @@ class App(QMainWindow):
         self.bids_detrendCheckbox = QCheckBox("Detrend")
         self.bids_highVarianceCheckbox = QCheckBox("Regress high variance confounds")
 
+        self.bids_standardizeCheckbox.setChecked(True)
+        self.bids_detrendCheckbox.setChecked(True)
+        self.bids_highVarianceCheckbox.setChecked(True)
+
         generalCleaningLayout.addItem(QSpacerItem(5, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
         generalCleaningLayout.addWidget(self.bids_standardizeCheckbox)
         generalCleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
@@ -2349,10 +2353,6 @@ class App(QMainWindow):
             args = self.collectCleaningArguments()
             confounds, self.data.sample_mask = load_confounds(img_path, **args)
             mask = self.mask_name
-
-            # Workaround for nilearn bug when later performing cleaning with an empty confounds df
-            if confounds.empty:
-                confounds = None
 
         if atlas in ["Power et al. (2011)", "Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
             if atlas == "Power et al. (2011)":
