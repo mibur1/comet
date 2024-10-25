@@ -2354,6 +2354,10 @@ class App(QMainWindow):
             confounds, self.data.sample_mask = load_confounds(img_path, **args)
             mask = self.mask_name
 
+            # Workaround for nilearn bug, will be fixed in the next nilearn release
+            if confounds is not None and confounds.empty:
+                confounds = None
+
         if atlas in ["Power et al. (2011)", "Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
             if atlas == "Power et al. (2011)":
                 rois = self.fetchAtlas(atlas, option)
