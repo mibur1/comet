@@ -1,6 +1,7 @@
 # Custom stuff
 testing_stuff/
 universe_*.py
+src/comet/resources/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
