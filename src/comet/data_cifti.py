@@ -1,4 +1,6 @@
+import os
 import sys
+import urllib
 import numpy as np
 import nibabel as nib
 nib.imageglobals.logger.setLevel(40)
@@ -6,10 +8,9 @@ from scipy.io import loadmat
 import importlib_resources
 
 """
-SECTION: Functiond for parcellating cifti data
- - Currently limited to a few included parcellatons, will be expanded in the future
+SECTION: Functions for parcellating cifti data
 """
-def parcellate(dtseries, atlas="glasser", method=np.mean, standardize=True):
+def parcellate(dtseries, atlas="schaefer_200_cortical", method=np.mean, standardize=True):
     """
     Parcellate cifti data (.dtseries.nii) using a given atlas.
 
@@ -22,9 +23,9 @@ def parcellate(dtseries, atlas="glasser", method=np.mean, standardize=True):
 
     atlas : string
         name of the atlas to use for parcellation. Options are:
-         - glasser (Glasser MMP cortical parcellation + subcortical)
-         - schaefer_kong (Schaefer 200 cortical parcellation)
-         - schaefer_tian (Schaefer 200 cortical parcellation + subcortical)
+            - schaefer_{x}_cortical     with x = 100, 200, 300 400, 500, 600, 700, 800, 900, 1000
+            - schaefer_{x}_subcortical  with x = 100, 200, 300 400, 500, 600, 700, 800, 900, 1000
+            - glasser_mmp_subcortical
 
     method : function
         function to use for parcellation. Only available option is np.mean
@@ -50,10 +51,11 @@ def parcellate(dtseries, atlas="glasser", method=np.mean, standardize=True):
         print("Error: Input must be a nibabel cifti image object or a numpy memmap object")
         return
 
-    rois, keys, _, _ = _prepare_atlas(atlas)
+    #rois, keys, _, _ = _prepare_atlas(atlas)
+    rois, keys, _, _ = _get_atlas(atlas)
 
-    # schaefer_kong includes the medial wall which we have to insert into the data
-    if atlas == "schaefer_kong":
+    # Schaefer cortical includes the medial wall which we have to insert into the data
+    if atlas.startswith("schaefer") and atlas.endswith("cortical"):
         with importlib_resources.path("comet.resources.atlas", "fs_LR_32k_medial_mask.mat") as maskdir:
             medial_mask = loadmat(maskdir)['medial_mask'].squeeze().astype(bool)
         idx = np.where(medial_mask == 0)[0]
@@ -83,9 +85,9 @@ def parcellate(dtseries, atlas="glasser", method=np.mean, standardize=True):
 
     return ts_parc
 
-def _prepare_atlas(atlas_name, debug=False):
+def _get_atlas(atlas_name, debug=False):
     """
-    Helper functio: Prepare a CIFTI-2 atlas for parcellation.
+    Helper functio: Get and prepare a CIFTI-2 atlas for parcellation.
 
     Parameters
     ----------
@@ -107,23 +109,45 @@ def _prepare_atlas(atlas_name, debug=False):
         - rgba : list
             RGBA values of each label.
     """
+    base_urls = {
+        "schaefer_cortical": "https://github.com/ThomasYeoLab/CBIG/raw/master/stable_projects/brain_parcellation/Schaefer2018_LocalGlobal/Parcellations/HCP/fslr32k/cifti/Schaefer2018_{parcels}Parcels_17Networks_order.dlabel.nii",
+        "schaefer_subcortical": "https://github.com/yetianmed/subcortex/raw/master/Group-Parcellation/3T/Cortex-Subcortex/Schaefer2018_{parcels}Parcels_7Networks_order_Tian_Subcortex_S4.dlabel.nii",
+        "glasser_mmp_subcortical": "Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors_with_Atlas_ROIs2.32k_fs_LR.dlabel.nii"
+    }
 
-    if atlas_name == "glasser":
-        with importlib_resources.path("comet.resources.atlas",
-                                      "Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors_with_Atlas_ROIs2.32k_fs_LR.dlabel.nii") as path:
-            atlas = nib.load(path)
-    elif atlas_name == "schaefer_kong":
-        with importlib_resources.path("comet.resources.atlas",
-                                      "Schaefer2018_200Parcels_Kong2022_17Networks_order.dlabel.nii") as path:
-            atlas = nib.load(path)
+    # Download (or load) the atlas
+    if "schaefer" in atlas_name:
+        try:
+            parts = atlas_name.split("_")
+            parcels = parts[1]
+            atlas_type = f"schaefer_{parts[2]}"
+            url = base_urls[atlas_type].format(parcels=parcels)
 
-    elif atlas_name == "schaefer_tian":
-        with importlib_resources.path("comet.resources.atlas",
-                                      "Schaefer2018_200Parcels_17Networks_order_Tian_Subcortex_S4.dlabel.nii") as path:
-            atlas = nib.load(path)
+        except (IndexError, KeyError):
+            raise ValueError(f"Invalid atlas name format or unsupported type '{atlas_name}'.")
+
+    elif atlas_name in base_urls:
+        url = base_urls[atlas_name]
+
     else:
-        sys.exit("Atlas must be any of glasser, schaefer_kong, or schaefer_tian")
+        raise ValueError(f"Atlas '{atlas_name}' not recognized. Please choose a valid atlas name.")
 
+    atlas_file_name = f"{atlas_name}.dlabel.nii" if "schaefer" in atlas_name else base_urls[atlas_name]
+
+    with importlib_resources.path("comet.resources.atlas", atlas_file_name) as atlas_path:
+        if not atlas_path.exists():
+            if "glasser" in atlas_name:
+                raise FileNotFoundError(
+                    f"Glasser atlas file '{atlas_file_name}' was not found\n"
+                    f"  Please download manually from: https://balsa.wustl.edu/file/87B9N\n"
+                    f"  and place it in the comet/src/comet/resources/atla folder.")
+            else:
+                urllib.request.urlretrieve(url, atlas_path)
+                print(f"Atlas not available. Downloading to: {atlas_path}")
+
+        atlas = nib.load(str(atlas_path))
+
+    # Prepare the atlas
     # Usually for dlabel.nii files we have the following header stucture
     #       axis 0: LabelAxis
     #       axix 1: BrainModelAxis
