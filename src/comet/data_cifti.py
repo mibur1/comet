@@ -55,7 +55,7 @@ def parcellate(dtseries, atlas="schaefer_200_cortical", method=np.mean, standard
     rois, keys, _, _ = _get_atlas(atlas)
 
     # Schaefer cortical includes the medial wall which we have to insert into the data
-    if atlas.startswith("schaefer") and atlas.endswith("cortical"):
+    if atlas.startswith("schaefer") and atlas.endswith("_cortical"):
         with importlib_resources.path("comet.resources.atlas", "fs_LR_32k_medial_mask.mat") as maskdir:
             medial_mask = loadmat(maskdir)['medial_mask'].squeeze().astype(bool)
         idx = np.where(medial_mask == 0)[0]
@@ -91,8 +91,11 @@ def _get_atlas(atlas_name, debug=False):
 
     Parameters
     ----------
-    atlas_name : str
-        Name of the atlas to use for parcellation. Options are: 'glasser', 'schaefer_kong', 'schaefer_tian'.
+    atlas_name : string
+        name of the atlas to use for parcellation. Options are:
+            - schaefer_{x}_cortical     with x = 100, 200, 300 400, 500, 600, 700, 800, 900, 1000
+            - schaefer_{x}_subcortical  with x = 100, 200, 300 400, 500, 600, 700, 800, 900, 1000
+            - glasser_mmp_subcortical
     debug : bool, optional
         Flag to provide additional debugging information. Default is False.
 
@@ -115,7 +118,7 @@ def _get_atlas(atlas_name, debug=False):
         "glasser_mmp_subcortical": "Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors_with_Atlas_ROIs2.32k_fs_LR.dlabel.nii"
     }
 
-    # Download (or load) the atlas
+    # Prepare and check atlas file names
     if "schaefer" in atlas_name:
         try:
             parts = atlas_name.split("_")
@@ -134,6 +137,7 @@ def _get_atlas(atlas_name, debug=False):
 
     atlas_file_name = f"{atlas_name}.dlabel.nii" if "schaefer" in atlas_name else base_urls[atlas_name]
 
+    # Download (or load) the atlas
     with importlib_resources.path("comet.resources.atlas", atlas_file_name) as atlas_path:
         if not atlas_path.exists():
             if "glasser" in atlas_name:
