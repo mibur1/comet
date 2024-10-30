@@ -51,7 +51,6 @@ def parcellate(dtseries, atlas="schaefer_200_cortical", method=np.mean, standard
         print("Error: Input must be a nibabel cifti image object or a numpy memmap object")
         return
 
-    #rois, keys, _, _ = _prepare_atlas(atlas)
     rois, keys, _, _ = _get_atlas(atlas)
 
     # Schaefer cortical includes the medial wall which we have to insert into the data
