@@ -248,5 +248,5 @@ def _get_labels(atlas):
         Tuple containing the labes and rgba values
     """
 
-    _, _, labels, rgba = _prepare_atlas(atlas)
+    _, _, labels, rgba = _get_atlas(atlas)
     return labels, rgba
