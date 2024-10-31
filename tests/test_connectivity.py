@@ -2,7 +2,6 @@ import pytest
 import numpy as np
 from comet import connectivity
 import teneto
-from matplotlib import pyplot as plt
 
 # Fixture to load data once for all tests
 @pytest.fixture(scope="module")

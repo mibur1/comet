@@ -1,5 +1,3 @@
-import os
-import sys
 import urllib
 import numpy as np
 import nibabel as nib
@@ -40,11 +38,11 @@ def parcellate(dtseries, atlas="schaefer_200_cortical", method=np.mean, standard
         parcellated time series data
     """
 
-    if type(dtseries) == nib.cifti2.cifti2.Cifti2Image:
+    if isinstance(dtseries) == nib.cifti2.cifti2.Cifti2Image:
         ts = dtseries.get_fdata()
-    elif type(dtseries) == np.ndarray or type(dtseries) == np.memmap:
+    elif isinstance(dtseries) == np.ndarray or isinstance(dtseries) == np.memmap:
         ts = dtseries
-    elif type(dtseries) == str:
+    elif isinstance(dtseries) == str:
         data = nib.load(dtseries)
         ts = data.get_fdata()
     else:

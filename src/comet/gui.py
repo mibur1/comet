@@ -254,9 +254,9 @@ class ParameterOptions:
     }
 
     ATLAS_OPTIONS_CIFTI = {
-        "Glasser MMP":              ["360"],
-        "Schaefer Kong":            ["200"],
-        "Schaefer Tian":            ["254"]
+        "Glasser MMP":              ["379"],
+        "Schaefer Kong":            ["100", "200", "300", "400", "500", "600", "700", "800", "900", "1000"],
+        "Schaefer Tian":            ["154", "254", "354", "454", "554", "654", "754", "854", "954", "1054"]
     }
 
     INFO_OPTIONS = {
@@ -2370,11 +2370,31 @@ class App(QMainWindow):
             time_series = masker.fit_transform(img_path, confounds=confounds)
 
         # TODO: Add support for other resolutions (e.g. automatically download them)
-        elif atlas in ["Glasser MMP", "Schaefer Kong", "Schaefer Tian"]:
+        elif atlas.startswith("Schaefer") or atlas.startswhith("Glasser"):
             atlas_map = {
-                "Glasser MMP": "glasser",
-                "Schaefer Kong": "schaefer_kong",
-                "Schaefer Tian": "schaefer_tian"
+                "Schaefer 100": "schaefer_100_cortical",
+                "Schaefer 200": "schaefer_200_cortical",
+                "Schaefer 300": "schaefer_300_cortical",
+                "Schaefer 400": "schaefer_400_cortical",
+                "Schaefer 500": "schaefer_500_cortical",
+                "Schaefer 600": "schaefer_600_cortical",
+                "Schaefer 700": "schaefer_700_cortical",
+                "Schaefer 800": "schaefer_800_cortical",
+                "Schaefer 900": "schaefer_900_cortical",
+                "Schaefer 1000": "schaefer_1000_cortical",
+
+                "Schaefer 100 + subcortical": "schaefer_100_subcortical",
+                "Schaefer 200 + subcortical": "schaefer_200_subcortical",
+                "Schaefer 300 + subcortical": "schaefer_300_subcortical",
+                "Schaefer 400 + subcortical": "schaefer_400_subcortical",
+                "Schaefer 500 + subcortical": "schaefer_500_subcortical",
+                "Schaefer 600 + subcortical": "schaefer_600_subcortical",
+                "Schaefer 700 + subcortical": "schaefer_700_subcortical",
+                "Schaefer 800 + subcortical": "schaefer_800_subcortical",
+                "Schaefer 900 + subcortical": "schaefer_900_subcortical",
+                "Schaefer 1000 + subcortical": "schaefer_1000_subcortical",
+
+                "Glasser MMP + subcortical": "glasser_mmp_subcortical",
             }
             time_series_raw = data_cifti.parcellate(img_path, atlas=atlas_map.get(atlas, None))
             time_series = data.clean(time_series_raw, standardize=standardize, detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)

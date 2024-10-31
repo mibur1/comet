@@ -3,7 +3,6 @@ import sys
 import numpy as np
 from scipy.io import loadmat
 from comet import graph
-from matplotlib import pyplot as plt
 
 # Fixture to load data once for all tests
 @pytest.fixture(scope="module")
