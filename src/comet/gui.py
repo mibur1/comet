@@ -14,7 +14,7 @@ import mat73
 from scipy.io import loadmat, savemat
 from dataclasses import dataclass, field
 from importlib import resources as pkg_resources, util
-from typing import Any, Dict, get_type_hints, get_origin, Literal
+from typing import Any, Dict, get_type_hints, get_origin, Literal, Optional
 
 # BIDS data imports
 from bids import BIDSLayout
@@ -2370,35 +2370,37 @@ class App(QMainWindow):
             time_series = masker.fit_transform(img_path, confounds=confounds)
 
         # TODO: Add support for other resolutions (e.g. automatically download them)
-        elif atlas.startswith("Schaefer") or atlas.startswhith("Glasser"):
+        elif atlas.startswith("Schaefer") or atlas.startswith("Glasser"):
             atlas_map = {
-                "Schaefer 100": "schaefer_100_cortical",
-                "Schaefer 200": "schaefer_200_cortical",
-                "Schaefer 300": "schaefer_300_cortical",
-                "Schaefer 400": "schaefer_400_cortical",
-                "Schaefer 500": "schaefer_500_cortical",
-                "Schaefer 600": "schaefer_600_cortical",
-                "Schaefer 700": "schaefer_700_cortical",
-                "Schaefer 800": "schaefer_800_cortical",
-                "Schaefer 900": "schaefer_900_cortical",
-                "Schaefer 1000": "schaefer_1000_cortical",
+                "Schaefer Kong 100": "schaefer_100_cortical",
+                "Schaefer Kong 200": "schaefer_200_cortical",
+                "Schaefer Kong 300": "schaefer_300_cortical",
+                "Schaefer Kong 400": "schaefer_400_cortical",
+                "Schaefer Kong 500": "schaefer_500_cortical",
+                "Schaefer Kong 600": "schaefer_600_cortical",
+                "Schaefer Kong 700": "schaefer_700_cortical",
+                "Schaefer Kong 800": "schaefer_800_cortical",
+                "Schaefer Kong 900": "schaefer_900_cortical",
+                "Schaefer Kong 1000": "schaefer_1000_cortical",
 
-                "Schaefer 100 + subcortical": "schaefer_100_subcortical",
-                "Schaefer 200 + subcortical": "schaefer_200_subcortical",
-                "Schaefer 300 + subcortical": "schaefer_300_subcortical",
-                "Schaefer 400 + subcortical": "schaefer_400_subcortical",
-                "Schaefer 500 + subcortical": "schaefer_500_subcortical",
-                "Schaefer 600 + subcortical": "schaefer_600_subcortical",
-                "Schaefer 700 + subcortical": "schaefer_700_subcortical",
-                "Schaefer 800 + subcortical": "schaefer_800_subcortical",
-                "Schaefer 900 + subcortical": "schaefer_900_subcortical",
-                "Schaefer 1000 + subcortical": "schaefer_1000_subcortical",
+                "Schaefer Tian 154": "schaefer_100_subcortical",
+                "Schaefer Tian 254": "schaefer_200_subcortical",
+                "Schaefer Tian 354": "schaefer_300_subcortical",
+                "Schaefer Tian 454": "schaefer_400_subcortical",
+                "Schaefer Tian 554": "schaefer_500_subcortical",
+                "Schaefer Tian 654": "schaefer_600_subcortical",
+                "Schaefer Tian 754": "schaefer_700_subcortical",
+                "Schaefer Tian 854": "schaefer_800_subcortical",
+                "Schaefer Tian 954": "schaefer_900_subcortical",
+                "Schaefer Tian 1054": "schaefer_1000_subcortical",
 
-                "Glasser MMP + subcortical": "glasser_mmp_subcortical",
+                "Glasser MMP 379": "glasser_mmp_subcortical",
             }
-            time_series_raw = data_cifti.parcellate(img_path, atlas=atlas_map.get(atlas, None))
-            time_series = data.clean(time_series_raw, standardize=standardize, detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
 
+            atlas_string = atlas_map.get(f"{atlas} {option}", None)
+            time_series_raw = data_cifti.parcellate(img_path, atlas=atlas_string)
+            time_series = data.clean(time_series_raw, standardize=standardize, detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
+            print(img_path, atlas_string)
         else:
             atlas, labels = self.fetchAtlas(atlas, option)
             masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, mask_img=mask, background_label=0,
@@ -3554,12 +3556,16 @@ class App(QMainWindow):
                 param_default = 1 if isinstance(param.default, inspect._empty) else param.default
 
                 if param_default == None:
-                    if param_type == bool:
+                    if param_type == bool or param_type == Optional[bool]:
                         param_default = False
-                    elif param_type == int or param_type == float:
+                    elif param_type == int or param_type == Optional[int]:
                         param_default = 1
+                    elif param_type == float or param_type == Optional[float]:
+                        param_default = 1.0
                     else:
                         param_default = "empty"
+
+                print(name, param, param_type, param_default)
 
                 # Create a label for the parameter and set its fixed width
                 param_label = QLabel(f"{name}:")
@@ -3576,19 +3582,19 @@ class App(QMainWindow):
                     is_first_parameter = False  # Update the flag so this block runs only for the first parameter
                 else:
                     # Bool
-                    if param_type == bool:
+                    if param_type == bool or param_type == Optional[bool]:
                         param_widget = QComboBox()
                         param_widget.addItems(["False", "True"])
                         param_widget.setCurrentIndex(int(param_default))
                     # Int
-                    elif param_type == int:
+                    elif param_type == int or param_type == Optional[int]:
                         param_widget = QSpinBox()
                         param_widget.setValue(param_default)
                         param_widget.setMaximum(10000)
                         param_widget.setMinimum(-10000)
                         param_widget.setSingleStep(param_default)
                     # Float
-                    elif param_type == float:
+                    elif param_type == float or param_type == Optional[float]:
                         param_widget = QDoubleSpinBox()
                         if name == "threshold":
                             param_widget.setValue(0.0)
@@ -3754,7 +3760,7 @@ class App(QMainWindow):
             output_arrays = []
 
             data = self.data.graph_out[0]
-            label = self.data.graph_out[1]
+            label = self.graphAnalysisComboBox.currentText()
 
             if isinstance(data, (int, float)):
                 output_string += f"{label}: {data:.2f}, "
@@ -3800,7 +3806,6 @@ class App(QMainWindow):
                     elif value.ndim == 2:
                         # For a 2D array, use imshow
                         im = ax.imshow(value, cmap='coolwarm', vmin=-vmax, vmax=vmax)
-                        ax.set_title(key)
 
                         # Create the colorbar
                         divider = make_axes_locatable(ax)
@@ -3811,7 +3816,7 @@ class App(QMainWindow):
                     else:
                         self.graphTextbox.append("Graph output data is not in expected format.")
 
-                    ax.set_title(key)
+                    ax.set_title(label)
 
         else:
             self.graphTextbox.append("Graph output data is not in expected format.")
