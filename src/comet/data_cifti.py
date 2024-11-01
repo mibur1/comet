@@ -38,11 +38,11 @@ def parcellate(dtseries, atlas="schaefer_200_cortical", method=np.mean, standard
         parcellated time series data
     """
 
-    if isinstance(dtseries) == nib.cifti2.cifti2.Cifti2Image:
+    if isinstance(dtseries, nib.cifti2.cifti2.Cifti2Image):
         ts = dtseries.get_fdata()
-    elif isinstance(dtseries) == np.ndarray or isinstance(dtseries) == np.memmap:
+    elif isinstance(dtseries, np.ndarray) or isinstance(dtseries, np.memmap):
         ts = dtseries
-    elif isinstance(dtseries) == str:
+    elif isinstance(dtseries, str):
         data = nib.load(dtseries)
         ts = data.get_fdata()
     else:
