@@ -33,8 +33,7 @@ class Multiverse:
     """
 
     def __init__(self, name="multiverse"):
-
-        # If the  multiverse is instantiated in the GUI, the name will be the path of the template script
+        # If the multiverse is instantiated in the GUI, the name will be the path of the template script
         if os.path.exists(name):
             self.name = name.split('/')[-1].split('.')[0]
             self.calling_script_dir = name.split('.')[0]
@@ -43,7 +42,8 @@ class Multiverse:
             self.name = name
             self.calling_script_dir = os.getcwd() if in_notebook() else os.path.abspath(sys.modules['__main__'].__file__).rsplit('/', 1)[0]
 
-        self.multiverse_dir = os.path.join(self.calling_script_dir, self.name) if in_notebook() else self.calling_script_dir
+        proposed_multiverse_dir = os.path.join(self.calling_script_dir, self.name) if in_notebook() else self.calling_script_dir
+        self.multiverse_dir = proposed_multiverse_dir if not os.path.exists(proposed_multiverse_dir) else self.calling_script_dir
         self.results_dir = os.path.join(self.multiverse_dir, "results")
 
     # Public methods
@@ -708,12 +708,7 @@ class Multiverse:
         if value["func"].startswith("comet.connectivity"):
             function_call = f"{func}({input_data}, **{args}).estimate()"
         else:
-            if "ci" in args:
-                ci = args["ci"]
-                del args["ci"]
-                function_call = f"{func}({input_data}, ci={ci}[0], **{args})"
-            else:
-                function_call = f"{func}({input_data}, **{args})"
+            function_call = f"{func}({input_data}, **{args})"
 
         return function_call
 
