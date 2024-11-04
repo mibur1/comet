@@ -3083,10 +3083,10 @@ class App(QMainWindow):
 
             # The second subplot occupies the 3rd row
             ax2 = self.timeSeriesFigure.add_subplot(gs[2, 0])
-            mean_edge_values = np.mean(self.data.dfc_edge_ts.T, axis=0)
-            ax2.plot(mean_edge_values)
-            ax2.set_xlim(0, len(mean_edge_values) - 1)
-            ax2.set_title("Mean time series")
+            rms_edge_values = np.sqrt(np.mean(self.data.dfc_edge_ts.T ** 2, axis=0))
+            ax2.plot(rms_edge_values)
+            ax2.set_xlim(0, len(rms_edge_values) - 1)
+            ax2.set_title("RMS Time Series")
             ax2.set_xlabel("Time (TRs)")
             ax2.set_ylabel("Mean Edge Value")
 
@@ -3565,8 +3565,6 @@ class App(QMainWindow):
                     else:
                         param_default = "empty"
 
-                print(name, param, param_type, param_default)
-
                 # Create a label for the parameter and set its fixed width
                 param_label = QLabel(f"{name}:")
                 param_label.setFixedWidth(max_label_width + 20)  # Add some padding
@@ -3592,7 +3590,7 @@ class App(QMainWindow):
                         param_widget.setValue(param_default)
                         param_widget.setMaximum(10000)
                         param_widget.setMinimum(-10000)
-                        param_widget.setSingleStep(param_default)
+                        param_widget.setSingleStep(1)
                     # Float
                     elif param_type == float or param_type == Optional[float]:
                         param_widget = QDoubleSpinBox()
@@ -3602,7 +3600,8 @@ class App(QMainWindow):
                             param_widget.setValue(param_default)
                         param_widget.setMaximum(1.0)
                         param_widget.setMinimum(0.0)
-                        param_widget.setSingleStep(0.01)
+                        param_widget.setSingleStep(0.1)
+                        param_widget.setDecimals(2)
                     # String
                     elif get_origin(type_hints.get(name)) is Literal:
                         options = type_hints.get(name).__args__
