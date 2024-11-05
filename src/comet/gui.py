@@ -1623,6 +1623,7 @@ class App(QMainWindow):
         self.loadContainer.hide()
         self.boldCanvas.draw()
         self.bids_layout = None
+        self.data.sample_mask = None
 
         try:
             self.subjectDropdown.currentIndexChanged.disconnect(self.onSubjectChanged)
@@ -1659,6 +1660,8 @@ class App(QMainWindow):
                     self.subjectDropdownContainer.show()
                     self.subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
                     self.loadContainer.show()
+                    self.calculateContainer.hide()
+
                     self.transposeCheckbox.show()
                     self.createCarpetPlot()
 
@@ -1702,6 +1705,7 @@ class App(QMainWindow):
             self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
             self.onAtlasChanged()
             self.loadContainer.show()
+            self.calculateContainer.show()
             self.parcellationContainer.show()
             self.transposeCheckbox.hide()
 
@@ -2318,6 +2322,8 @@ class App(QMainWindow):
         mask = None
         confounds = None
 
+        print("HI", bids_flag, img_path, atlas, option)
+
         # Collect cleaning arguments
         if bids_flag:
             radius = self.bids_sphereRadiusSpinbox.value() if self.bids_sphereRadiusSpinbox.value() > 0 else None # none is single voxel
@@ -2369,8 +2375,8 @@ class App(QMainWindow):
                                                 low_pass=low_pass, high_pass=high_pass, t_r=tr)
             time_series = masker.fit_transform(img_path, confounds=confounds)
 
-        # TODO: Add support for other resolutions (e.g. automatically download them)
-        elif atlas.startswith("Schaefer") or atlas.startswith("Glasser"):
+        # Select the correct atlas for Schaefer and Glasser
+        elif (atlas.startswith("Schaefer") or atlas.startswith("Glasser")) and atlas != "Schaefer et al. (2018)":
             atlas_map = {
                 "Schaefer Kong 100": "schaefer_100_cortical",
                 "Schaefer Kong 200": "schaefer_200_cortical",
@@ -3736,10 +3742,11 @@ class App(QMainWindow):
                 ax.set_xlabel("ROI")
                 ax.set_ylabel(measure)
 
-                # Calculate mean and variance, and update the textbox
+                # Calculate mean and std, and update the textbox
                 mean_val = np.mean(self.data.graph_out)
-                var_val = np.var(self.data.graph_out)
-                self.graphTextbox.append(f"{measure} (mean: {mean_val:.2f}, variance: {var_val:.2f})")
+                print(self.data.graph_out)
+                std_val = np.std(self.data.graph_out)
+                self.graphTextbox.append(f"{measure} (mean: {mean_val:.2f}, std: {std_val:.2f})")
 
             elif self.data.graph_out.ndim == 2:
                 # For a 2D array, use imshow
@@ -3797,10 +3804,10 @@ class App(QMainWindow):
                         ax.set_xlabel("ROI")
                         ax.set_ylabel(measure)
 
-                        # Calculate mean and variance, and update the textbox
+                        # Calculate mean and std, and update the textbox
                         mean_val = np.mean(value)
-                        var_val = np.var(value)
-                        self.graphTextbox.append(f"{measure} (mean: {mean_val:.2f}, variance: {var_val:.2f})")
+                        std_val = np.std(value)
+                        self.graphTextbox.append(f"{measure} (mean: {mean_val:.2f}, variance: {std_val:.2f})")
 
                     elif value.ndim == 2:
                         # For a 2D array, use imshow
