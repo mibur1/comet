@@ -33,17 +33,9 @@ class Multiverse:
     """
 
     def __init__(self, name="multiverse"):
-        # If the multiverse is instantiated in the GUI, the name will be the path of the template script
-        if os.path.exists(name):
-            self.name = name.split('/')[-1].split('.')[0]
-            self.calling_script_dir = name.split('.')[0]
-        # If the name is not a valid path, we set up the multiverse in the current working directory
-        else:
-            self.name = name
-            self.calling_script_dir = os.getcwd() if in_notebook() else os.path.abspath(sys.modules['__main__'].__file__).rsplit('/', 1)[0]
-
-        proposed_multiverse_dir = os.path.join(self.calling_script_dir, self.name) if in_notebook() else self.calling_script_dir
-        self.multiverse_dir = proposed_multiverse_dir if not os.path.exists(proposed_multiverse_dir) else self.calling_script_dir
+        self.name = name.split('/')[-1].split('.')[0]
+        self.calling_script_dir = os.getcwd() if in_notebook() else os.path.abspath(sys.modules['__main__'].__file__).rsplit('/', 1)[0]
+        self.multiverse_dir = os.path.join(self.calling_script_dir, self.name) if in_notebook() else self.calling_script_dir
         self.results_dir = os.path.join(self.multiverse_dir, "results")
 
     # Public methods

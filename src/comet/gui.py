@@ -3980,37 +3980,48 @@ class App(QMainWindow):
             elif type == "Graph":
                 comboboxItem = self.graphOptions.get(func_name, None)
 
+            if comboboxItem is None:
+                print(f"Warning: comboboxItem for function '{func_name}' not found in the provided type '{type}'.")
+                continue  # Skip if combobox item is not found
+
             functionComboBox.setCurrentText(comboboxItem)
             decisionNameInput.setText(decisionName)
 
             # Get the parameter container and update its widgets with the dict contents
             parameterContainer = decisionWidget.findChild(QWidget, comboboxItem)
 
+            if parameterContainer is None:
+                print(f"Warning: parameterContainer '{comboboxItem}' not found.")
+                continue  # Skip if parameter container is not found
+
             # Set the name
             name_edit = parameterContainer.findChild(QLineEdit, f"name_edit_{comboboxItem}")
-            name_edit.setText(option['name'])
+            if name_edit:
+                name_edit.setText(option['name'])
+            else:
+                print(f"Warning: name_edit '{f'name_edit_{comboboxItem}'}' not found in parameterContainer.")
 
             # Set the args
             args = option.get('args', {})
             for arg_name, arg_value in args.items():
                 # Ensure that when you created the widgets, the object name was set as arg_name
                 widget = parameterContainer.findChild(QWidget, f"{arg_name}_{comboboxItem}")
-                if isinstance(widget, QLineEdit):
-                    widget.setText(str(arg_value))
-                elif isinstance(widget, QComboBox):
-                    widget.setCurrentText(str(arg_value))
-                elif isinstance(widget, QSpinBox):
-                    widget.setValue(arg_value)
-                elif isinstance(widget, QDoubleSpinBox):
-                    widget.setValue(arg_value)
+                if widget:
+                    if isinstance(widget, QLineEdit):
+                        widget.setText(str(arg_value))
+                    elif isinstance(widget, QComboBox):
+                        widget.setCurrentText(str(arg_value))
+                    elif isinstance(widget, QSpinBox):
+                        widget.setValue(arg_value)
+                    elif isinstance(widget, QDoubleSpinBox):
+                        widget.setValue(arg_value)
+                else:
+                    print(f"Warning: Widget '{arg_name}_{comboboxItem}' not found in parameterContainer.")
 
             # Add options and collapse the container
             addOptionButton.click()
 
-        #functionComboBox.setCurrentText("CONT Sliding Window")
         collapseButton.click()
-
-        return
 
     def addNewDecision(self, layout, buttonLayoutWidget):
         """
@@ -4622,7 +4633,6 @@ class App(QMainWindow):
 
                 # Parse the script and extract components
                 extracted_content = self.extractScriptComponents(self.multiverseScriptContent)
-
                 self.scriptDisplay.setText(extracted_content)
                 self.scriptDisplay.setReadOnly(False)
 
