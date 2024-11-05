@@ -5,7 +5,7 @@ It is recommended to use a dedicated `Anaconda <https://www.anaconda.com/downloa
 
 .. code-block:: shell
 
-    conda create -n comet python==3.11
+    conda create -n comet python==3.10
     conda activate comet
 
 Installation is then possible through the Python Package Index (PyPI) with the pip or pip3 command, depending on your system:
