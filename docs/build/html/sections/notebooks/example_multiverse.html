@@ -130,19 +130,18 @@
                         <span class="p">}],</span>
 
     <span class="s2">&quot;graph_measures&quot;</span><span class="p">:</span> <span class="p">[{</span>
-                        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;eff_bct&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;func&quot;</span><span class="p">:</span> <span class="s2">&quot;bct.efficiency_wei&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;efficiency&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;func&quot;</span><span class="p">:</span> <span class="s2">&quot;comet.graph.efficiency&quot;</span><span class="p">,</span>
                         <span class="s2">&quot;args&quot;</span><span class="p">:</span> <span class="p">{</span>
                                 <span class="s2">&quot;W&quot;</span><span class="p">:</span> <span class="s2">&quot;W&quot;</span><span class="p">,</span>
                                 <span class="s2">&quot;local&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
                                 <span class="p">}</span>
                         <span class="p">},</span>
                         <span class="p">{</span>
-                        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;eff_comet&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;func&quot;</span><span class="p">:</span> <span class="s2">&quot;comet.graph.efficiency&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;clustering&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;func&quot;</span><span class="p">:</span> <span class="s2">&quot;comet.graph.clustering_coef&quot;</span><span class="p">,</span>
                         <span class="s2">&quot;args&quot;</span><span class="p">:</span> <span class="p">{</span>
                                 <span class="s2">&quot;W&quot;</span><span class="p">:</span> <span class="s2">&quot;W&quot;</span><span class="p">,</span>
-                                <span class="s2">&quot;local&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
                                 <span class="p">}</span>
                         <span class="p">}]</span>
 <span class="p">}</span>
@@ -202,12 +201,11 @@
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">multiverse</span> <span class="o">=</span> <span class="n">Multiverse</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;example_decisions&quot;</span><span class="p">)</span>
 <span class="n">multiverse</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">analysis_template</span><span class="p">,</span> <span class="n">forking_paths</span><span class="p">,</span> <span class="n">invalid_paths</span><span class="p">)</span>
-<span class="n">multiverse</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
-<span class="n">multiverse</span><span class="o">.</span><span class="n">visualize</span><span class="p">(</span><span class="n">universe</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">node_size</span><span class="o">=</span><span class="mi">2500</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">multiverse</span><span class="o">.</span><span class="n">summary</span><span class="p">();</span>
 </pre></div>
 </div>
 </div>
-<div class="nboutput docutils container">
+<div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area rendered_html docutils container">
@@ -245,7 +243,7 @@
       <td>1.0</td>
       <td>True</td>
       <td>LeiDA</td>
-      <td>eff_bct</td>
+      <td>efficiency</td>
     </tr>
     <tr>
       <th>1</th>
@@ -254,7 +252,7 @@
       <td>1.0</td>
       <td>True</td>
       <td>LeiDA</td>
-      <td>eff_comet</td>
+      <td>clustering</td>
     </tr>
     <tr>
       <th>2</th>
@@ -263,7 +261,7 @@
       <td>1.0</td>
       <td>True</td>
       <td>JC11</td>
-      <td>eff_bct</td>
+      <td>efficiency</td>
     </tr>
     <tr>
       <th>3</th>
@@ -272,7 +270,7 @@
       <td>1.0</td>
       <td>True</td>
       <td>JC11</td>
-      <td>eff_comet</td>
+      <td>clustering</td>
     </tr>
     <tr>
       <th>4</th>
@@ -281,18 +279,11 @@
       <td>1.0</td>
       <td>False</td>
       <td>LeiDA</td>
-      <td>eff_bct</td>
+      <td>efficiency</td>
     </tr>
   </tbody>
 </table>
 </div></div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="../../_images/sections_notebooks_example_multiverse_5_1.png" src="../../_images/sections_notebooks_example_multiverse_5_1.png" />
-</div>
 </div>
 <p>You can now run individual universes by specifying a number, or run all of them (parallelization is then also supported):</p>
 <div class="nbinput docutils container">

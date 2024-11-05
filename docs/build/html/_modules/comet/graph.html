@@ -816,7 +816,7 @@
     <span class="n">G_rand</span> <span class="o">=</span> <span class="n">randomise</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
 
     <span class="c1"># Path length calculations for the network, ignore divide by zero warnings</span>
-    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">divide</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">invalid</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">divide</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">):</span>
             <span class="n">G_reg_inv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">G_reg</span><span class="p">)</span>
             <span class="n">G_rand_inv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">G_rand</span><span class="p">)</span>
             <span class="n">G_inv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">G</span><span class="p">)</span>
@@ -844,8 +844,10 @@
     <span class="n">delta_C</span> <span class="o">=</span> <span class="n">diff_clus</span>
     <span class="n">delta_L</span> <span class="o">=</span> <span class="n">diff_path</span>
 
-    <span class="n">alpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan</span><span class="p">(</span><span class="n">delta_L</span> <span class="o">/</span> <span class="n">delta_C</span><span class="p">)</span>
-    <span class="n">delta</span> <span class="o">=</span> <span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="c1"># We ignore divide by zero warnings here as arctan(inf) is pi/2</span>
+    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">divide</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">):</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan</span><span class="p">(</span><span class="n">delta_L</span> <span class="o">/</span> <span class="n">delta_C</span><span class="p">)</span>
+        <span class="n">delta</span> <span class="o">=</span> <span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
 
     <span class="k">return</span> <span class="n">SWP</span><span class="p">,</span> <span class="n">delta_C</span><span class="p">,</span> <span class="n">delta_L</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">delta</span></div>
 

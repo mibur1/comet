@@ -52,6 +52,7 @@
      "name": "stdout",
      "output_type": "stream",
      "text": [
+      "[get_dataset_dir] Dataset found in /home/mibur/nilearn_data/ABIDE_pcp\n",
       "Calculating Jackknife Correlation, please wait...\n",
       "JC dFC has shape: (161, 161, 186)\n"
      ]
@@ -80,7 +81,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 7,
+   "execution_count": 3,
    "metadata": {},
    "outputs": [
     {
@@ -162,7 +163,7 @@
    "name": "python",
    "nbconvert_exporter": "python",
    "pygments_lexer": "ipython3",
-   "version": "3.11.5"
+   "version": "3.10.0"
   }
  },
  "nbformat": 4,
