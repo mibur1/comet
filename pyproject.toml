@@ -6,7 +6,7 @@ authors = [
 ]
 description = "Dynamic functional connectivity toolbox for multiverse analysis"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 classifiers = [
   "Programming Language :: Python :: 3",
   "License :: OSI Approved :: MIT License",
