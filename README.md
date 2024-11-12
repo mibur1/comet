@@ -19,6 +19,8 @@ Please also note that the package is in an early stage of development, with freq
 It is recommended to use a dedicated Python environment (e.g. through conda) to mitigate the risk of potential version conflicts. Installation is possible through the Python Package Index (PyPI) or from the source code in this repository:
 
 ```
+conda create -n comet python==3.11
+conda activate comet
 pip install comet-toolbox
 ```
 

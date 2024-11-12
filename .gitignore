@@ -2,6 +2,7 @@
 testing_stuff/
 universe_*.py
 src/comet/resources/*
+.conda/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

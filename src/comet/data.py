@@ -107,11 +107,11 @@ def load_example(ftype=None):
     """
 
     if ftype == "pkl":
-        with importlib_resources.path("comet.resources", "simulation.pkl") as file_path:
+        with importlib_resources.path("comet.data", "simulation.pkl") as file_path:
             with open(file_path, 'rb') as file:
                 data = pickle.load(file)
     else:
-        with importlib_resources.path("comet.resources", "simulation.txt") as file_path:
+        with importlib_resources.path("comet.data", "simulation.txt") as file_path:
             data = np.loadtxt(file_path)
 
     return data
@@ -126,7 +126,7 @@ def load_single_state():
         Single state time series data
     """
 
-    with importlib_resources.path("comet.resources", "single_state.txt") as file_path:
+    with importlib_resources.path("comet.data", "single_state.txt") as file_path:
         data = np.loadtxt(file_path)
 
     return data

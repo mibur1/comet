@@ -11,9 +11,10 @@ import numpy as np
 import pandas as pd
 
 import mat73
+import importlib_resources
 from scipy.io import loadmat, savemat
 from dataclasses import dataclass, field
-from importlib import resources as pkg_resources, util
+from importlib import util
 from typing import Any, Dict, get_type_hints, get_origin, Literal, Optional
 
 # BIDS data imports
@@ -2481,7 +2482,7 @@ class App(QMainWindow):
         self.boldCanvas.draw()
 
     def plotLogo(self, figure=None):
-        with pkg_resources.path("comet.resources.img", "logo.png") as file_path:
+        with importlib_resources.path("comet.data.img", "logo.png") as file_path:
             logo = imread(file_path)
 
         figure.clear()

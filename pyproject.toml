@@ -1,6 +1,6 @@
 [project]
 name = "comet-toolbox"
-version = "0.7"
+version = "0.9"
 authors = [
   {name="Micha Burkhardt", email="micha.burkhardt@uol.de"},
 ]
@@ -61,4 +61,3 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/comet"]
-data-files = ["src/comet/resources", "src/comet/resources/img"]

@@ -59,7 +59,7 @@ def parcellate(dtseries, atlas="schaefer_200_cortical", method=np.mean, standard
 
     # Schaefer cortical includes the medial wall which we have to insert into the data
     if atlas.startswith("schaefer") and atlas.endswith("_cortical"):
-        with importlib_resources.path("comet.resources.atlas", "fs_LR_32k_medial_mask.mat") as maskdir:
+        with importlib_resources.path("comet.data.atlas", "fs_LR_32k_medial_mask.mat") as maskdir:
             medial_mask = loadmat(maskdir)['medial_mask'].squeeze().astype(bool)
         idx = np.where(medial_mask == 0)[0]
 
@@ -141,7 +141,7 @@ def _get_atlas(atlas_name, debug=False):
     atlas_file_name = f"{atlas_name}.dlabel.nii" if "schaefer" in atlas_name else base_urls[atlas_name]
 
     # Download (or load) the atlas
-    with importlib_resources.path("comet.resources.atlas", atlas_file_name) as atlas_path:
+    with importlib_resources.path("comet.data.atlas", atlas_file_name) as atlas_path:
         if not atlas_path.exists():
             if "glasser" in atlas_name:
                 raise FileNotFoundError(
