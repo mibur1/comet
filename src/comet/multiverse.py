@@ -35,11 +35,13 @@ class Multiverse:
     def __init__(self, name="multiverse"):
         self.name = name.split('/')[-1].split('.')[0]
         self.calling_script_dir = os.getcwd() if in_notebook() else os.path.abspath(sys.modules['__main__'].__file__).rsplit('/', 1)[0]
-        self.multiverse_dir = os.path.join(self.calling_script_dir, self.name) if in_notebook() else self.calling_script_dir
+        self.multiverse_dir = os.path.join(self.calling_script_dir, self.name)
         self.results_dir = os.path.join(self.multiverse_dir, "results")
 
+        print(self.calling_script_dir, self.multiverse_dir, self.results_dir)
+
     # Public methods
-    def create(self, analysis_template, forking_paths, invalid_paths=None):
+    def create(self, analysis_template, forking_paths, config=None):
         """
         Create the individual universe scripts
 
@@ -83,11 +85,23 @@ class Multiverse:
 
         # Generate all unique combinations of forking paths
         keys, values = zip(*forking_paths.items())
-        all_universes = list(itertools.product(*values))
 
+        if config.get("order"):
+            all_universes = []
+            for order in config["order"]:
+                # Reorder the values based on the specified order
+                reordered_values = [forking_paths[key] for key in order]
+                
+                # Generate all unique combinations for the reordered values
+                reordered_universes = list(itertools.product(*reordered_values))
+                all_universes.extend(reordered_universes)
+        else:
+            # Default behavior: Only provided order
+            all_universes = list(itertools.product(*values))
+        
         # Remove universes that contain invalid paths
-        if invalid_paths is not None:
-            valid_universes = [combination for combination in all_universes if not self._check_paths(combination, invalid_paths)]
+        if config.get("invalid_paths"):
+            valid_universes = [combination for combination in all_universes if not self._check_paths(combination, config["invalid_paths"])]
         else:
             valid_universes = all_universes
 
