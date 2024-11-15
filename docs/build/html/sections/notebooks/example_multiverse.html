@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" data-content_root="../../">
 <head>
@@ -6,27 +8,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Usage example: Multiverse Analysis &mdash; Comet Toolbox 2024 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
-      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
 
   
-  <!--[if lt IE 9]>
-    <script src="../../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
-  
-        <script src="../../_static/jquery.js?v=5d32c60e"></script>
-        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script src="../../_static/documentation_options.js?v=6fefd858"></script>
-        <script src="../../_static/doctools.js?v=9a2dae69"></script>
-        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-        <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
-        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=6fefd858"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="Usage example: Graph measures" href="example_graph.html" />
-    <link rel="prev" title="Usage example: Simulation multiverse" href="example_fmri.html" /> 
+    <link rel="prev" title="Usage example: Simulated fMRI multiverse" href="example_fmri.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -53,8 +51,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="example_dfc.html">Usage example: Dynamic functional connectivity</a></li>
-<li class="toctree-l2"><a class="reference internal" href="example_eeg.html">Usage example: EEG preprocessing multiverse</a></li>
-<li class="toctree-l2"><a class="reference internal" href="example_fmri.html">Usage example: Simulation multiverse</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_eeg.html">Usage example: Simulated EEG multiverse</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_fmri.html">Usage example: Simulated fMRI multiverse</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Usage example: Multiverse Analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="example_graph.html">Usage example: Graph measures</a></li>
 </ul>
@@ -90,10 +88,6 @@
              
   <section id="Usage-example:-Multiverse-Analysis">
 <h1>Usage example: Multiverse Analysis<a class="headerlink" href="#Usage-example:-Multiverse-Analysis" title="Link to this heading"></a></h1>
-<p>Required comet modules are:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">comet.multiverse</span></code> (contains all functions related to multiverse analysis)</p></li>
-</ul>
 <p>To conduct a multiverse analysis, the forking paths must be specified in a dictionary. Options can contain:</p>
 <ul class="simple">
 <li><p>strings</p></li>
@@ -101,6 +95,7 @@
 <li><p>boolean values</p></li>
 <li><p>comet dFC methods</p></li>
 <li><p>comet and bct graph measures</p></li>
+<li><p>any kind of function</p></li>
 </ul>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
@@ -146,9 +141,15 @@
                         <span class="p">}]</span>
 <span class="p">}</span>
 
-<span class="c1"># Universes that contain the following decisions (in order, but not required to be contiguous) will not be allowed</span>
-<span class="n">invalid_paths</span> <span class="o">=</span> <span class="p">[(</span><span class="s2">&quot;Hello&quot;</span><span class="p">,</span> <span class="mf">4.2</span><span class="p">),</span>
-                 <span class="p">(</span><span class="s2">&quot;world&quot;</span><span class="p">,</span> <span class="s2">&quot;eff_bct&quot;</span><span class="p">)]</span>
+<span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;order&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;strings&quot;</span><span class="p">,</span> <span class="s2">&quot;numbers&quot;</span><span class="p">,</span> <span class="s2">&quot;booleans&quot;</span><span class="p">,</span> <span class="s2">&quot;dfc_measures&quot;</span><span class="p">,</span> <span class="s2">&quot;graph_measures&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;strings&quot;</span><span class="p">,</span> <span class="s2">&quot;booleans&quot;</span><span class="p">,</span> <span class="s2">&quot;numbers&quot;</span><span class="p">,</span> <span class="s2">&quot;dfc_measures&quot;</span><span class="p">,</span> <span class="s2">&quot;graph_measures&quot;</span><span class="p">),</span>
+    <span class="p">],</span>
+    <span class="s2">&quot;invalid_paths&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;Hello&quot;</span><span class="p">,</span> <span class="mf">4.2</span><span class="p">)</span>
+    <span class="p">]</span>
+<span class="p">}</span>
 </pre></div>
 </div>
 </div>
@@ -174,7 +175,7 @@
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Decision 3:</span><span class="se">{{</span><span class="s2">booleans</span><span class="se">}}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="c1"># Load example data and calculate dFC + local efficiency</span>
-    <span class="n">ts</span> <span class="o">=</span> <span class="n">comet</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">load_example</span><span class="p">()</span>
+    <span class="n">ts</span> <span class="o">=</span> <span class="n">comet</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">load_example</span><span class="p">()</span>
     <span class="n">dfc</span> <span class="o">=</span> <span class="p">{{</span><span class="n">dfc_measures</span><span class="p">}}</span>
     <span class="n">dfc</span> <span class="o">=</span> <span class="n">dfc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dfc</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="n">dfc</span> <span class="c1">#required as LeiDA returns multiple outputs</span>
 
@@ -185,7 +186,7 @@
         <span class="n">efficiency</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">{{</span><span class="n">graph_measures</span><span class="p">}}</span>
 
     <span class="n">result</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;efficiency&quot;</span><span class="p">:</span> <span class="n">efficiency</span><span class="p">}</span>
-    <span class="n">comet</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">save_universe_results</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">universe</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
+    <span class="n">comet</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">save_universe_results</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">universe</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -200,7 +201,7 @@
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">multiverse</span> <span class="o">=</span> <span class="n">Multiverse</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;example_decisions&quot;</span><span class="p">)</span>
-<span class="n">multiverse</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">analysis_template</span><span class="p">,</span> <span class="n">forking_paths</span><span class="p">,</span> <span class="n">invalid_paths</span><span class="p">)</span>
+<span class="n">multiverse</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">analysis_template</span><span class="p">,</span> <span class="n">forking_paths</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
 <span class="n">multiverse</span><span class="o">.</span><span class="n">summary</span><span class="p">();</span>
 </pre></div>
 </div>
@@ -228,11 +229,11 @@
     <tr style="text-align: right;">
       <th></th>
       <th>Universe</th>
-      <th>strings</th>
-      <th>numbers</th>
-      <th>booleans</th>
-      <th>dfc_measures</th>
-      <th>graph_measures</th>
+      <th>Decision 1</th>
+      <th>Decision 2</th>
+      <th>Decision 3</th>
+      <th>Decision 4</th>
+      <th>Decision 5</th>
     </tr>
   </thead>
   <tbody>
@@ -240,46 +241,46 @@
       <th>0</th>
       <td>Universe_1</td>
       <td>Hello</td>
-      <td>1.0</td>
+      <td>1</td>
       <td>True</td>
-      <td>LeiDA</td>
-      <td>efficiency</td>
+      <td>{'name': 'LeiDA', 'func': 'comet.connectivity....</td>
+      <td>{'name': 'efficiency', 'func': 'comet.graph.ef...</td>
     </tr>
     <tr>
       <th>1</th>
       <td>Universe_2</td>
       <td>Hello</td>
-      <td>1.0</td>
+      <td>1</td>
       <td>True</td>
-      <td>LeiDA</td>
-      <td>clustering</td>
+      <td>{'name': 'LeiDA', 'func': 'comet.connectivity....</td>
+      <td>{'name': 'clustering', 'func': 'comet.graph.cl...</td>
     </tr>
     <tr>
       <th>2</th>
       <td>Universe_3</td>
       <td>Hello</td>
-      <td>1.0</td>
+      <td>1</td>
       <td>True</td>
-      <td>JC11</td>
-      <td>efficiency</td>
+      <td>{'name': 'JC11', 'func': 'comet.connectivity.J...</td>
+      <td>{'name': 'efficiency', 'func': 'comet.graph.ef...</td>
     </tr>
     <tr>
       <th>3</th>
       <td>Universe_4</td>
       <td>Hello</td>
-      <td>1.0</td>
+      <td>1</td>
       <td>True</td>
-      <td>JC11</td>
-      <td>clustering</td>
+      <td>{'name': 'JC11', 'func': 'comet.connectivity.J...</td>
+      <td>{'name': 'clustering', 'func': 'comet.graph.cl...</td>
     </tr>
     <tr>
       <th>4</th>
       <td>Universe_5</td>
       <td>Hello</td>
-      <td>1.0</td>
+      <td>1</td>
       <td>False</td>
-      <td>LeiDA</td>
-      <td>efficiency</td>
+      <td>{'name': 'LeiDA', 'func': 'comet.connectivity....</td>
+      <td>{'name': 'efficiency', 'func': 'comet.graph.ef...</td>
     </tr>
   </tbody>
 </table>
@@ -313,7 +314,7 @@ Calculating LeiDA, please wait...
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="example_fmri.html" class="btn btn-neutral float-left" title="Usage example: Simulation multiverse" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="example_fmri.html" class="btn btn-neutral float-left" title="Usage example: Simulated fMRI multiverse" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="example_graph.html" class="btn btn-neutral float-right" title="Usage example: Graph measures" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
