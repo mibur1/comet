@@ -38,8 +38,6 @@ class Multiverse:
         self.multiverse_dir = os.path.join(self.calling_script_dir, self.name)
         self.results_dir = os.path.join(self.multiverse_dir, "results")
 
-        print(self.calling_script_dir, self.multiverse_dir, self.results_dir)
-
     # Public methods
     def create(self, analysis_template, forking_paths, config=None):
         """
@@ -116,7 +114,7 @@ class Multiverse:
                 file.write(rendered_content)
 
         # Generate CSV file with the decisions of all universes
-        self._create_csv(self.results_dir, valid_universes, keys)
+        self._create_csv(self.results_dir, valid_universes, keys, config)
 
         # Save forking paths
         with open(f"{self.results_dir}/forking_paths.pkl", "wb") as file:
@@ -718,7 +716,7 @@ class Multiverse:
 
         return function_call
 
-    def _create_csv(self, csv_path, all_universes, keys):
+    def _create_csv(self, csv_path, all_universes, keys, config):
         """
         Internal function: Create a CSV file with the parameters of all universes
 
@@ -728,26 +726,32 @@ class Multiverse:
             Path to save the CSV file
 
         all_universes : list
-            List of all universes
-
-        keys : list
-            List of keys for the CSV file
+            List of all universes (combinations of parameters)
         """
+        
+        if config.get("order"):
+            fieldnames = ['Universe'] + [f"Decision {i+1}" for i in range(len(keys))]
+        else:
+            fieldnames = ['Universe'] + list(keys)
 
         # Generate CSV file with the parameters of all universes
         with open(f"{csv_path}/multiverse_summary.csv", "w", newline='') as csvfile:
-            fieldnames = ['Universe'] + list(keys)  # 'Universe' as the first column
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
 
             for i, combination in enumerate(all_universes, start=1):
                 context = {'Universe': f"Universe_{i}"}
 
-                for key, value in zip(keys, combination):
-                    if isinstance(value, dict):
-                        context[key] = value.get('name', '')
-                    else:
-                        context[key] = value
+                # Populate the decision columns
+                if config.get("order"):
+                    for j, value in enumerate(combination):
+                        context[f"Decision {j+1}"] = value
+                else:
+                   for key, value in zip(keys, combination):
+                        if isinstance(value, dict):
+                            context[key] = value.get('name', '')
+                        else:
+                            context[key] = value
 
                 writer.writerow(context)
 

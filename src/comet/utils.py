@@ -214,3 +214,5 @@ def clean(time_series, runs=None, detrend=False, confounds=None, standardize=Fal
 
     return signal.clean(time_series, detrend=detrend, confounds=confounds, standardize=standardize, standardize_confounds=standardize_confounds, \
                         filter=filter, low_pass=low_pass, high_pass=high_pass, t_r=t_r, ensure_finite=ensure_finite)
+
+

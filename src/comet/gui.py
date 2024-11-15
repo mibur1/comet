@@ -40,7 +40,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout,
      QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QGroupBox
 
 # Comet imports and state-based dFC methods from pydfc
-from . import connectivity, data_utils, data_cifti, graph, multiverse
+from . import cifti, connectivity, graph, multiverse, utils
 import pydfc
 
 
@@ -2405,8 +2405,8 @@ class App(QMainWindow):
             }
 
             atlas_string = atlas_map.get(f"{atlas} {option}", None)
-            time_series_raw = data_cifti.parcellate(img_path, atlas=atlas_string)
-            time_series = data_utils.clean(time_series_raw, standardize=standardize, detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
+            time_series_raw = cifti.parcellate(img_path, atlas=atlas_string)
+            time_series = utils.clean(time_series_raw, standardize=standardize, detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
             print(img_path, atlas_string)
         else:
             atlas, labels = self.fetchAtlas(atlas, option)
