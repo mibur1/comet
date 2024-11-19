@@ -1,7 +1,7 @@
 # Custom stuff
 testing_stuff/
 universe_*.py
-src/comet/resources/*
+src/comet/data/*
 .conda/
 
 # Byte-compiled / optimized / DLL files
