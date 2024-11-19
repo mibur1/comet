@@ -87,16 +87,27 @@ class Multiverse:
         if config.get("order"):
             all_universes = []
             for order in config["order"]:
-                # Reorder the values based on the specified order
-                reordered_values = [forking_paths[key] for key in order]
                 
+                reordered_values = [forking_paths[key] for key in order]
+                unused_keys = [key for key in keys if key not in order]
+
                 # Generate all unique combinations for the reordered values
                 reordered_universes = list(itertools.product(*reordered_values))
-                all_universes.extend(reordered_universes)
+
+                # Format each combination as (key, value) tuples and include None for remaining keys
+                formatted_universes = [
+                    tuple((key, value) for key, value in zip(order, combination)) +
+                    tuple((key, "unused") for key in unused_keys)
+                    for combination in reordered_universes
+                ]
+                all_universes.extend(formatted_universes)
         else:
             # Default behavior: Only provided order
-            all_universes = list(itertools.product(*values))
-        
+            all_universes = [
+                tuple((key, value) for key, value in zip(keys, combination))
+                for combination in itertools.product(*values)
+            ]
+                
         # Remove universes that contain invalid paths
         if config.get("invalid_paths"):
             valid_universes = [combination for combination in all_universes if not self._check_paths(combination, config["invalid_paths"])]
@@ -105,8 +116,15 @@ class Multiverse:
 
         # Create Python scripts for each combination
         for i, combination in enumerate(valid_universes, start=1):
-            context = {key: self._format_type(value) for key, value in zip(keys, combination)}
+            context = {key: self._format_type(value) for key, value in combination}
             rendered_content = jinja_template.render(**context)
+            
+            # Convert combination to a dictionary
+            forking_dict = {key: value for key, value in combination}
+            
+            if config.get("order"):
+                forking_dict_str = f"# Ordering information was provided. The ordered decisions for this universe are:\nforking_paths = {forking_dict}\n\n"
+                rendered_content = forking_dict_str + rendered_content
 
             # Write to Python script
             save_path = os.path.join(self.multiverse_dir, f"universe_{i}.py")
@@ -114,7 +132,7 @@ class Multiverse:
                 file.write(rendered_content)
 
         # Generate CSV file with the decisions of all universes
-        self._create_csv(self.results_dir, valid_universes, keys, config)
+        self._create_csv(self.results_dir, valid_universes, keys)
 
         # Save forking paths
         with open(f"{self.results_dir}/forking_paths.pkl", "wb") as file:
@@ -184,7 +202,7 @@ class Multiverse:
 
         return multiverse_summary
 
-    def visualize(self, universe=None, cmap="Set2", node_size=1500, figsize=(8,5), label_offset=0.04):
+    def visualize(self, universe=None, cmap="Set2", node_size=1500, figsize=(8,5), label_offset=0.04, exclude_single=False):
         """
         Visualize the multiverse as a network.
 
@@ -204,44 +222,52 @@ class Multiverse:
         """
 
         multiverse_summary = self._read_csv()
+        value_columns = [col for col in multiverse_summary.columns if (col.startswith("Value") or col == "Universe")]
+        decision_columns = [col for col in multiverse_summary.columns if col.startswith("Decision")]
 
-        # Function to recursively add nodes and edges excluding single-option parameters
-        def add_hierarchical_decision_nodes(G, root_node, parameters, level=0):
+        multiverse_values = multiverse_summary[value_columns]
+        multiverse_decision = multiverse_summary[decision_columns]
+
+        # Function to recursively add nodes and edges
+        def add_hierarchical_decision_nodes(G, root_node, parameters, level=0, exclude_single=False):
             if level >= len(parameters):
                 return G  # No more parameters to process
 
             parameter, options = parameters[level]
-            if len(options) > 1:  # Only consider parameters with more than one option
+            if not exclude_single or len(options) > 1:  # Include node if exclude_single is False or there are multiple options
                 for option in options:
                     # Create a node for each option and connect it to the parent node
                     node_name = f"{parameter}: {option}"
                     G.add_node(node_name, level=level + 1, option=option, decision=parameter)  # Store both option and decision
                     G.add_edge(root_node, node_name)
                     # Recursively add nodes for the next level/parameter
-                    G = add_hierarchical_decision_nodes(G, node_name, parameters, level + 1)
+                    G = add_hierarchical_decision_nodes(G, node_name, parameters, level + 1, exclude_single)
             else:
-                # If the current parameter has only one option, skip to the next parameter
-                G = add_hierarchical_decision_nodes(G, root_node, parameters, level + 1)
+                # If excluding single-option parameters, skip to the next parameter
+                G = add_hierarchical_decision_nodes(G, root_node, parameters, level + 1, exclude_single)
 
             return G
 
         # List of dicts. Each dict is a decision with its options
+        value_to_decision_map = {value_col: decision_col for value_col, decision_col in zip(value_columns[1:], decision_columns)}
+
         parameters = [
-            (parameter, multiverse_summary[parameter].unique())
-            for parameter in multiverse_summary.columns[1:]
-            if len(multiverse_summary[parameter].unique()) > 1
+            (value_to_decision_map.get(parameter, parameter), multiverse_values[parameter].unique())
+            for parameter in multiverse_values.columns[1:]
+            if len(multiverse_values[parameter].unique()) > 1
         ]
+        parameters = [(decision, values[pd.notna(values)]) for decision, values in parameters] # remove nans
 
         # Initialize and build the graph
         G = nx.DiGraph()
         root_node = 'Start'
         G.add_node(root_node, level=0, label="Start")  # Ensure the root node has the 'level' attribute and label
-        G = add_hierarchical_decision_nodes(G, root_node, parameters)
+        G = add_hierarchical_decision_nodes(G, root_node, parameters, exclude_single=exclude_single)
 
         values = ["Start"]  # Initialize the list with the "Start" value
         if universe is not None:
             # Get the decisions for the desired universe
-            filtered_df = multiverse_summary[multiverse_summary['Universe'] == f"Universe_{universe}"]
+            filtered_df = multiverse_values[multiverse_values['Universe'] == f"Universe_{universe}"]
             for column in filtered_df.columns:
                 if column not in [param_name for param_name, _ in parameters]:
                     filtered_df = filtered_df.drop(columns=column)
@@ -284,9 +310,22 @@ class Multiverse:
             nodes_at_level = [node for node in G.nodes if G.nodes[node].get('level') == level]
             nx.draw_networkx_nodes(G, pos, nodelist=nodes_at_level, node_size=node_size, node_color=[level_colors[level] for _ in nodes_at_level], ax=ax)
 
-        # Draw labels
-        node_labels = {node: G.nodes[node]['option'] if node != root_node \
-                    else G.nodes[node]['label'] for node in G.nodes}  # Use only the option as a node label
+        # Draw labels using corresponding entries from multiverse_decision DataFrame
+        node_labels = {}
+        for node in G.nodes:
+            if node != root_node and 'decision' in G.nodes[node]:
+                decision = G.nodes[node]['decision']
+                option = G.nodes[node]['option']
+                
+                # Find the first matching row where the column equals the decision
+                if decision in multiverse_decision.columns:
+                    decision_label = multiverse_decision[decision].iloc[0]  # Extract the first value for simplicity
+                    node_labels[node] = f"{decision_label}\n{option}"  # Combine the corresponding decision entry with the option
+                else:
+                    node_labels[node] = f"{decision}\n{option}"  # Fallback if no matching entry found
+            else:
+                node_labels[node] = G.nodes[node]['label']  # For the root node
+
         nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=12, ax=ax)
 
         # Identify and annotate the bottom-most node at each level with the decision label
@@ -663,7 +702,7 @@ class Multiverse:
         formatted_value : string
             The formatted value
         """
-
+    
         if isinstance(value, str):
             return f"'{value}'"  # Strings are wrapped in quotes
         elif isinstance(value, int):
@@ -678,6 +717,8 @@ class Multiverse:
             return value.__name__  # If the forking path is a class, we return the name of the class
         elif callable(value):
             return value.__name__ # If the forking path is a function, we return the name of the function
+        elif value is None:
+            return 'None'
         else:
             raise TypeError(f"Unsupported type for {value} which is of type {type(value)}")
 
@@ -716,7 +757,7 @@ class Multiverse:
 
         return function_call
 
-    def _create_csv(self, csv_path, all_universes, keys, config):
+    def _create_csv(self, csv_path, all_universes, keys):
         """
         Internal function: Create a CSV file with the parameters of all universes
 
@@ -727,12 +768,17 @@ class Multiverse:
 
         all_universes : list
             List of all universes (combinations of parameters)
+
+        keys : list
+            List of keys for the CSV file. Used when the order is consistent.
+
+        config : dict
+            Configuration dictionary. Used to check for the 'order' key.
         """
-        
-        if config.get("order"):
-            fieldnames = ['Universe'] + [f"Decision {i+1}" for i in range(len(keys))]
-        else:
-            fieldnames = ['Universe'] + list(keys)
+        fieldnames = ['Universe']
+        for i in range(len(keys)):
+            fieldnames.append(f"Decision {i+1}")
+            fieldnames.append(f"Value {i+1}")
 
         # Generate CSV file with the parameters of all universes
         with open(f"{csv_path}/multiverse_summary.csv", "w", newline='') as csvfile:
@@ -742,16 +788,10 @@ class Multiverse:
             for i, combination in enumerate(all_universes, start=1):
                 context = {'Universe': f"Universe_{i}"}
 
-                # Populate the decision columns
-                if config.get("order"):
-                    for j, value in enumerate(combination):
-                        context[f"Decision {j+1}"] = value
-                else:
-                   for key, value in zip(keys, combination):
-                        if isinstance(value, dict):
-                            context[key] = value.get('name', '')
-                        else:
-                            context[key] = value
+                # Populate the decision and value columns
+                for j, (key, value) in enumerate(combination):
+                    context[f"Decision {j+1}"] = key
+                    context[f"Value {j+1}"] = value
 
                 writer.writerow(context)
 
