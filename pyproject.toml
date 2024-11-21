@@ -1,6 +1,6 @@
 [project]
 name = "comet-toolbox"
-version = "0.9"
+version = "0.9.2"
 authors = [
   {name="Micha Burkhardt", email="micha.burkhardt@uol.de"},
 ]
@@ -49,8 +49,8 @@ doc = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/mibur1/dfc-multiverse"
-Issues = "https://github.com/mibur1/dfc-multiverse/issues"
+Homepage = "https://github.com/mibur1/comet"
+Issues = "https://github.com/mibur1/comet/issues"
 
 [project.scripts]
 comet-gui = "comet.gui:run"
