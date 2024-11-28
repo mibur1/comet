@@ -149,9 +149,9 @@ def save_universe_results(data, universe=os.path.abspath(__file__)):
         raise ValueError("Data must be povided as a dictionary.")
 
     calling_script_dir = os.path.dirname(universe)
-
+    print("DEBUG", calling_script_dir, universe)
     # A bit of regex to get the universe number from the filename
-    match = re.search(r'universe_(\d+).py', universe)
+    match = re.search(r'universe_(\d+).py', calling_script_dir)
     universe_number = int(match.group(1))
 
     savedir = calling_script_dir + "/results"
