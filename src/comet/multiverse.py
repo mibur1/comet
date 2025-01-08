@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import csv
 import glob
@@ -39,7 +40,7 @@ class Multiverse:
         self.results_dir = os.path.join(self.multiverse_dir, "results")
 
     # Public methods
-    def create(self, analysis_template, forking_paths, config=None):
+    def create(self, analysis_template, forking_paths, config={}):
         """
         Create the individual universe scripts
 
@@ -504,6 +505,7 @@ class Multiverse:
 
         # Check the length of the results
         result, decisions = sorted_universes[0]
+
         if hasattr(result, '__len__') and len(result) < 30:
             print(f"Warning: Only {len(result)} samples were available for the t-test and CI.")
 
@@ -552,7 +554,19 @@ class Multiverse:
             colormap = plt.cm.get_cmap(cmap, num_groups)
             colors = [colormap(i) for i in range(num_groups)]
 
-            for decision, option in decisions.items():
+            # Temporary solution for the new multiverse structure, the entire specification curve script needs to be reworked
+            formatted_decisions = {}
+            formatted_decisions["Universe"] = decisions["Universe"]
+
+            dc = 1 # Decision counter
+            while f"Decision {dc}" in decisions and f"Value {dc}" in decisions:
+                key = decisions[f"Decision {dc}"]
+                value = decisions[f"Value {dc}"]
+                formatted_decisions[key] = value
+                dc += 1
+
+            # Plot the scatter points
+            for decision, option in formatted_decisions.items():
                 if option in decision_info[0] and decision in decision_info[3]:
                     index = decision_info[0].index(option)
                     plot_pos = decision_info[1][index]
