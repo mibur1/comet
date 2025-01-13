@@ -355,7 +355,7 @@ class Multiverse:
 
     def specification_curve(self, measure, baseline=None, p_value=None, ci=None, smooth_ci=True, \
                             title="Specification Curve", name_map=None, cmap="Set3", linewidth=2, figsize=(16,9), \
-                            height_ratio=(2,1), fontsize=10, dotsize=50, ftype="png"):
+                            height_ratio=(2,1), fontsize=10, dotsize=50, ftype="png", dpi=72):
         """
         Create and save a specification curve plot from multiverse results
 
@@ -638,7 +638,7 @@ class Multiverse:
                 if min(p_vals) <= p_value:
                     legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=9, markerfacecolor=sig_color, markeredgecolor=sig_color, label=f"p < 0.05"))
                 if max(p_vals) > p_value:
-                    legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=9, markerfacecolor="black", markeredgecolor="black", label=f"p > 0.05"))
+                    legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=9, markerfacecolor="black", markeredgecolor="black", label=f"p ≥ 0.05"))
             else:
                 print("Warning: No p-values were calculated (less than 30 samples)")
 
@@ -647,7 +647,7 @@ class Multiverse:
             ax[0].legend(handles=legend_items, loc='upper left', fontsize=fontsize)
 
         # Save the plot
-        plt.savefig(f"{self.results_dir}/specification_curve.{ftype}", bbox_inches='tight')
+        plt.savefig(f"{self.results_dir}/specification_curve.{ftype}", bbox_inches='tight', dpi=dpi)
 
         return fig
 
