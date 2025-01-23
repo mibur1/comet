@@ -7,6 +7,8 @@ import pandas as pd
 import importlib_resources
 from nilearn import signal
 from scipy.io import loadmat
+from pydfc import TIME_SERIES
+
 
 
 def load_timeseries(path=None):
@@ -213,3 +215,23 @@ def clean(time_series, runs=None, detrend=False, confounds=None, standardize=Fal
     return signal.clean(time_series, detrend=detrend, confounds=confounds, standardize=standardize, standardize_confounds=standardize_confounds, \
                         filter=filter, low_pass=low_pass, high_pass=high_pass, t_r=t_r, ensure_finite=ensure_finite)
 
+def create_state_fc_input(data=None, subjects=None, tr=None, locs=None, labels=None):
+    
+    if not data or not subjects or not tr or len(data) < 2 or len(subjects) < 2:
+        raise ValueError("Data, subjects, and tr must be provided for at least two subjects")
+
+    if not len(data) == len(subjects):
+        raise ValueError("Data and subjects length must match")
+
+    locs = np.zeros((data[0].shape[0], 3)) if locs is None else locs
+    labels = list(np.zeros(data[0].shape[0])) if labels is None else labels
+
+    print(f"Creating TIME_SERIES object with time series of shape: {data[0].shape}.")
+    print("Please make sure time is the second dimension (otherwise transpose the input data first).")
+
+    dataobj = TIME_SERIES(data=data[0], subj_id=subjects[0], Fs=tr, locs=locs, node_labels=labels)
+    
+    for i in range(1, len(subjects)):
+        dataobj.append_ts(new_time_series=data[i], subj_id=subjects[i])
+
+    return dataobj

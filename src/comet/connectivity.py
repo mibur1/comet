@@ -1217,7 +1217,7 @@ class DCC(ConnectivityMethod):
 
         return R
 
-class EdgeTimeSeries(ConnectivityMethod):
+class EdgeConnectivity(ConnectivityMethod):
     """
     Edge-centric connectivity method.
 
@@ -1248,32 +1248,39 @@ class EdgeTimeSeries(ConnectivityMethod):
 
         super().__init__(time_series, 0, standardize, False, False)
         self.standardizeData = standardizeData
-        self.eTS = None
-        self.u = None # Indices of the upper triangle of the connectivity matrix.
-        self.v = None # Indices of the upper triangle of the connectivity matrix.
+        self.u = None # Row indices of the upper triangle of the connectivity matrix
+        self.v = None # Column indices of the upper triangle of the connectivity matrix
 
-    def estimate(self):
+    def estimate(self, type: Literal["eTS", "eFC"] = "eTS"):
         """
         Calculate edge-centric connectivity.
+
+        Parameters
+        ----------
+        type : string, optional
+            The type of connectivity to calculate. Default is "eTS".
+                - eTS: returns the edge time series (edges x time)
+                - eFC: returns the edge functional connectivity (edges x edges x time).
 
         Returns
         -------
         np.ndarray
-            Dynamic functional connectivity as an Edge x Eedge x Time array.
+            Dynamic functional connectivity as an Edge x Edge x Time array.
         """
         z = zscore(self.time_series, axis=0, ddof=1) if self.standardizeData else self.time_series
         self.u, self.v = np.triu_indices(self.time_series.shape[1], k=1)
         a = np.multiply(z[:, self.u], z[:, self.v]) # edge time series
 
-        b = a.T @ a # inner product
+        if type == "eTS":
+            return a
+
+        b = a.T @ a # Inner product
         c = np.sqrt(np.diag(b)) # Square root of the diagonal elements (variance) to normalize
-        d = np.outer(c, c) ## Create the normalization matrix
-        dfc = b / d # Element-wise division to get the correlation matrix
+        d = np.outer(c, c) # Normalization matrix
+        eFC = b / d # Element-wise division to get the correlation matrix
 
-        dfc = self.postproc(dfc)
-        self.eTS = a
-
-        return dfc
+        eFC = self.postproc(eFC)
+        return eFC
 
 
 """
@@ -1423,7 +1430,7 @@ class Cap(BaseDFCMethod):
 
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
-                 subject: int = 0,
+                 subject: int = None,
                  n_states: int = 5,
                  n_subj_clusters: int = 5,
                  normalization: bool = True,
@@ -1454,7 +1461,8 @@ class Cap(BaseDFCMethod):
         self.params['normalization'] = normalization
 
         self.params['subjects'] = list(self.time_series.data_dict.keys())
-        self.sub_id = self.params['subjects'][self.params['subject']]
+        self.sub_id = self.params['subjects'][self.params['subject']] if subject != None else None
+        self.measure = None
 
     def estimate(self):
         """
@@ -1465,10 +1473,14 @@ class Cap(BaseDFCMethod):
         np.ndarray
             Dynamic functional connectivity estimated by the CAP method.
         """
-        measure = CAP(**self.params)
-        measure.estimate_FCS(time_series=self.time_series)
-        dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
-        return dFC
+        self.measure = CAP(**self.params)
+        self.measure.estimate_FCS(time_series=self.time_series)
+        
+        if self.params['subject'] == None:
+            return self.measure
+        else:
+            dFC = self.measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
+            return dFC
 
 class Sliding_Window_Clustr(BaseDFCMethod):
     """
@@ -1500,7 +1512,7 @@ class Sliding_Window_Clustr(BaseDFCMethod):
 
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
-                 subject: int = 0,
+                 subject: int = None,
                  windowsize: int = 44,
                  n_overlap: float = 0.5,
                  tapered_window: bool = True,
@@ -1546,7 +1558,8 @@ class Sliding_Window_Clustr(BaseDFCMethod):
         self.params['normalization'] = normalization
 
         self.params['subjects'] = list(self.time_series.data_dict.keys())
-        self.sub_id = self.params['subjects'][self.params['subject']]
+        self.sub_id = self.params['subjects'][self.params['subject']] if subject != None else None
+        self.measure = None
 
         if not self.params['clstr_base_measure'] in self.base_methods_name_lst:
             raise ValueError("Base measure not recognized.")
@@ -1560,10 +1573,14 @@ class Sliding_Window_Clustr(BaseDFCMethod):
         np.ndarray
             Dynamic functional connectivity estimated by the sliding window clustering method.
         """
-        measure = SLIDING_WINDOW_CLUSTR(**self.params)
-        measure.estimate_FCS(time_series=self.time_series)
-        dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
-        return dFC
+        self.measure = SLIDING_WINDOW_CLUSTR(**self.params)
+        self.measure.estimate_FCS(time_series=self.time_series)
+
+        if self.params['subject'] == None:
+            return self.measure
+        else:
+            dFC = self.measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
+            return dFC
 
 class Hmm_Cont(BaseDFCMethod):
     name = "STATE Continuous Hidden Markov Model"
@@ -1588,7 +1605,7 @@ class Hmm_Cont(BaseDFCMethod):
     """
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
-                 subject: int = 0,
+                 subject: int = None,
                  n_states: int = 5,
                  iterations: int = 20,
                  normalization: bool = True,
@@ -1621,7 +1638,8 @@ class Hmm_Cont(BaseDFCMethod):
         self.params['normalization'] = normalization
 
         self.params['subjects'] = list(self.time_series.data_dict.keys())
-        self.sub_id = self.params['subjects'][self.params['subject']]
+        self.sub_id = self.params['subjects'][self.params['subject']] if subject != None else None
+        self.measure = None
 
     def estimate(self):
         """
@@ -1632,10 +1650,14 @@ class Hmm_Cont(BaseDFCMethod):
         np.ndarray
             Dynamic functional connectivity estimated by the HMM method.
         """
-        measure = HMM_CONT(**self.params)
-        measure.estimate_FCS(time_series=self.time_series)
-        dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
-        return dFC
+        self.measure = HMM_CONT(**self.params)
+        self.measure.estimate_FCS(time_series=self.time_series)
+
+        if self.params['subject'] == None:
+            return self.measure
+        else:
+            dFC = self.measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
+            return dFC
 
 class Hmm_Disc(BaseDFCMethod):
     """
@@ -1675,7 +1697,7 @@ class Hmm_Disc(BaseDFCMethod):
 
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
-                 subject: int = 0,
+                 subject: int = None,
                  windowsize: int = 44,
                  n_overlap: float = 0.5,
                  clstr_base_measure: Literal["SlidingWindow"] = "SlidingWindow",
@@ -1726,7 +1748,8 @@ class Hmm_Disc(BaseDFCMethod):
         self.params['normalization'] = normalization
 
         self.params['subjects'] = list(self.time_series.data_dict.keys())
-        self.sub_id = self.params['subjects'][self.params['subject']]
+        self.sub_id = self.params['subjects'][self.params['subject']] if subject != None else None
+        self.measure = None
 
         if not self.params['clstr_base_measure'] in self.base_methods_name_lst:
             raise ValueError("Base measure not recognized.")
@@ -1740,10 +1763,14 @@ class Hmm_Disc(BaseDFCMethod):
         np.ndarray
             Dynamic functional connectivity estimated by the HMM method.
         """
-        measure = HMM_DISC(**self.params)
-        measure.estimate_FCS(time_series=self.time_series)
-        dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
-        return dFC
+        self.measure = HMM_DISC(**self.params)
+        self.measure.estimate_FCS(time_series=self.time_series)
+        
+        if self.params['subject'] == None:
+            return self.measure
+        else:
+            dFC = self.measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
+            return dFC
 
 class Windowless(BaseDFCMethod):
     """
@@ -1769,7 +1796,7 @@ class Windowless(BaseDFCMethod):
 
     def __init__(self,
                  time_series: time_series.TIME_SERIES,
-                 subject: int = 0,
+                 subject: int = None,
                  n_states: int = 5,
                  n_subj_clusters: int = 5,
                  normalization: bool = True,
@@ -1802,7 +1829,8 @@ class Windowless(BaseDFCMethod):
         self.params['normalization'] = normalization
 
         self.params['subjects'] = list(self.time_series.data_dict.keys())
-        self.sub_id = self.params['subjects'][self.params['subject']]
+        self.sub_id = self.params['subjects'][self.params['subject']] if subject != None else None
+        self.measure = None
 
     def estimate(self):
         """
@@ -1813,10 +1841,14 @@ class Windowless(BaseDFCMethod):
         np.ndarray
             Dynamic functional connectivity estimated by the windowless method.
         """
-        measure = WINDOWLESS(**self.params)
-        measure.estimate_FCS(time_series=self.time_series)
-        dFC = measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
-        return dFC
+        self.measure = WINDOWLESS(**self.params)
+        self.measure.estimate_FCS(time_series=self.time_series)
+        
+        if self.params['subject'] == None:
+            return self.measure
+        else:
+            dFC = self.measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
+            return dFC
 
 
 """
