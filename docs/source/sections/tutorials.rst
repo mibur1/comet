@@ -8,6 +8,7 @@ If you intend to use the toolbox in a standard Python script, tutorials are prov
 * :doc:`notebooks/example_fmri`
 * :doc:`notebooks/example_multiverse`
 * :doc:`notebooks/example_graph`
+* :doc:`notebooks/example_state`
 
 .. toctree::
    :maxdepth: 1
@@ -18,3 +19,4 @@ If you intend to use the toolbox in a standard Python script, tutorials are prov
    notebooks/example_fmri
    notebooks/example_multiverse
    notebooks/example_graph
+   notebooks/example_state
