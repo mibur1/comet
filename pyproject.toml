@@ -1,11 +1,12 @@
 [project]
 name = "comet-toolbox"
-version = "0.9.2"
+version = "0.9.3"
 authors = [
   {name="Micha Burkhardt", email="micha.burkhardt@uol.de"},
 ]
 description = "Dynamic functional connectivity toolbox for multiverse analysis"
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.10"
 classifiers = [
   "Programming Language :: Python :: 3",
