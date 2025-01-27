@@ -12,6 +12,7 @@ from sklearn.metrics import mutual_info_score
 from statsmodels.stats.weightstats import DescrStatsW
 from pycwt import cwt, Morlet
 from ksvd import ApproximateKSVD
+from sklearn.cluster import KMeans
 from pydfc.dfc_methods import BaseDFCMethod, SLIDING_WINDOW, SLIDING_WINDOW_CLUSTR, \
                               TIME_FREQ, CAP, HMM_DISC, HMM_CONT, WINDOWLESS
 from pydfc import time_series
@@ -1920,6 +1921,90 @@ class Windowless2(ConnectivityMethod):
         self.state_tc = self.state_tc.reshape(self.n_subjects, self.T)
 
         return self.state_tc, self.states
+
+class Cap2(ConnectivityMethod):
+    """
+    Implements the Co-activation patterns state-based connectivity method.
+
+    References
+    ----------
+    
+
+    Parameters
+    ----------
+    time_series : list or np.ndarray
+        The input time series data.
+    n_states : int, optional
+        Number of states for the method. Default is 5.
+    """
+    name = "STATE Cap"
+
+    def __init__(self,
+                 time_series: Union[np.ndarray, list],
+                 n_states: int = 5,
+                 n_subj_clusters: int = 5):
+
+        self.time_series = time_series
+        self.T = time_series.shape[0] if type(time_series) == np.ndarray else time_series[0].shape[0] # T timepoints
+        self.P = time_series.shape[1] if type(time_series) == np.ndarray else time_series[0].shape[1] # P parcels
+        
+        self.N_estimates = self.T * time_series.shape[2] if type(time_series) == np.ndarray else self.T * len(time_series)
+        self.n_states = n_states
+        self.n_subjects = time_series.shape[2] if type(time_series) == np.ndarray else len(time_series)
+        self.n_subj_clusters = n_subj_clusters
+
+        self.prepare_time_series()
+        self.state_tc = np.zeros(self.N_estimates)
+        self.states = np.full((self.n_states, self.P,self.P), np.nan)
+
+    def prepare_time_series(self):
+        self.time_series = self.time_series.astype("float32") if type(self.time_series) == np.ndarray else [ts.astype("float32") for ts in self.time_series]
+        self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if type(self.time_series) == np.ndarray else np.vstack(self.time_series)
+        
+        if isinstance(self.time_series, np.ndarray):
+            self.ts_stacked = np.transpose(self.time_series, (2, 0, 1))
+        else:
+            self.ts_stacked = np.stack(self.time_series, axis=0)
+       
+    def cluster_ts(self, act, n_clusters):
+        kmeans = KMeans(n_clusters=n_clusters, n_init=500).fit(act)
+        centroids = kmeans.cluster_centers_
+
+        return centroids, kmeans
+
+    def estimate(self):
+        """
+        Calculate windowless dynamic functional connectivity.
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity estimated by the windowless method.
+        """
+        center_1st_level = None
+        for subject in tqdm(range(self.n_subjects)):
+            ts = self.ts_stacked[subject, :,:]
+
+            if ts.shape[0] < self.n_subj_clusters:
+                print(f"Number of subject-level clusters cannot be more than time samples. It was changed to: {ts.shape[0]}")
+                self.n_subj_clusters = ts.shape[0]
+
+            centroids, _ = self.cluster_ts(act=ts, n_clusters=self.n_subj_clusters)
+            
+            if center_1st_level is None:
+                center_1st_level = centroids
+            else:
+                center_1st_level = np.concatenate((center_1st_level, centroids), axis=0)
+        
+        group_centroids, kmeans= self.cluster_ts(act=center_1st_level, n_clusters=self.n_states)
+        
+        for gc in range(group_centroids.shape[0]):
+            self.states[gc,:,:] = np.multiply(group_centroids[:, np.newaxis], group_centroids[np.newaxis, :])
+
+        self.state_tc = kmeans.predict(self.time_series)
+
+        return self.state_tc, self.states
+
 
 
 """
