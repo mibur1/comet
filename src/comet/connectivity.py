@@ -11,10 +11,11 @@ from scipy.optimize import minimize
 from sklearn.metrics import mutual_info_score
 from statsmodels.stats.weightstats import DescrStatsW
 from pycwt import cwt, Morlet
+from ksvd import ApproximateKSVD
 from pydfc.dfc_methods import BaseDFCMethod, SLIDING_WINDOW, SLIDING_WINDOW_CLUSTR, \
                               TIME_FREQ, CAP, HMM_DISC, HMM_CONT, WINDOWLESS
 from pydfc import time_series
-from typing import Literal
+from typing import Literal, Union
 
 from joblib import Parallel, delayed
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
@@ -1849,6 +1850,76 @@ class Windowless(BaseDFCMethod):
         else:
             dFC = self.measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
             return dFC
+
+
+"""
+SECTION: State based dFC methods
+ - Basically wrapper functions to bring methods from https://github.com/neurodatascience/dFC/
+   into the Comet framework
+"""
+class Windowless2(ConnectivityMethod):
+    """
+    Implements the Windowless state-based connectivity method based on K-SVD.
+
+    References
+    ----------
+    Rubinstein, R., Zibulevsky, M. and Elad, M., Efficient Implementation 
+    of the K-SVD Algorithm using Batch Orthogonal Matching Pursuit Technical 
+    Report - CS Technion, April 2008
+
+    Parameters
+    ----------
+    time_series : list or np.ndarray
+        The input time series data.
+    n_states : int, optional
+        Number of states for the method. Default is 5.
+    """
+    name = "STATE Windowless"
+
+    def __init__(self,
+                 time_series: Union[np.ndarray, list],
+                 n_states: int = 5):
+
+        self.time_series = time_series
+        self.T = time_series.shape[0] if type(time_series) == np.ndarray else time_series[0].shape[0] # T timepoints
+        self.P = time_series.shape[1] if type(time_series) == np.ndarray else time_series[0].shape[1] # P parcels
+        
+        self.N_estimates = self.T * time_series.shape[2] if type(time_series) == np.ndarray else self.T * len(time_series)
+        self.n_states = n_states
+        self.n_subjects = time_series.shape[2] if type(time_series) == np.ndarray else len(time_series)
+
+        self.prepare_time_series()
+        self.state_tc = np.zeros(self.N_estimates)
+        self.states = np.full((self.n_states, self.P,self.P), np.nan)
+
+    def prepare_time_series(self):
+        self.time_series = self.time_series.astype("float32") if type(self.time_series) == np.ndarray else [ts.astype("float32") for ts in self.time_series]
+        self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if type(self.time_series) == np.ndarray else np.vstack(self.time_series)
+
+    def estimate(self):
+        """
+        Calculate windowless dynamic functional connectivity.
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity estimated by the windowless method.
+        """
+    
+        aksvd = ApproximateKSVD(n_components=self.n_states, transform_n_nonzero_coefs=1)
+        dictionary = aksvd.fit(self.ts_stacked).components_
+        gamma = aksvd.transform(self.ts_stacked)
+
+        # State array
+        for i in range(self.n_states):
+            self.states[i, :, :] = np.multiply(np.expand_dims(dictionary[i,:], axis=0).T, np.expand_dims(dictionary[i,:], axis=0))
+        
+        # State time course
+        for i in range(self.N_estimates):
+            self.state_tc[i] = np.argwhere(gamma[i, :] != 0)[0,0]
+        self.state_tc = self.state_tc.reshape(self.n_subjects, self.T)
+
+        return self.state_tc, self.states
 
 
 """
