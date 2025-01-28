@@ -1896,6 +1896,7 @@ class Windowless2(ConnectivityMethod):
     def prepare_time_series(self):
         self.time_series = self.time_series.astype("float32") if type(self.time_series) == np.ndarray else [ts.astype("float32") for ts in self.time_series]
         self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if type(self.time_series) == np.ndarray else np.vstack(self.time_series)
+        
 
     def estimate(self):
         """
@@ -1965,6 +1966,8 @@ class Cap2(ConnectivityMethod):
             self.ts_stacked = np.transpose(self.time_series, (2, 0, 1))
         else:
             self.ts_stacked = np.stack(self.time_series, axis=0)
+
+        self.ts_2d = self.ts_stacked.reshape(-1, self.ts_stacked.shape[-1])
        
     def cluster_ts(self, act, n_clusters):
         kmeans = KMeans(n_clusters=n_clusters, n_init=500).fit(act)
@@ -1974,12 +1977,12 @@ class Cap2(ConnectivityMethod):
 
     def estimate(self):
         """
-        Calculate windowless dynamic functional connectivity.
+        Calculate CAPs for state-based dynamic funcional connectivity.
 
         Returns
         -------
         np.ndarray
-            Dynamic functional connectivity estimated by the windowless method.
+            Dynamic functional connectivity estimated by the CAP method.
         """
         center_1st_level = None
         for subject in tqdm(range(self.n_subjects)):
@@ -1998,10 +2001,11 @@ class Cap2(ConnectivityMethod):
         
         group_centroids, kmeans= self.cluster_ts(act=center_1st_level, n_clusters=self.n_states)
         
-        for gc in range(group_centroids.shape[0]):
-            self.states[gc,:,:] = np.multiply(group_centroids[:, np.newaxis], group_centroids[np.newaxis, :])
+        for i, group_centroid in enumerate(group_centroids):
+            self.states[i,:,:] = np.multiply(group_centroid[:, np.newaxis], group_centroid[np.newaxis, :])
 
-        self.state_tc = kmeans.predict(self.time_series)
+        self.state_tc = kmeans.predict(self.ts_2d)
+        self.state_tc = self.state_tc.reshape(self.n_subjects, self.T)
 
         return self.state_tc, self.states
 
