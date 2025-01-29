@@ -11,6 +11,7 @@ from scipy.optimize import minimize
 from sklearn.metrics import mutual_info_score
 from statsmodels.stats.weightstats import DescrStatsW
 from pycwt import cwt, Morlet
+from hmmlearn import hmm
 from ksvd import ApproximateKSVD
 from sklearn.cluster import KMeans
 from pydfc.dfc_methods import BaseDFCMethod, SLIDING_WINDOW, SLIDING_WINDOW_CLUSTR, \
@@ -1937,6 +1938,8 @@ class Cap2(ConnectivityMethod):
         The input time series data.
     n_states : int, optional
         Number of states for the method. Default is 5.
+    n_subj_clusters : int, optional
+        Number of subject clusters. Default is 5.
     """
     name = "STATE Cap"
 
@@ -1989,7 +1992,7 @@ class Cap2(ConnectivityMethod):
             ts = self.ts_stacked[subject, :,:]
 
             if ts.shape[0] < self.n_subj_clusters:
-                print(f"Number of subject-level clusters cannot be more than time samples. It was changed to: {ts.shape[0]}")
+                print(f"Number of subject-level clusters changed to {ts.shape[0]} as they cannot be more than time samples.")
                 self.n_subj_clusters = ts.shape[0]
 
             centroids, _ = self.cluster_ts(act=ts, n_clusters=self.n_subj_clusters)
@@ -2009,6 +2012,74 @@ class Cap2(ConnectivityMethod):
 
         return self.state_tc, self.states
 
+class Hmm_Cont2(ConnectivityMethod):
+    """
+    Implements the continuous hidden markov state-based connectivity method.
+
+    References
+    ----------
+    
+
+    Parameters
+    ----------
+    time_series : list or np.ndarray
+        The input time series data.
+    n_states : int, optional
+        Number of states for the method. Default is 5.
+    """
+    name = "STATE Continuous Hidden Markov Model"
+
+    def __init__(self,
+                 time_series: Union[np.ndarray, list],
+                 n_states: int = 5,
+                 hmm_iter: int = 20):
+
+        self.time_series = time_series
+        self.T = time_series.shape[0] if type(time_series) == np.ndarray else time_series[0].shape[0] # T timepoints
+        self.P = time_series.shape[1] if type(time_series) == np.ndarray else time_series[0].shape[1] # P parcels
+        print("HI", time_series[0].shape, self.T, self.P)
+
+        self.N_estimates = self.T * time_series.shape[2] if type(time_series) == np.ndarray else self.T * len(time_series)
+        self.n_states = n_states
+        self.n_subjects = time_series.shape[2] if type(time_series) == np.ndarray else len(time_series)
+        self.hmm_iter = hmm_iter
+
+        self.prepare_time_series()
+
+
+    def prepare_time_series(self):
+        self.time_series = self.time_series.astype("float32") if type(self.time_series) == np.ndarray else [ts.astype("float32") for ts in self.time_series]
+        self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if type(self.time_series) == np.ndarray else np.vstack(self.time_series)
+        self.ts_stacked = np.transpose(self.time_series, (2, 0, 1)) if isinstance(self.time_series, np.ndarray) else np.stack(self.time_series, axis=0)
+        self.ts_2d = self.ts_stacked.reshape(-1, self.ts_stacked.shape[-1])
+        print(self.ts_stacked.shape, self.ts_2d.shape)
+
+    def estimate(self):
+        """
+        Calculate CHMM state-based dynamic funcional connectivity.
+
+        Returns
+        -------
+        np.ndarray
+            Dynamic functional connectivity estimated by the CAP method.
+        """
+        
+        models, scores = [], []
+        for i in range(self.hmm_iter):
+            model = hmm.GaussianHMM(n_components=self.n_states, covariance_type="full")
+            np.savetxt("ts_2d.txt", self.ts_2d)
+            model.fit(self.ts_2d)
+            models.append(model)
+            
+            score = model.score(self.ts_2d)  
+            scores.append(score)
+
+        hmm_model = models[np.argmax(scores)]
+        self.states = hmm_model.covars_ 
+        self.state_tc = hmm_model.predict(self.ts_2d)
+        self.state_tc = self.state_tc.reshape(self.n_subjects, self.T)
+
+        return self.state_tc, self.states
 
 
 """
