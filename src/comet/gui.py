@@ -200,7 +200,7 @@ class ParameterOptions:
         'PhaseSynchrony':               'CONT Phase Synchronization',
         'LeiDA':                        'CONT Leading Eigenvector Dynamics',
         'WaveletCoherence':             'CONT Wavelet Coherence',
-        'EdgeTimeSeries':               'CONT Edge-centric Connectivity',
+        'EdgeConnectivity':             'CONT Edge-centric Connectivity',
         'Sliding_Window_Clustr':        'STATE Sliding Window Clustering',
         'Cap':                          'STATE Co-activation patterns',
         'HMM_Disc':                     'STATE Discrete Hidden Markov Model',
@@ -2323,8 +2323,6 @@ class App(QMainWindow):
         mask = None
         confounds = None
 
-        print("HI", bids_flag, img_path, atlas, option)
-
         # Collect cleaning arguments
         if bids_flag:
             radius = self.bids_sphereRadiusSpinbox.value() if self.bids_sphereRadiusSpinbox.value() > 0 else None # none is single voxel
@@ -2694,8 +2692,7 @@ class App(QMainWindow):
         self.data.dfc_edge_ts = None
 
         # Edge time series contains multiple connectivity estimates (eFC and eTS)
-        print(self.data.dfc_instance)
-        if self.data.dfc_instance == connectivity.EdgeTimeSeries:
+        if self.data.dfc_instance == connectivity.EdgeConnectivity:
             self.data.dfc_edge_ts = connectivityObject.eTS
 
         # Result is DFC object (pydfc methods)

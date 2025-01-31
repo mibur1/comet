@@ -229,7 +229,7 @@ def create_state_fc_input(data=None, subjects=None, tr=None, locs=None, labels=N
     print(f"Creating TIME_SERIES object with time series of shape: {data[0].shape}.")
     print("Please make sure time is the second dimension (otherwise transpose the input data first).")
 
-    dataobj = TIME_SERIES(data=data[0], subj_id=subjects[0], Fs=tr, locs=locs, node_labels=labels)
+    dataobj = TIME_SERIES(data=data[0], subj_id=subjects[0], Fs=1/tr, locs=locs, node_labels=labels)
     
     for i in range(1, len(subjects)):
         dataobj.append_ts(new_time_series=data[i], subj_id=subjects[i])
