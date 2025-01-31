@@ -1887,9 +1887,7 @@ class SlidingWindowClustering(ConnectivityMethod):
         self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1
         self.n_subjects = time_series.shape[2] if type(time_series) == np.ndarray else len(time_series)
         
-
         self.prepare_time_series()
-
 
     def prepare_time_series(self):
         self.time_series = self.time_series.astype("float32") if type(self.time_series) == np.ndarray else [ts.astype("float32") for ts in self.time_series]
@@ -1976,7 +1974,7 @@ class SlidingWindowClustering(ConnectivityMethod):
 
         # Second level clustering
         F = self.mat2vec(FCS_1st_level)
-        kmeans_ = KMeans(n_clusters=self.n_subj_clusters, n_init=500, random_state=42).fit(F)
+        kmeans_ = KMeans(n_clusters=self.n_states, n_init=500, random_state=42).fit(F)
         F_cent = kmeans_.cluster_centers_
 
         self.states = self.vec2mat(F_cent, N=self.P)
@@ -2256,7 +2254,7 @@ class DiscreteHMM(ConnectivityMethod):
         cluster_states = int(self.n_states * self.state_ratio)
         state_tc, states = SlidingWindowClustering(self.time_series, n_states=cluster_states, n_subj_clusters=self.n_subj_clusters, windowsize=self.windowsize, stepsize=self.stepsize).estimate()
 
-        state_tc = state_tc.flatten() 
+        state_tc = state_tc.flatten()
         SWC_dFC = states[state_tc]
         state_tc = state_tc.reshape(-1, 1)
 
