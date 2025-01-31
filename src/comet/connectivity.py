@@ -1948,7 +1948,7 @@ class SlidingWindowClustering(ConnectivityMethod):
         FCS_1st_level = None
         SW_dFC = None
 
-        for i in range(self.n_subjects):
+        for i in tqdm(range(self.n_subjects)):
             # Sliding window
             ts = self.ts_stacked[i, :, :]
             sw = SlidingWindow(time_series=ts, windowsize=self.windowsize, stepsize=self.stepsize, shape="rectangular", diagonal=1)
@@ -2187,7 +2187,7 @@ class ContinuousHMM(ConnectivityMethod):
         """
         
         models, scores = [], []
-        for i in range(self.hmm_iter):
+        for i in tqdm(range(self.hmm_iter)):
             model = hmm.GaussianHMM(n_components=self.n_states, covariance_type="full")
             model.fit(self.ts_2d)
             models.append(model)
@@ -2259,7 +2259,7 @@ class DiscreteHMM(ConnectivityMethod):
         state_tc = state_tc.reshape(-1, 1)
 
         models, scores = [], []
-        for i in range(self.hmm_iter):
+        for i in tqdm(range(self.hmm_iter)):
             model = hmm.CategoricalHMM(n_components=self.n_states, random_state=42)
             model.fit(state_tc)
             models.append(model)
