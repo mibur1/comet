@@ -42,7 +42,6 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout,
 # Comet imports
 from . import cifti, connectivity, graph, multiverse, utils
 
-
 """
 Helper classes for the GUI
 """
@@ -177,11 +176,10 @@ class ParameterOptions:
         "n_overlap":            "Window overlap",
         "tapered_window":       "Tapered window",
         "n_states":             "Number of states",
-        "n_subj_clusters":      "Number of subjects",
+        "subject_clusters":     "Number subject-level clusters",
         "normalization":        "Normalization",
         "clstr_distance":       "Distance measure",
         "subject":              "Subject",
-        "clstr_base_measure":   "Base measure",
         "iterations":           "Iterations",
         "sw_method":            "Sliding window",
         "dhmm_obs_state_ratio": "State ratio",
@@ -1600,11 +1598,10 @@ class App(QMainWindow):
         Load a single file and display the data in the GUI.
         """
         # Allowed file types
-        fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.nii *.nii.gz *.dtseries.nii *.ptseries.nii);;\
+        fileFilter = "All Supported Files (*.mat *.txt *.npy *.tsv *.nii *.nii.gz *.dtseries.nii *.ptseries.nii);;\
                                             MAT files (*.mat);;\
                                             Text files (*.txt);;\
                                             NumPy files (*.npy);;\
-                                            Pickle files (*.pkl);;\
                                             TSV files (*.tsv);;\
                                             NIFTI files (*.nii, .nii.gz);;\
                                             CIFTI files (*.dtseries.nii *.ptseries.nii)"
@@ -1624,6 +1621,7 @@ class App(QMainWindow):
         self.boldCanvas.draw()
         self.bids_layout = None
         self.data.sample_mask = None
+        self.transposeCheckbox.show()
 
         try:
             self.subjectDropdown.currentIndexChanged.disconnect(self.onSubjectChanged)
@@ -1638,7 +1636,8 @@ class App(QMainWindow):
                 data_dict = loadmat(file_path)
             except:
                 data_dict = mat73.loadmat(file_path)
-
+            print("Loaded mat file with keys:", data_dict.keys())
+            print(f"Using data from key: {list(data_dict.keys())[-1]}")
             self.data.file_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
             self.createCarpetPlot()
 
@@ -1648,6 +1647,16 @@ class App(QMainWindow):
 
         elif file_path.endswith('.npy'):
             self.data.file_data = np.load(file_path)
+
+            if np.ndim(self.data.file_data) == 3:
+                print("Loaded list of time series from .npy file.")
+                self.subjectDropdown.addItems(np.arange(self.data.file_data.shape[0]).astype(str))
+                self.subjectDropdownContainer.show()
+                self.subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
+                self.loadContainer.show()
+                self.calculateContainer.hide()
+                self.createCarpetPlot()
+            
             self.createCarpetPlot()
 
         elif file_path.endswith(".tsv"):
@@ -1692,7 +1701,6 @@ class App(QMainWindow):
             self.loadContainer.show()
             self.calculateContainer.show()
             self.parcellationContainer.show()
-            self.transposeCheckbox.hide()
 
         else:
             self.data.file_data = None
@@ -1705,31 +1713,27 @@ class App(QMainWindow):
         self.connectivityCanvas.draw()
 
         # Set filenames depending on file type
-        if file_path.endswith('.pkl'):
-            self.time_series_textbox.setText(self.data.file_name)
+        self.time_series_textbox.setText(self.data.file_name)
+        
+        if np.ndim(self.data.file_data) == 3:
+            self.stateBasedCheckBox.setEnabled(True)
+            self.stateBasedCheckBox.setChecked(True)
 
             self.continuousCheckBox.setEnabled(False)
             self.continuousCheckBox.setChecked(False)
 
-            self.stateBasedCheckBox.setEnabled(True)
-            self.stateBasedCheckBox.setChecked(True)
-
             self.staticCheckBox.setEnabled(False)
-            self.staticCheckBox.setChecked(False)
-
-            self.transposeCheckbox.setEnabled(True)
-
+            self.staticCheckBox.setChecked(False)    
         else:
-            self.time_series_textbox.setText(self.data.file_name)
+            self.stateBasedCheckBox.setEnabled(False)
+            self.stateBasedCheckBox.setChecked(False)
 
             self.continuousCheckBox.setEnabled(True)
             self.continuousCheckBox.setChecked(True)
 
-            self.stateBasedCheckBox.setEnabled(False)
-            self.stateBasedCheckBox.setChecked(False)
-
             self.staticCheckBox.setEnabled(True)
             self.staticCheckBox.setChecked(True)
+
 
         # Reset and enable the GUI elements
         self.bidsContainer.hide()
@@ -1746,10 +1750,6 @@ class App(QMainWindow):
         if file_path.endswith('.nii') or file_path.endswith('.nii.gz'):
             self.fileNameLabel.setText(f"Loaded {fname}")
 
-        elif file_path.endswith(".pkl"):
-            fshape = self.data.file_data.data_dict[list(self.data.file_data.data_dict.keys())[0]]["data"].shape
-            self.fileNameLabel.setText(f"Loaded TIME_SERIES object from .pkl file.")
-            self.fileNameLabel2.setText(f"Loaded data from .pkl file with shape {fshape}")
         else:
             fshape = self.data.file_data.shape
             self.fileNameLabel.setText(f"Loaded {fname} with shape {fshape}")
@@ -1760,12 +1760,10 @@ class App(QMainWindow):
         Transpose checkbox event
         """
         if self.data.file_data is None:
-            return  # No data loaded, so do nothing
-
-        if state == Qt.CheckState.Checked:
-            self.data.file_data = self.data.file_data.transpose()
-        else:
-            self.data.file_data = self.data.file_data.transpose()
+            return  # No data loaded
+        
+        # Transpose the data
+        self.data.file_data = self.data.file_data.transpose(0, 2, 1) if self.data.file_data.ndim == 3 else self.data.file_data.transpose()
 
         # Update the labels
         shape = self.data.file_data.shape
@@ -2415,8 +2413,13 @@ class App(QMainWindow):
         # Clear the current plot
         self.boldFigure.clear()
         ax = self.boldFigure.add_subplot(111)
-        ts = np.copy(self.data.file_data)
         cmap = plt.cm.gray
+
+        if np.ndim(self.data.file_data) == 3:
+            current_subject = int(self.subjectDropdown.currentText())
+            ts = self.data.file_data[current_subject].T
+        else:
+            ts = np.copy(self.data.file_data)
 
         if self.data.sample_mask is not None:
             # We have data with missing scans (non-steady states or scrubbing)
@@ -2672,6 +2675,7 @@ class App(QMainWindow):
                                       connectivity.DiscreteHMM]:
             self.data.dfc_state_tc = result[0]
             self.data.dfc_states = result[1]
+            self.data.dfc_data = result[1].transpose(2, 1, 0)
 
         # Store in memory if checkbox is checked
         if keep_in_memory:
@@ -2684,7 +2688,10 @@ class App(QMainWindow):
     def handleConnectivityResult(self):
         # Update the sliders and text
         if self.data.dfc_data is not None:
-            self.calculatingLabel.setText(f"Calculated {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
+            if self.data.dfc_states is not None:
+                self.calculatingLabel.setText(f"Calculated {self.data.dfc_name} with for {self.data.dfc_state_tc.shape[1]} subjects and {self.data.dfc_states.shape[0]} states")
+            else:
+                self.calculatingLabel.setText(f"Calculated {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
 
             if len(self.data.dfc_data.shape) == 3:
                 self.slider.show()
@@ -3020,8 +3027,8 @@ class App(QMainWindow):
 
         elif self.data.dfc_state_tc is not None:
             self.timeSeriesFigure.clear()
-
-            time_series = self.data.dfc_state_tc[0]
+            
+            time_series = self.data.dfc_state_tc[:,0]
             num_states = self.data.dfc_states.shape[0]
 
             # Setup the gridspec layout
@@ -3266,7 +3273,7 @@ class App(QMainWindow):
     Graph tab
     """
     def loadGraphFile(self):
-        fileFilter = "All Supported Files (*.mat *.txt *.npy *.pkl *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;Pickle files (*.pkl);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
+        fileFilter = "All Supported Files (*.mat *.txt *.npy *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
         file_name = file_path.split('/')[-1]
         self.data.graph_file = file_name
