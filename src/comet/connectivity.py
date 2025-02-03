@@ -14,20 +14,15 @@ from pycwt import cwt, Morlet
 from hmmlearn import hmm
 from ksvd import ApproximateKSVD
 from sklearn.cluster import KMeans
-from pydfc.dfc_methods import BaseDFCMethod, SLIDING_WINDOW, SLIDING_WINDOW_CLUSTR, \
-                              TIME_FREQ, CAP, HMM_DISC, HMM_CONT, WINDOWLESS
-from pydfc import time_series
 from typing import Literal, Union
 
 from joblib import Parallel, delayed
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-os.environ["OMP_NUM_THREADS"] = "1"
-
+#os.environ["OPENBLAS_NUM_THREADS"] = "1"
+#os.environ["OMP_NUM_THREADS"] = "1"
 
 """
-SECTION: Abstract class template for all dynamic functional connectivity methods
- - Abstract methods need to be overriden in the child classes
- - If new methods are added, they should be implemented as a child class of ConnectivityMethod
+SECTION: Class template for all dynamic functional connectivity methods.
+         New methods should be implemented as child classes.
 """
 class ConnectivityMethod(metaclass=ABCMeta):
     """
@@ -131,11 +126,8 @@ class ConnectivityMethod(metaclass=ABCMeta):
 
         return R_mat
 
-
 """
 SECTION: Continuous dFC methods
- - Several methods to estimate dynamic functional connectivity
- - All methods produce continuously variying connectivity estimates
 """
 class SlidingWindow(ConnectivityMethod):
     """
@@ -1276,587 +1268,18 @@ class EdgeConnectivity(ConnectivityMethod):
         eFC = self.postproc(eFC)
         return eFC
 
-
 """
 SECTION: State based dFC methods
- - Basically wrapper functions to bring methods from https://github.com/neurodatascience/dFC/
-   into the Comet framework
-"""
-class Sliding_Window(BaseDFCMethod):
-    """
-    Wrapper function for the sliding window connectivity method
-    from the pydfc library: https://github.com/neurodatascience/dFC/
-
-    Parameters
-    ----------
-    time_series : time_series.TIME_SERIES
-        The input time series data.
-    clstr_distance : {'euclidean'}, optional
-        Distance metric for clustering. Default is 'euclidean'.
-    **params : dict, optional
-        Additional parameters for the Sliding Window method.
-    """
-    name = "CONT Sliding Window (pydfc)"
-
-    def __init__(self,
-                 time_series: time_series.TIME_SERIES,
-                 clstr_distance: Literal["euclidean"] = "euclidean",
-                 **params):
-
-        self.time_series = time_series
-        self.logs_ = ''
-        self.TPM = []
-        self.FCS_ = []
-        self.FCS_fit_time_ = None
-        self.dFC_assess_time_ = None
-
-        self.params_name_lst = ['measure_name', 'is_state_based', 'sw_method', 'tapered_window',
-            'W', 'n_overlap', 'normalization',
-            'num_select_nodes', 'num_time_point', 'Fs_ratio',
-            'noise_ratio', 'num_realization', 'session']
-        self.params = {}
-        for params_name in self.params_name_lst:
-            if params_name in params:
-                self.params[params_name] = params[params_name]
-            else:
-                self.params[params_name] = None
-
-        self.params['measure_name'] = 'SlidingWindow'
-        self.params['is_state_based'] = False
-
-        if not self.params['sw_method'] in self.sw_methods_name_lst:
-            raise ValueError("sw_method not recognized.")
-
-    def estimate(self):
-        """
-        Calculate the sliding window dynamic functional connectivity.
-
-        Returns
-        -------
-        np.ndarray
-            Dynamic functional connectivity estimated by the sliding window method.
-        """
-        measure = SLIDING_WINDOW(**self.params)
-        dFC = measure.estimate_dFC(time_series=self.time_series)
-        return dFC
-
-class Time_Freq(BaseDFCMethod):
-    """
-    Wrapper function for the time-frequency connectivity method
-    from the pydfc library: https://github.com/neurodatascience/dFC/
-
-    Parameters
-    ----------
-    time_series : time_series.TIME_SERIES
-        The input time series data.
-    num_cores : int, optional
-        Number of CPU cores to use for parallel processing. Default is 8.
-    coi_correction : bool, optional
-        Whether to apply cone of influence correction. Default is True.
-    **params : dict, optional
-        Additional parameters for the Time-Frequency method.
-    """
-    name = "CONT Time-frequency (pydfc)"
-
-    def __init__(self,
-                 time_series: time_series.TIME_SERIES,
-                 num_cores: int = 8,
-                 coi_correction: bool = True,
-                 **params):
-
-        self.time_series = time_series
-        self.logs_ = ''
-        self.TPM = []
-        self.FCS_ = []
-        self.FCS_fit_time_ = None
-        self.dFC_assess_time_ = None
-
-        self.params_name_lst = ['measure_name', 'is_state_based', 'TF_method', 'coi_correction',
-            'n_jobs', 'verbose', 'backend',
-            'normalization', 'num_select_nodes', 'num_time_point',
-            'Fs_ratio', 'noise_ratio', 'num_realization', 'session']
-        self.params = {}
-        for params_name in self.params_name_lst:
-            if params_name in params:
-                self.params[params_name] = params[params_name]
-            else:
-                self.params[params_name] = None
-
-        self.params['measure_name'] = 'Time-Freq'
-        self.params['is_state_based'] = False
-        self.params['coi_correction'] = coi_correction
-        self.params['n_jobs'] = num_cores
-
-    def estimate(self):
-        """
-        Calculate the time-frequency dynamic functional connectivity.
-
-        Returns
-        -------
-        np.ndarray
-            Dynamic functional connectivity estimated by the time-frequency method.
-        """
-        measure = TIME_FREQ(**self.params)
-        dFC = measure.estimate_dFC(time_series=self.time_series)
-        return dFC
-
-class Cap(BaseDFCMethod):
-    """
-    Wrapper function for the co-activation patterns (CAP) method
-    from the pydfc library: https://github.com/neurodatascience/dFC/
-
-    Parameters
-    ----------
-    time_series : time_series.TIME_SERIES
-        The input time series data.
-    subject : int, optional
-        Subject index for which to compute the CAP. Default is 0.
-    n_states : int, optional
-        Number of states for CAP. Default is 5.
-    n_subj_clusters : int, optional
-        Number of subject clusters. Default is 5.
-    normalization : bool, optional
-        Whether to normalize the data. Default is True.
-    **params : dict, optional
-        Additional parameters for the CAP method.
-    """
-    name = "STATE Co-activation patterns"
-
-    def __init__(self,
-                 time_series: time_series.TIME_SERIES,
-                 subject: int = None,
-                 n_states: int = 5,
-                 n_subj_clusters: int = 5,
-                 normalization: bool = True,
-                 **params):
-
-        self.time_series = time_series
-        self.logs_ = ''
-        self.FCS_ = []
-        self.mean_act = []
-        self.FCS_fit_time_ = None
-        self.dFC_assess_time_ = None
-
-        self.params_name_lst = ['measure_name', 'is_state_based', 'n_states',
-            'n_subj_clstrs', 'normalization', 'num_subj', 'num_select_nodes', 'num_time_point',
-            'Fs_ratio', 'noise_ratio', 'num_realization', 'session']
-        self.params = {}
-        for params_name in self.params_name_lst:
-            if params_name in params:
-                self.params[params_name] = params[params_name]
-            else:
-                self.params[params_name] = None
-
-        self.params['measure_name'] = 'CAP'
-        self.params['is_state_based'] = True
-        self.params['subject'] = subject
-        self.params['n_subj_clstrs'] = n_subj_clusters
-        self.params['n_states'] = n_states
-        self.params['normalization'] = normalization
-
-        self.params['subjects'] = list(self.time_series.data_dict.keys())
-        self.sub_id = self.params['subjects'][self.params['subject']] if subject != None else None
-        self.measure = None
-
-    def estimate(self):
-        """
-        Calculate the co-activation patterns dynamic functional connectivity.
-
-        Returns
-        -------
-        np.ndarray
-            Dynamic functional connectivity estimated by the CAP method.
-        """
-        self.measure = CAP(**self.params)
-        self.measure.estimate_FCS(time_series=self.time_series)
-        
-        if self.params['subject'] == None:
-            return self.measure
-        else:
-            dFC = self.measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
-            return dFC
-
-class Sliding_Window_Clustr(BaseDFCMethod):
-    """
-    Wrapper function for the sliding window clustering method
-    from the pydfc library: https://github.com/neurodatascience/dFC/
-
-    Parameters
-    ----------
-    time_series : time_series.TIME_SERIES
-        The input time series data.
-    subject : int, optional
-        Subject index for which to compute the sliding window clustering. Default is 0.
-    windowsize : int, optional
-        Size of the sliding window. Default is 44.
-    n_overlap : float, optional
-        Overlap between windows. Default is 0.5.
-    tapered_window : bool, optional
-        Whether to use a tapered window. Default is True.
-    n_states : int, optional
-        Number of states for clustering. Default is 5.
-    n_subj_clusters : int, optional
-        Number of subject clusters. Default is 5.
-    normalization : bool, optional
-        Whether to normalize the data. Default is True.
-    clstr_distance : {'euclidean', 'manhattan'}, optional
-        Distance metric for clustering. Default is 'euclidean'.
-    """
-    name = "STATE Sliding Window Clustering"
-
-    def __init__(self,
-                 time_series: time_series.TIME_SERIES,
-                 subject: int = None,
-                 windowsize: int = 44,
-                 n_overlap: float = 0.5,
-                 tapered_window: bool = False,
-                 n_states: int = 5,
-                 n_subj_clusters: int = 5,
-                 normalization: bool = True,
-                 clstr_distance: Literal["euclidean", "manhattan"] = "euclidean"):
-
-        self.time_series = time_series
-
-        if not clstr_distance=='euclidean' or clstr_distance=='manhattan':
-            raise ValueError("Clustering distance not recognized. It must be either euclidean or manhattan.")
-
-        self.logs_ = ''
-        self.TPM = []
-        self.FCS_ = []
-        self.mean_act = []
-        self.FCS_fit_time_ = None
-        self.dFC_assess_time_ = None
-
-        self.params_name_lst = ['measure_name', 'is_state_based', 'clstr_base_measure', 'sw_method', 'tapered_window',
-            'clstr_distance', 'coi_correction',
-            'n_subj_clstrs', 'W', 'n_overlap', 'n_states', 'normalization',
-            'n_jobs', 'verbose', 'backend',
-            'num_subj', 'num_select_nodes', 'num_time_point', 'Fs_ratio',
-            'noise_ratio', 'num_realization', 'session']
-        self.params = {}
-
-        for params_name in self.params_name_lst:
-            self.params[params_name] = None
-
-        self.params['measure_name'] = 'Clustering'
-        self.params['is_state_based'] = True
-        self.params['clstr_base_measure'] = 'SlidingWindow'
-        self.params["sw_method"] = 'pear_corr'
-        self.params['subject'] = subject
-        self.params["tapered_window"] = tapered_window
-        self.params['clstr_distance'] = clstr_distance
-        self.params['n_subj_clstrs'] = n_subj_clusters
-        self.params['W'] = windowsize
-        self.params['n_overlap'] = n_overlap
-        self.params['n_states'] = n_states
-        self.params['normalization'] = normalization
-
-        self.params['subjects'] = list(self.time_series.data_dict.keys())
-        self.sub_id = self.params['subjects'][self.params['subject']] if subject != None else None
-        self.measure = None
-
-        if not self.params['clstr_base_measure'] in self.base_methods_name_lst:
-            raise ValueError("Base measure not recognized.")
-
-    def estimate(self):
-        """
-        Calculate the sliding window clustering dynamic functional connectivity.
-
-        Returns
-        -------
-        np.ndarray
-            Dynamic functional connectivity estimated by the sliding window clustering method.
-        """
-        self.measure = SLIDING_WINDOW_CLUSTR(**self.params)
-        self.measure.estimate_FCS(time_series=self.time_series)
-
-        if self.params['subject'] == None:
-            return self.measure
-        else:
-            dFC = self.measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
-            return dFC
-
-class Hmm_Cont(BaseDFCMethod):
-    name = "STATE Continuous Hidden Markov Model"
-    """
-    Wrapper function for the continuous hidden Markov model (HMM) method
-    from the pydfc library: https://github.com/neurodatascience/dFC/
-
-    Parameters
-    ----------
-    time_series : time_series.TIME_SERIES
-        The input time series data.
-    subject : int, optional
-        Subject index for which to compute the HMM. Default is 0.
-    n_states : int, optional
-        Number of states for the HMM. Default is 5.
-    iterations : int, optional
-        Number of iterations for the HMM. Default is 20.
-    normalization : bool, optional
-        Whether to normalize the data. Default is True.
-    **params : dict, optional
-        Additional parameters for the HMM method.
-    """
-    def __init__(self,
-                 time_series: time_series.TIME_SERIES,
-                 subject: int = None,
-                 n_states: int = 5,
-                 iterations: int = 20,
-                 normalization: bool = True,
-                 **params):
-
-        self.time_series = time_series
-
-        self.logs_ = ''
-        self.TPM = []
-        self.FCS_ = []
-        self.mean_act = []
-        self.FCS_fit_time_ = None
-        self.dFC_assess_time_ = None
-
-        self.params_name_lst = ['measure_name', 'is_state_based', 'n_states', 'hmm_iter',
-            'normalization', 'num_subj', 'num_select_nodes', 'num_time_point',
-            'Fs_ratio', 'noise_ratio', 'num_realization', 'session']
-        self.params = {}
-        for params_name in self.params_name_lst:
-            if params_name in params:
-                self.params[params_name] = params[params_name]
-            else:
-                self.params[params_name] = None
-
-        self.params['measure_name'] = 'ContinuousHMM'
-        self.params['is_state_based'] = True
-        self.params['subject'] = subject
-        self.params['n_states'] = n_states
-        self.params['hmm_iter'] = iterations
-        self.params['normalization'] = normalization
-
-        self.params['subjects'] = list(self.time_series.data_dict.keys())
-        self.sub_id = self.params['subjects'][self.params['subject']] if subject != None else None
-        self.measure = None
-
-    def estimate(self):
-        """
-        Calculate the continuous hidden Markov model dynamic functional connectivity.
-
-        Returns
-        -------
-        np.ndarray
-            Dynamic functional connectivity estimated by the HMM method.
-        """
-        self.measure = HMM_CONT(**self.params)
-        self.measure.estimate_FCS(time_series=self.time_series)
-
-        if self.params['subject'] == None:
-            return self.measure
-        else:
-            dFC = self.measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
-            return dFC
-
-class Hmm_Disc(BaseDFCMethod):
-    """
-    Wrapper function for the discrete hidden Markov model (HMM) method
-    from the pydfc library: https://github.com/neurodatascience/dFC/
-
-    Parameters
-    ----------
-    time_series : time_series.TIME_SERIES
-        The input time series data.
-    subject : int, optional
-        Subject index for which to compute the HMM. Default is 0.
-    windowsize : int, optional
-        Size of the sliding window. Default is 44.
-    n_overlap : float, optional
-        Overlap between windows. Default is 0.5.
-    clstr_base_measure : {'SlidingWindow'}, optional
-        Base measure for clustering. Default is 'SlidingWindow'.
-    sw_method : {'pear_corr'}, optional
-        Sliding window method. Default is 'pear_corr'.
-    tapered_window : bool, optional
-        Whether to use a tapered window. Default is True.
-    iterations : int, optional
-        Number of iterations for the HMM. Default is 20.
-    dhmm_obs_state_ratio : float, optional
-        Ratio of observed to hidden states. Default is 16/24.
-    n_states : int, optional
-        Number of states for the HMM. Default is 5.
-    n_subj_clusters : int, optional
-        Number of subject clusters. Default is 5.
-    normalization : bool, optional
-        Whether to normalize the data. Default is True.
-    **params : dict, optional
-        Additional parameters for the HMM method.
-    """
-    name = "STATE Discrete Hidden Markov Model"
-
-    def __init__(self,
-                 time_series: time_series.TIME_SERIES,
-                 subject: int = None,
-                 windowsize: int = 44,
-                 n_overlap: float = 0.5,
-                 clstr_base_measure: Literal["SlidingWindow"] = "SlidingWindow",
-                 sw_method: Literal["pear_corr"] = "pear_corr",
-                 tapered_window: bool = True,
-                 iterations: int = 20,
-                 dhmm_obs_state_ratio: float = 3/5,
-                 n_states: int = 5,
-                 n_subj_clusters: int = 5,
-                 normalization: bool = True,
-                 **params):
-
-        self.time_series = time_series
-
-        self.logs_ = ''
-        self.TPM = []
-        self.FCS_ = []
-        self.mean_act = []
-        self.swc = None
-        self.FCS_fit_time_ = None
-        self.dFC_assess_time_ = None
-
-        self.params_name_lst = ['measure_name', 'is_state_based', 'clstr_base_measure', 'sw_method', 'tapered_window',
-            'dhmm_obs_state_ratio', 'coi_correction', 'hmm_iter',
-            'n_jobs', 'verbose', 'backend',
-            'n_subj_clstrs', 'W', 'n_overlap', 'n_states', 'normalization',
-            'num_subj', 'num_select_nodes', 'num_time_point', 'Fs_ratio',
-            'noise_ratio', 'num_realization', 'session']
-        self.params = {}
-        for params_name in self.params_name_lst:
-            if params_name in params:
-                self.params[params_name] = params[params_name]
-            else:
-                self.params[params_name] = None
-
-        self.params['measure_name'] = 'DiscreteHMM'
-        self.params['is_state_based'] = True
-        self.params['subject'] = subject
-        self.params['W'] = windowsize
-        self.params['n_overlap'] = n_overlap
-        self.params['clstr_base_measure'] = clstr_base_measure
-        self.params['sw_method'] = sw_method
-        self.params['tapered_window'] = tapered_window
-        self.params['hmm_iter'] = iterations
-        self.params['dhmm_obs_state_ratio'] = dhmm_obs_state_ratio
-        self.params['n_subj_clstrs'] = n_subj_clusters
-        self.params['n_states'] = n_states
-        self.params['normalization'] = normalization
-
-        self.params['subjects'] = list(self.time_series.data_dict.keys())
-        self.sub_id = self.params['subjects'][self.params['subject']] if subject != None else None
-        self.measure = None
-
-        if not self.params['clstr_base_measure'] in self.base_methods_name_lst:
-            raise ValueError("Base measure not recognized.")
-
-    def estimate(self):
-        """
-        Calculate the discrete hidden Markov model dynamic functional connectivity.
-
-        Returns
-        -------
-        np.ndarray
-            Dynamic functional connectivity estimated by the HMM method.
-        """
-        self.measure = HMM_DISC(**self.params)
-        self.measure.estimate_FCS(time_series=self.time_series)
-        
-        if self.params['subject'] == None:
-            return self.measure
-        else:
-            dFC = self.measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
-            return dFC
-
-class Windowless(BaseDFCMethod):
-    """
-    Wrapper function for the windowless method
-    from the pydfc library: https://github.com/neurodatascience/dFC/
-
-    Parameters
-    ----------
-    time_series : time_series.TIME_SERIES
-        The input time series data.
-    subject : int, optional
-        Subject index for which to compute the windowless method. Default is 0.
-    n_states : int, optional
-        Number of states for the method. Default is 5.
-    n_subj_clusters : int, optional
-        Number of subject clusters. Default is 5.
-    normalization : bool, optional
-        Whether to normalize the data. Default is True.
-    **params : dict, optional
-        Additional parameters for the windowless method.
-    """
-    name = "STATE Windowless"
-
-    def __init__(self,
-                 time_series: time_series.TIME_SERIES,
-                 subject: int = None,
-                 n_states: int = 5,
-                 n_subj_clusters: int = 5,
-                 normalization: bool = True,
-                 **params):
-
-        self.time_series = time_series
-
-        self.logs_ = ''
-        self.TPM = []
-        self.FCS_ = []
-        self.mean_act = []
-        self.FCS_fit_time_ = None
-        self.dFC_assess_time_ = None
-
-        self.params_name_lst = ['measure_name', 'is_state_based', 'n_states',
-            'normalization', 'num_subj', 'num_select_nodes', 'num_time_point',
-            'Fs_ratio', 'noise_ratio', 'num_realization', 'session']
-        self.params = {}
-        for params_name in self.params_name_lst:
-            if params_name in params:
-                self.params[params_name] = params[params_name]
-            else:
-                self.params[params_name] = None
-
-        self.params['measure_name'] = 'Windowless'
-        self.params['is_state_based'] = True
-        self.params['subject'] = subject
-        self.params['n_subj_clstrs'] = n_subj_clusters
-        self.params['n_states'] = n_states
-        self.params['normalization'] = normalization
-
-        self.params['subjects'] = list(self.time_series.data_dict.keys())
-        self.sub_id = self.params['subjects'][self.params['subject']] if subject != None else None
-        self.measure = None
-
-    def estimate(self):
-        """
-        Calculate the windowless dynamic functional connectivity.
-
-        Returns
-        -------
-        np.ndarray
-            Dynamic functional connectivity estimated by the windowless method.
-        """
-        self.measure = WINDOWLESS(**self.params)
-        self.measure.estimate_FCS(time_series=self.time_series)
-        
-        if self.params['subject'] == None:
-            return self.measure
-        else:
-            dFC = self.measure.estimate_dFC(time_series=self.time_series.get_subj_ts(subjs_id=self.sub_id))
-            return dFC
-
-
-"""
-SECTION: State based dFC methods
- - Basically wrapper functions to bring methods from https://github.com/neurodatascience/dFC/
-   into the Comet framework
 """
 class SlidingWindowClustering(ConnectivityMethod):
     """
-    Implements the sliding window clustering (SWC) state-based connectivity method.
+    Siding window clustering (SWC) state-based connectivity (2-level clustering).
 
     References
     ----------
-    
+    Torabi, M., Mitsis, G. D., & Poline, J. B. (2024). On the variability of 
+    dynamic functional connectivity assessment methods. GigaScience, 13, giae009.
+    https://doi.org/10.1093/gigascience/giae009
 
     Parameters
     ----------
@@ -1864,86 +1287,75 @@ class SlidingWindowClustering(ConnectivityMethod):
         The input time series data.
     n_states : int, optional
         Number of states for the method. Default is 5.
+    subject_clusters : int, optional
+        Number of clusters for the first level clustering. Default is 5.
+    windowsize : int, optional
+        Size of the sliding window. Default is 29.
+    shape : str, optional
+        Shape of the window. Default is "gaussian".
+    std : float, optional
+        Standard deviation for gaussian window. Default is 10.
+    stepsize : int, optional
+        Step size for the sliding window. Default is 15.
     """
     name = "STATE Sliding Window Clustering"
 
     def __init__(self,
                  time_series: Union[np.ndarray, list],
-                 windowsize: int = 44,
-                 shape: str = "gaussian",
-                 stepsize: int = 22,
                  n_states: int = 5,
-                 n_subj_clusters: int = 5):
+                 subject_clusters: int = 5,
+                 windowsize: int = 29,
+                 shape: Literal["rectangular", "gaussian", "hamming"] = "gaussian",
+                 std: float = 10,
+                 stepsize: int = 15):
 
         self.time_series = time_series
         self.n_states = n_states
         self.windowsize = windowsize
         self.shape = shape
+        self.std = std
         self.stepsize = stepsize
-        self.n_subj_clusters = n_subj_clusters
+        self.subject_clusters = subject_clusters
         self.T = time_series.shape[0] if type(time_series) == np.ndarray else time_series[0].shape[0] # T timepoints
         self.P = time_series.shape[1] if type(time_series) == np.ndarray else time_series[0].shape[1] # P parcels
 
         self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1
         self.n_subjects = time_series.shape[2] if type(time_series) == np.ndarray else len(time_series)
         
-        self.prepare_time_series()
-
-    def prepare_time_series(self):
         self.time_series = self.time_series.astype("float32") if type(self.time_series) == np.ndarray else [ts.astype("float32") for ts in self.time_series]
         self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if type(self.time_series) == np.ndarray else np.vstack(self.time_series)
         self.ts_stacked = np.transpose(self.time_series, (2, 0, 1)) if isinstance(self.time_series, np.ndarray) else np.stack(self.time_series, axis=0)
         self.ts_2d = self.ts_stacked.reshape(-1, self.ts_stacked.shape[-1])
 
     def vec2mat(self, F, N):
-        '''
-        diagonal values are set to 1.0
-        F shape is (observations, features)
-        '''
-        C = list()
+        T = F.shape[0]
+        C = np.zeros((T, N, N), dtype=F.dtype)
         iu = np.triu_indices(N, k=1)
-        for i in range(F.shape[0]):
-            K = np.zeros((N, N))
-            K[iu] = F[i,:]
-            K = K + K.T
-            K = K + np.eye(N)
-            C.append(K)
-        C = np.array(C)
+        C[:, iu[0], iu[1]] = F # Assign vectorized values to upper triangles
+        C = C + np.transpose(C, (0, 2, 1)) + np.eye(N) # Symmetrize and set main diagonal
         return C
     
     def mat2vec(self, C_t):
-        '''
-        C_t must be an array of matrices or a single matrix
-        diagonal values will not be included. if you want to include 
-        them set k=0
-        if C_t is a single matrix, F will be one dim
-        changing F will not change C_t
-        '''
-        if len(C_t.shape)==2:
-            assert C_t.shape[0]==C_t.shape[1],\
-                'C is not a square matrix'
-            return C_t[np.triu_indices(C_t.shape[1], k=1)]
-
-        F = list()
-        for t in range(C_t.shape[0]):
-            C = C_t[t, : , :]
-            assert C.shape[0]==C.shape[1],\
-                'C is not a square matrix'
-            F.append(C[np.triu_indices(C_t.shape[1], k=1)])
-
-        F = np.array(F)
-        return F
+        if C_t.ndim == 2:
+            # 2D square matrix
+            return C_t[np.triu_indices_from(C_t, k=1)] 
+        elif C_t.ndim == 3:
+            # 3D array, C_t is a stack of square matrices.
+            idx = np.triu_indices_from(C_t[0], k=1)
+            return C_t[:, idx[0], idx[1]]
+        else:
+            raise ValueError("Input must be a 2D or 3D array.")
 
     def estimate(self):
         """
-        Calculate SWC dynamic funcional connectivity.
+        Estimate state-based connectivity
 
         Returns
         -------
-        np.ndarray : state_tc
-            State time courses for all subjects
-        np.ndarray : states
-            Estimated conncectivity states
+        np.ndarray
+            State time course (n_subjects x T)
+        np.ndarray
+            Connectivity states (n_states x P x P)
         """
         FCS_1st_level = None
         SW_dFC = None
@@ -1951,13 +1363,13 @@ class SlidingWindowClustering(ConnectivityMethod):
         for i in tqdm(range(self.n_subjects)):
             # Sliding window
             ts = self.ts_stacked[i, :, :]
-            sw = SlidingWindow(time_series=ts, windowsize=self.windowsize, stepsize=self.stepsize, shape="rectangular", diagonal=1)
+            sw = SlidingWindow(time_series=ts, windowsize=self.windowsize, stepsize=self.stepsize, shape=self.shape, std=self.std, diagonal=1)
             dfc = sw.estimate()
             dfc = np.moveaxis(dfc, -1, 0)
             F = self.mat2vec(dfc)
 
             # First level clustering
-            kmeans_ = KMeans(n_clusters=self.n_subj_clusters, n_init=500, random_state=42).fit(F)
+            kmeans_ = KMeans(n_clusters=self.subject_clusters, n_init=500, random_state=42).fit(F)
             F_cent = kmeans_.cluster_centers_
 
             FCS = self.vec2mat(F_cent, N=self.P)
@@ -1985,13 +1397,16 @@ class SlidingWindowClustering(ConnectivityMethod):
 
 class KSVD(ConnectivityMethod):
     """
-    Implements the windowless state-based connectivity method based on K-SVD.
+    Windowless state-based connectivity based on K-SVD.
 
     References
     ----------
-    Rubinstein, R., Zibulevsky, M. and Elad, M., Efficient Implementation 
-    of the K-SVD Algorithm using Batch Orthogonal Matching Pursuit Technical 
-    Report - CS Technion, April 2008
+    Torabi, M., Mitsis, G. D., & Poline, J. B. (2024). On the variability of 
+    dynamic functional connectivity assessment methods. GigaScience, 13, giae009.
+    https://doi.org/10.1093/gigascience/giae009
+
+    Rubinstein, R., Zibulevsky, M., & Elad, M. (2008). Efficient implementation of the 
+    K-SVD algorithm using batch orthogonal matching pursuit. Cs Technion, 40(8), 1-15.
 
     Parameters
     ----------
@@ -2000,7 +1415,7 @@ class KSVD(ConnectivityMethod):
     n_states : int, optional
         Number of states for the method. Default is 5.
     """
-    name = "STATE KSVD"
+    name = "STATE K-SVD"
 
     def __init__(self,
                  time_series: Union[np.ndarray, list],
@@ -2025,14 +1440,15 @@ class KSVD(ConnectivityMethod):
 
     def estimate(self):
         """
-        Calculate windowless dynamic functional connectivity.
+        Estimate state-based connectivity
 
         Returns
         -------
         np.ndarray
-            Dynamic functional connectivity estimated by the windowless method.
+            State time course (n_subjects x T)
+        np.ndarray
+            Connectivity states (n_states x P x P)
         """
-    
         aksvd = ApproximateKSVD(n_components=self.n_states, transform_n_nonzero_coefs=1)
         dictionary = aksvd.fit(self.ts_stacked).components_
         gamma = aksvd.transform(self.ts_stacked)
@@ -2050,11 +1466,13 @@ class KSVD(ConnectivityMethod):
 
 class CoactivationPatterns(ConnectivityMethod):
     """
-    Implements the Co-activation patterns state-based connectivity method.
+    Co-activation patterns (state-based connectivity).
 
     References
     ----------
-    
+    Torabi, M., Mitsis, G. D., & Poline, J. B. (2024). On the variability of 
+    dynamic functional connectivity assessment methods. GigaScience, 13, giae009.
+    https://doi.org/10.1093/gigascience/giae009
 
     Parameters
     ----------
@@ -2062,15 +1480,15 @@ class CoactivationPatterns(ConnectivityMethod):
         The input time series data.
     n_states : int, optional
         Number of states for the method. Default is 5.
-    n_subj_clusters : int, optional
+    subject_clusters : int, optional
         Number of subject clusters. Default is 5.
     """
-    name = "STATE Cap"
+    name = "STATE Co-activation Patterns"
 
     def __init__(self,
                  time_series: Union[np.ndarray, list],
                  n_states: int = 5,
-                 n_subj_clusters: int = 5):
+                 subject_clusters: int = 5):
 
         self.time_series = time_series
         self.T = time_series.shape[0] if type(time_series) == np.ndarray else time_series[0].shape[0] # T timepoints
@@ -2079,21 +1497,14 @@ class CoactivationPatterns(ConnectivityMethod):
         self.N_estimates = self.T * time_series.shape[2] if type(time_series) == np.ndarray else self.T * len(time_series)
         self.n_states = n_states
         self.n_subjects = time_series.shape[2] if type(time_series) == np.ndarray else len(time_series)
-        self.n_subj_clusters = n_subj_clusters
+        self.subject_clusters = subject_clusters
 
-        self.prepare_time_series()
         self.state_tc = np.zeros(self.N_estimates)
         self.states = np.full((self.n_states, self.P,self.P), np.nan)
 
-    def prepare_time_series(self):
         self.time_series = self.time_series.astype("float32") if type(self.time_series) == np.ndarray else [ts.astype("float32") for ts in self.time_series]
         self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if type(self.time_series) == np.ndarray else np.vstack(self.time_series)
-        
-        if isinstance(self.time_series, np.ndarray):
-            self.ts_stacked = np.transpose(self.time_series, (2, 0, 1))
-        else:
-            self.ts_stacked = np.stack(self.time_series, axis=0)
-
+        self.ts_stacked = np.transpose(self.time_series, (2, 0, 1)) if isinstance(self.time_series, np.ndarray) else np.stack(self.time_series, axis=0)
         self.ts_2d = self.ts_stacked.reshape(-1, self.ts_stacked.shape[-1])
        
     def cluster_ts(self, act, n_clusters):
@@ -2104,22 +1515,24 @@ class CoactivationPatterns(ConnectivityMethod):
 
     def estimate(self):
         """
-        Calculate CAPs for state-based dynamic funcional connectivity.
+        Estimate state-based connectivity
 
         Returns
         -------
         np.ndarray
-            Dynamic functional connectivity estimated by the CAP method.
+            State time course (n_subjects x T)
+        np.ndarray
+            Connectivity states (n_states x P x P)
         """
         center_1st_level = None
         for subject in tqdm(range(self.n_subjects)):
             ts = self.ts_stacked[subject, :,:]
 
-            if ts.shape[0] < self.n_subj_clusters:
+            if ts.shape[0] < self.subject_clusters:
                 print(f"Number of subject-level clusters changed to {ts.shape[0]} as they cannot be more than time samples.")
-                self.n_subj_clusters = ts.shape[0]
+                self.subject_clusters = ts.shape[0]
 
-            centroids, _ = self.cluster_ts(act=ts, n_clusters=self.n_subj_clusters)
+            centroids, _ = self.cluster_ts(act=ts, n_clusters=self.subject_clusters)
             
             if center_1st_level is None:
                 center_1st_level = centroids
@@ -2138,11 +1551,13 @@ class CoactivationPatterns(ConnectivityMethod):
 
 class ContinuousHMM(ConnectivityMethod):
     """
-    Implements the continuous hidden markov state-based connectivity method.
+    Continuous hidden markov model (state-based connectivity).
 
     References
     ----------
-    
+    Torabi, M., Mitsis, G. D., & Poline, J. B. (2024). On the variability of 
+    dynamic functional connectivity assessment methods. GigaScience, 13, giae009.
+    https://doi.org/10.1093/gigascience/giae009
 
     Parameters
     ----------
@@ -2150,6 +1565,8 @@ class ContinuousHMM(ConnectivityMethod):
         The input time series data.
     n_states : int, optional
         Number of states for the method. Default is 5.
+    hmm_iter : int, optional
+        Number of iterations for the HMM. Default is 20.
     """
     name = "STATE Continuous Hidden Markov Model"
 
@@ -2167,10 +1584,6 @@ class ContinuousHMM(ConnectivityMethod):
         self.n_subjects = time_series.shape[2] if type(time_series) == np.ndarray else len(time_series)
         self.hmm_iter = hmm_iter
 
-        self.prepare_time_series()
-
-
-    def prepare_time_series(self):
         self.time_series = self.time_series.astype("float32") if type(self.time_series) == np.ndarray else [ts.astype("float32") for ts in self.time_series]
         self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if type(self.time_series) == np.ndarray else np.vstack(self.time_series)
         self.ts_stacked = np.transpose(self.time_series, (2, 0, 1)) if isinstance(self.time_series, np.ndarray) else np.stack(self.time_series, axis=0)
@@ -2178,14 +1591,15 @@ class ContinuousHMM(ConnectivityMethod):
 
     def estimate(self):
         """
-        Calculate CHMM state-based dynamic funcional connectivity.
+        Estimate state-based connectivity
 
         Returns
         -------
         np.ndarray
-            Dynamic functional connectivity estimated by the CAP method.
+            State time course (n_subjects x T)
+        np.ndarray
+            Connectivity states (n_states x P x P)
         """
-        
         models, scores = [], []
         for i in tqdm(range(self.hmm_iter)):
             model = hmm.GaussianHMM(n_components=self.n_states, covariance_type="full")
@@ -2204,11 +1618,13 @@ class ContinuousHMM(ConnectivityMethod):
 
 class DiscreteHMM(ConnectivityMethod):
     """
-    Implements the continuous hidden markov state-based connectivity method.
+    Discrete hidden markov model (state-based connectivity).
 
     References
     ----------
-    
+    Torabi, M., Mitsis, G. D., & Poline, J. B. (2024). On the variability of 
+    dynamic functional connectivity assessment methods. GigaScience, 13, giae009.
+    https://doi.org/10.1093/gigascience/giae009
 
     Parameters
     ----------
@@ -2216,16 +1632,32 @@ class DiscreteHMM(ConnectivityMethod):
         The input time series data.
     n_states : int, optional
         Number of states for the method. Default is 5.
+    state_ratio : float, optional
+        Ratio of states to use for clustering. Default is 3/5.
+    subject_clusters : int, optional
+        Number of subject clusters. Default is 5.
+    windowsize : int, optional
+        Size of the sliding window. Default is 29.
+    shape : str, optional
+        Shape of the window. Default is "gaussian".
+    std : float, optional
+        Standard deviation for gaussian window. Default is 10.
+    stepsize : float, optional
+        Step size for the sliding window. Default is 15.
+    hmm_iter : int, optional
+        Number of iterations for the HMM. Default is 20.
     """
-    name = "STATE Continuous Hidden Markov Model"
+    name = "STATE Discrete Hidden Markov Model"
 
     def __init__(self,
                  time_series: Union[np.ndarray, list],
                  n_states: int = 5,
                  state_ratio: float = 3/5,
-                 n_subj_clusters: int = 5,
-                 windowsize: int = 44,
-                 stepsize: float = 22,
+                 subject_clusters: int = 5,
+                 windowsize: int = 29,
+                 shape: Literal["rectangular", "gaussian", "hamming"] = "gaussian",
+                 std: float = 10,
+                 stepsize: float = 15,
                  hmm_iter: int = 20):
 
         self.time_series = time_series
@@ -2235,24 +1667,27 @@ class DiscreteHMM(ConnectivityMethod):
         self.n_subjects = time_series.shape[2] if type(time_series) == np.ndarray else len(time_series)
         self.n_states = n_states
         self.state_ratio = state_ratio
-        self.n_subj_clusters = n_subj_clusters
+        self.subject_clusters = subject_clusters
         self.windowsize = windowsize
+        self.shape = shape
+        self.std = std
         self.stepsize = stepsize
         self.hmm_iter = hmm_iter
         self.N_estimates = self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1
 
-
     def estimate(self):
         """
-        Calculate DHMM state-based dynamic funcional connectivity.
+        Estimate state-based connectivity
 
         Returns
         -------
         np.ndarray
-            Dynamic functional connectivity estimated by the CAP method.
+            State time course (n_subjects x T)
+        np.ndarray
+            Connectivity states (n_states x P x P)
         """
         cluster_states = int(self.n_states * self.state_ratio)
-        state_tc, states = SlidingWindowClustering(self.time_series, n_states=cluster_states, n_subj_clusters=self.n_subj_clusters, windowsize=self.windowsize, stepsize=self.stepsize).estimate()
+        state_tc, states = SlidingWindowClustering(self.time_series, n_states=cluster_states, subject_clusters=self.subject_clusters, windowsize=self.windowsize, shape=self.shape, stepsize=self.stepsize).estimate()
 
         state_tc = state_tc.flatten()
         SWC_dFC = states[state_tc]
@@ -2279,11 +1714,8 @@ class DiscreteHMM(ConnectivityMethod):
 
         return self.state_tc, self.states
 
-
 """
 SECTION: Static FC methods
- - Static methods that calculate a single functional connectivity matrix
-   from a given time series
 """
 class Static_Pearson(ConnectivityMethod):
     """
