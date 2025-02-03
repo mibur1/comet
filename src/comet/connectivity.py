@@ -1369,7 +1369,7 @@ class SlidingWindowClustering(ConnectivityMethod):
             F = self.mat2vec(dfc)
 
             # First level clustering
-            kmeans_ = KMeans(n_clusters=self.subject_clusters, n_init=500, random_state=42).fit(F)
+            kmeans_ = KMeans(n_clusters=self.subject_clusters, n_init=500).fit(F)
             F_cent = kmeans_.cluster_centers_
 
             FCS = self.vec2mat(F_cent, N=self.P)
@@ -1386,7 +1386,7 @@ class SlidingWindowClustering(ConnectivityMethod):
 
         # Second level clustering
         F = self.mat2vec(FCS_1st_level)
-        kmeans_ = KMeans(n_clusters=self.n_states, n_init=500, random_state=42).fit(F)
+        kmeans_ = KMeans(n_clusters=self.n_states, n_init=500).fit(F)
         F_cent = kmeans_.cluster_centers_
 
         self.states = self.vec2mat(F_cent, N=self.P)
@@ -1695,7 +1695,7 @@ class DiscreteHMM(ConnectivityMethod):
 
         models, scores = [], []
         for i in tqdm(range(self.hmm_iter)):
-            model = hmm.CategoricalHMM(n_components=self.n_states, random_state=42)
+            model = hmm.CategoricalHMM(n_components=self.n_states)
             model.fit(state_tc)
             models.append(model)
             
