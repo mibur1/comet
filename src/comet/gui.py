@@ -39,9 +39,8 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout,
      QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, QGridLayout, \
      QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QGroupBox
 
-# Comet imports and state-based dFC methods from pydfc
+# Comet imports
 from . import cifti, connectivity, graph, multiverse, utils
-import pydfc
 
 
 """
@@ -467,7 +466,7 @@ class Data:
     dfc_name:      str        = field(default=None)         # method class name
     dfc_params:    Dict       = field(default_factory=dict) # input parameters
     dfc_data:      np.ndarray = field(default=None)         # dfc data
-    dfc_states:    Dict       = field(default_factory=dict) # dfc states
+    dfc_states:    np.ndarray = field(default=None)         # dfc states
     dfc_state_tc:  np.ndarray = field(default=None)         # dfc state time course
     dfc_edge_ts:   np.ndarray = field(default=None)         # dfc edge time series
 
@@ -487,7 +486,7 @@ class Data:
     def clear_dfc_data(self):
         self.dfc_params   = {}
         self.dfc_data     = None
-        self.dfc_states   = {}
+        self.dfc_states   = None
         self.dfc_state_tc = None
         self.dfc_edge_ts  = None
 
@@ -1651,21 +1650,6 @@ class App(QMainWindow):
             self.data.file_data = np.load(file_path)
             self.createCarpetPlot()
 
-        elif file_path.endswith('.pkl'):
-            with open(file_path, 'rb') as f:
-                self.data.file_data = pickle.load(f)
-
-                if type(self.data.file_data) == pydfc.time_series.TIME_SERIES:
-                    print("Loaded TIME_SERIES object from .pkl file.")
-                    self.subjectDropdown.addItems(self.data.file_data.data_dict.keys())
-                    self.subjectDropdownContainer.show()
-                    self.subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
-                    self.loadContainer.show()
-                    self.calculateContainer.hide()
-
-                    self.transposeCheckbox.show()
-                    self.createCarpetPlot()
-
         elif file_path.endswith(".tsv"):
             data = pd.read_csv(file_path, sep='\t', header=None, na_values='n/a')
 
@@ -1779,23 +1763,12 @@ class App(QMainWindow):
             return  # No data loaded, so do nothing
 
         if state == Qt.CheckState.Checked:
-            # Transpose the data
-            if type(self.data.file_data) == pydfc.time_series.TIME_SERIES:
-                    for subject in self.data.file_data.data_dict.keys():
-                        self.data.file_data.data_dict[subject]["data"] = self.data.file_data.data_dict[subject]["data"].T
-            else:
-                self.data.file_data = self.data.file_data.transpose()
+            self.data.file_data = self.data.file_data.transpose()
         else:
-            # Transpose it back to original
-            if type(self.data.file_data) == pydfc.time_series.TIME_SERIES:
-                    # Transpose the data
-                    for subject in self.data.file_data.data_dict.keys():
-                        self.data.file_data.data_dict[subject]["data"] = self.data.file_data.data_dict[subject]["data"].T
-            else:
-                self.data.file_data = self.data.file_data.transpose()
+            self.data.file_data = self.data.file_data.transpose()
 
         # Update the labels
-        shape = self.data.file_data.data_dict[list(self.data.file_data.data_dict.keys())[0]]["data"].shape if type(self.data.file_data) == pydfc.time_series.TIME_SERIES else self.data.file_data.shape
+        shape = self.data.file_data.shape
         self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {shape}")
         self.fileNameLabel2.setText(f"Loaded {self.time_series_textbox.text()} with shape: {shape}")
         self.time_series_textbox.setText(self.data.file_name)
@@ -2445,11 +2418,7 @@ class App(QMainWindow):
         ts = np.copy(self.data.file_data)
         cmap = plt.cm.gray
 
-        if type(self.data.file_data) == pydfc.time_series.TIME_SERIES:
-            current_subject = self.subjectDropdown.currentText()
-            ts = self.data.file_data.data_dict[current_subject]["data"].T
-
-        elif self.data.sample_mask is not None:
+        if self.data.sample_mask is not None:
             # We have data with missing scans (non-steady states or scrubbing)
             # Create a mask of the same shape as ts and set the values to 0 where sample_mask is False
             mask = np.ones(ts.shape, dtype=bool)
@@ -2695,11 +2664,14 @@ class App(QMainWindow):
         if self.data.dfc_instance == connectivity.EdgeConnectivity:
             self.data.dfc_edge_ts = connectivityObject.eTS
 
-        # Result is DFC object (pydfc methods)
-        if isinstance(result, pydfc.dfc.DFC):
-            self.data.dfc_data = np.transpose(result.get_dFC_mat(), (1, 2, 0))
-            self.data.dfc_states = result.FCSs_
-            self.data.dfc_state_tc = result.state_TC()
+        # Result is state-based connectivity
+        if self.data.dfc_instance in [connectivity.SlidingWindowClustering, 
+                                      connectivity.KSVD, 
+                                      connectivity.CoactivationPatterns, 
+                                      connectivity.ContinuousHMM, 
+                                      connectivity.DiscreteHMM]:
+            self.data.dfc_state_tc = result[0]
+            self.data.dfc_states = result[1]
 
         # Store in memory if checkbox is checked
         if keep_in_memory:
@@ -3049,8 +3021,8 @@ class App(QMainWindow):
         elif self.data.dfc_state_tc is not None:
             self.timeSeriesFigure.clear()
 
-            time_series = self.data.dfc_state_tc
-            num_states = len(self.data.dfc_states)
+            time_series = self.data.dfc_state_tc[0]
+            num_states = self.data.dfc_states.shape[0]
 
             # Setup the gridspec layout
             gs = gridspec.GridSpec(3, num_states, self.timeSeriesFigure, height_ratios=[1, 0.5, 1])
@@ -3063,11 +3035,11 @@ class App(QMainWindow):
             ax_time_series = self.timeSeriesFigure.add_subplot(gs[0, :])
             ax_time_series.plot(time_series)
             ax_time_series.set_ylabel("State")
-            ax_time_series.set_title("State time course")
+            ax_time_series.set_title("State time course for subject 0")
             ax_time_series.set_xlabel("Time (TRs)")
 
             # Plot the individual states
-            for col, (state, matrix) in enumerate(self.data.dfc_states.items()):
+            for col, matrix in enumerate(self.data.dfc_states):
                 ax_state = self.timeSeriesFigure.add_subplot(gs[2, col])
                 ax_state.imshow(matrix, cmap='coolwarm', aspect=1)
                 ax_state.set_title(f"State {col+1}")
