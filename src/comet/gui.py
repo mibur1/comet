@@ -710,10 +710,10 @@ class App(QMainWindow):
         loadLayout.addLayout(buttonLayout)
         loadLayout.addWidget(self.fileNameLabel)
 
-        # Subject dropdown for pkl files
+        # Subject dropdown for .npy files containing multiple time series
         self.subjectDropdownContainer = QWidget()
         self.subjectDropdownLayout = QHBoxLayout()
-        self.subjectLabel = QLabel("Available subjects:")
+        self.subjectLabel = QLabel("Subject number:")
         self.subjectLabel.setFixedWidth(140)
         self.subjectDropdown = QComboBox()
         self.subjectDropdownLayout.addWidget(self.subjectLabel)
@@ -745,12 +745,15 @@ class App(QMainWindow):
         miscCleaningLayout = QHBoxLayout(self.miscCleaningContainer)
         self.standardizeCheckbox = QCheckBox("Standardize")
         self.detrendCheckbox = QCheckBox("Detrend")
+        self.gsrCheckbox = QCheckBox("Global signal regression")
         self.highVarianceCheckbox = QCheckBox("Regress high variance confounds")
 
         miscCleaningLayout.addItem(QSpacerItem(5, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
         miscCleaningLayout.addWidget(self.detrendCheckbox)
         miscCleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
         miscCleaningLayout.addWidget(self.standardizeCheckbox)
+        miscCleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        miscCleaningLayout.addWidget(self.gsrCheckbox)
         miscCleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
         miscCleaningLayout.addWidget(self.highVarianceCheckbox)
         miscCleaningLayout.addStretch(1)
@@ -759,6 +762,7 @@ class App(QMainWindow):
 
         self.standardizeCheckbox.stateChanged.connect(self.updateCleaningOptions)
         self.detrendCheckbox.stateChanged.connect(self.updateCleaningOptions)
+        self.gsrCheckbox.stateChanged.connect(self.updateCleaningOptions)
         self.highVarianceCheckbox.stateChanged.connect(self.updateCleaningOptions)
 
         # Smoothing Layout Container
@@ -846,7 +850,7 @@ class App(QMainWindow):
         self.calculateContainer.setLayout(self.calculateLayout)
 
         # Transpose checkpox
-        self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
+        self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension for connectivity estimation)")
         self.transposeCheckbox.hide()
 
         # Container for parcellation
@@ -1621,7 +1625,7 @@ class App(QMainWindow):
         self.boldCanvas.draw()
         self.bids_layout = None
         self.data.sample_mask = None
-        self.transposeCheckbox.show()
+        self.transposeCheckbox.hide()
 
         try:
             self.subjectDropdown.currentIndexChanged.disconnect(self.onSubjectChanged)
@@ -1639,10 +1643,14 @@ class App(QMainWindow):
             print("Loaded mat file with keys:", data_dict.keys())
             print(f"Using data from key: {list(data_dict.keys())[-1]}")
             self.data.file_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
+            self.transposeCheckbox.show()
             self.createCarpetPlot()
 
         elif file_path.endswith('.txt'):
             self.data.file_data = np.loadtxt(file_path)
+            self.loadContainer.show()
+            self.calculateContainer.hide()
+            self.transposeCheckbox.show()
             self.createCarpetPlot()
 
         elif file_path.endswith('.npy'):
@@ -1654,6 +1662,7 @@ class App(QMainWindow):
                 self.subjectDropdownContainer.show()
                 self.subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
                 self.loadContainer.show()
+                self.transposeCheckbox.show()
                 self.calculateContainer.hide()
                 self.createCarpetPlot()
             
@@ -1680,6 +1689,7 @@ class App(QMainWindow):
 
             self.data.file_data = data.to_numpy()
             self.data.roi_names = np.array(rois, dtype=object)
+            self.transposeCheckbox.show()
             self.createCarpetPlot()
 
         elif file_path.endswith(".nii") or file_path.endswith(".nii.gz"):
@@ -1746,12 +1756,14 @@ class App(QMainWindow):
 
         # Update file name label
         fname = self.data.file_name[:20] + self.data.file_name[-30:] if len(self.data.file_name) > 50 else self.data.file_name
+        fshape = self.data.file_data.shape
 
         if file_path.endswith('.nii') or file_path.endswith('.nii.gz'):
             self.fileNameLabel.setText(f"Loaded {fname}")
-
+        elif file_path.endswith('.npy'):
+            self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}")
+            self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}")
         else:
-            fshape = self.data.file_data.shape
             self.fileNameLabel.setText(f"Loaded {fname} with shape {fshape}")
             self.fileNameLabel2.setText(f"Loaded {fname} with shape {fshape}")
 
@@ -1766,9 +1778,16 @@ class App(QMainWindow):
         self.data.file_data = self.data.file_data.transpose(0, 2, 1) if self.data.file_data.ndim == 3 else self.data.file_data.transpose()
 
         # Update the labels
-        shape = self.data.file_data.shape
-        self.fileNameLabel.setText(f"Loaded {self.time_series_textbox.text()} with shape: {shape}")
-        self.fileNameLabel2.setText(f"Loaded {self.time_series_textbox.text()} with shape: {shape}")
+        fshape = self.data.file_data.shape
+        fname = self.time_series_textbox.text()
+  
+        if self.data.file_name.endswith('.npy'):
+            self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}")
+            self.fileNameLabel2.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}")
+        else:
+            self.fileNameLabel.setText(f"Loaded {fname} with shape {fshape}")
+            self.fileNameLabel2.setText(f"Loaded {fname} with shape {fshape}")
+
         self.time_series_textbox.setText(self.data.file_name)
 
         # Update carpet plot
@@ -2321,6 +2340,12 @@ class App(QMainWindow):
             low_pass = self.lowPassCutoff.value() if self.lowPassCutoff.value() > 0 else None
             tr = self.trValue.value() if self.trValue.value() > 0 else None
 
+        # GSR
+        gsr = self.gsrCheckbox.isChecked()
+        if gsr:
+            print("TODO: Implement GSR")
+
+
         # Parcellation procedure
         self.parcellationCalculateButton.setEnabled(False)
         self.bids_calculateButton.setEnabled(False)
@@ -2417,7 +2442,7 @@ class App(QMainWindow):
 
         if np.ndim(self.data.file_data) == 3:
             current_subject = int(self.subjectDropdown.currentText())
-            ts = self.data.file_data[current_subject].T
+            ts = self.data.file_data[current_subject]
         else:
             ts = np.copy(self.data.file_data)
 
@@ -2755,7 +2780,7 @@ class App(QMainWindow):
         self.time_series_textbox.setEnabled(True)
 
         # Create info button for time_series
-        time_series_info_text = "2D time series loaded from file. Time has to be the first dimension."
+        time_series_info_text = "2D time series loaded from file. Time has to be the first dimension for connectivity estimation."
         time_series_info_button = InfoButton(time_series_info_text)
 
         time_series_layout = QHBoxLayout()
