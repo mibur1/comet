@@ -38,15 +38,12 @@ class ConnectivityMethod(metaclass=ABCMeta):
         Number of parcels.
     diagonal : int or float
         Value to set on the diagonal of connectivity matrices.
-    standardize : bool
-        Whether to z-standardize the connectivity matrices.
     fisher_z : bool
         Whether to apply Fisher z-transformation.
     tril : bool
         Whether to return only the lower triangle of the matrices.
     """
-
-    def __init__(self, time_series, diagonal=0, standardize=False, fisher_z=False, tril=False):
+    def __init__(self, time_series, diagonal=0, fisher_z=False, tril=False):
         """
         Initializes the ConnectivityMethod with the given parameters.
 
@@ -56,20 +53,41 @@ class ConnectivityMethod(metaclass=ABCMeta):
             The input time series data.
         diagonal : int or float, optional
             Value to set on the diagonal of connectivity matrices. Default is 0.
-        standardize : bool, optional
-            Whether to z-standardize the connectivity matrices. Default is False.
         fisher_z : bool, optional
             Whether to apply Fisher z-transformation. Default is False.
         tril : bool, optional
             Whether to return only the lower triangle of the matrices. Default is False.
         """
-        self.time_series = time_series.astype("float32")
-        self.T = time_series.shape[0] # T timepoints
-        self.P = time_series.shape[1] # P parcels
+        self.time_series = time_series
         self.diagonal = diagonal
-        self.standardize = standardize
         self.fisher_z = fisher_z
         self.tril = tril
+
+        # Check if input data is an array or a list
+        # Set the number of subjects, timepoints, and parcels accordingly
+        if isinstance(self.time_series, np.ndarray):
+            self.time_series = time_series.astype("float32")
+            if np.ndim(self.time_series) == 3 :
+                self.n_subjects = self.time_series.shape[0]
+                self.T = self.time_series.shape[1]
+                self.P = self.time_series.shape[2]
+            elif np.ndim(self.time_series) == 2:
+                self.n_subjects = 1
+                self.T = self.time_series.shape[0]
+                self.P = self.time_series.shape[1]
+            else:
+                raise ValueError("Input data must be a 3D array or a list of 2D arrays.")
+        
+        elif isinstance(self.time_series, list):
+            self.time_series = [ts.astype("float32") for ts in self.time_series]
+            self.n_subjects = len(self.time_series)
+            self.T = self.time_series[0].shape[0]
+            self.P = self.time_series[0].shape[1]  
+        
+        else:
+            raise ValueError("Input data must be a 3D array or a list of 2D arrays.")
+        
+        return 
 
     @abstractmethod
     def estimate(self):
@@ -103,10 +121,6 @@ class ConnectivityMethod(metaclass=ABCMeta):
         if self.fisher_z:
             R_mat = np.clip(R_mat, -1 + np.finfo(float).eps, 1 - np.finfo(float).eps)
             R_mat = np.arctanh(R_mat)
-
-        # z-standardize
-        if self.standardize and len(R_mat.shape) == 3:
-            R_mat = zscore(R_mat, axis=2)
 
         # Set main diagonal
         if len(R_mat.shape) == 3:
@@ -150,13 +164,10 @@ class SlidingWindow(ConnectivityMethod):
         Standard deviation for the Gaussian window. Default is 10.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
-    standardize : bool, optional
-        Whether to z-standardize the connectivity matrices. Default is False.
     fisher_z : bool, optional
         Whether to apply Fisher z-transformation. Default is False.
     tril : bool, optional
         Whether to return only the lower triangle of the matrices. Default is False.
-
     """
     name = "CONT Sliding Window"
 
@@ -167,11 +178,10 @@ class SlidingWindow(ConnectivityMethod):
                  shape: Literal["rectangular", "gaussian", "hamming"] = "rectangular",
                  std: float = 10,
                  diagonal: int = 0,
-                 standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
 
-        super().__init__(time_series, diagonal, standardize, fisher_z, tril)
+        super().__init__(time_series, diagonal, fisher_z, tril)
         self.windowsize = windowsize
         self.stepsize = stepsize
         self.shape = shape
@@ -256,8 +266,6 @@ class Jackknife(ConnectivityMethod):
         Step size for sliding the window. Default is 1.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
-    standardize : bool, optional
-        Whether to z-standardize the connectivity matrices. Default is False.
     fisher_z : bool, optional
         Whether to apply Fisher z-transformation. Default is False.
     tril : bool, optional
@@ -276,11 +284,10 @@ class Jackknife(ConnectivityMethod):
                  windowsize: int = 1,
                  stepsize: int = 1,
                  diagonal: int = 0,
-                 standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
 
-        super().__init__(time_series, diagonal, standardize, fisher_z, tril)
+        super().__init__(time_series, diagonal, fisher_z, tril)
         self.windowsize = windowsize
         self.stepsize = stepsize
 
@@ -351,8 +358,6 @@ class SpatialDistance(ConnectivityMethod):
         Type of distance metric to use. Default is 'euclidean'.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
-    standardize : bool, optional
-        Whether to z-standardize the connectivity matrices. Default is False.
     fisher_z : bool, optional
         Whether to apply Fisher z-transformation. Default is False.
     tril : bool, optional
@@ -370,11 +375,10 @@ class SpatialDistance(ConnectivityMethod):
                  time_series: np.ndarray,
                  dist: Literal["euclidean", "cosine", "cityblock"] = "euclidean",
                  diagonal: int = 0,
-                 standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
 
-        super().__init__(time_series, diagonal, standardize, fisher_z, tril)
+        super().__init__(time_series, diagonal, fisher_z, tril)
         self.distance = self._distance_functions(dist)
 
         self.N_estimates = self.T
@@ -446,8 +450,6 @@ class TemporalDerivatives(ConnectivityMethod):
         Size of the sliding window. Default is 7.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
-    standardize : bool, optional
-        Whether to z-standardize the connectivity matrices. Default is False.
     fisher_z : bool, optional
         Whether to apply Fisher z-transformation. Default is False.
     tril : bool, optional
@@ -465,11 +467,10 @@ class TemporalDerivatives(ConnectivityMethod):
                  time_series: np.ndarray,
                  windowsize: int = 7,
                  diagonal: int = 0,
-                 standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
 
-        super().__init__(time_series, diagonal, standardize, fisher_z, tril)
+        super().__init__(time_series, diagonal, fisher_z, tril)
         self.windowsize = windowsize
 
         self.N_estimates = self.T - self.windowsize
@@ -532,8 +533,6 @@ class FlexibleLeastSquares(ConnectivityMethod):
         Number of CPU cores to use for parallel processing. Default is 16.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
-    standardize : bool, optional
-        Whether to z-standardize the connectivity matrices. Default is False.
     fisher_z : bool, optional
         Whether to apply Fisher z-transformation. Default is False.
     tril : bool, optional
@@ -553,11 +552,10 @@ class FlexibleLeastSquares(ConnectivityMethod):
                  mu: float = 100,
                  num_cores: int = 16,
                  diagonal: int = 0,
-                 standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
 
-        super().__init__(time_series, diagonal, standardize, fisher_z, tril)
+        super().__init__(time_series, diagonal, fisher_z, tril)
         self.N_estimates = self.T
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
         self.standardizeData = standardizeData
@@ -670,8 +668,6 @@ class PhaseSynchrony(ConnectivityMethod):
         The phase synchrony method to use. Default is 'crp'.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
-    standardize : bool, optional
-        Whether to z-standardize the connectivity matrices. Default is False.
     fisher_z : bool, optional
         Whether to apply Fisher z-transformation. Default is False.
     tril : bool, optional
@@ -688,11 +684,10 @@ class PhaseSynchrony(ConnectivityMethod):
                  time_series: np.ndarray,
                  method: Literal["crp", "phcoh", "teneto"] = "crp",
                  diagonal: int = 0,
-                 standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
 
-        super().__init__(time_series, diagonal, standardize, fisher_z, tril)
+        super().__init__(time_series, diagonal, fisher_z, tril)
         self.N_estimates = self.T
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
         self.method = method
@@ -735,8 +730,6 @@ class LeiDA(ConnectivityMethod):
         Whether to flip the eigenvectors so that the largest component is negative. Default is False.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
-    standardize : bool, optional
-        Whether to z-standardize the connectivity matrices. Default is False.
     fisher_z : bool, optional
         Whether to apply Fisher z-transformation. Default is False.
     tril : bool, optional
@@ -762,11 +755,10 @@ class LeiDA(ConnectivityMethod):
                  time_series: np.ndarray,
                  flip_eigenvectors: bool = False,
                  diagonal: int = 0,
-                 standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
 
-        super().__init__(time_series, diagonal, standardize, fisher_z, tril)
+        super().__init__(time_series, diagonal, fisher_z, tril)
 
         self.N_estimates = self.T
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
@@ -828,8 +820,6 @@ class WaveletCoherence(ConnectivityMethod):
         Number of time points to drop from the edges. Default is 50.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
-    standardize : bool, optional
-        Whether to z-standardize the connectivity matrices. Default is False.
     fisher_z : bool, optional
         Whether to apply Fisher z-transformation. Default is False.
     tril : bool, optional
@@ -853,11 +843,10 @@ class WaveletCoherence(ConnectivityMethod):
                  drop_scales: int = 2,
                  drop_timepoints: int = 50,
                  diagonal: int = 0,
-                 standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
 
-        super().__init__(time_series, diagonal, standardize, fisher_z, tril)
+        super().__init__(time_series, diagonal, fisher_z, tril)
 
         self.N_estimates = self.T
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
@@ -956,8 +945,6 @@ class DCC(ConnectivityMethod):
         Whether to standardize the time series data. Default is True.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
-    standardize : bool, optional
-        Whether to z-standardize the connectivity matrices. Default is False.
     fisher_z : bool, optional
         Whether to apply Fisher z-transformation. Default is False.
     tril : bool, optional
@@ -976,11 +963,10 @@ class DCC(ConnectivityMethod):
                  num_cores: int = 16,
                  standardizeData: bool = True,
                  diagonal: int = 0,
-                 standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
 
-        super().__init__(time_series, diagonal, standardize, fisher_z, tril)
+        super().__init__(time_series, diagonal, fisher_z, tril)
 
         self.N_estimates = self.T
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
@@ -1215,8 +1201,6 @@ class EdgeConnectivity(ConnectivityMethod):
         Whether to standardize the time series data. Default is True.
     vlim : float, optional
         Limit for plotting in the GUI (not used in the method itself). Default is 3.
-    standardize : bool, optional
-        Whether to z-standardize the connectivity matrices. Default is False.
 
     References
     ----------
@@ -1229,10 +1213,9 @@ class EdgeConnectivity(ConnectivityMethod):
     def __init__(self,
                  time_series: np.ndarray,
                  standardizeData: bool = True,
-                 vlim: float = 3, # for plotting in the GUI, not used in the method itself
-                 standardize: bool = False):
+                 vlim: float = 3):
 
-        super().__init__(time_series, 0, standardize, False, False)
+        super().__init__(time_series, 0, False, False)
         self.standardizeData = standardizeData
         self.u = None # Row indices of the upper triangle of the connectivity matrix
         self.v = None # Column indices of the upper triangle of the connectivity matrix
@@ -1309,21 +1292,16 @@ class SlidingWindowClustering(ConnectivityMethod):
                  std: float = 10,
                  stepsize: int = 15):
 
-        self.time_series = time_series
+        super().__init__(time_series, 0, False, False)
         self.n_states = n_states
         self.windowsize = windowsize
         self.shape = shape
         self.std = std
         self.stepsize = stepsize
         self.subject_clusters = subject_clusters
-        self.T = time_series.shape[0] if type(time_series) == np.ndarray else time_series[0].shape[0] # T timepoints
-        self.P = time_series.shape[1] if type(time_series) == np.ndarray else time_series[0].shape[1] # P parcels
 
         self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1
-        self.n_subjects = time_series.shape[2] if type(time_series) == np.ndarray else len(time_series)
-        
-        self.time_series = self.time_series.astype("float32") if type(self.time_series) == np.ndarray else [ts.astype("float32") for ts in self.time_series]
-        self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if type(self.time_series) == np.ndarray else np.vstack(self.time_series)
+        self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if isinstance(self.time_series, np.ndarray) else np.vstack(self.time_series)
         self.ts_stacked = np.transpose(self.time_series, (2, 0, 1)) if isinstance(self.time_series, np.ndarray) else np.stack(self.time_series, axis=0)
         self.ts_2d = self.ts_stacked.reshape(-1, self.ts_stacked.shape[-1])
 
@@ -1421,21 +1399,14 @@ class KSVD(ConnectivityMethod):
                  time_series: Union[np.ndarray, list],
                  n_states: int = 5):
 
-        self.time_series = time_series
-        self.T = time_series.shape[0] if type(time_series) == np.ndarray else time_series[0].shape[0] # T timepoints
-        self.P = time_series.shape[1] if type(time_series) == np.ndarray else time_series[0].shape[1] # P parcels
-        
-        self.N_estimates = self.T * time_series.shape[2] if type(time_series) == np.ndarray else self.T * len(time_series)
+        super().__init__(time_series, 0, False, False)
         self.n_states = n_states
-        self.n_subjects = time_series.shape[2] if type(time_series) == np.ndarray else len(time_series)
-
-        self.prepare_time_series()
+          
         self.state_tc = np.zeros(self.N_estimates)
         self.states = np.full((self.n_states, self.P,self.P), np.nan)
 
-    def prepare_time_series(self):
-        self.time_series = self.time_series.astype("float32") if type(self.time_series) == np.ndarray else [ts.astype("float32") for ts in self.time_series]
-        self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if type(self.time_series) == np.ndarray else np.vstack(self.time_series)
+        self.N_estimates = self.n_subjects * self.T
+        self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if isinstance(self.time_series, np.ndarray) else np.vstack(self.time_series)
         
 
     def estimate(self):
@@ -1452,6 +1423,11 @@ class KSVD(ConnectivityMethod):
         aksvd = ApproximateKSVD(n_components=self.n_states, transform_n_nonzero_coefs=1)
         dictionary = aksvd.fit(self.ts_stacked).components_
         gamma = aksvd.transform(self.ts_stacked)
+
+
+        print("TS shape:", self.time_series.shape)
+        print("T:", self.T, "P:", self.P, "N_estimates:", self.N_estimates)
+        print("Gamma:", gamma.shape)
 
         # State array
         for i in range(self.n_states):
@@ -1490,20 +1466,16 @@ class CoactivationPatterns(ConnectivityMethod):
                  n_states: int = 5,
                  subject_clusters: int = 5):
 
-        self.time_series = time_series
-        self.T = time_series.shape[0] if type(time_series) == np.ndarray else time_series[0].shape[0] # T timepoints
-        self.P = time_series.shape[1] if type(time_series) == np.ndarray else time_series[0].shape[1] # P parcels
+        super().__init__(time_series, 0, False, False)
         
-        self.N_estimates = self.T * time_series.shape[2] if type(time_series) == np.ndarray else self.T * len(time_series)
+        self.N_estimates = self.T * time_series.shape[-1] if type(time_series) == np.ndarray else self.T * len(time_series)
         self.n_states = n_states
-        self.n_subjects = time_series.shape[2] if type(time_series) == np.ndarray else len(time_series)
         self.subject_clusters = subject_clusters
 
         self.state_tc = np.zeros(self.N_estimates)
         self.states = np.full((self.n_states, self.P,self.P), np.nan)
 
-        self.time_series = self.time_series.astype("float32") if type(self.time_series) == np.ndarray else [ts.astype("float32") for ts in self.time_series]
-        self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if type(self.time_series) == np.ndarray else np.vstack(self.time_series)
+        self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if isinstance(self.time_series, np.ndarray) else np.vstack(self.time_series)
         self.ts_stacked = np.transpose(self.time_series, (2, 0, 1)) if isinstance(self.time_series, np.ndarray) else np.stack(self.time_series, axis=0)
         self.ts_2d = self.ts_stacked.reshape(-1, self.ts_stacked.shape[-1])
        
@@ -1575,17 +1547,13 @@ class ContinuousHMM(ConnectivityMethod):
                  n_states: int = 5,
                  hmm_iter: int = 20):
 
-        self.time_series = time_series
-        self.T = time_series.shape[0] if type(time_series) == np.ndarray else time_series[0].shape[0] # T timepoints
-        self.P = time_series.shape[1] if type(time_series) == np.ndarray else time_series[0].shape[1] # P parcels
+        super().__init__(time_series, 0, False, False)
 
-        self.N_estimates = self.T * time_series.shape[2] if type(time_series) == np.ndarray else self.T * len(time_series)
+        self.N_estimates = self.T * time_series.shape[-1] if type(time_series) == np.ndarray else self.T * len(time_series)
         self.n_states = n_states
-        self.n_subjects = time_series.shape[2] if type(time_series) == np.ndarray else len(time_series)
         self.hmm_iter = hmm_iter
 
-        self.time_series = self.time_series.astype("float32") if type(self.time_series) == np.ndarray else [ts.astype("float32") for ts in self.time_series]
-        self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if type(self.time_series) == np.ndarray else np.vstack(self.time_series)
+        self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if isinstance(self.time_series, np.ndarray) else np.vstack(self.time_series)
         self.ts_stacked = np.transpose(self.time_series, (2, 0, 1)) if isinstance(self.time_series, np.ndarray) else np.stack(self.time_series, axis=0)
         self.ts_2d = self.ts_stacked.reshape(-1, self.ts_stacked.shape[-1])
 
@@ -1660,11 +1628,8 @@ class DiscreteHMM(ConnectivityMethod):
                  stepsize: float = 15,
                  hmm_iter: int = 20):
 
-        self.time_series = time_series
-        self.T = time_series.shape[0] if type(time_series) == np.ndarray else time_series[0].shape[0] # T timepoints
-        self.P = time_series.shape[1] if type(time_series) == np.ndarray else time_series[0].shape[1] # P parcels
+        super().__init__(time_series, 0, False, False)
 
-        self.n_subjects = time_series.shape[2] if type(time_series) == np.ndarray else len(time_series)
         self.n_states = n_states
         self.state_ratio = state_ratio
         self.subject_clusters = subject_clusters
@@ -1673,7 +1638,7 @@ class DiscreteHMM(ConnectivityMethod):
         self.std = std
         self.stepsize = stepsize
         self.hmm_iter = hmm_iter
-        self.N_estimates = self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1
+        self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1
 
     def estimate(self):
         """
@@ -1686,9 +1651,14 @@ class DiscreteHMM(ConnectivityMethod):
         np.ndarray
             Connectivity states (n_states x P x P)
         """
-        cluster_states = int(self.n_states * self.state_ratio)
-        state_tc, states = SlidingWindowClustering(self.time_series, n_states=cluster_states, subject_clusters=self.subject_clusters, windowsize=self.windowsize, shape=self.shape, stepsize=self.stepsize).estimate()
-
+        n_cluster_states = int(self.n_states * self.state_ratio)
+        state_tc, states = SlidingWindowClustering(self.time_series, 
+                                                   n_states=n_cluster_states, 
+                                                   subject_clusters=self.subject_clusters, 
+                                                   windowsize=self.windowsize, 
+                                                   shape=self.shape, 
+                                                   stepsize=self.stepsize).estimate()
+        
         state_tc = state_tc.flatten()
         SWC_dFC = states[state_tc]
         state_tc = state_tc.reshape(-1, 1)
@@ -1727,8 +1697,6 @@ class Static_Pearson(ConnectivityMethod):
         The input time series data.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
-    standardize : bool, optional
-        Whether to z-standardize the connectivity matrices. Default is False.
     fisher_z : bool, optional
         Whether to apply Fisher z-transformation. Default is False.
     tril : bool, optional
@@ -1739,11 +1707,10 @@ class Static_Pearson(ConnectivityMethod):
     def __init__(self,
                  time_series: np.ndarray,
                  diagonal: int = 0,
-                 standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
 
-        super().__init__(time_series, diagonal, standardize, fisher_z, tril)
+        super().__init__(time_series, diagonal, fisher_z, tril)
 
     def estimate(self):
         """
@@ -1768,8 +1735,6 @@ class Static_Partial(ConnectivityMethod):
         The input time series data.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
-    standardize : bool, optional
-        Whether to z-standardize the connectivity matrices. Default is False.
     fisher_z : bool, optional
         Whether to apply Fisher z-transformation. Default is False.
     tril : bool, optional
@@ -1780,11 +1745,10 @@ class Static_Partial(ConnectivityMethod):
     def __init__(self,
                  time_series: np.ndarray,
                  diagonal: int = 0,
-                 standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
 
-        super().__init__(time_series, diagonal, standardize, fisher_z, tril)
+        super().__init__(time_series, diagonal, fisher_z, tril)
 
     def estimate(self):
         """
@@ -1814,8 +1778,6 @@ class Static_Mutual_Info(ConnectivityMethod):
         Number of bins to use for the mutual information calculation. Default is 10.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
-    standardize : bool, optional
-        Whether to z-standardize the connectivity matrices. Default is False.
     fisher_z : bool, optional
         Whether to apply Fisher z-transformation. Default is False.
     tril : bool, optional
@@ -1828,11 +1790,10 @@ class Static_Mutual_Info(ConnectivityMethod):
                  time_series: np.ndarray,
                  num_bins: int = 10,
                  diagonal: int = 0,
-                 standardize: bool = False,
                  fisher_z: bool = False,
                  tril: bool = False):
 
-        super().__init__(time_series, diagonal, standardize, fisher_z, tril)
+        super().__init__(time_series, diagonal, fisher_z, tril)
         self.num_bins = num_bins
 
     def estimate(self):
