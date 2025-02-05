@@ -1,7 +1,9 @@
-# Custom stuff
+# Custom files and folders
 testing_stuff/
 universe_*.py
 .conda/
+# Reminder for myself: never add the src/comet/data folder here,
+# as this will prevent it from being included in the build
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
