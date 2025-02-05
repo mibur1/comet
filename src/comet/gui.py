@@ -1735,8 +1735,8 @@ class App(QMainWindow):
             self.staticCheckBox.setEnabled(False)
             self.staticCheckBox.setChecked(False)    
         else:
-            self.stateBasedCheckBox.setEnabled(False)
-            self.stateBasedCheckBox.setChecked(False)
+            self.stateBasedCheckBox.setEnabled(True)
+            self.stateBasedCheckBox.setChecked(True)
 
             self.continuousCheckBox.setEnabled(True)
             self.continuousCheckBox.setChecked(True)
