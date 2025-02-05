@@ -1,4 +1,3 @@
-import os
 import random
 import numpy as np
 from tqdm import tqdm
@@ -63,30 +62,28 @@ class ConnectivityMethod(metaclass=ABCMeta):
         self.fisher_z = fisher_z
         self.tril = tril
 
-        # Check if input data is an array or a list
-        # Set the number of subjects, timepoints, and parcels accordingly
-        if isinstance(self.time_series, np.ndarray):
-            self.time_series = time_series.astype("float32")
-            if np.ndim(self.time_series) == 3 :
-                self.n_subjects = self.time_series.shape[0]
-                self.T = self.time_series.shape[1]
-                self.P = self.time_series.shape[2]
-            elif np.ndim(self.time_series) == 2:
-                self.n_subjects = 1
-                self.T = self.time_series.shape[0]
-                self.P = self.time_series.shape[1]
-            else:
-                raise ValueError("Input data must be a 3D array or a list of 2D arrays.")
-        
-        elif isinstance(self.time_series, list):
-            self.time_series = [ts.astype("float32") for ts in self.time_series]
-            self.n_subjects = len(self.time_series)
-            self.T = self.time_series[0].shape[0]
-            self.P = self.time_series[0].shape[1]  
-        
+        # Convert the list to a 3D array if necessary
+        if isinstance(self.time_series, list):
+            self.time_series = np.stack(self.time_series, axis=0)
+
+        # Prepare the data and create some variables
+        self.time_series = time_series.astype("float32")
+        print("Data shape:", self.time_series.shape)
+        if np.ndim(self.time_series) == 3 :
+            self.n_subjects = self.time_series.shape[0]
+            self.T = self.time_series.shape[1] # Timepoints
+            self.P = self.time_series.shape[2] # Parcels (brain regions)
+            # Reshape the data to 2D by stacking all subjects (n_subjects * T, P)
+            self.time_series = self.time_series.reshape(-1, self.time_series.shape[-1])
+
+        elif np.ndim(self.time_series) == 2:
+            self.n_subjects = 1
+            self.T = self.time_series.shape[0]
+            self.P = self.time_series.shape[1]
         else:
-            raise ValueError("Input data must be a 3D array or a list of 2D arrays.")
-        
+            raise ValueError("Input data must be either a 2D array, 3D array, or a list of 2D arrays.")
+
+        print("Parcels:", self.P, "Timepoints:", self.T)
         return 
 
     @abstractmethod
@@ -1401,13 +1398,10 @@ class KSVD(ConnectivityMethod):
 
         super().__init__(time_series, 0, False, False)
         self.n_states = n_states
-          
+        self.N_estimates = self.n_subjects * self.T
+        
         self.state_tc = np.zeros(self.N_estimates)
         self.states = np.full((self.n_states, self.P,self.P), np.nan)
-
-        self.N_estimates = self.n_subjects * self.T
-        self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if isinstance(self.time_series, np.ndarray) else np.vstack(self.time_series)
-        
 
     def estimate(self):
         """
@@ -1420,14 +1414,10 @@ class KSVD(ConnectivityMethod):
         np.ndarray
             Connectivity states (n_states x P x P)
         """
+        # Estimate states
         aksvd = ApproximateKSVD(n_components=self.n_states, transform_n_nonzero_coefs=1)
-        dictionary = aksvd.fit(self.ts_stacked).components_
-        gamma = aksvd.transform(self.ts_stacked)
-
-
-        print("TS shape:", self.time_series.shape)
-        print("T:", self.T, "P:", self.P, "N_estimates:", self.N_estimates)
-        print("Gamma:", gamma.shape)
+        dictionary = aksvd.fit(self.time_series).components_
+        gamma = aksvd.transform(self.time_series)
 
         # State array
         for i in range(self.n_states):
@@ -1472,9 +1462,6 @@ class CoactivationPatterns(ConnectivityMethod):
         self.n_states = n_states
         self.subject_clusters = subject_clusters
 
-        self.state_tc = np.zeros(self.N_estimates)
-        self.states = np.full((self.n_states, self.P,self.P), np.nan)
-
         self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if isinstance(self.time_series, np.ndarray) else np.vstack(self.time_series)
         self.ts_stacked = np.transpose(self.time_series, (2, 0, 1)) if isinstance(self.time_series, np.ndarray) else np.stack(self.time_series, axis=0)
         self.ts_2d = self.ts_stacked.reshape(-1, self.ts_stacked.shape[-1])
@@ -1513,6 +1500,7 @@ class CoactivationPatterns(ConnectivityMethod):
         
         group_centroids, kmeans= self.cluster_ts(act=center_1st_level, n_clusters=self.n_states)
         
+        self.states = np.full((self.n_states, self.P,self.P), np.nan)
         for i, group_centroid in enumerate(group_centroids):
             self.states[i,:,:] = np.multiply(group_centroid[:, np.newaxis], group_centroid[np.newaxis, :])
 
