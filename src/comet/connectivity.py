@@ -1,23 +1,25 @@
 import random
 import numpy as np
 from tqdm import tqdm
+from typing import Literal, Union
 from abc import ABCMeta, abstractmethod
+
+from joblib import Parallel, delayed
+#os.environ["OPENBLAS_NUM_THREADS"] = "1"
+#os.environ["OMP_NUM_THREADS"] = "1"
+
 from scipy.stats import zscore
 from scipy.spatial import distance
 from scipy.signal import windows, hilbert
 from scipy.linalg import eigh, solve, det, inv, pinv
 from scipy.optimize import minimize
+
 from sklearn.metrics import mutual_info_score
 from statsmodels.stats.weightstats import DescrStatsW
 from pycwt import cwt, Morlet
 from hmmlearn import hmm
 from ksvd import ApproximateKSVD
 from sklearn.cluster import KMeans
-from typing import Literal, Union
-
-from joblib import Parallel, delayed
-#os.environ["OPENBLAS_NUM_THREADS"] = "1"
-#os.environ["OMP_NUM_THREADS"] = "1"
 
 """
 SECTION: Class template for all dynamic functional connectivity methods.
@@ -1605,7 +1607,7 @@ class DiscreteHMM(ConnectivityMethod):
                  hmm_iter: int = 20):
 
         super().__init__(time_series, 0, False, False)
-        print("HI")
+        self.time_series = self.time_series3D
         self.n_states = n_states
         self.state_ratio = state_ratio
         self.subject_clusters = subject_clusters
@@ -1627,6 +1629,7 @@ class DiscreteHMM(ConnectivityMethod):
         np.ndarray
             Connectivity states (n_states x P x P)
         """
+        # Run sliding window clustering
         n_cluster_states = int(self.n_states * self.state_ratio)
         state_tc, states = SlidingWindowClustering(self.time_series, 
                                                    n_states=n_cluster_states, 
@@ -1635,11 +1638,10 @@ class DiscreteHMM(ConnectivityMethod):
                                                    shape=self.shape, 
                                                    stepsize=self.stepsize).estimate()
         
-        print(state_tc.shape, states.shape)
         SWC_dFC = states[state_tc.flatten()]
         state_tc = state_tc.reshape(-1, 1)
-        print(state_tc.shape, SWC_dFC.shape)
 
+        # Fit the categorical HMM
         models, scores = [], []
         for i in tqdm(range(self.hmm_iter)):
             model = hmm.CategoricalHMM(n_components=self.n_states)
@@ -1649,19 +1651,18 @@ class DiscreteHMM(ConnectivityMethod):
             score = model.score(state_tc)  
             scores.append(score)
 
+        # Select the best model and get the states/connectivity estimates
         hmm_model = models[np.argmax(scores)]
-
         self.state_tc = hmm_model.predict(state_tc)
-        print(self.state_tc.shape)
-        self.state_tc = self.state_tc.reshape(self.n_subjects, self.N_estimates)
         
         self.states = np.zeros((self.n_states, self.P, self.P))
         for i in range(self.n_states):
             ids = np.array([int(state == i) for state in self.state_tc])
             self.states[i, :, :] = np.average(SWC_dFC, weights=ids, axis=0)
+
+        self.state_tc = self.state_tc.reshape(self.n_subjects, self.N_estimates)
         
         return self.state_tc, self.states
-        
 
 """
 SECTION: Static FC methods
