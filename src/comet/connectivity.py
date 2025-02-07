@@ -68,11 +68,11 @@ class ConnectivityMethod(metaclass=ABCMeta):
 
         # Prepare the data and create some variables
         self.time_series = time_series.astype("float32")
-        print("Data shape:", self.time_series.shape)
         if np.ndim(self.time_series) == 3 :
             self.n_subjects = self.time_series.shape[0]
             self.T = self.time_series.shape[1] # Timepoints
             self.P = self.time_series.shape[2] # Parcels (brain regions)
+            self.time_series3D = self.time_series
             # Reshape the data to 2D by stacking all subjects (n_subjects * T, P)
             self.time_series = self.time_series.reshape(-1, self.time_series.shape[-1])
 
@@ -80,10 +80,10 @@ class ConnectivityMethod(metaclass=ABCMeta):
             self.n_subjects = 1
             self.T = self.time_series.shape[0]
             self.P = self.time_series.shape[1]
+            self.time_series3D = self.time_series.reshape(1, self.T, self.P)
         else:
             raise ValueError("Input data must be either a 2D array, 3D array, or a list of 2D arrays.")
 
-        print("Parcels:", self.P, "Timepoints:", self.T)
         return 
 
     @abstractmethod
@@ -1296,12 +1296,8 @@ class SlidingWindowClustering(ConnectivityMethod):
         self.std = std
         self.stepsize = stepsize
         self.subject_clusters = subject_clusters
-
         self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1
-        self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if isinstance(self.time_series, np.ndarray) else np.vstack(self.time_series)
-        self.ts_stacked = np.transpose(self.time_series, (2, 0, 1)) if isinstance(self.time_series, np.ndarray) else np.stack(self.time_series, axis=0)
-        self.ts_2d = self.ts_stacked.reshape(-1, self.ts_stacked.shape[-1])
-
+    
     def vec2mat(self, F, N):
         T = F.shape[0]
         C = np.zeros((T, N, N), dtype=F.dtype)
@@ -1337,8 +1333,8 @@ class SlidingWindowClustering(ConnectivityMethod):
 
         for i in tqdm(range(self.n_subjects)):
             # Sliding window
-            ts = self.ts_stacked[i, :, :]
-            sw = SlidingWindow(time_series=ts, windowsize=self.windowsize, stepsize=self.stepsize, shape=self.shape, std=self.std, diagonal=1)
+            subject_ts = self.time_series3D[i, :, :]
+            sw = SlidingWindow(time_series=subject_ts, windowsize=self.windowsize, stepsize=self.stepsize, shape=self.shape, std=self.std, diagonal=1)
             dfc = sw.estimate()
             dfc = np.moveaxis(dfc, -1, 0)
             F = self.mat2vec(dfc)
@@ -1461,10 +1457,6 @@ class CoactivationPatterns(ConnectivityMethod):
         self.N_estimates = self.T * time_series.shape[-1] if type(time_series) == np.ndarray else self.T * len(time_series)
         self.n_states = n_states
         self.subject_clusters = subject_clusters
-
-        self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if isinstance(self.time_series, np.ndarray) else np.vstack(self.time_series)
-        self.ts_stacked = np.transpose(self.time_series, (2, 0, 1)) if isinstance(self.time_series, np.ndarray) else np.stack(self.time_series, axis=0)
-        self.ts_2d = self.ts_stacked.reshape(-1, self.ts_stacked.shape[-1])
        
     def cluster_ts(self, act, n_clusters):
         kmeans = KMeans(n_clusters=n_clusters, n_init=500).fit(act)
@@ -1485,7 +1477,7 @@ class CoactivationPatterns(ConnectivityMethod):
         """
         center_1st_level = None
         for subject in tqdm(range(self.n_subjects)):
-            ts = self.ts_stacked[subject, :,:]
+            ts = self.time_series3D[subject, :,:]
 
             if ts.shape[0] < self.subject_clusters:
                 print(f"Number of subject-level clusters changed to {ts.shape[0]} as they cannot be more than time samples.")
@@ -1504,7 +1496,7 @@ class CoactivationPatterns(ConnectivityMethod):
         for i, group_centroid in enumerate(group_centroids):
             self.states[i,:,:] = np.multiply(group_centroid[:, np.newaxis], group_centroid[np.newaxis, :])
 
-        self.state_tc = kmeans.predict(self.ts_2d)
+        self.state_tc = kmeans.predict(self.time_series)
         self.state_tc = self.state_tc.reshape(self.n_subjects, self.T)
 
         return self.state_tc, self.states
@@ -1541,10 +1533,6 @@ class ContinuousHMM(ConnectivityMethod):
         self.n_states = n_states
         self.hmm_iter = hmm_iter
 
-        self.ts_stacked = self.time_series.reshape(-1, self.time_series.shape[1]) if isinstance(self.time_series, np.ndarray) else np.vstack(self.time_series)
-        self.ts_stacked = np.transpose(self.time_series, (2, 0, 1)) if isinstance(self.time_series, np.ndarray) else np.stack(self.time_series, axis=0)
-        self.ts_2d = self.ts_stacked.reshape(-1, self.ts_stacked.shape[-1])
-
     def estimate(self):
         """
         Estimate state-based connectivity
@@ -1559,15 +1547,15 @@ class ContinuousHMM(ConnectivityMethod):
         models, scores = [], []
         for i in tqdm(range(self.hmm_iter)):
             model = hmm.GaussianHMM(n_components=self.n_states, covariance_type="full")
-            model.fit(self.ts_2d)
+            model.fit(self.time_series)
             models.append(model)
             
-            score = model.score(self.ts_2d)  
+            score = model.score(self.time_series)  
             scores.append(score)
 
         hmm_model = models[np.argmax(scores)]
         self.states = hmm_model.covars_ 
-        self.state_tc = hmm_model.predict(self.ts_2d)
+        self.state_tc = hmm_model.predict(self.time_series)
         self.state_tc = self.state_tc.reshape(self.n_subjects, self.T)
 
         return self.state_tc, self.states
@@ -1617,7 +1605,7 @@ class DiscreteHMM(ConnectivityMethod):
                  hmm_iter: int = 20):
 
         super().__init__(time_series, 0, False, False)
-
+        print("HI")
         self.n_states = n_states
         self.state_ratio = state_ratio
         self.subject_clusters = subject_clusters
@@ -1647,9 +1635,10 @@ class DiscreteHMM(ConnectivityMethod):
                                                    shape=self.shape, 
                                                    stepsize=self.stepsize).estimate()
         
-        state_tc = state_tc.flatten()
-        SWC_dFC = states[state_tc]
+        print(state_tc.shape, states.shape)
+        SWC_dFC = states[state_tc.flatten()]
         state_tc = state_tc.reshape(-1, 1)
+        print(state_tc.shape, SWC_dFC.shape)
 
         models, scores = [], []
         for i in tqdm(range(self.hmm_iter)):
@@ -1661,16 +1650,18 @@ class DiscreteHMM(ConnectivityMethod):
             scores.append(score)
 
         hmm_model = models[np.argmax(scores)]
+
         self.state_tc = hmm_model.predict(state_tc)
+        print(self.state_tc.shape)
+        self.state_tc = self.state_tc.reshape(self.n_subjects, self.N_estimates)
         
         self.states = np.zeros((self.n_states, self.P, self.P))
         for i in range(self.n_states):
             ids = np.array([int(state == i) for state in self.state_tc])
             self.states[i, :, :] = np.average(SWC_dFC, weights=ids, axis=0)
-
-        self.state_tc = self.state_tc.reshape(self.n_subjects, self.N_estimates)
-
+        
         return self.state_tc, self.states
+        
 
 """
 SECTION: Static FC methods
