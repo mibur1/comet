@@ -198,11 +198,11 @@ class ParameterOptions:
         'LeiDA':                        'CONT Leading Eigenvector Dynamics',
         'WaveletCoherence':             'CONT Wavelet Coherence',
         'EdgeConnectivity':             'CONT Edge-centric Connectivity',
-        'SlidingWindowClustering':      'STATE Sliding Window Clustering',
+        'KSVD':                         'STATE K-SVD',
         'CoactivationPatterns':         'STATE Co-activation Patterns',
+        'SlidingWindowClustering':      'STATE Sliding Window Clustering',
         'DiscreteHMM':                  'STATE Discrete Hidden Markov Model',
         'ContinuousHMM':                'STATE Continuous Hidden Markov Model',
-        'KSVD':                         'STATE K-SVD',
         'Static_Pearson':               'STATIC Pearson Correlation',
         'Static_Partial':               'STATIC Partial Correlation',
         'Static_Mutual_Info':           'STATIC Mutual Information'
@@ -2687,6 +2687,7 @@ class App(QMainWindow):
         self.data.dfc_params = params
         self.data.dfc_state_tc = None
         self.data.dfc_edge_ts = None
+        self.data.dfc_states = None
 
         # Edge time series contains multiple connectivity estimates (eFC and eTS)
         if self.data.dfc_instance == connectivity.EdgeConnectivity:
@@ -2700,7 +2701,7 @@ class App(QMainWindow):
                                       connectivity.DiscreteHMM]:
             self.data.dfc_state_tc = result[0]
             self.data.dfc_states = result[1]
-            self.data.dfc_data = result[1].transpose(2, 1, 0)
+            self.data.dfc_data = result[1]
 
         # Store in memory if checkbox is checked
         if keep_in_memory:
@@ -2728,7 +2729,10 @@ class App(QMainWindow):
             total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
 
             if self.currentTabIndex == 0 or self.currentTabIndex == 2:
-                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+                if self.data.dfc_states is None:
+                    position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+                else:
+                    position_text = f"State {self.currentSliderValue+1 }"
             else:
                 position_text = ""
 
@@ -2990,14 +2994,14 @@ class App(QMainWindow):
     # Plotting
     def plotConnectivity(self):
         current_data = self.data.dfc_data
-
+    
         if current_data is None:
             QMessageBox.warning(self, "No calculated data available for plotting")
             return
 
+        vmax = np.abs(current_data.flatten()).max()
         self.connectivityFigure.clear()
         ax = self.connectivityFigure.add_subplot(111)
-        vmax = np.max(np.abs(current_data))
 
         try:
             current_slice = current_data[:, :, self.currentSliderValue] if len(current_data.shape) == 3 else current_data
@@ -3006,6 +3010,7 @@ class App(QMainWindow):
             current_slice = current_data[:, :, 0] if len(current_data.shape) == 3 else current_data
             self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
 
+        ax.set_title("Connectivity matrix")
         ax.set_xlabel("ROI")
         ax.set_ylabel("ROI")
 
@@ -3053,8 +3058,9 @@ class App(QMainWindow):
         elif self.data.dfc_state_tc is not None:
             self.timeSeriesFigure.clear()
             
-            time_series = self.data.dfc_state_tc[:,0]
-            num_states = self.data.dfc_states.shape[0]
+            current_subject = self.currentSliderValue if self.currentSliderValue <= self.data.dfc_state_tc.shape[0] else 0
+            time_series = self.data.dfc_state_tc[current_subject,:]
+            num_states = self.data.dfc_states.shape[2]
 
             # Setup the gridspec layout
             gs = gridspec.GridSpec(3, num_states, self.timeSeriesFigure, height_ratios=[1, 0.5, 1])
@@ -3067,13 +3073,15 @@ class App(QMainWindow):
             ax_time_series = self.timeSeriesFigure.add_subplot(gs[0, :])
             ax_time_series.plot(time_series)
             ax_time_series.set_ylabel("State")
-            ax_time_series.set_title("State time course for subject 0")
+            ax_time_series.set_title(f"State time course for subject {current_subject}")
             ax_time_series.set_xlabel("Time (TRs)")
 
             # Plot the individual states
-            for col, matrix in enumerate(self.data.dfc_states):
+            for col in range(self.data.dfc_states.shape[2]):
+                matrix = self.data.dfc_states[:, :, col]
+                vmax = np.abs(matrix).max()
                 ax_state = self.timeSeriesFigure.add_subplot(gs[2, col])
-                ax_state.imshow(matrix, cmap='coolwarm', aspect=1)
+                ax_state.imshow(matrix, cmap='coolwarm', aspect=1, vmin=-vmax, vmax=vmax)
                 ax_state.set_title(f"State {col+1}")
                 ax_state.set_xticks([])
                 ax_state.set_yticks([])
@@ -3189,9 +3197,12 @@ class App(QMainWindow):
             self.forwardButton.show()
             self.forwardLargeButton.show()
 
-            if self.data.dfc_data is not None:
+            if self.currentTabIndex == 0 or self.currentTabIndex == 2:
                 total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
-                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+                if self.data.dfc_states is None:
+                    position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+                else:
+                    position_text = f"State {self.currentSliderValue+1}"
             else:
                 position_text = "no data available"
 
@@ -3204,7 +3215,7 @@ class App(QMainWindow):
             self.forwardLargeButton.hide()
 
             # If we have nothing to scroll though, hide some GUI elements
-            if len(self.data.dfc_data.shape) == 2 or self.data.dfc_edge_ts is not None or self.data.dfc_state_tc is not None:
+            if len(self.data.dfc_data.shape) == 2 or self.data.dfc_edge_ts is not None:
                 position_text = ""
                 self.slider.hide()
 
@@ -3213,6 +3224,21 @@ class App(QMainWindow):
                     widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
                     if widget is not None:
                         widget.setVisible(False)
+
+            elif self.data.dfc_state_tc is not None:
+                self.backLargeButton.show()
+                self.backButton.show()
+                self.forwardButton.show()
+                self.forwardLargeButton.show()
+
+                self.slider.setValue(self.currentSliderValue)
+                position_text = f"Subject {self.currentSliderValue}"
+                # Disable brain area selector widgets
+                for i in range(self.timeSeriesSelectorLayout.count()):
+                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
+                    if widget is not None:
+                        widget.setVisible(False)
+
 
             else:
                 self.slider.hide()
@@ -3266,8 +3292,19 @@ class App(QMainWindow):
             self.plotDistribution()
 
             total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
-            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+
+            if self.data.dfc_states is None:
+                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+            else:
+                position_text = f"State {self.currentSliderValue+1}"
+            
             self.positionLabel.setText(position_text)
+
+        if self.currentTabIndex == 1:
+            self.currentSliderValue = value
+            position_text = f"Subject {self.currentSliderValue}"
+            self.positionLabel.setText(position_text)
+            self.plotTimeSeries()
 
     def onSliderButtonClicked(self):
         # Clicking a button moves the slider by x steps
