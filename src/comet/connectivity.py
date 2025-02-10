@@ -69,7 +69,7 @@ class ConnectivityMethod(metaclass=ABCMeta):
             self.time_series = np.stack(self.time_series, axis=0)
 
         # Prepare the data and create some variables
-        self.time_series = time_series.astype("float32")
+        self.time_series = self.time_series.astype("float32")
         if np.ndim(self.time_series) == 3 :
             self.n_subjects = self.time_series.shape[0]
             self.T = self.time_series.shape[1] # Timepoints
@@ -1328,7 +1328,7 @@ class SlidingWindowClustering(ConnectivityMethod):
         np.ndarray
             State time course (n_subjects x T)
         np.ndarray
-            Connectivity states (n_states x P x P)
+            Connectivity states (P x P x n_states)
         """
         FCS_1st_level = None
         SW_dFC = None
@@ -1412,7 +1412,7 @@ class KSVD(ConnectivityMethod):
         np.ndarray
             State time course (n_subjects x T)
         np.ndarray
-            Connectivity states (n_states x P x P)
+            Connectivity states (P x P x n_states)
         """
         # Estimate states
         aksvd = ApproximateKSVD(n_components=self.n_states, transform_n_nonzero_coefs=1)
@@ -1477,7 +1477,7 @@ class CoactivationPatterns(ConnectivityMethod):
         np.ndarray
             State time course (n_subjects x T)
         np.ndarray
-            Connectivity states (n_states x P x P)
+            Connectivity states (P x P x n_states)
         """
         center_1st_level = None
         for subject in tqdm(range(self.n_subjects)):
@@ -1546,7 +1546,7 @@ class ContinuousHMM(ConnectivityMethod):
         np.ndarray
             State time course (n_subjects x T)
         np.ndarray
-            Connectivity states (n_states x P x P)
+            Connectivity states (P x P x n_states)
         """
         models, scores = [], []
         for i in tqdm(range(self.hmm_iter)):
@@ -1631,7 +1631,7 @@ class DiscreteHMM(ConnectivityMethod):
         np.ndarray
             State time course (n_subjects x T)
         np.ndarray
-            Connectivity states (n_states x P x P)
+            Connectivity states (P x P x n_states)
         """
         # Run sliding window clustering
         n_cluster_states = int(self.n_states * self.state_ratio)
