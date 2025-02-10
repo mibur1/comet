@@ -1642,6 +1642,7 @@ class DiscreteHMM(ConnectivityMethod):
                                                    shape=self.shape, 
                                                    stepsize=self.stepsize).estimate()
         
+        states = states.transpose(2, 0, 1)
         SWC_dFC = states[state_tc.flatten()]
         state_tc = state_tc.reshape(-1, 1)
 
@@ -1658,8 +1659,8 @@ class DiscreteHMM(ConnectivityMethod):
         # Select the best model and get the states/connectivity estimates
         hmm_model = models[np.argmax(scores)]
         self.state_tc = hmm_model.predict(state_tc)
-
-        self.states = np.full((self.P,self.P, self.n_states), np.nan)
+        
+        self.states = np.full((self.P, self.P, self.n_states), np.nan)
         for i in range(self.n_states):
             ids = np.array([int(state == i) for state in self.state_tc])
             self.states[:,:,i] = np.average(SWC_dFC, weights=ids, axis=0)
@@ -1667,6 +1668,7 @@ class DiscreteHMM(ConnectivityMethod):
         self.state_tc = self.state_tc.reshape(self.n_subjects, self.N_estimates)
         
         return self.state_tc, self.states
+
 
 """
 SECTION: Static FC methods
