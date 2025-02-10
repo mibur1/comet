@@ -1363,6 +1363,8 @@ class SlidingWindowClustering(ConnectivityMethod):
         F_cent = kmeans_.cluster_centers_
 
         self.states = self.vec2mat(F_cent, N=self.P)
+        self.states = self.states.transpose(1, 2, 0)
+
         self.state_tc = kmeans_.predict(self.mat2vec(SW_dFC))
         self.state_tc = self.state_tc.reshape(self.n_subjects, len(self.state_tc)//self.n_subjects)
 
@@ -1399,7 +1401,7 @@ class KSVD(ConnectivityMethod):
         self.N_estimates = self.n_subjects * self.T
         
         self.state_tc = np.zeros(self.N_estimates)
-        self.states = np.full((self.n_states, self.P,self.P), np.nan)
+        self.states = np.full((self.P,self.P, self.n_states), np.nan)
 
     def estimate(self):
         """
@@ -1419,7 +1421,7 @@ class KSVD(ConnectivityMethod):
 
         # State array
         for i in range(self.n_states):
-            self.states[i, :, :] = np.multiply(np.expand_dims(dictionary[i,:], axis=0).T, np.expand_dims(dictionary[i,:], axis=0))
+            self.states[:,:,i] = np.multiply(np.expand_dims(dictionary[i,:], axis=0).T, np.expand_dims(dictionary[i,:], axis=0))
         
         # State time course
         for i in range(self.N_estimates):
@@ -1494,9 +1496,9 @@ class CoactivationPatterns(ConnectivityMethod):
         
         group_centroids, kmeans= self.cluster_ts(act=center_1st_level, n_clusters=self.n_states)
         
-        self.states = np.full((self.n_states, self.P,self.P), np.nan)
+        self.states = np.full((self.P,self.P, self.n_states), np.nan)
         for i, group_centroid in enumerate(group_centroids):
-            self.states[i,:,:] = np.multiply(group_centroid[:, np.newaxis], group_centroid[np.newaxis, :])
+            self.states[:,:,i] = np.multiply(group_centroid[:,np.newaxis], group_centroid[np.newaxis,:])
 
         self.state_tc = kmeans.predict(self.time_series)
         self.state_tc = self.state_tc.reshape(self.n_subjects, self.T)
@@ -1557,6 +1559,8 @@ class ContinuousHMM(ConnectivityMethod):
 
         hmm_model = models[np.argmax(scores)]
         self.states = hmm_model.covars_ 
+        self.states = self.states.transpose(1, 2, 0)
+
         self.state_tc = hmm_model.predict(self.time_series)
         self.state_tc = self.state_tc.reshape(self.n_subjects, self.T)
 
@@ -1654,11 +1658,11 @@ class DiscreteHMM(ConnectivityMethod):
         # Select the best model and get the states/connectivity estimates
         hmm_model = models[np.argmax(scores)]
         self.state_tc = hmm_model.predict(state_tc)
-        
-        self.states = np.zeros((self.n_states, self.P, self.P))
+
+        self.states = np.full((self.P,self.P, self.n_states), np.nan)
         for i in range(self.n_states):
             ids = np.array([int(state == i) for state in self.state_tc])
-            self.states[i, :, :] = np.average(SWC_dFC, weights=ids, axis=0)
+            self.states[:,:,i] = np.average(SWC_dFC, weights=ids, axis=0)
 
         self.state_tc = self.state_tc.reshape(self.n_subjects, self.N_estimates)
         
