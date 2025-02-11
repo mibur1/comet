@@ -184,6 +184,7 @@ class ParameterOptions:
         "sw_method":            "Sliding window",
         "dhmm_obs_state_ratio": "State ratio",
         "vlim":                 "Color axis limit",
+        "hmm_iter":             "HMM iterations",
         "parcellation":         "Parcellation"
     }
 
@@ -927,7 +928,7 @@ class App(QMainWindow):
         self.bids_parcellationDropdown = QComboBox()
         self.bids_parcellationDropdown.addItems(self.atlas_options.keys())
         self.bids_parcellationOptionsLabel = QLabel("Type:")
-        self.bids_parcellationOptionsLabel.setFixedWidth(30)
+        self.bids_parcellationOptionsLabel.setFixedWidth(40)
         self.bids_parcellationOptions = QComboBox()
 
         self.bids_parcellationLayout.addWidget(self.bids_parcellationLabel, 1)
