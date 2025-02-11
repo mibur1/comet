@@ -37,21 +37,14 @@ Yet another toolbox?
 --------------------
 
 You might ask yourself, "Why do I need yet another toolbox for dynamic functional connectivity (dFC) analysis and network neuroscience?"
-The answer is simple: the reproducibility crisis, fueled in part by the labyrinth of arbitrary yet defensible decisions in your analyses.
+The answer is simple: the reproducibility crisis, driven in part by the maze of arbitrary yet defensible decisions in our analyses.
 
-Addressing this, we present the Comet toolbox as your trusty guide to ensure that your findings don't disappear into the Bermuda Triangle of irreproducible results.
-Whether you want to leverage the full power of multiverse analysis or just run traditional analyses, the toolbox lets you explore a broad range of methodological
-decisions in your research, ensuring robustness and transparency.
+To address this, we introduce the Comet toolbox — a tool that helps ensure your findings don't get lost in the Bermuda Triangle of irreproducible results.
+Whether you want to take full advantage of multiverse analysis or stick with traditional analyses, Comet lets you explore a broad range of methodological decisions, making your research more robust and transparent.
 
-From dFC estimation to graph-theoretical analyses, Comet's comprehensive collection of methods is your Swiss Army knife in the quest for more reproducible science.
-Plus, with an easy-to-use graphical user interface and comprehensive demo scripts, even the most Python-phobic among us can dive in and
+From dFC estimation to graph analyses, Comet offers a wide range of methods. Plus, with an easy-to-use graphical user interface and comprehensive demo scripts, even the most Python-phobic among us can dive in and
 start exploring brain dynamics like never before. So, buckle up, and let's bring some cosmic clarity to your research universe!
 
-Important notes
----------------
-
-- This package is at an early stage of development, with frequent changes being made. If you intend to use this package at this stage, please feel free to contact me via the email address in the email address in the `pyproject.toml <https://github.com/mibur1/dfc-multiverse/blob/main/pyproject.toml>`_ file.
-- Some features are not yet tested, so there will be bugs (the question is just how many).
 
 Current features
 ----------------
@@ -73,6 +66,7 @@ Current features
                     <li>Flexible Least Squares</li>
                     <li>Spatial Distance</li>
                     <li>Temporal Derivatives</li>
+                    <li>Dynamic Conditional Correlation</li>
                     <li>Phase Synchronization</li>
                     <li>Leading Eigenvector Dynamics</li>
                     <li>Wavelet Coherence</li>
@@ -84,7 +78,7 @@ Current features
                     <li>Co-activation Patterns</li>
                     <li>Discrete HMM</li>
                     <li>Continuous HMM</li>
-                    <li>Windowless</li>
+                    <li>k-SVD</li>
                 </ul>
                 <strong>Static</strong>
                 <ul>
@@ -127,6 +121,7 @@ Current features
                 <ul>
                     <li>Universes are created as individual scripts</li>
                     <li>Modular approach</li>
+                    <li>Complex multiverse structures</li>
                 </ul>
                 <strong>Analysis</strong>
                 <ul>
