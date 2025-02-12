@@ -1607,7 +1607,7 @@ class DiscreteHMM(ConnectivityMethod):
                  windowsize: int = 29,
                  shape: Literal["rectangular", "gaussian", "hamming"] = "gaussian",
                  std: float = 10,
-                 stepsize: float = 15,
+                 stepsize: int = 15,
                  hmm_iter: int = 20):
 
         super().__init__(time_series, 0, False, False)

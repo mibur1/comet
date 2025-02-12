@@ -183,6 +183,7 @@ class ParameterOptions:
         "iterations":           "Iterations",
         "sw_method":            "Sliding window",
         "dhmm_obs_state_ratio": "State ratio",
+        "state_ratio":          "State ratio",
         "vlim":                 "Color axis limit",
         "hmm_iter":             "HMM iterations",
         "parcellation":         "Parcellation"
