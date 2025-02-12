@@ -18,6 +18,7 @@ from importlib import util
 from typing import Any, Dict, get_type_hints, get_origin, Literal, Optional
 
 # BIDS data imports
+import nibabel as nib
 from bids import BIDSLayout
 from nilearn import datasets, maskers
 from nilearn.interfaces.fmriprep import load_confounds
@@ -744,23 +745,29 @@ class App(QMainWindow):
 
         # Misc Cleaning Layout Container
         self.miscCleaningContainer = QWidget()
-        miscCleaningLayout = QHBoxLayout(self.miscCleaningContainer)
-        self.standardizeCheckbox = QCheckBox("Standardize")
-        self.detrendCheckbox = QCheckBox("Detrend")
-        self.gsrCheckbox = QCheckBox("Global signal regression")
-        self.highVarianceCheckbox = QCheckBox("Regress high variance confounds")
-
-        miscCleaningLayout.addItem(QSpacerItem(5, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
-        miscCleaningLayout.addWidget(self.detrendCheckbox)
-        miscCleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
-        miscCleaningLayout.addWidget(self.standardizeCheckbox)
-        miscCleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
-        miscCleaningLayout.addWidget(self.gsrCheckbox)
-        miscCleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
-        miscCleaningLayout.addWidget(self.highVarianceCheckbox)
-        miscCleaningLayout.addStretch(1)
+        miscCleaningLayout = QVBoxLayout(self.miscCleaningContainer)
         miscCleaningLayout.setContentsMargins(0, 0, 0, 0)
-        self.miscCleaningContainer.setLayout(miscCleaningLayout)
+
+        firstRowLayout = QHBoxLayout()
+        self.detrendCheckbox = QCheckBox("Detrend")
+        self.standardizeCheckbox = QCheckBox("Standardize")
+        firstRowLayout.addItem(QSpacerItem(5, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        firstRowLayout.addWidget(self.detrendCheckbox)
+        firstRowLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        firstRowLayout.addWidget(self.standardizeCheckbox)
+        firstRowLayout.addStretch(1)
+
+        secondRowLayout = QHBoxLayout()
+        self.gsrCheckbox = QCheckBox("Regress global signal")
+        self.highVarianceCheckbox = QCheckBox("Regress high variance confounds")
+        secondRowLayout.addItem(QSpacerItem(5, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        secondRowLayout.addWidget(self.gsrCheckbox)
+        secondRowLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        secondRowLayout.addWidget(self.highVarianceCheckbox)
+        secondRowLayout.addStretch(1)
+
+        miscCleaningLayout.addLayout(firstRowLayout)
+        miscCleaningLayout.addLayout(secondRowLayout)
 
         self.standardizeCheckbox.stateChanged.connect(self.updateCleaningOptions)
         self.detrendCheckbox.stateChanged.connect(self.updateCleaningOptions)
@@ -851,9 +858,21 @@ class App(QMainWindow):
         self.calculateLayout.addWidget(self.parcellationCalculateButton, 1)
         self.calculateContainer.setLayout(self.calculateLayout)
 
+        # Cleaning button
+        self.calculateContainer2 = QWidget()
+        self.calculateLayout2 = QHBoxLayout()
+        self.calculateLayout2.setContentsMargins(5, 5, 5, 0)
+
+        self.cleanButton = QPushButton("Clean time series")
+        self.cleanButton.clicked.connect(self.cleanTimeSeries)
+        self.calculateLayout2.addStretch(2)
+        self.calculateLayout2.addWidget(self.cleanButton, 1)
+        self.calculateContainer2.setLayout(self.calculateLayout2)
+
         # Transpose checkpox
         self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension for connectivity estimation)")
         self.transposeCheckbox.hide()
+        loadLayout.addWidget(self.transposeCheckbox)
 
         # Container for parcellation
         self.loadContainer = QGroupBox("Time series extraction")
@@ -863,7 +882,7 @@ class App(QMainWindow):
         loadContainerLayout.addWidget(self.cleaningContainer)
         loadContainerLayout.addWidget(self.parcellationContainer)
         loadContainerLayout.addWidget(self.calculateContainer)
-        loadContainerLayout.addWidget(self.transposeCheckbox)
+        loadContainerLayout.addWidget(self.calculateContainer2)
 
         # Connect widgets
         self.transposeCheckbox.stateChanged.connect(self.onTransposeChecked)
@@ -968,23 +987,32 @@ class App(QMainWindow):
 
         # Checkbox container widget
         self.generalCleaningContainer = QWidget()
-        generalCleaningLayout = QHBoxLayout(self.generalCleaningContainer)
+        generalCleaningLayout = QVBoxLayout(self.generalCleaningContainer)
+        generalCleaningLayout.setContentsMargins(0, 10, 0, 0)
+
+        firstRowLayout = QHBoxLayout()
         self.bids_standardizeCheckbox = QCheckBox("Standardize")
         self.bids_detrendCheckbox = QCheckBox("Detrend")
-        self.bids_highVarianceCheckbox = QCheckBox("Regress high variance confounds")
-
         self.bids_standardizeCheckbox.setChecked(True)
         self.bids_detrendCheckbox.setChecked(True)
-        self.bids_highVarianceCheckbox.setChecked(True)
+        firstRowLayout.addItem(QSpacerItem(5, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        firstRowLayout.addWidget(self.bids_standardizeCheckbox)
+        firstRowLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        firstRowLayout.addWidget(self.bids_detrendCheckbox)
+        firstRowLayout.addStretch(1)
 
-        generalCleaningLayout.addItem(QSpacerItem(5, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
-        generalCleaningLayout.addWidget(self.bids_standardizeCheckbox)
-        generalCleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
-        generalCleaningLayout.addWidget(self.bids_detrendCheckbox)
-        generalCleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
-        generalCleaningLayout.addWidget(self.highVarianceCheckbox)
-        generalCleaningLayout.addStretch(1)
-        generalCleaningLayout.setContentsMargins(0, 10, 0, 0)
+        secondRowLayout = QHBoxLayout()
+        self.bids_gsrCheckbox = QCheckBox("Regress global signal")
+        self.bids_highVarianceCheckbox = QCheckBox("Regress high variance confounds")
+        self.bids_highVarianceCheckbox.setChecked(True)
+        secondRowLayout.addItem(QSpacerItem(5, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        secondRowLayout.addWidget(self.bids_gsrCheckbox)
+        secondRowLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        secondRowLayout.addWidget(self.bids_highVarianceCheckbox)
+        secondRowLayout.addStretch(1)
+        
+        generalCleaningLayout.addLayout(firstRowLayout)
+        generalCleaningLayout.addLayout(secondRowLayout)
         bids_confoundsLayout.addWidget(self.generalCleaningContainer)
 
         # Smoothing and filtering container widget
@@ -1029,7 +1057,6 @@ class App(QMainWindow):
         bids_filteringLayout.setContentsMargins(0, 0, 0, 0)
         self.bids_filteringContainer.setLayout(bids_filteringLayout)
         bids_confoundsLayout.addWidget(self.bids_filteringContainer)
-
 
         # Confound strategy container widget
         bids_confoundsStrategyWidget = self.loadConfounds()
@@ -1621,6 +1648,7 @@ class App(QMainWindow):
         self.data.file_path = file_path
         self.data.file_name = file_path.split('/')[-1]
         self.cleaningContainer.hide()
+        self.calculateContainer2.hide()
         self.parcellationContainer.hide()
         self.plotLogo(self.boldFigure)
         self.loadContainer.hide()
@@ -1645,30 +1673,16 @@ class App(QMainWindow):
             print("Loaded mat file with keys:", data_dict.keys())
             print(f"Using data from key: {list(data_dict.keys())[-1]}")
             self.data.file_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
-            self.transposeCheckbox.show()
-            self.createCarpetPlot()
 
         elif file_path.endswith('.txt'):
             self.data.file_data = np.loadtxt(file_path)
-            self.loadContainer.show()
-            self.calculateContainer.hide()
-            self.transposeCheckbox.show()
-            self.createCarpetPlot()
 
         elif file_path.endswith('.npy'):
             self.data.file_data = np.load(file_path)
 
-            if np.ndim(self.data.file_data) == 3:
-                print("Loaded list of time series from .npy file.")
-                self.subjectDropdown.addItems(np.arange(self.data.file_data.shape[0]).astype(str))
-                self.subjectDropdownContainer.show()
-                self.subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
-                self.loadContainer.show()
-                self.transposeCheckbox.show()
-                self.calculateContainer.hide()
-                self.createCarpetPlot()
-            
-            self.createCarpetPlot()
+            if not np.ndim(self.data.file_data) == 3:
+                QMessageBox.warning(self, "Error", ".npy files must contain a single 3D array.")
+                return
 
         elif file_path.endswith(".tsv"):
             data = pd.read_csv(file_path, sep='\t', header=None, na_values='n/a')
@@ -1691,32 +1705,17 @@ class App(QMainWindow):
 
             self.data.file_data = data.to_numpy()
             self.data.roi_names = np.array(rois, dtype=object)
-            self.transposeCheckbox.show()
-            self.createCarpetPlot()
-
+        
         elif file_path.endswith(".nii") or file_path.endswith(".nii.gz"):
             self.parcellationDropdown.currentIndexChanged.disconnect(self.onAtlasChanged)
-            self.parcellationDropdown.clear()
-
-            if file_path.endswith(".dtseries.nii") or file_path.endswith(".ptseries.nii"):
-                self.parcellationDropdown.addItems(self.atlas_options_cifti.keys())
-                self.sphereContainer.hide()
-                self.smoothingContainer.hide()
-            else:
-                self.parcellationDropdown.addItems(self.atlas_options.keys())
-                self.sphereContainer.show()
-                self.smoothingContainer.show()
-
-            self.cleaningContainer.show()
-            self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
-            self.onAtlasChanged()
-            self.loadContainer.show()
-            self.calculateContainer.show()
-            self.parcellationContainer.show()
-
+            self.parcellationDropdown.clear()            
+        
         else:
             self.data.file_data = None
             self.time_series_textbox.setText("Unsupported file format")
+
+        # Enable/disable layouts corresponding to file types
+        self.setFileLayout(file_path)
 
         # New data, reset slider and plot
         self.currentSliderValue = 0
@@ -1746,7 +1745,6 @@ class App(QMainWindow):
             self.staticCheckBox.setEnabled(True)
             self.staticCheckBox.setChecked(True)
 
-
         # Reset and enable the GUI elements
         self.bidsContainer.hide()
 
@@ -1758,16 +1756,65 @@ class App(QMainWindow):
 
         # Update file name label
         fname = self.data.file_name[:20] + self.data.file_name[-30:] if len(self.data.file_name) > 50 else self.data.file_name
-        fshape = self.data.file_data.shape
 
         if file_path.endswith('.nii') or file_path.endswith('.nii.gz'):
             self.fileNameLabel.setText(f"Loaded {fname}")
         elif file_path.endswith('.npy'):
+            fshape = self.data.file_data.shape
             self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}")
             self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}")
         else:
+            fshape = self.data.file_data.shape
             self.fileNameLabel.setText(f"Loaded {fname} with shape {fshape}")
             self.fileNameLabel2.setText(f"Loaded {fname} with shape {fshape}")
+
+    def setFileLayout(self, file_path):
+        self.loadContainer.show()
+        self.transposeCheckbox.hide()
+        self.cleaningContainer.hide()
+        self.sphereContainer.hide()
+        self.smoothingContainer.hide()
+        self.calculateContainer.hide()
+        self.calculateContainer2.hide()
+        
+        if np.ndim(self.data.file_data) == 2:
+            self.transposeCheckbox.show()
+            self.cleaningContainer.show()
+            self.smoothingContainer.show()
+            self.calculateContainer2.show()
+            self.createCarpetPlot()
+
+        elif np.ndim(self.data.file_data) == 3:
+            self.subjectDropdown.addItems(np.arange(self.data.file_data.shape[0]).astype(str))
+            self.subjectDropdownContainer.show()
+            self.subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
+            self.transposeCheckbox.show()
+            
+            #self.cleaningContainer.show()
+            #self.smoothingContainer.show()
+            #self.calculateContainer2.show()
+            self.createCarpetPlot()
+
+        elif file_path.endswith(".nii") or file_path.endswith(".nii.gz"):
+            if file_path.endswith(".dtseries.nii") or file_path.endswith(".ptseries.nii"):
+                self.parcellationDropdown.addItems(self.atlas_options_cifti.keys())
+                self.sphereContainer.hide()
+                self.smoothingContainer.hide()
+            else:
+                self.parcellationDropdown.addItems(self.atlas_options.keys())
+                self.sphereContainer.show()
+                self.smoothingContainer.show()
+
+            self.cleaningContainer.show()
+            self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
+            self.onAtlasChanged()
+            self.calculateContainer.show()
+            self.parcellationContainer.show()
+
+        else:
+            QMessageBox.warning(self, "Error", "File type not supported.")
+            return
+
 
     def onTransposeChecked(self, state):
         """
@@ -2285,7 +2332,7 @@ class App(QMainWindow):
 
         return args
 
-    # Calculations (parcellation and cleaning for all data)
+    # Pparcellation and cleaning (nifi)
     def calculateTimeSeries(self):
         print("Calculating time series, please wait...")
         QApplication.processEvents()
@@ -2322,8 +2369,9 @@ class App(QMainWindow):
 
             standardize = self.bids_standardizeCheckbox.isChecked()
             detrend = self.bids_detrendCheckbox.isChecked()
-            smoothing_fwhm = self.bids_smoothingSpinbox.value() if self.bids_smoothingSpinbox.value() > 0 else None
             high_variance_confounds = self.bids_highVarianceCheckbox.isChecked()
+            smoothing_fwhm = self.bids_smoothingSpinbox.value() if self.bids_smoothingSpinbox.value() > 0 else None
+
 
             high_pass = self.bids_highPassCutoff.value() if self.bids_highPassCutoff.value() > 0 else None
             low_pass = self.bids_lowPassCutoff.value() if self.bids_lowPassCutoff.value() > 0 else None
@@ -2335,19 +2383,26 @@ class App(QMainWindow):
 
             standardize = self.standardizeCheckbox.isChecked()
             detrend = self.detrendCheckbox.isChecked()
-            smoothing_fwhm = self.smoothingSpinbox.value() if self.smoothingSpinbox.value() > 0 else None
             high_variance_confounds = self.highVarianceCheckbox.isChecked()
+            smoothing_fwhm = self.smoothingSpinbox.value() if self.smoothingSpinbox.value() > 0 else None
 
             high_pass = self.highPassCutoff.value() if self.highPassCutoff.value() > 0 else None
             low_pass = self.lowPassCutoff.value() if self.lowPassCutoff.value() > 0 else None
             tr = self.trValue.value() if self.trValue.value() > 0 else None
 
         # GSR
-        gsr = self.gsrCheckbox.isChecked()
-        if gsr:
-            print("TODO: Implement GSR")
+        if self.gsrCheckbox.isChecked():
+            confounds = pd.DataFrame()
+            if np.ndim(self.data.file_data) == 2:
+                confounds["global_signal"] = np.mean(self.data.file_data, axis=1)
+            else:
+                nifti_data = nib.load(self.data.file_path).get_fdata()
+                confounds["global_signal"] = np.mean(nifti_data, axis=(0, 1, 2))
+        else:
+            confounds = None
 
-
+        standardize_confounds = True if standardize else False
+            
         # Parcellation procedure
         self.parcellationCalculateButton.setEnabled(False)
         self.bids_calculateButton.setEnabled(False)
@@ -2368,7 +2423,8 @@ class App(QMainWindow):
                 rois, networks, self.data.roi_names = self.fetchAtlas(atlas, option)
 
             masker = maskers.NiftiSpheresMasker(seeds=rois, mask_img=mask, radius=radius, allow_overlap=allow_ovelap,
-                                                standardize=standardize, detrend=detrend, smoothing_fwhm=smoothing_fwhm, high_variance_confounds=high_variance_confounds,
+                                                standardize=standardize, standardize_confounds=standardize_confounds, detrend=detrend, 
+                                                smoothing_fwhm=smoothing_fwhm, high_variance_confounds=high_variance_confounds,
                                                 low_pass=low_pass, high_pass=high_pass, t_r=tr)
             time_series = masker.fit_transform(img_path, confounds=confounds)
 
@@ -2403,11 +2459,11 @@ class App(QMainWindow):
             atlas_string = atlas_map.get(f"{atlas} {option}", None)
             time_series_raw = cifti.parcellate(img_path, atlas=atlas_string)
             time_series = utils.clean(time_series_raw, standardize=standardize, detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
-            print(img_path, atlas_string)
         else:
             atlas, labels = self.fetchAtlas(atlas, option)
             masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, mask_img=mask, background_label=0,
-                                               standardize=standardize, detrend=detrend, smoothing_fwhm=smoothing_fwhm, high_variance_confounds=high_variance_confounds,
+                                               standardize=standardize, standardize_confounds=standardize_confounds, detrend=detrend,
+                                               smoothing_fwhm=smoothing_fwhm, high_variance_confounds=high_variance_confounds,
                                                low_pass=low_pass, high_pass=high_pass, t_r=tr)
             time_series = masker.fit_transform(img_path, confounds=confounds)
 
@@ -2434,6 +2490,61 @@ class App(QMainWindow):
         self.parcellationCalculateButton.setEnabled(True)
         self.bids_calculateButton.setEnabled(True)
         return
+
+    # Cleaning only
+    def cleanTimeSeries(self):
+        print("Calculating time series, please wait...")
+        self.cleanButton.setEnabled(False)
+        QApplication.processEvents()
+
+        # Load BIDS layout in a separate thread
+        self.workerThread = QThread()
+        self.worker = Worker(self.cleanTimeSeriesThread, {})
+        self.worker.moveToThread(self.workerThread)
+        self.worker.finished.connect(self.workerThread.quit)
+        self.workerThread.started.connect(self.worker.run)
+        self.worker.result.connect(self.handleCleaningResult)
+        self.worker.error.connect(self.handleCleaningError)
+        self.workerThread.start()
+
+        return
+    
+    def cleanTimeSeriesThread(self):
+        detrend = self.detrendCheckbox.isChecked()
+        high_pass = self.highPassCutoff.value() if self.highPassCutoff.value() > 0 else None
+        low_pass = self.lowPassCutoff.value() if self.lowPassCutoff.value() > 0 else None
+        tr = self.trValue.value() if self.trValue.value() > 0 else None
+
+        if self.gsrCheckbox.isChecked():
+            confounds_df = pd.DataFrame()
+            confounds_df["global_signal"] = np.mean(self.data.file_data, axis=1)
+        else:
+            confounds_df = None
+
+        if self.standardizeCheckbox.isChecked():
+            standardize = True
+            standardize_confounds = True
+        else:
+            standardize = False
+            standardize_confounds = False
+
+        self.data.file_data = utils.clean(self.data.file_data, standardize=standardize, confounds=confounds_df, standardize_confounds=standardize_confounds, detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
+
+    def handleCleaningResult(self):
+        print(f"Done cleaning the time series.")
+
+        self.fileNameLabel2.setText(f"Time series data with shape {self.data.file_data.shape} is available for dFC calculation.")
+        self.time_series_textbox.setText(self.data.file_name)
+        self.createCarpetPlot()
+        self.cleanButton.setEnabled(True)
+
+    def handleCleaningError(self, error):
+        # Handles errors in the worker thread
+        QMessageBox.warning(self, "Error when cleaning time series", f"Error when cleaning time series: {error}")
+
+        self.cleanButton.setEnabled(True)
+        return
+
 
     # Plotting
     def createCarpetPlot(self):
@@ -3012,7 +3123,6 @@ class App(QMainWindow):
             current_slice = current_data[:, :, 0] if len(current_data.shape) == 3 else current_data
             self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
 
-        ax.set_title("Connectivity matrix")
         ax.set_xlabel("ROI")
         ax.set_ylabel("ROI")
 
@@ -3052,7 +3162,6 @@ class App(QMainWindow):
             self.timeSeriesFigure.clear()
             ax = self.timeSeriesFigure.add_subplot(111)
             time_series = current_data[row, col, :] if len(current_data.shape) == 3 else current_data[row, col]
-            ax.set_title(f"dFC time course between region {row} and {col}.")
             ax.set_xlabel("time (TRs)")
             ax.set_ylabel("dFC strength")
             ax.plot(time_series)
