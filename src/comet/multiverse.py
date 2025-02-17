@@ -140,7 +140,7 @@ class Multiverse:
 
         return
 
-    def run(self, universe_number=None, parallel=1):
+    def run(self, universe_number=None, parallel=1, folder=None):
         """
         Run either an individual universe or the entire multiverse
 
@@ -152,7 +152,10 @@ class Multiverse:
         parallel : int
             Number of universes to run in parallel
         """
-
+        if folder is not None:
+            self.multiverse_dir = folder
+            self.results_dir = os.path.join(self.multiverse_dir, "results")
+        
         os.makedirs(self.multiverse_dir, exist_ok=True)
         sorted_files = sorted(os.listdir(self.multiverse_dir))
 
