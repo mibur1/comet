@@ -755,6 +755,7 @@ class App(QMainWindow):
         self.subjectDropdown = QComboBox()
         self.subjectDropdownLayout.addWidget(self.subjectLabel)
         self.subjectDropdownLayout.addWidget(self.subjectDropdown)
+        self.subjectDropdownLayout.setContentsMargins(5, 5, 5, 0)
         self.subjectDropdownContainer.setLayout(self.subjectDropdownLayout)
         self.subjectDropdownContainer.hide()
 
@@ -926,7 +927,7 @@ class App(QMainWindow):
         self.calculateContainer2.setLayout(self.calculateLayout2)
 
         # Transpose checkpox
-        self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
+        self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension).")
         self.transposeCheckbox.hide()
         loadLayout.addWidget(self.transposeCheckbox)
         loadLayout.addItem(QSpacerItem(0, 15, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
@@ -1165,8 +1166,8 @@ class App(QMainWindow):
 
     # Connectivity layouts
     def addConnectivityLayout(self, leftLayout):
-        self.fileNameLabel2 = QLabel('No time series data available.')
-        leftLayout.addWidget(self.fileNameLabel2)
+        self.connectivityFileNameLabel = QLabel('No time series data available.')
+        leftLayout.addWidget(self.connectivityFileNameLabel)
         leftLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
         # Connectivity method container
@@ -1842,12 +1843,12 @@ class App(QMainWindow):
             fshape = self.data.file_data.shape
             self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}")
             self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}")
-            self.processingResultsLabel.setText(f'Time series data with shape {fshape} ready for connectivity analysis')
+            self.processingResultsLabel.setText(f'Time series data with shape {fshape} is available for connectivity analysis.')
+            self.connectivityFileNameLabel.setText(f"Time series data with shape {fshape} is available for state-based analysis.")
         else:
             fshape = self.data.file_data.shape
-            self.fileNameLabel.setText(f"Loaded {fname} with shape {fshape}")
-            self.fileNameLabel2.setText(f"Loaded {fname} with shape {fshape}")
-            self.processingResultsLabel.setText(f'Time series data with shape {fshape} ready for connectivity analysis')
+            self.connectivityFileNameLabel.setText(f"Time series data with shape {fshape} is available for connectivity analysis.")
+            self.processingResultsLabel.setText(f'Time series data with shape {fshape} ready for connectivity analysis.')
 
     def setFileLayout(self, file_path):
         self.loadContainer.show()
@@ -1910,10 +1911,8 @@ class App(QMainWindow):
   
         if self.data.file_name.endswith('.npy'):
             self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}")
-            self.fileNameLabel2.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}")
         else:
             self.fileNameLabel.setText(f"Loaded {fname} with shape {fshape}")
-            self.fileNameLabel2.setText(f"Loaded {fname} with shape {fshape}")
 
         self.time_series_textbox.setText(self.data.file_name)
 
