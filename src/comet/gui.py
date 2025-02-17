@@ -34,7 +34,7 @@ import matplotlib.gridspec as gridspec
 
 # Qt imports
 import qdarkstyle
-from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject, QRegularExpression
+from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject, QRegularExpression, QLocale
 from PyQt6.QtGui import QEnterEvent, QFontMetrics, QSyntaxHighlighter, QTextCharFormat
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
      QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, QGridLayout, \
@@ -139,6 +139,38 @@ class CustomDoubleSpinbox(QDoubleSpinBox):
     def get_value(self):
         return self.special_value if self.special_selected else super(CustomDoubleSpinbox, self).value()
 
+class CustomListSpinbox(QDoubleSpinBox):
+    '''
+    Subclass of QDoubleSpinBox to allow for a special value (e.g., None) to be selected.
+    Used when cleaning nifti/cifti files and for plotting.
+    '''
+    def __init__(self, special_value=None, min=-0.1, max=999.0, parent=None, values=[1]):
+        super(CustomListSpinbox, self).__init__(parent)
+        self._user_special_value = special_value
+        self.special_value_numeric = min if special_value is None else special_value
+        self.special_selected = False
+        self.setRange(min, max)
+        self.setValue(self.special_value_numeric)
+        self.setSpecialValueText(str(special_value))
+        self.values = [self.special_value_numeric] + values
+
+    def stepBy(self, steps):
+        current_value = self.value()
+        try:
+            index = self.values.index(current_value)
+        except ValueError:
+            index = min(range(len(self.values)),
+                        key=lambda i: abs(self.values[i] - current_value))
+        
+        new_index = index + steps
+        new_index = max(0, min(new_index, len(self.values) - 1))
+        new_value = self.values[new_index]
+        self.setValue(new_value)
+        self.special_selected = (new_value == self.special_value_numeric)
+
+    def get_value(self):
+        return self._user_special_value if self.special_selected else super(CustomListSpinbox, self).value()
+    
 class ParameterOptions:
     '''
     Parameters for the GUI
@@ -460,6 +492,7 @@ class Data:
     file_path:     str        = field(default=None)         # data file path
     file_name:     str        = field(default=None)         # data file name
     file_data:     np.ndarray = field(default=None)         # time series data
+    orig_data:     np.ndarray = field(default=None)         # original time series data (for reset)
     sample_mask:   np.ndarray = field(default=None)         # time series mask
 
     # DFC variables
@@ -478,8 +511,9 @@ class Data:
     graph_out:     Any = field(default=None)                # output graph measure data
 
     # Multiverse variables
-    forking_paths: Dict      = field(default_factory=dict) # Decision points for multiverse analysis
-    invalid_paths: list      = field(default_factory=list) # Invalid paths for multiverse analysis
+    multiverse_folder: str   = field(default=None)         # folder for multiverse analysis
+    forking_paths: Dict      = field(default_factory=dict) # decision points for multiverse analysis
+    invalid_paths: list      = field(default_factory=list) # invalid paths for multiverse analysis
 
     # Misc variables
     roi_names:     np.ndarray = field(default=None)         # input roi data (for .tsv files)
@@ -793,17 +827,18 @@ class App(QMainWindow):
         highPassLabel = QLabel("High Pass:")
         self.highPassCutoff = CustomDoubleSpinbox(special_value=None, min=0.0, max=1.0)
         self.highPassCutoff.setDecimals(3)
-        self.highPassCutoff.setSingleStep(0.001)
+        self.highPassCutoff.setSingleStep(0.01)
+        self.highPassCutoff.setSuffix(" Hz")
 
         lowPassLabel = QLabel("Low Pass:")
         self.lowPassCutoff = CustomDoubleSpinbox(special_value=None, min=0.0, max=1.0)
         self.lowPassCutoff.setDecimals(3)
-        self.lowPassCutoff.setSingleStep(0.001)
+        self.lowPassCutoff.setSingleStep(0.1)
+        self.lowPassCutoff.setSuffix(" Hz")
 
         trLabel = QLabel("TR:")
-        self.trValue = CustomDoubleSpinbox(special_value=None, min=0.0, max=5.0)
-        self.trValue.setDecimals(3)
-        self.trValue.setSingleStep(0.5)
+        self.trValue = CustomListSpinbox(special_value=None, min=0.0, max=20.0, values=[0.72, 0.8, 1.5, 2.5])
+        self.trValue.setSuffix(" s  ")
 
         filteringLayout.addWidget(highPassLabel)
         filteringLayout.addWidget(self.highPassCutoff)
@@ -827,7 +862,7 @@ class App(QMainWindow):
         # Parcellation dropdown for nifti files
         self.parcellationContainer = QWidget()
         self.parcellationLayout = QHBoxLayout()
-        self.parcellationLayout.setContentsMargins(5, 5, 5, 10)
+        self.parcellationLayout.setContentsMargins(5, 5, 5, 0)
 
         self.parcellationLabel = QLabel("Parcellation:")
         self.parcellationLabel.setFixedWidth(100)
@@ -847,6 +882,19 @@ class App(QMainWindow):
         self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
         self.parcellationContainer.hide()
 
+        # Discard container
+        self.discardContainer = QWidget()
+        discardLayout = QHBoxLayout()
+        discardLabel = QLabel("Discard initial frames:")
+        self.discardSpinBox = CustomSpinBox(None)
+        self.discardSpinBox.setSuffix(" frames")
+        self.discardSpinBox.setSingleStep(5)
+        discardLayout.addWidget(discardLabel)
+        discardLayout.addWidget(self.discardSpinBox)
+        discardLayout.addStretch(1)
+        discardLayout.setContentsMargins(5, 5, 5, 0)
+        self.discardContainer.setLayout(discardLayout)
+
         # Calculate button
         self.calculateContainer = QWidget()
         self.calculateLayout = QHBoxLayout()
@@ -854,7 +902,11 @@ class App(QMainWindow):
 
         self.parcellationCalculateButton = QPushButton("Calculate")
         self.parcellationCalculateButton.clicked.connect(self.calculateTimeSeries)
+        self.resetButton = QPushButton("Reset")
+        self.resetButton.clicked.connect(self.resetTimeSeries)
+        self.resetButton.setEnabled(False)
         self.calculateLayout.addStretch(2)
+        self.calculateLayout.addWidget(self.resetButton, 1)
         self.calculateLayout.addWidget(self.parcellationCalculateButton, 1)
         self.calculateContainer.setLayout(self.calculateLayout)
 
@@ -865,22 +917,28 @@ class App(QMainWindow):
 
         self.cleanButton = QPushButton("Clean time series")
         self.cleanButton.clicked.connect(self.cleanTimeSeries)
+        self.resetButton2 = QPushButton("Reset time series")
+        self.resetButton2.clicked.connect(self.resetTimeSeries)
+        self.resetButton2.setEnabled(False)
         self.calculateLayout2.addStretch(2)
+        self.calculateLayout2.addWidget(self.resetButton2, 1)
         self.calculateLayout2.addWidget(self.cleanButton, 1)
         self.calculateContainer2.setLayout(self.calculateLayout2)
 
         # Transpose checkpox
-        self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension for connectivity estimation)")
+        self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension)")
         self.transposeCheckbox.hide()
         loadLayout.addWidget(self.transposeCheckbox)
+        loadLayout.addItem(QSpacerItem(0, 15, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
-        # Container for parcellation
+        # Container for timne series extraction
         self.loadContainer = QGroupBox("Time series extraction")
         loadContainerLayout = QVBoxLayout()
 
         loadContainerLayout.addWidget(self.subjectDropdownContainer)
         loadContainerLayout.addWidget(self.cleaningContainer)
         loadContainerLayout.addWidget(self.parcellationContainer)
+        loadContainerLayout.addWidget(self.discardContainer)
         loadContainerLayout.addWidget(self.calculateContainer)
         loadContainerLayout.addWidget(self.calculateContainer2)
 
@@ -898,6 +956,10 @@ class App(QMainWindow):
         self.loadContainer.hide()
 
         leftLayout.addWidget(self.loadContainer)
+
+        # Add results label
+        self.processingResultsLabel = QLabel()
+        leftLayout.addWidget(self.processingResultsLabel)
 
         return
 
@@ -1488,9 +1550,21 @@ class App(QMainWindow):
         performMvContainerLayout = QVBoxLayout()
         performMvContainerLayout.addItem(QSpacerItem(0, 5, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
+        # Choose folder layout
+        chooseFolderLayout = QHBoxLayout()
+        chooseFolderButton = QPushButton('Select multiverse folder')
+        chooseFolderLayout.addWidget(chooseFolderButton, 3)
+
+        # Textbox to display the loaded script path
+        self.chooseFolderEdit = QLineEdit()
+        self.chooseFolderEdit.setPlaceholderText("No folder selected yet")
+        self.chooseFolderEdit.setReadOnly(True)
+        chooseFolderLayout.addWidget(self.chooseFolderEdit, 5)
+        performMvContainerLayout.addLayout(chooseFolderLayout)
+
         # Load script layout
         loadLayout = QHBoxLayout()
-        loadMultiverseScriptButton = QPushButton('Load multiverse script')
+        loadMultiverseScriptButton = QPushButton('Load multiverse script   ')
         loadLayout.addWidget(loadMultiverseScriptButton, 3)
 
         # Textbox to display the loaded script path
@@ -1536,6 +1610,7 @@ class App(QMainWindow):
         self.runMultiverseButton.setEnabled(False)
         self.paralleliseMultiverseSpinbox.setEnabled(False)
 
+        chooseFolderButton.clicked.connect(self.selectMultiverseFolder)
         loadMultiverseScriptButton.clicked.connect(self.loadMultiverseScript)
         self.createMultiverseButton.clicked.connect(self.createMultiverse)
         self.runMultiverseButton.clicked.connect(self.runMultiverseScript)
@@ -1645,6 +1720,7 @@ class App(QMainWindow):
             return
 
         # Initial setup
+        self.data.file_data = None
         self.data.file_path = file_path
         self.data.file_name = file_path.split('/')[-1]
         self.cleaningContainer.hide()
@@ -1656,6 +1732,7 @@ class App(QMainWindow):
         self.bids_layout = None
         self.data.sample_mask = None
         self.transposeCheckbox.hide()
+        self.processingResultsLabel.setText("")
 
         try:
             self.subjectDropdown.currentIndexChanged.disconnect(self.onSubjectChanged)
@@ -1711,8 +1788,10 @@ class App(QMainWindow):
             self.parcellationDropdown.clear()            
         
         else:
-            self.data.file_data = None
             self.time_series_textbox.setText("Unsupported file format")
+
+        # Save a backup of the original data
+        self.data.orig_data = self.data.file_data.copy() if isinstance(self.data.file_data, np.ndarray) else self.data.file_data
 
         # Enable/disable layouts corresponding to file types
         self.setFileLayout(file_path)
@@ -1763,10 +1842,12 @@ class App(QMainWindow):
             fshape = self.data.file_data.shape
             self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}")
             self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}")
+            self.processingResultsLabel.setText(f'Time series data with shape {fshape} ready for connectivity analysis')
         else:
             fshape = self.data.file_data.shape
             self.fileNameLabel.setText(f"Loaded {fname} with shape {fshape}")
             self.fileNameLabel2.setText(f"Loaded {fname} with shape {fshape}")
+            self.processingResultsLabel.setText(f'Time series data with shape {fshape} ready for connectivity analysis')
 
     def setFileLayout(self, file_path):
         self.loadContainer.show()
@@ -1780,19 +1861,17 @@ class App(QMainWindow):
         if np.ndim(self.data.file_data) == 2:
             self.transposeCheckbox.show()
             self.cleaningContainer.show()
-            self.smoothingContainer.show()
             self.calculateContainer2.show()
+            self.smoothingContainer.hide()
             self.createCarpetPlot()
 
         elif np.ndim(self.data.file_data) == 3:
             self.subjectDropdown.addItems(np.arange(self.data.file_data.shape[0]).astype(str))
             self.subjectDropdownContainer.show()
             self.subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
-            self.transposeCheckbox.show()
-            
-            #self.cleaningContainer.show()
-            #self.smoothingContainer.show()
-            #self.calculateContainer2.show()
+            self.transposeCheckbox.show()   
+            self.cleaningContainer.show()
+            self.calculateContainer2.show()
             self.createCarpetPlot()
 
         elif file_path.endswith(".nii") or file_path.endswith(".nii.gz"):
@@ -1804,17 +1883,16 @@ class App(QMainWindow):
                 self.parcellationDropdown.addItems(self.atlas_options.keys())
                 self.sphereContainer.show()
                 self.smoothingContainer.show()
-
             self.cleaningContainer.show()
             self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
             self.onAtlasChanged()
             self.calculateContainer.show()
             self.parcellationContainer.show()
+            self.plotLogo(self.boldFigure)
 
         else:
             QMessageBox.warning(self, "Error", "File type not supported.")
             return
-
 
     def onTransposeChecked(self, state):
         """
@@ -2332,7 +2410,7 @@ class App(QMainWindow):
 
         return args
 
-    # Pparcellation and cleaning (nifi)
+    # Parcellation and cleaning (nifi)
     def calculateTimeSeries(self):
         print("Calculating time series, please wait...")
         QApplication.processEvents()
@@ -2467,19 +2545,22 @@ class App(QMainWindow):
                                                low_pass=low_pass, high_pass=high_pass, t_r=tr)
             time_series = masker.fit_transform(img_path, confounds=confounds)
 
+        # Discard initial volumes
+        discard_value = self.discardSpinBox.value()
+        time_series = time_series[discard_value:,:]
+
         self.data.file_data = time_series
 
         return
 
     def handleTimeSeriesResult(self):
-        print(f"Done calculating time series. Shape: {self.data.file_data.shape} for {self.data.file_name.split('/')[-1]}")
-
-        self.fileNameLabel2.setText(f"Time series data with shape {self.data.file_data.shape} is available for dFC calculation.")
+        self.processingResultsLabel.setText(f'Time series data with shape {self.data.file_data.shape} ready for connectivity analysis')
         self.time_series_textbox.setText(self.data.file_name)
         self.createCarpetPlot()
 
         self.parcellationCalculateButton.setEnabled(True)
         self.bids_calculateButton.setEnabled(True)
+        self.resetButton.setEnabled(True)
 
         return
 
@@ -2514,6 +2595,7 @@ class App(QMainWindow):
         high_pass = self.highPassCutoff.value() if self.highPassCutoff.value() > 0 else None
         low_pass = self.lowPassCutoff.value() if self.lowPassCutoff.value() > 0 else None
         tr = self.trValue.value() if self.trValue.value() > 0 else None
+        discard_value = self.discardSpinBox.value()
 
         if self.gsrCheckbox.isChecked():
             confounds_df = pd.DataFrame()
@@ -2528,15 +2610,29 @@ class App(QMainWindow):
             standardize = False
             standardize_confounds = False
 
-        self.data.file_data = utils.clean(self.data.file_data, standardize=standardize, confounds=confounds_df, standardize_confounds=standardize_confounds, detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
+        if self.data.file_path.endswith('.npy'):
+            for i in range(self.data.file_data.shape[0]):
+                self.data.file_data[i,:,:] = utils.clean(self.data.file_data[i,:,:], standardize=standardize, confounds=confounds_df, standardize_confounds=standardize_confounds, detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
+        else:
+            self.data.file_data = utils.clean(self.data.file_data, standardize=standardize, confounds=confounds_df, standardize_confounds=standardize_confounds, detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
+        
+        if discard_value:
+            if self.data.file_path.endswith('.npy'):
+                temp_data = np.zeros((self.data.file_data.shape[0], self.data.file_data.shape[1] - discard_value, self.data.file_data.shape[2]))
+                for i in range(self.data.file_data.shape[0]):
+                    temp_data[i,:,:] = self.data.file_data[i,discard_value:,:]
+                self.data.file_data = temp_data
+            else:
+                self.data.file_data = self.data.file_data[discard_value:,:]
+        
+        return
 
     def handleCleaningResult(self):
-        print(f"Done cleaning the time series.")
-
-        self.fileNameLabel2.setText(f"Time series data with shape {self.data.file_data.shape} is available for dFC calculation.")
+        self.processingResultsLabel.setText(f'Time series data with shape {self.data.file_data.shape} ready for connectivity analysis')
         self.time_series_textbox.setText(self.data.file_name)
         self.createCarpetPlot()
         self.cleanButton.setEnabled(True)
+        self.resetButton2.setEnabled(True)
 
     def handleCleaningError(self, error):
         # Handles errors in the worker thread
@@ -2545,6 +2641,18 @@ class App(QMainWindow):
         self.cleanButton.setEnabled(True)
         return
 
+    def resetTimeSeries(self):
+        self.data.file_data = self.data.orig_data
+        self.resetButton.setEnabled(False)
+        self.resetButton2.setEnabled(False)
+
+        if isinstance(self.data.orig_data, np.ndarray):
+            self.createCarpetPlot()
+        else:
+            self.plotLogo(self.boldFigure)
+            self.boldCanvas.draw()
+        
+        return
 
     # Plotting
     def createCarpetPlot(self):
@@ -2897,7 +3005,7 @@ class App(QMainWindow):
         self.time_series_textbox.setEnabled(True)
 
         # Create info button for time_series
-        time_series_info_text = "2D time series loaded from file. Time has to be the first dimension for connectivity estimation."
+        time_series_info_text = "2D time series loaded from file (time has to be the first dimension)."
         time_series_info_button = InfoButton(time_series_info_text)
 
         time_series_layout = QHBoxLayout()
@@ -4761,6 +4869,13 @@ class App(QMainWindow):
         self.scriptDisplay.setReadOnly(True)
         self.toggleButton.setText("🔒")
 
+    def selectMultiverseFolder(self):
+        self.data.multiverse_folder = QFileDialog.getExistingDirectory(self, "Select folder for multiverse analysis")
+        self.chooseFolderEdit.setText(self.data.multiverse_folder)
+        # User canceled the selection
+        if not self.data.multiverse_folder:
+            return
+
     def loadMultiverseScript(self):
         """
         Load a multiverse script and extract specific components.
@@ -4869,8 +4984,7 @@ class App(QMainWindow):
         Create the multiverse from the template file
         """
         if hasattr(self, 'multiverseFileName'):
-            multiverse_template_path = self.multiverseFileName.rsplit('/', 1)[0]
-            multiverse_save_path = os.path.join(multiverse_template_path, self.multiverseName)
+            multiverse_save_path = self.data.multiverse_folder
             os.makedirs(multiverse_save_path, exist_ok=True)
 
             # Create a template script in the multiverse folder (the script content is taken from the GUI)
@@ -4948,7 +5062,7 @@ class App(QMainWindow):
         self.plotButton.setEnabled(False)
 
         self.mvThread = QThread()
-        self.mvWorker = Worker(self.mverse.run, {"parallel": self.paralleliseMultiverseSpinbox.value()})
+        self.mvWorker = Worker(self.mverse.run, {"parallel": self.paralleliseMultiverseSpinbox.value(), "folder": self.data.multiverse_folder})
         self.mvWorker.moveToThread(self.mvThread)
 
         self.mvThread.started.connect(self.mvWorker.run)
@@ -5194,6 +5308,7 @@ Run the application
 """
 def run():
     app = QApplication(sys.argv)
+    QLocale.setDefault(QLocale(QLocale.Language.English, QLocale.Country.UnitedStates))
 
     # Set global stylesheet for tooltips
     QApplication.instance().setStyleSheet("""
