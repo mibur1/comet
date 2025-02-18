@@ -292,6 +292,32 @@ class ParameterOptions:
         "Schaefer Tian":            ["154", "254", "354", "454", "554", "654", "754", "854", "954", "1054"]
     }
 
+    ATLAS_MAP = {
+                "Schaefer Kong 100": "schaefer_100_cortical",
+                "Schaefer Kong 200": "schaefer_200_cortical",
+                "Schaefer Kong 300": "schaefer_300_cortical",
+                "Schaefer Kong 400": "schaefer_400_cortical",
+                "Schaefer Kong 500": "schaefer_500_cortical",
+                "Schaefer Kong 600": "schaefer_600_cortical",
+                "Schaefer Kong 700": "schaefer_700_cortical",
+                "Schaefer Kong 800": "schaefer_800_cortical",
+                "Schaefer Kong 900": "schaefer_900_cortical",
+                "Schaefer Kong 1000": "schaefer_1000_cortical",
+
+                "Schaefer Tian 154": "schaefer_100_subcortical",
+                "Schaefer Tian 254": "schaefer_200_subcortical",
+                "Schaefer Tian 354": "schaefer_300_subcortical",
+                "Schaefer Tian 454": "schaefer_400_subcortical",
+                "Schaefer Tian 554": "schaefer_500_subcortical",
+                "Schaefer Tian 654": "schaefer_600_subcortical",
+                "Schaefer Tian 754": "schaefer_700_subcortical",
+                "Schaefer Tian 854": "schaefer_800_subcortical",
+                "Schaefer Tian 954": "schaefer_900_subcortical",
+                "Schaefer Tian 1054": "schaefer_1000_subcortical",
+
+                "Glasser MMP 379": "glasser_mmp_subcortical",
+            }
+
     INFO_OPTIONS = {
         "windowsize":               "Size of the window used by the method. Should typically be an uneven number to have a center.",
         "shape":                    "Shape of the windowing function.",
@@ -384,6 +410,7 @@ class ParameterOptions:
         self.reverse_graphOptions = self.REVERSE_GRAPH_OPTIONS
         self.atlas_options = self.ATLAS_OPTIONS
         self.atlas_options_cifti = self.ATLAS_OPTIONS_CIFTI
+        self.atlas_map = self.ATLAS_MAP
         self.info_options = self.INFO_OPTIONS
         self.confound_options = self.CONFOUND_OPTIONS
         self.cleaning_info = self.CLEANING_INFO
@@ -610,6 +637,7 @@ class App(QMainWindow):
         self.reverse_graphOptions = parameterNames.reverse_graphOptions
         self.atlas_options = parameterNames.atlas_options
         self.atlas_options_cifti = parameterNames.atlas_options_cifti
+        self.atlas_map = parameterNames.atlas_map
         self.info_options = parameterNames.info_options
         self.confound_options = parameterNames.confound_options
         self.cleaning_info = parameterNames.cleaning_info
@@ -651,6 +679,8 @@ class App(QMainWindow):
         leftLayout = QVBoxLayout()
         self.addDataLoadLayout(leftLayout)
         self.addDataBidsLayout(leftLayout)
+        self.processingResultsLabel = QLabel()
+        leftLayout.addWidget(self.processingResultsLabel)
         leftLayout.addStretch()
 
         # Right section
@@ -930,7 +960,7 @@ class App(QMainWindow):
         self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension).")
         self.transposeCheckbox.hide()
         loadLayout.addWidget(self.transposeCheckbox)
-        loadLayout.addItem(QSpacerItem(0, 15, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        #loadLayout.addItem(QSpacerItem(0, 15, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
         # Container for timne series extraction
         self.loadContainer = QGroupBox("Time series extraction")
@@ -957,11 +987,6 @@ class App(QMainWindow):
         self.loadContainer.hide()
 
         leftLayout.addWidget(self.loadContainer)
-
-        # Add results label
-        self.processingResultsLabel = QLabel()
-        leftLayout.addWidget(self.processingResultsLabel)
-
         return
 
     def addDataBidsLayout(self, leftLayout):
@@ -1053,30 +1078,23 @@ class App(QMainWindow):
         generalCleaningLayout = QVBoxLayout(self.generalCleaningContainer)
         generalCleaningLayout.setContentsMargins(0, 10, 0, 0)
 
-        firstRowLayout = QHBoxLayout()
+        cleaningLayout = QHBoxLayout()
         self.bids_standardizeCheckbox = QCheckBox("Standardize")
         self.bids_detrendCheckbox = QCheckBox("Detrend")
+        cleaningLayout.addItem(QSpacerItem(5, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        cleaningLayout.addWidget(self.bids_standardizeCheckbox)
+        cleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        cleaningLayout.addWidget(self.bids_detrendCheckbox)
+        cleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        self.bids_highVarianceCheckbox = QCheckBox("Regress high variance confounds")
+        cleaningLayout.addWidget(self.bids_highVarianceCheckbox)
+        cleaningLayout.addStretch(1)
+        generalCleaningLayout.addLayout(cleaningLayout)
+        bids_confoundsLayout.addWidget(self.generalCleaningContainer)
+
         self.bids_standardizeCheckbox.setChecked(True)
         self.bids_detrendCheckbox.setChecked(True)
-        firstRowLayout.addItem(QSpacerItem(5, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
-        firstRowLayout.addWidget(self.bids_standardizeCheckbox)
-        firstRowLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
-        firstRowLayout.addWidget(self.bids_detrendCheckbox)
-        firstRowLayout.addStretch(1)
-
-        secondRowLayout = QHBoxLayout()
-        self.bids_gsrCheckbox = QCheckBox("Regress global signal")
-        self.bids_highVarianceCheckbox = QCheckBox("Regress high variance confounds")
         self.bids_highVarianceCheckbox.setChecked(True)
-        secondRowLayout.addItem(QSpacerItem(5, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
-        secondRowLayout.addWidget(self.bids_gsrCheckbox)
-        secondRowLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
-        secondRowLayout.addWidget(self.bids_highVarianceCheckbox)
-        secondRowLayout.addStretch(1)
-        
-        generalCleaningLayout.addLayout(firstRowLayout)
-        generalCleaningLayout.addLayout(secondRowLayout)
-        bids_confoundsLayout.addWidget(self.generalCleaningContainer)
 
         # Smoothing and filtering container widget
         self.bids_smoothingContainer = QWidget()
@@ -1136,10 +1154,6 @@ class App(QMainWindow):
         self.bids_calculateButton = QPushButton('Extract time series')
         self.bids_calculateButton.clicked.connect(self.calculateTimeSeries)
         self.bidsLayout.addWidget(self.bids_calculateButton)
-
-        # Textbox for calculation status
-        self.bids_calculateTextbox = QLabel("No time series data extracted yet.")
-        self.bidsLayout.addWidget(self.bids_calculateTextbox)
 
         # Add the BIDS layout to the main layout
         leftLayout.addWidget(self.bidsContainer)
@@ -1249,7 +1263,7 @@ class App(QMainWindow):
         leftLayout.addLayout(buttonLayout)
 
         # Calculation info textbox
-        self.calculatingLabel = QLabel('No data calculated yet')
+        self.calculatingLabel = QLabel('No data calculated yet.')
         leftLayout.addWidget(self.calculatingLabel)
 
         return
@@ -1707,13 +1721,9 @@ class App(QMainWindow):
         Load a single file and display the data in the GUI.
         """
         # Allowed file types
-        fileFilter = "All Supported Files (*.mat *.txt *.npy *.tsv *.nii *.nii.gz *.dtseries.nii *.ptseries.nii);;\
-                                            MAT files (*.mat);;\
-                                            Text files (*.txt);;\
-                                            NumPy files (*.npy);;\
-                                            TSV files (*.tsv);;\
-                                            NIFTI files (*.nii, .nii.gz);;\
-                                            CIFTI files (*.dtseries.nii *.ptseries.nii)"
+        fileFilter = "All supported files (*.mat *.txt *.npy *.tsv *.nii *.nii.gz *.dtseries.nii *.ptseries.nii);;\
+                      MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;TSV files (*.tsv);;\
+                      NIFTI files (*.nii, .nii.gz);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
 
         if not file_path:
@@ -1739,7 +1749,6 @@ class App(QMainWindow):
             self.subjectDropdown.currentIndexChanged.disconnect(self.onSubjectChanged)
             self.subjectDropdown.clear()
             self.subjectDropdownContainer.hide()
-
         except:
             pass
 
@@ -2008,6 +2017,8 @@ class App(QMainWindow):
         self.plotLogo(self.boldFigure)
         self.boldCanvas.draw()
         self.loadContainer.hide()
+        self.transposeCheckbox.hide()
+        self.processingResultsLabel.setText("")
 
         # Open a dialog to select the BIDS directory
         bids_folder = QFileDialog.getExistingDirectory(self, "Select fMRIprep directory")
@@ -2021,7 +2032,7 @@ class App(QMainWindow):
             # Reset GUI elements
             self.currentSliderValue = 0
             self.slider.setValue(0)
-            self.connectivityFigure.clear()
+            self.plotLogo(self.connectivityFigure)
             self.connectivityCanvas.draw()
 
             # Initialize BIDS layout
@@ -2048,7 +2059,6 @@ class App(QMainWindow):
 
     def loadBIDSThread(self, bids_folder):
         # Get the layout
-        print(f"Loading fMRIprep output from {bids_folder}")
         self.bids_layout = BIDSLayout(bids_folder, is_derivative=True)
 
         # Get subjects and update the dropdown
@@ -2411,7 +2421,6 @@ class App(QMainWindow):
 
     # Parcellation and cleaning (nifi)
     def calculateTimeSeries(self):
-        print("Calculating time series, please wait...")
         QApplication.processEvents()
 
         # Load BIDS layout in a separate thread
@@ -2449,7 +2458,6 @@ class App(QMainWindow):
             high_variance_confounds = self.bids_highVarianceCheckbox.isChecked()
             smoothing_fwhm = self.bids_smoothingSpinbox.value() if self.bids_smoothingSpinbox.value() > 0 else None
 
-
             high_pass = self.bids_highPassCutoff.value() if self.bids_highPassCutoff.value() > 0 else None
             low_pass = self.bids_lowPassCutoff.value() if self.bids_lowPassCutoff.value() > 0 else None
             tr = self.bids_trValue.value() if self.bids_trValue.value() > 0 else None
@@ -2467,22 +2475,22 @@ class App(QMainWindow):
             low_pass = self.lowPassCutoff.value() if self.lowPassCutoff.value() > 0 else None
             tr = self.trValue.value() if self.trValue.value() > 0 else None
 
-        # GSR
-        if self.gsrCheckbox.isChecked():
-            confounds = pd.DataFrame()
-            if np.ndim(self.data.file_data) == 2:
-                confounds["global_signal"] = np.mean(self.data.file_data, axis=1)
+            # GSR
+            if self.gsrCheckbox.isChecked():
+                confounds = pd.DataFrame()
+                if np.ndim(self.data.file_data) == 2:
+                    confounds["global_signal"] = np.mean(self.data.file_data, axis=1)
+                else:
+                    nifti_data = nib.load(self.data.file_path).get_fdata()
+                    confounds["global_signal"] = np.mean(nifti_data, axis=(0, 1, 2))
             else:
-                nifti_data = nib.load(self.data.file_path).get_fdata()
-                confounds["global_signal"] = np.mean(nifti_data, axis=(0, 1, 2))
-        else:
-            confounds = None
-
-        standardize_confounds = True if standardize else False
+                confounds = None
             
         # Parcellation procedure
         self.parcellationCalculateButton.setEnabled(False)
         self.bids_calculateButton.setEnabled(False)
+
+        standardize_confounds = True if standardize else False
 
         if self.bids_layout is not None:
             args = self.collectCleaningArguments()
@@ -2507,33 +2515,7 @@ class App(QMainWindow):
 
         # Select the correct atlas for Schaefer and Glasser
         elif (atlas.startswith("Schaefer") or atlas.startswith("Glasser")) and atlas != "Schaefer et al. (2018)":
-            atlas_map = {
-                "Schaefer Kong 100": "schaefer_100_cortical",
-                "Schaefer Kong 200": "schaefer_200_cortical",
-                "Schaefer Kong 300": "schaefer_300_cortical",
-                "Schaefer Kong 400": "schaefer_400_cortical",
-                "Schaefer Kong 500": "schaefer_500_cortical",
-                "Schaefer Kong 600": "schaefer_600_cortical",
-                "Schaefer Kong 700": "schaefer_700_cortical",
-                "Schaefer Kong 800": "schaefer_800_cortical",
-                "Schaefer Kong 900": "schaefer_900_cortical",
-                "Schaefer Kong 1000": "schaefer_1000_cortical",
-
-                "Schaefer Tian 154": "schaefer_100_subcortical",
-                "Schaefer Tian 254": "schaefer_200_subcortical",
-                "Schaefer Tian 354": "schaefer_300_subcortical",
-                "Schaefer Tian 454": "schaefer_400_subcortical",
-                "Schaefer Tian 554": "schaefer_500_subcortical",
-                "Schaefer Tian 654": "schaefer_600_subcortical",
-                "Schaefer Tian 754": "schaefer_700_subcortical",
-                "Schaefer Tian 854": "schaefer_800_subcortical",
-                "Schaefer Tian 954": "schaefer_900_subcortical",
-                "Schaefer Tian 1054": "schaefer_1000_subcortical",
-
-                "Glasser MMP 379": "glasser_mmp_subcortical",
-            }
-
-            atlas_string = atlas_map.get(f"{atlas} {option}", None)
+            atlas_string = self.atlas_map.get(f"{atlas} {option}", None)
             time_series_raw = cifti.parcellate(img_path, atlas=atlas_string)
             time_series = utils.clean(time_series_raw, standardize=standardize, detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
         else:
@@ -2553,7 +2535,7 @@ class App(QMainWindow):
         return
 
     def handleTimeSeriesResult(self):
-        self.processingResultsLabel.setText(f'Time series data with shape {self.data.file_data.shape} ready for connectivity analysis')
+        self.processingResultsLabel.setText(f'Time series data with shape {self.data.file_data.shape} ready for connectivity analysis.')
         self.time_series_textbox.setText(self.data.file_name)
         self.createCarpetPlot()
 
@@ -2573,11 +2555,10 @@ class App(QMainWindow):
 
     # Cleaning only
     def cleanTimeSeries(self):
-        print("Calculating time series, please wait...")
         self.cleanButton.setEnabled(False)
         QApplication.processEvents()
 
-        # Load BIDS layout in a separate thread
+        # Clean in a separate thread
         self.workerThread = QThread()
         self.worker = Worker(self.cleanTimeSeriesThread, {})
         self.worker.moveToThread(self.workerThread)
@@ -2741,13 +2722,11 @@ class App(QMainWindow):
                                 converted_dict[k] = v
                             elif v is None:
                                 converted_dict[k] = np.array([])
-                                print(f"Converted None to empty array for dict key: {k}")
                             else:
                                 converted_dict[k] = v
                         data_dict[field] = converted_dict
                     elif value is None:
                         data_dict[field] = np.array([])
-                        print(f"Converted None to empty array for field: {field}")
                     elif field == 'dfc_instance':
                         pass
                     else:
@@ -2786,7 +2765,6 @@ class App(QMainWindow):
             self.setParameters()
             self.slider.show()
             self.calculatingLabel.setText(f"Loaded {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
-            print(f"Loaded {self.data.dfc_name} from memory")
 
             # Plot the data
             self.plotConnectivity()
@@ -2928,7 +2906,6 @@ class App(QMainWindow):
             # Update the dictionary entry for the selected_class_name with the new data and parameters
             self.data_storage.add_data(self.data)
 
-        print("Finished calculation.")
         return self.data
 
     def handleConnectivityResult(self):
@@ -3208,7 +3185,6 @@ class App(QMainWindow):
         self.distributionCanvas.draw()
 
         self.calculatingLabel.setText(f"Cleared memory")
-        print("Cleared memory")
         return
 
     # Plotting
@@ -3553,7 +3529,8 @@ class App(QMainWindow):
     Graph tab
     """
     def loadGraphFile(self):
-        fileFilter = "All Supported Files (*.mat *.txt *.npy *.tsv *.dtseries.nii *.ptseries.nii);;MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
+        fileFilter = "All supported files (*.mat *.npy *.tsv *.dtseries.nii *.ptseries.nii);;\
+                      MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
         file_name = file_path.split('/')[-1]
         self.data.graph_file = file_name
@@ -3623,13 +3600,11 @@ class App(QMainWindow):
                                 converted_dict[k] = v
                             elif v is None:
                                 converted_dict[k] = np.array([])
-                                print(f"Converted None to empty array for dict key: {k}")
                             else:
                                 converted_dict[k] = v
                         data_dict[field] = converted_dict
                     elif value is None:
                         data_dict[field] = np.array([])
-                        print(f"Converted None to empty array for field: {field}")
                     elif field == 'dfc_instance':
                         pass
                     else:
@@ -3657,7 +3632,6 @@ class App(QMainWindow):
 
         self.data.graph_raw = self.data.graph_data
 
-        print(f"Used current dFC data with shape {self.data.graph_data.shape}")
         self.graphFileNameLabel.setText(f"Used current dFC data with shape {self.data.graph_data.shape}")
         self.data.graph_file = f"dfC from {self.data.file_name}" #with {self.data.dfc_name} at t={self.currentSliderValue}"
         self.plotGraphMatrix()
@@ -3740,8 +3714,6 @@ class App(QMainWindow):
         data   = result[1]
         option = result[2]
         params = result[3]
-
-        print(f"Finished calculation for {option}, output data: {type(data)}.")
 
         # Update self.data.graph_data or self.data.graph_out based on the result
         if output == 'graph_prep':
@@ -4001,7 +3973,6 @@ class App(QMainWindow):
 
                 # Calculate mean and std, and update the textbox
                 mean_val = np.mean(self.data.graph_out)
-                print(self.data.graph_out)
                 std_val = np.std(self.data.graph_out)
                 self.graphTextbox.append(f"{measure} (mean: {mean_val:.2f}, std: {std_val:.2f})")
 
@@ -4388,14 +4359,6 @@ class App(QMainWindow):
 
         return params_dict
 
-    def listAllWidgets(self, container):
-        """
-        List all widgets and their memory addresses within a given container.
-        """
-        widgets = container.findChildren(QWidget)
-        for widget in widgets:
-            print(f"Widget: {widget.objectName()}, Type: {type(widget).__name__}, Address: {hex(id(widget))}")
-
     def updateFunctionParameters(self, functionComboBox, parameterContainer):
         """
         Create and update all the parameter widgets based on the selected function
@@ -4780,6 +4743,14 @@ class App(QMainWindow):
 
             self.generateMultiverseScript(init_template=True)
 
+    def _listAllWidgets(self, container):
+        """
+        List all widgets and their memory addresses within a given container.
+        """
+        widgets = container.findChildren(QWidget)
+        for widget in widgets:
+            print(f"Widget: {widget.objectName()}, Type: {type(widget).__name__}, Address: {hex(id(widget))}")
+
     # Template script functions
     def toggleReadOnly(self):
         if self.scriptDisplay.isReadOnly():
@@ -4879,7 +4850,7 @@ class App(QMainWindow):
         """
         Load a multiverse script and extract specific components.
         """
-        fileFilter = "All Supported Files (*.py *.ipynb);;MAT files (*.mat);;Python files (*.py);;Jupyter notebooks (*.ipynb)"
+        fileFilter = "All supported files (*.py *.ipynb);;MAT files (*.mat);;Python files (*.py);;Jupyter notebooks (*.ipynb)"
         self.multiverseFileName, _ = QFileDialog.getOpenFileName(self, "Load multiverse template file", "", fileFilter)
         self.multiverseName = self.multiverseFileName.split('/')[-1].split('.')[0]
         self.mv_from_file = True
