@@ -823,12 +823,12 @@ class App(QMainWindow):
         firstRowLayout.addStretch(1)
 
         secondRowLayout = QHBoxLayout()
-        self.gsrCheckbox = QCheckBox("Regress global signal")
         self.highVarianceCheckbox = QCheckBox("Regress high variance confounds")
+        self.gsrCheckbox = QCheckBox("Regress global signal")
         secondRowLayout.addItem(QSpacerItem(5, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
-        secondRowLayout.addWidget(self.gsrCheckbox)
-        secondRowLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
         secondRowLayout.addWidget(self.highVarianceCheckbox)
+        secondRowLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
+        secondRowLayout.addWidget(self.gsrCheckbox)
         secondRowLayout.addStretch(1)
 
         miscCleaningLayout.addLayout(firstRowLayout)
@@ -1095,7 +1095,6 @@ class App(QMainWindow):
 
         self.bids_standardizeCheckbox.setChecked(True)
         self.bids_detrendCheckbox.setChecked(True)
-        self.bids_highVarianceCheckbox.setChecked(True)
 
         # Smoothing and filtering container widget
         self.bids_smoothingContainer = QWidget()
@@ -1759,6 +1758,8 @@ class App(QMainWindow):
         self.data.sample_mask = None
         self.transposeCheckbox.hide()
         self.processingResultsLabel.setText("")
+        self.detrendCheckbox.setChecked(True)
+        self.standardizeCheckbox.setChecked(True)
 
         try:
             self.subjectDropdown.currentIndexChanged.disconnect(self.onSubjectChanged)
