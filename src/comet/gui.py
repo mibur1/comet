@@ -1088,6 +1088,7 @@ class App(QMainWindow):
         cleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
         self.bids_highVarianceCheckbox = QCheckBox("Regress high variance confounds")
         cleaningLayout.addWidget(self.bids_highVarianceCheckbox)
+        cleaningLayout.setContentsMargins(0, 0, 0, 0)
         cleaningLayout.addStretch(1)
         generalCleaningLayout.addLayout(cleaningLayout)
         bids_confoundsLayout.addWidget(self.generalCleaningContainer)
@@ -1138,6 +1139,20 @@ class App(QMainWindow):
         bids_filteringLayout.setContentsMargins(0, 0, 0, 0)
         self.bids_filteringContainer.setLayout(bids_filteringLayout)
         bids_confoundsLayout.addWidget(self.bids_filteringContainer)
+
+        # Discard values container
+        self.bids_discardContainer = QWidget()
+        bids_discardLayout = QHBoxLayout()
+        bids_discardLayout.setContentsMargins(0, 0, 0, 0)
+        bids_discardLabel = QLabel("Discard initial frames:")
+        self.bids_discardSpinBox = CustomSpinBox(None)
+        self.bids_discardSpinBox.setSuffix(" frames")
+        self.bids_discardSpinBox.setSingleStep(5)
+        bids_discardLayout.addWidget(bids_discardLabel)
+        bids_discardLayout.addWidget(self.bids_discardSpinBox)
+        bids_discardLayout.addStretch(1)
+        self.bids_discardContainer.setLayout(bids_discardLayout)
+        bids_confoundsLayout.addWidget(self.bids_discardContainer)
 
         # Confound strategy container widget
         bids_confoundsStrategyWidget = self.loadConfounds()
@@ -1857,7 +1872,7 @@ class App(QMainWindow):
         else:
             fshape = self.data.file_data.shape
             self.connectivityFileNameLabel.setText(f"Time series data with shape {fshape} is available for connectivity analysis.")
-            self.processingResultsLabel.setText(f'Time series data with shape {fshape} ready for connectivity analysis.')
+            self.processingResultsLabel.setText(f'Time series data with shape {fshape} is ready for connectivity analysis.')
 
     def setFileLayout(self, file_path):
         self.loadContainer.show()
@@ -2438,6 +2453,8 @@ class App(QMainWindow):
         self.worker.error.connect(self.handleTimeSeriesError)
         self.workerThread.start()
 
+        self.processingResultsLabel.setText(f'Calculating time series, please wait...')
+
         return
 
     def calculateTimeSeriesThread(self, **params):
@@ -2505,7 +2522,7 @@ class App(QMainWindow):
             if atlas == "Power et al. (2011)":
                 rois = self.fetchAtlas(atlas, option)
             else:
-                rois, networks, self.data.roi_names = self.fetchAtlas(atlas, option)
+                rois, _, self.data.roi_names = self.fetchAtlas(atlas, option)
 
             masker = maskers.NiftiSpheresMasker(seeds=rois, mask_img=mask, radius=radius, allow_overlap=allow_ovelap,
                                                 standardize=standardize, standardize_confounds=standardize_confounds, detrend=detrend, 
@@ -2526,19 +2543,29 @@ class App(QMainWindow):
                                                low_pass=low_pass, high_pass=high_pass, t_r=tr)
             time_series = masker.fit_transform(img_path, confounds=confounds)
 
-        # Discard initial volumes
-        discard_value = self.discardSpinBox.value()
-        time_series = time_series[discard_value:,:]
-
         self.data.file_data = time_series
 
         return
 
     def handleTimeSeriesResult(self):
-        self.processingResultsLabel.setText(f'Time series data with shape {self.data.file_data.shape} ready for connectivity analysis.')
-        self.time_series_textbox.setText(self.data.file_name)
+        # Create carpet plot before removing volumes
         self.createCarpetPlot()
 
+        # Discard flagged volumes
+        original_data_shape = self.data.file_data.shape
+        discard_value = self.bids_discardSpinBox.value() if self.bids_layout is not None else self.discardSpinBox.value()
+        combined_sample_mask = self.data.sample_mask[self.data.sample_mask >= discard_value]
+        self.data.file_data = self.data.file_data[combined_sample_mask,:]
+
+        # Set the labels
+        n_removed_volumes = original_data_shape[0] - self.data.file_data.shape[0]
+        if n_removed_volumes > 0:
+            self.processingResultsLabel.setText(f'Time series data with shape {self.data.file_data.shape} is ready for connectivity analysis.\n{n_removed_volumes} volumes were removed (as shown in the plot).')
+        else:
+            self.processingResultsLabel.setText(f'Time series data with shape {self.data.file_data.shape} is ready for connectivity analysis.')
+        self.time_series_textbox.setText(self.data.file_name)
+
+        # Re-enable buttons
         self.parcellationCalculateButton.setEnabled(True)
         self.bids_calculateButton.setEnabled(True)
         self.resetButton.setEnabled(True)
@@ -2608,7 +2635,7 @@ class App(QMainWindow):
         return
 
     def handleCleaningResult(self):
-        self.processingResultsLabel.setText(f'Time series data with shape {self.data.file_data.shape} ready for connectivity analysis')
+        self.processingResultsLabel.setText(f'Time series data with shape {self.data.file_data.shape} is ready for connectivity analysis')
         self.time_series_textbox.setText(self.data.file_name)
         self.createCarpetPlot()
         self.cleanButton.setEnabled(True)
