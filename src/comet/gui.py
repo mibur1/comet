@@ -679,9 +679,7 @@ class App(QMainWindow):
         leftLayout = QVBoxLayout()
         self.addDataLoadLayout(leftLayout)
         self.addFmriprepLayout(leftLayout)
-        self.processingResultsLabel = QLabel()
-        leftLayout.addWidget(self.processingResultsLabel)
-        leftLayout.addStretch()
+        self.addMiscDataLayout(leftLayout)
 
         # Right section
         rightLayout = QVBoxLayout()
@@ -738,7 +736,7 @@ class App(QMainWindow):
 
     def multiverseTab(self):
         multiverseTab = QWidget()
-        multiverseLayout = QVBoxLayout()  # Main layout for the tab
+        multiverseLayout = QVBoxLayout()
         multiverseTab.setLayout(multiverseLayout)
 
         # Left section
@@ -781,7 +779,7 @@ class App(QMainWindow):
         self.subjectDropdownContainer = QWidget()
         self.subjectDropdownLayout = QHBoxLayout()
         self.subjectLabel = QLabel("Subject number:")
-        self.subjectLabel.setFixedWidth(140)
+        self.subjectLabel.setFixedWidth(110)
         self.subjectDropdown = QComboBox()
         self.subjectDropdownLayout.addWidget(self.subjectLabel)
         self.subjectDropdownLayout.addWidget(self.subjectDropdown)
@@ -1171,6 +1169,21 @@ class App(QMainWindow):
 
         return
 
+    def addMiscDataLayout(self, leftLayout):
+        """
+        Add the layout for the label and save button to the left layout of the data tab.
+        """
+        self.processingResultsLabel = QLabel()
+        leftLayout.addWidget(self.processingResultsLabel)
+        leftLayout.addStretch()
+
+        self.saveTimeSeriesButton = QPushButton('Save time series')
+        self.saveTimeSeriesButton.clicked.connect(self.saveTimeSeries)
+        leftLayout.addWidget(self.saveTimeSeriesButton)
+        self.saveTimeSeriesButton.hide()
+
+        return
+
     def addDataPlotLayout(self, rightLayout):
         plotTabWidget = QTabWidget()
 
@@ -1192,6 +1205,20 @@ class App(QMainWindow):
     def addConnectivityLayout(self, leftLayout):
         self.connectivityFileNameLabel = QLabel('No time series data available.')
         leftLayout.addWidget(self.connectivityFileNameLabel)
+
+        # Subject dropdown in case there are multiple subjects
+        """self.connectivity_subjectDropdownContainer = QWidget()
+        connectivity_subjectDropdownLayout = QHBoxLayout()
+        connectivity_subjectLabel = QLabel("Use time series from subject:")
+        connectivity_subjectLabel.setFixedWidth(180)
+        self.connectivity_subjectDropdown = QComboBox()
+        connectivity_subjectDropdownLayout.addWidget(connectivity_subjectLabel)
+        connectivity_subjectDropdownLayout.addWidget(self.connectivity_subjectDropdown)
+        connectivity_subjectDropdownLayout.setContentsMargins(0, 0, 5, 0)
+        self.connectivity_subjectDropdownContainer.setLayout(connectivity_subjectDropdownLayout)
+        self.connectivity_subjectDropdownContainer.hide()
+        leftLayout.addWidget(self.connectivity_subjectDropdownContainer)"""
+       
         leftLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
         # Connectivity method container
@@ -1756,11 +1783,15 @@ class App(QMainWindow):
         self.processingResultsLabel.setText("")
         self.detrendCheckbox.setChecked(True)
         self.standardizeCheckbox.setChecked(True)
+        self.saveTimeSeriesButton.hide()
 
         try:
             self.subjectDropdown.currentIndexChanged.disconnect(self.onSubjectChanged)
             self.subjectDropdown.clear()
-            self.subjectDropdownContainer.hide()
+            
+            #self.connectivity_subjectDropdown.currentIndexChanged.disconnect(self.onSubjectChanged)
+            #self.connectivity_subjectDropdown.clear()
+
         except:
             pass
 
@@ -1859,17 +1890,22 @@ class App(QMainWindow):
         fname = self.data.file_name[:20] + self.data.file_name[-30:] if len(self.data.file_name) > 50 else self.data.file_name
 
         if file_path.endswith('.nii') or file_path.endswith('.nii.gz'):
-            self.fileNameLabel.setText(f"Loaded {fname}")
+            self.fileNameLabel.setText(f"Loaded {fname}.")
         elif file_path.endswith('.npy'):
             fshape = self.data.file_data.shape
-            self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}")
-            self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}")
+            self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}.")
+            self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}.")
             self.processingResultsLabel.setText(f'Time series data with shape {fshape} is available for connectivity analysis.')
             self.connectivityFileNameLabel.setText(f"Time series data with shape {fshape} is available for state-based analysis.")
+            self.saveTimeSeriesButton.show()
         else:
             fshape = self.data.file_data.shape
+            self.fileNameLabel.setText(f"Loaded {fname} with shape {fshape}.")
             self.connectivityFileNameLabel.setText(f"Time series data with shape {fshape} is available for connectivity analysis.")
             self.processingResultsLabel.setText(f'Time series data with shape {fshape} is ready for connectivity analysis.')
+            self.saveTimeSeriesButton.show()
+
+        return
 
     def setFileLayout(self, file_path):
         self.loadContainer.show()
@@ -1891,6 +1927,11 @@ class App(QMainWindow):
             self.subjectDropdown.addItems(np.arange(self.data.file_data.shape[0]).astype(str))
             self.subjectDropdownContainer.show()
             self.subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
+
+            #self.connectivity_subjectDropdown.addItems(np.arange(self.data.file_data.shape[0]).astype(str))
+            #self.connectivity_subjectDropdownContainer.show()
+            #self.connectivity_subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
+
             self.transposeCheckbox.show()   
             self.cleaningContainer.show()
             self.niftiExtractButtonContainer2.show()
@@ -1942,7 +1983,7 @@ class App(QMainWindow):
 
     def onSubjectChanged(self):
         """
-        Pkl file subject dropdown event
+        .npy file subject dropdown event
         """
         self.createCarpetPlot()
         return
@@ -2024,12 +2065,13 @@ class App(QMainWindow):
         return
 
     # fmriprep dataset functions
-    def loadFMriprep(self):
+    def loadFmriprep(self):
         # Clear plot and layout
         self.plotLogo(self.boldFigure)
         self.boldCanvas.draw()
         self.loadContainer.hide()
         self.transposeCheckbox.hide()
+        self.saveTimeSeriesButton.hide()
         self.processingResultsLabel.setText("")
 
         # Open a dialog to select the fmriprep outputs directory
@@ -2570,7 +2612,8 @@ class App(QMainWindow):
         # Re-enable buttons
         self.parcellationCalculateButton.setEnabled(True)
         self.fmriprep_calculateButton.setEnabled(True)
-        self.resetButton.setEnabled(True)
+
+        self.saveTimeSeriesButton.show()
 
         return
 
@@ -2646,6 +2689,8 @@ class App(QMainWindow):
         self.time_series_textbox.setText(self.data.file_name)
         self.createCarpetPlot()
         self.cleanButton.setEnabled(True)
+        self.resetButton.setEnabled(True)
+        self.saveTimeSeriesButton.show()
 
     def handleCleaningError(self, error):
         # Handles errors in the worker thread
@@ -2655,7 +2700,7 @@ class App(QMainWindow):
         return
 
     def resetTimeSeries(self):
-        self.data.file_data = self.data.orig_data
+        self.data.file_data = self.data.orig_data.copy()
         self.resetButton.setEnabled(False)
 
         if isinstance(self.data.orig_data, np.ndarray):
@@ -2721,6 +2766,44 @@ class App(QMainWindow):
         figure.set_facecolor('#f4f1f6')
         figure.tight_layout()
 
+    # Saving
+    def saveTimeSeries(self):
+        """
+        Save the time series data to a file
+        """
+        if self.data.file_data is None:
+            QMessageBox.warning(self, "Output Error", "No time series data available to save.")
+            return
+
+        import os, numpy as np
+        from scipy.io import savemat
+
+        base, ext = os.path.splitext(self.data.file_name)
+        if self.data.file_data.ndim == 3:
+            default_file_name = f"{base}_processed.npy"
+            fileFilter = ("All supported files (*.mat *.npy);;"
+                        "MAT file (*.mat);;"
+                        "NumPy file (*.npy)")
+        else:
+            default_file_name = f"{base}_processed{ext}"
+            fileFilter = ("All supported files (*.mat *.txt *.npy *.tsv);;"
+                        "MAT file (*.mat);;"
+                        "Text file (*.txt);;"
+                        "NumPy file (*.npy);;"
+                        "TSV file (*.tsv)")
+
+        filePath, _ = QFileDialog.getSaveFileName(self, "Save File", default_file_name, fileFilter)
+        if not filePath:
+            return
+
+        if filePath.lower().endswith('.mat'):
+            savemat(filePath, {"time_series": self.data.file_data})
+        elif filePath.lower().endswith(('.txt', '.tsv')):
+            np.savetxt(filePath, self.data.file_data, delimiter="\t")
+        elif filePath.lower().endswith('.npy'):
+            np.save(filePath, self.data.file_data)
+        else:
+            np.save(filePath, self.data.file_data)
 
     """
     Connectivity tab
