@@ -274,7 +274,7 @@ class ParameterOptions:
     REVERSE_GRAPH_OPTIONS = {v: k for k, v in GRAPH_OPTIONS.items()}
 
     ATLAS_OPTIONS = {
-        "AAL template (SPM 12)":    ["117"],
+        "AAL template (3v2)":       ["166"],
         "BASC multiscale":          ["7", "12", "20", "36", "64", "122", "197", "325", "444"],
         "Destrieux et al. (2009)":  ["148"],
         "Pauli et al. (2017)":      ["deterministic"],
@@ -927,34 +927,30 @@ class App(QMainWindow):
         self.discardContainer.setLayout(discardLayout)
 
         # Calculate button
-        self.calculateContainer = QWidget()
-        self.calculateLayout = QHBoxLayout()
-        self.calculateLayout.setContentsMargins(5, 5, 5, 0)
+        self.niftiExtractButtonContainer = QWidget()
+        calculateLayout = QHBoxLayout()
+        calculateLayout.setContentsMargins(5, 5, 5, 0)
 
-        self.parcellationCalculateButton = QPushButton("Calculate")
+        self.parcellationCalculateButton = QPushButton("Extract time series")
         self.parcellationCalculateButton.clicked.connect(self.calculateTimeSeries)
-        self.resetButton = QPushButton("Reset")
-        self.resetButton.clicked.connect(self.resetTimeSeries)
-        self.resetButton.setEnabled(False)
-        self.calculateLayout.addStretch(2)
-        self.calculateLayout.addWidget(self.resetButton, 1)
-        self.calculateLayout.addWidget(self.parcellationCalculateButton, 1)
-        self.calculateContainer.setLayout(self.calculateLayout)
+        calculateLayout.addStretch(2)
+        calculateLayout.addWidget(self.parcellationCalculateButton, 1)
+        self.niftiExtractButtonContainer.setLayout(calculateLayout)
 
         # Cleaning button
-        self.calculateContainer2 = QWidget()
-        self.calculateLayout2 = QHBoxLayout()
-        self.calculateLayout2.setContentsMargins(5, 5, 5, 0)
+        self.niftiExtractButtonContainer2 = QWidget()
+        calculateLayout2 = QHBoxLayout()
+        calculateLayout2.setContentsMargins(5, 5, 5, 0)
 
         self.cleanButton = QPushButton("Clean time series")
         self.cleanButton.clicked.connect(self.cleanTimeSeries)
-        self.resetButton2 = QPushButton("Reset time series")
-        self.resetButton2.clicked.connect(self.resetTimeSeries)
-        self.resetButton2.setEnabled(False)
-        self.calculateLayout2.addStretch(2)
-        self.calculateLayout2.addWidget(self.resetButton2, 1)
-        self.calculateLayout2.addWidget(self.cleanButton, 1)
-        self.calculateContainer2.setLayout(self.calculateLayout2)
+        self.resetButton = QPushButton("Reset time series")
+        self.resetButton.clicked.connect(self.resetTimeSeries)
+        self.resetButton.setEnabled(False)
+        calculateLayout2.addStretch(2)
+        calculateLayout2.addWidget(self.resetButton, 1)
+        calculateLayout2.addWidget(self.cleanButton, 1)
+        self.niftiExtractButtonContainer2.setLayout(calculateLayout2)
 
         # Transpose checkpox
         self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension).")
@@ -970,8 +966,8 @@ class App(QMainWindow):
         loadContainerLayout.addWidget(self.cleaningContainer)
         loadContainerLayout.addWidget(self.parcellationContainer)
         loadContainerLayout.addWidget(self.discardContainer)
-        loadContainerLayout.addWidget(self.calculateContainer)
-        loadContainerLayout.addWidget(self.calculateContainer2)
+        loadContainerLayout.addWidget(self.niftiExtractButtonContainer)
+        loadContainerLayout.addWidget(self.niftiExtractButtonContainer2)
 
         # Connect widgets
         self.transposeCheckbox.stateChanged.connect(self.onTransposeChecked)
@@ -1749,7 +1745,7 @@ class App(QMainWindow):
         self.data.file_path = file_path
         self.data.file_name = file_path.split('/')[-1]
         self.cleaningContainer.hide()
-        self.calculateContainer2.hide()
+        self.niftiExtractButtonContainer2.hide()
         self.parcellationContainer.hide()
         self.plotLogo(self.boldFigure)
         self.loadContainer.hide()
@@ -1881,13 +1877,13 @@ class App(QMainWindow):
         self.cleaningContainer.hide()
         self.sphereContainer.hide()
         self.smoothingContainer.hide()
-        self.calculateContainer.hide()
-        self.calculateContainer2.hide()
+        self.niftiExtractButtonContainer.hide()
+        self.niftiExtractButtonContainer2.hide()
         
         if np.ndim(self.data.file_data) == 2:
             self.transposeCheckbox.show()
             self.cleaningContainer.show()
-            self.calculateContainer2.show()
+            self.niftiExtractButtonContainer2.show()
             self.smoothingContainer.hide()
             self.createCarpetPlot()
 
@@ -1897,7 +1893,7 @@ class App(QMainWindow):
             self.subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
             self.transposeCheckbox.show()   
             self.cleaningContainer.show()
-            self.calculateContainer2.show()
+            self.niftiExtractButtonContainer2.show()
             self.createCarpetPlot()
 
         elif file_path.endswith(".nii") or file_path.endswith(".nii.gz"):
@@ -1912,7 +1908,7 @@ class App(QMainWindow):
             self.cleaningContainer.show()
             self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
             self.onAtlasChanged()
-            self.calculateContainer.show()
+            self.niftiExtractButtonContainer.show()
             self.parcellationContainer.show()
             self.plotLogo(self.boldFigure)
 
@@ -1956,8 +1952,8 @@ class App(QMainWindow):
         Fetch parcellation with nilearn
         """
         if atlasname in self.atlas_options.keys():
-            if atlasname == "AAL template (SPM 12)":
-                atlas = datasets.fetch_atlas_aal()
+            if atlasname == "AAL template (3v2)":
+                atlas = datasets.fetch_atlas_aal(version="3v2")
                 return atlas["maps"], atlas["labels"]
 
             elif atlasname == "BASC multiscale":
@@ -2437,15 +2433,23 @@ class App(QMainWindow):
 
     # Parcellation and cleaning (nifi)
     def calculateTimeSeries(self):
+        # Disable the buttons
+        self.parcellationCalculateButton.setEnabled(False)
+        self.bids_calculateButton.setEnabled(False)
+
         QApplication.processEvents()
 
         # Load BIDS layout in a separate thread
         self.workerThread = QThread()
 
         if self.bids_layout is None:
-            self.worker = Worker(self.calculateTimeSeriesThread, {"bids": False, "img_path": self.data.file_path, "atlas": self.parcellationDropdown.currentText(), "option": self.parcellationOptions.currentText()})
+            self.worker = Worker(self.calculateTimeSeriesThread, {"img_path": self.data.file_path,
+                                                                  "atlas": self.parcellationDropdown.currentText(),
+                                                                  "option": self.parcellationOptions.currentText()})
         else:
-            self.worker = Worker(self.calculateTimeSeriesThread, {"bids": True, "img_path": self.data.file_path, "atlas": self.bids_parcellationDropdown.currentText(), "option": self.bids_parcellationOptions.currentText()})
+            self.worker = Worker(self.calculateTimeSeriesThread, {"img_path": self.data.file_path,
+                                                                  "atlas": self.bids_parcellationDropdown.currentText(),
+                                                                  "option": self.bids_parcellationOptions.currentText()})
 
         self.worker.moveToThread(self.workerThread)
         self.worker.finished.connect(self.workerThread.quit)
@@ -2459,7 +2463,6 @@ class App(QMainWindow):
         return
 
     def calculateTimeSeriesThread(self, **params):
-        bids_flag = params["bids"]
         img_path = params["img_path"]
         atlas = params["atlas"]
         option = params["option"]
@@ -2467,20 +2470,7 @@ class App(QMainWindow):
         confounds = None
 
         # Collect cleaning arguments
-        if bids_flag:
-            radius = self.bids_sphereRadiusSpinbox.value() if self.bids_sphereRadiusSpinbox.value() > 0 else None # none is single voxel
-            allow_ovelap = self.bids_overlapCheckbox.isChecked()
-
-            standardize = self.bids_standardizeCheckbox.isChecked()
-            detrend = self.bids_detrendCheckbox.isChecked()
-            high_variance_confounds = self.bids_highVarianceCheckbox.isChecked()
-            smoothing_fwhm = self.bids_smoothingSpinbox.value() if self.bids_smoothingSpinbox.value() > 0 else None
-
-            high_pass = self.bids_highPassCutoff.value() if self.bids_highPassCutoff.value() > 0 else None
-            low_pass = self.bids_lowPassCutoff.value() if self.bids_lowPassCutoff.value() > 0 else None
-            tr = self.bids_trValue.value() if self.bids_trValue.value() > 0 else None
-
-        else:
+        if self.bids_layout is None:
             radius = self.sphereRadiusSpinbox.value() if self.sphereRadiusSpinbox.value() > 0 else None # none is single voxel
             allow_ovelap = self.overlapCheckbox.isChecked()
 
@@ -2496,17 +2486,23 @@ class App(QMainWindow):
             # GSR
             if self.gsrCheckbox.isChecked():
                 confounds = pd.DataFrame()
-                if np.ndim(self.data.file_data) == 2:
-                    confounds["global_signal"] = np.mean(self.data.file_data, axis=1)
-                else:
-                    nifti_data = nib.load(self.data.file_path).get_fdata()
-                    confounds["global_signal"] = np.mean(nifti_data, axis=(0, 1, 2))
+                nifti_data = nib.load(self.data.file_path).get_fdata()
+                confounds["global_signal"] = np.mean(nifti_data, axis=(0, 1, 2))
             else:
                 confounds = None
-            
-        # Parcellation procedure
-        self.parcellationCalculateButton.setEnabled(False)
-        self.bids_calculateButton.setEnabled(False)
+
+        else:
+            radius = self.bids_sphereRadiusSpinbox.value() if self.bids_sphereRadiusSpinbox.value() > 0 else None # none is single voxel
+            allow_ovelap = self.bids_overlapCheckbox.isChecked()
+
+            standardize = self.bids_standardizeCheckbox.isChecked()
+            detrend = self.bids_detrendCheckbox.isChecked()
+            high_variance_confounds = self.bids_highVarianceCheckbox.isChecked()
+            smoothing_fwhm = self.bids_smoothingSpinbox.value() if self.bids_smoothingSpinbox.value() > 0 else None
+
+            high_pass = self.bids_highPassCutoff.value() if self.bids_highPassCutoff.value() > 0 else None
+            low_pass = self.bids_lowPassCutoff.value() if self.bids_lowPassCutoff.value() > 0 else None
+            tr = self.bids_trValue.value() if self.bids_trValue.value() > 0 else None
 
         standardize_confounds = True if standardize else False
 
@@ -2537,10 +2533,10 @@ class App(QMainWindow):
             time_series_raw = cifti.parcellate(img_path, atlas=atlas_string)
             time_series = utils.clean(time_series_raw, standardize=standardize, detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
         else:
-            atlas, labels = self.fetchAtlas(atlas, option)
-            masker = maskers.NiftiLabelsMasker(labels_img=atlas, labels=labels, mask_img=mask, background_label=0,
-                                               standardize=standardize, standardize_confounds=standardize_confounds, detrend=detrend,
-                                               smoothing_fwhm=smoothing_fwhm, high_variance_confounds=high_variance_confounds,
+            atlas, _ = self.fetchAtlas(atlas, option)
+            masker = maskers.NiftiLabelsMasker(labels_img=atlas, mask_img=mask, background_label=0, 
+                                               standardize=standardize, standardize_confounds=standardize_confounds, 
+                                               detrend=detrend, smoothing_fwhm=smoothing_fwhm, high_variance_confounds=high_variance_confounds,
                                                low_pass=low_pass, high_pass=high_pass, t_r=tr)
             time_series = masker.fit_transform(img_path, confounds=confounds)
 
@@ -2549,19 +2545,24 @@ class App(QMainWindow):
         return
 
     def handleTimeSeriesResult(self):
-        # Create carpet plot before removing volumes
-        self.createCarpetPlot()
-
         # Discard flagged volumes
         original_data_shape = self.data.file_data.shape
-        discard_value = self.bids_discardSpinBox.value() if self.bids_layout is not None else self.discardSpinBox.value()
-        combined_sample_mask = self.data.sample_mask[self.data.sample_mask >= discard_value]
-        self.data.file_data = self.data.file_data[combined_sample_mask,:]
+
+        if self.bids_layout is not None:
+            discard_value = self.bids_discardSpinBox.value()
+            self.data.sample_mask = self.data.sample_mask[self.data.sample_mask >= discard_value]
+            self.createCarpetPlot() # Create carpet plot before removing volumes
+            self.data.file_data = self.data.file_data[self.data.sample_mask,:]
+        else:
+            discard_value = self.discardSpinBox.value()
+            self.data.file_data = self.data.file_data[discard_value:,:]
+            self.createCarpetPlot() # Plot after removing volumes as we have no mask
 
         # Set the labels
         n_removed_volumes = original_data_shape[0] - self.data.file_data.shape[0]
         if n_removed_volumes > 0:
-            self.processingResultsLabel.setText(f'Time series data with shape {self.data.file_data.shape} is ready for connectivity analysis.\n{n_removed_volumes} volumes were removed (as shown in the plot).')
+            self.processingResultsLabel.setText(f'Time series data with shape {self.data.file_data.shape} \
+                                                is ready for connectivity analysis.\n{n_removed_volumes} volumes were removed.')
         else:
             self.processingResultsLabel.setText(f'Time series data with shape {self.data.file_data.shape} is ready for connectivity analysis.')
         self.time_series_textbox.setText(self.data.file_name)
@@ -2620,13 +2621,18 @@ class App(QMainWindow):
 
         if self.data.file_path.endswith('.npy'):
             for i in range(self.data.file_data.shape[0]):
-                self.data.file_data[i,:,:] = utils.clean(self.data.file_data[i,:,:], standardize=standardize, confounds=confounds_df, standardize_confounds=standardize_confounds, detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
+                self.data.file_data[i,:,:] = utils.clean(self.data.file_data[i,:,:], standardize=standardize,
+                                                         confounds=confounds_df, standardize_confounds=standardize_confounds,
+                                                         detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
         else:
-            self.data.file_data = utils.clean(self.data.file_data, standardize=standardize, confounds=confounds_df, standardize_confounds=standardize_confounds, detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
+            self.data.file_data = utils.clean(self.data.file_data, standardize=standardize,
+                                               confounds=confounds_df, standardize_confounds=standardize_confounds,
+                                               detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
         
         if discard_value:
             if self.data.file_path.endswith('.npy'):
-                temp_data = np.zeros((self.data.file_data.shape[0], self.data.file_data.shape[1] - discard_value, self.data.file_data.shape[2]))
+                temp_data = np.zeros((self.data.file_data.shape[0], self.data.file_data.shape[1]
+                                      - discard_value, self.data.file_data.shape[2]))
                 for i in range(self.data.file_data.shape[0]):
                     temp_data[i,:,:] = self.data.file_data[i,discard_value:,:]
                 self.data.file_data = temp_data
@@ -2640,7 +2646,6 @@ class App(QMainWindow):
         self.time_series_textbox.setText(self.data.file_name)
         self.createCarpetPlot()
         self.cleanButton.setEnabled(True)
-        self.resetButton2.setEnabled(True)
 
     def handleCleaningError(self, error):
         # Handles errors in the worker thread
@@ -2652,7 +2657,6 @@ class App(QMainWindow):
     def resetTimeSeries(self):
         self.data.file_data = self.data.orig_data
         self.resetButton.setEnabled(False)
-        self.resetButton2.setEnabled(False)
 
         if isinstance(self.data.orig_data, np.ndarray):
             self.createCarpetPlot()
