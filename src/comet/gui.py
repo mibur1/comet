@@ -678,7 +678,7 @@ class App(QMainWindow):
         # Left section
         leftLayout = QVBoxLayout()
         self.addDataLoadLayout(leftLayout)
-        self.addDataBidsLayout(leftLayout)
+        self.addFmriprepLayout(leftLayout)
         self.processingResultsLabel = QLabel()
         leftLayout.addWidget(self.processingResultsLabel)
         leftLayout.addStretch()
@@ -768,11 +768,11 @@ class App(QMainWindow):
         buttonLayout = QHBoxLayout()
 
         fileButton = QPushButton('Load from single file')
-        bidsButton = QPushButton('Load from fMRIprep outputs')
+        fmriprepButton = QPushButton('Load from fMRIprep outputs')
         self.fileNameLabel = QLabel('No data loaded yet.')
 
         buttonLayout.addWidget(fileButton)
-        buttonLayout.addWidget(bidsButton)
+        buttonLayout.addWidget(fmriprepButton)
 
         loadLayout.addLayout(buttonLayout)
         loadLayout.addWidget(self.fileNameLabel)
@@ -972,7 +972,7 @@ class App(QMainWindow):
         # Connect widgets
         self.transposeCheckbox.stateChanged.connect(self.onTransposeChecked)
         fileButton.clicked.connect(self.loadFile)
-        bidsButton.clicked.connect(self.loadBIDS)
+        fmriprepButton.clicked.connect(self.loadFmriprep)
 
         # Add file loading layout to the left layout
         leftLayout.addLayout(loadLayout)
@@ -985,89 +985,89 @@ class App(QMainWindow):
         leftLayout.addWidget(self.loadContainer)
         return
 
-    def addDataBidsLayout(self, leftLayout):
+    def addFmriprepLayout(self, leftLayout):
         ##########################
         # Main container widget
-        self.bidsContainer = QWidget()
-        self.bidsLayout = QVBoxLayout(self.bidsContainer)
+        self.fmriprepContainer = QWidget()
+        self.fmriprepLayout = QVBoxLayout(self.fmriprepContainer)
 
         ##########################
         # File selection container
-        self.bids_fileContainer = QGroupBox("File selection")
-        self.bids_fileLayout = QVBoxLayout(self.bids_fileContainer)
+        self.fmriprep_fileContainer = QGroupBox("File selection")
+        self.fmriprep_fileLayout = QVBoxLayout(self.fmriprep_fileContainer)
 
         # Subjects Dropdown with Label
-        self.bids_subjectDropdownLayout = QHBoxLayout()
-        self.bids_subjectLabel = QLabel("Subject:")
-        self.bids_subjectLabel.setFixedWidth(90)
-        self.bids_subjectDropdown = QComboBox()
-        self.bids_subjectDropdownLayout.addWidget(self.bids_subjectLabel, 1)
-        self.bids_subjectDropdownLayout.addWidget(self.bids_subjectDropdown, 4)
-        self.bids_fileLayout.addLayout(self.bids_subjectDropdownLayout)
+        self.fmriprep_subjectDropdownLayout = QHBoxLayout()
+        self.fmriprep_subjectLabel = QLabel("Subject:")
+        self.fmriprep_subjectLabel.setFixedWidth(90)
+        self.fmriprep_subjectDropdown = QComboBox()
+        self.fmriprep_subjectDropdownLayout.addWidget(self.fmriprep_subjectLabel, 1)
+        self.fmriprep_subjectDropdownLayout.addWidget(self.fmriprep_subjectDropdown, 4)
+        self.fmriprep_fileLayout.addLayout(self.fmriprep_subjectDropdownLayout)
 
         # Task/run dropdowns with Label
-        self.bids_taskDropdownLayout = QHBoxLayout()
-        self.bids_taskLabel = QLabel("Task:")
-        self.bids_taskLabel.setFixedWidth(90)
-        self.bids_taskDropdown = QComboBox()
-        self.bids_sessionLabel = QLabel("Session:")
-        self.bids_sessionLabel.setFixedWidth(65)
-        self.bids_sessionDropdown = QComboBox()
-        self.bids_runLabel = QLabel("Run:")
-        self.bids_runLabel.setFixedWidth(40)
-        self.bids_runDropdown = QComboBox()
+        self.fmriprep_taskDropdownLayout = QHBoxLayout()
+        self.fmriprep_taskLabel = QLabel("Task:")
+        self.fmriprep_taskLabel.setFixedWidth(90)
+        self.fmriprep_taskDropdown = QComboBox()
+        self.fmriprep_sessionLabel = QLabel("Session:")
+        self.fmriprep_sessionLabel.setFixedWidth(65)
+        self.fmriprep_sessionDropdown = QComboBox()
+        self.fmriprep_runLabel = QLabel("Run:")
+        self.fmriprep_runLabel.setFixedWidth(40)
+        self.fmriprep_runDropdown = QComboBox()
 
-        self.bids_taskDropdownLayout.addWidget(self.bids_taskLabel, 1)
-        self.bids_taskDropdownLayout.addWidget(self.bids_taskDropdown, 4)
-        self.bids_taskDropdownLayout.addWidget(self.bids_sessionLabel, 1)
-        self.bids_taskDropdownLayout.addWidget(self.bids_sessionDropdown, 1)
-        self.bids_taskDropdownLayout.addWidget(self.bids_runLabel, 1)
-        self.bids_taskDropdownLayout.addWidget(self.bids_runDropdown, 1)
-        self.bids_fileLayout.addLayout(self.bids_taskDropdownLayout)
+        self.fmriprep_taskDropdownLayout.addWidget(self.fmriprep_taskLabel, 1)
+        self.fmriprep_taskDropdownLayout.addWidget(self.fmriprep_taskDropdown, 4)
+        self.fmriprep_taskDropdownLayout.addWidget(self.fmriprep_sessionLabel, 1)
+        self.fmriprep_taskDropdownLayout.addWidget(self.fmriprep_sessionDropdown, 1)
+        self.fmriprep_taskDropdownLayout.addWidget(self.fmriprep_runLabel, 1)
+        self.fmriprep_taskDropdownLayout.addWidget(self.fmriprep_runDropdown, 1)
+        self.fmriprep_fileLayout.addLayout(self.fmriprep_taskDropdownLayout)
 
         # Parcellation Dropdown with Label
-        self.bids_parcellationLayout = QHBoxLayout()
-        self.bids_parcellationLabel = QLabel("Parcellation:")
-        self.bids_parcellationLabel.setFixedWidth(90)
-        self.bids_parcellationDropdown = QComboBox()
-        self.bids_parcellationDropdown.addItems(self.atlas_options.keys())
-        self.bids_parcellationOptionsLabel = QLabel("Type:")
-        self.bids_parcellationOptionsLabel.setFixedWidth(40)
-        self.bids_parcellationOptions = QComboBox()
+        self.fmriprep_parcellationLayout = QHBoxLayout()
+        self.fmriprep_parcellationLabel = QLabel("Parcellation:")
+        self.fmriprep_parcellationLabel.setFixedWidth(90)
+        self.fmriprep_parcellationDropdown = QComboBox()
+        self.fmriprep_parcellationDropdown.addItems(self.atlas_options.keys())
+        self.fmriprep_parcellationOptionsLabel = QLabel("Type:")
+        self.fmriprep_parcellationOptionsLabel.setFixedWidth(40)
+        self.fmriprep_parcellationOptions = QComboBox()
 
-        self.bids_parcellationLayout.addWidget(self.bids_parcellationLabel, 1)
-        self.bids_parcellationLayout.addWidget(self.bids_parcellationDropdown, 4)
-        self.bids_parcellationLayout.addWidget(self.bids_parcellationOptionsLabel, 1)
-        self.bids_parcellationLayout.addWidget(self.bids_parcellationOptions, 3)
-        self.bids_fileLayout.addLayout(self.bids_parcellationLayout)
+        self.fmriprep_parcellationLayout.addWidget(self.fmriprep_parcellationLabel, 1)
+        self.fmriprep_parcellationLayout.addWidget(self.fmriprep_parcellationDropdown, 4)
+        self.fmriprep_parcellationLayout.addWidget(self.fmriprep_parcellationOptionsLabel, 1)
+        self.fmriprep_parcellationLayout.addWidget(self.fmriprep_parcellationOptions, 3)
+        self.fmriprep_fileLayout.addLayout(self.fmriprep_parcellationLayout)
 
         # Sphere Layout Container
-        self.bids_sphereContainer = QWidget()
-        bids_sphereLayout = QHBoxLayout(self.bids_sphereContainer)
-        bids_sphereLayoutLabel = QLabel("Sphere radius (mm):")
-        self.bids_sphereRadiusSpinbox = CustomDoubleSpinbox(special_value="single voxel", min=0.0, max=20.0)
-        self.bids_sphereRadiusSpinbox.setValue(5.0)
-        self.bids_overlapCheckbox = QCheckBox("Allow overlap")
-        bids_sphereLayout.addWidget(bids_sphereLayoutLabel)
-        bids_sphereLayout.addWidget(self.bids_sphereRadiusSpinbox)
-        bids_sphereLayout.addWidget(self.bids_overlapCheckbox)
-        bids_sphereLayout.addStretch(1)
-        bids_sphereLayout.setContentsMargins(0, 0, 0, 0)
-        self.bids_sphereContainer.setLayout(bids_sphereLayout)
-        self.bids_fileLayout.addWidget(self.bids_sphereContainer)
+        self.fmriprep_sphereContainer = QWidget()
+        fmriprep_sphereLayout = QHBoxLayout(self.fmriprep_sphereContainer)
+        fmriprep_sphereLayoutLabel = QLabel("Sphere radius (mm):")
+        self.fmriprep_sphereRadiusSpinbox = CustomDoubleSpinbox(special_value="single voxel", min=0.0, max=20.0)
+        self.fmriprep_sphereRadiusSpinbox.setValue(5.0)
+        self.fmriprep_overlapCheckbox = QCheckBox("Allow overlap")
+        fmriprep_sphereLayout.addWidget(fmriprep_sphereLayoutLabel)
+        fmriprep_sphereLayout.addWidget(self.fmriprep_sphereRadiusSpinbox)
+        fmriprep_sphereLayout.addWidget(self.fmriprep_overlapCheckbox)
+        fmriprep_sphereLayout.addStretch(1)
+        fmriprep_sphereLayout.setContentsMargins(0, 0, 0, 0)
+        self.fmriprep_sphereContainer.setLayout(fmriprep_sphereLayout)
+        self.fmriprep_fileLayout.addWidget(self.fmriprep_sphereContainer)
 
         # Connect dropdown changes to handler function
-        self.bids_subjectDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
-        self.bids_taskDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
-        self.bids_sessionDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
-        self.bids_runDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
-        self.bids_parcellationDropdown.currentIndexChanged.connect(self.onBIDSAtlasChanged)
-        self.bids_parcellationOptions.currentIndexChanged.connect(self.onBIDSLayoutChanged)
+        self.fmriprep_subjectDropdown.currentIndexChanged.connect(self.onFmriprepLayoutChanged)
+        self.fmriprep_taskDropdown.currentIndexChanged.connect(self.onFmriprepLayoutChanged)
+        self.fmriprep_sessionDropdown.currentIndexChanged.connect(self.onFmriprepLayoutChanged)
+        self.fmriprep_runDropdown.currentIndexChanged.connect(self.onFmriprepLayoutChanged)
+        self.fmriprep_parcellationDropdown.currentIndexChanged.connect(self.onFmriprepAtlasChanged)
+        self.fmriprep_parcellationOptions.currentIndexChanged.connect(self.onFmriprepLayoutChanged)
 
         ##############################
         # Confound selection container
-        bids_confoundsContainer = QGroupBox("Cleaning options")
-        bids_confoundsLayout = QVBoxLayout(bids_confoundsContainer)
+        fmriprep_confoundsContainer = QGroupBox("Cleaning options")
+        fmriprep_confoundsLayout = QVBoxLayout(fmriprep_confoundsContainer)
 
         # Checkbox container widget
         self.generalCleaningContainer = QWidget()
@@ -1075,99 +1075,99 @@ class App(QMainWindow):
         generalCleaningLayout.setContentsMargins(0, 10, 0, 0)
 
         cleaningLayout = QHBoxLayout()
-        self.bids_standardizeCheckbox = QCheckBox("Standardize")
-        self.bids_detrendCheckbox = QCheckBox("Detrend")
+        self.fmriprep_standardizeCheckbox = QCheckBox("Standardize")
+        self.fmriprep_detrendCheckbox = QCheckBox("Detrend")
         cleaningLayout.addItem(QSpacerItem(5, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
-        cleaningLayout.addWidget(self.bids_standardizeCheckbox)
+        cleaningLayout.addWidget(self.fmriprep_standardizeCheckbox)
         cleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
-        cleaningLayout.addWidget(self.bids_detrendCheckbox)
+        cleaningLayout.addWidget(self.fmriprep_detrendCheckbox)
         cleaningLayout.addItem(QSpacerItem(10, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum))
-        self.bids_highVarianceCheckbox = QCheckBox("Regress high variance confounds")
-        cleaningLayout.addWidget(self.bids_highVarianceCheckbox)
+        self.fmriprep_highVarianceCheckbox = QCheckBox("Regress high variance confounds")
+        cleaningLayout.addWidget(self.fmriprep_highVarianceCheckbox)
         cleaningLayout.setContentsMargins(0, 0, 0, 0)
         cleaningLayout.addStretch(1)
         generalCleaningLayout.addLayout(cleaningLayout)
-        bids_confoundsLayout.addWidget(self.generalCleaningContainer)
+        fmriprep_confoundsLayout.addWidget(self.generalCleaningContainer)
 
-        self.bids_standardizeCheckbox.setChecked(True)
-        self.bids_detrendCheckbox.setChecked(True)
+        self.fmriprep_standardizeCheckbox.setChecked(True)
+        self.fmriprep_detrendCheckbox.setChecked(True)
 
         # Smoothing and filtering container widget
-        self.bids_smoothingContainer = QWidget()
-        bids_smoothingLayout = QHBoxLayout(self.bids_smoothingContainer)
+        self.fmriprep_smoothingContainer = QWidget()
+        fmriprep_smoothingLayout = QHBoxLayout(self.fmriprep_smoothingContainer)
         smoothingLabel = QLabel("Smoothing fwhm (mm):")
-        self.bids_smoothingSpinbox = CustomDoubleSpinbox(special_value=None, min=0.0, max=20.0)
-        self.bids_smoothingSpinbox.setDecimals(2)
-        self.bids_smoothingSpinbox.setSingleStep(1.0)
-        bids_smoothingLayout.addWidget(smoothingLabel)
-        bids_smoothingLayout.addWidget(self.bids_smoothingSpinbox)
-        bids_smoothingLayout.addStretch(1)
-        bids_smoothingLayout.setContentsMargins(0, 0, 0, 0)
-        self.bids_smoothingContainer.setLayout(bids_smoothingLayout)
-        bids_confoundsLayout.addWidget(self.bids_smoothingContainer)
+        self.fmriprep_smoothingSpinbox = CustomDoubleSpinbox(special_value=None, min=0.0, max=20.0)
+        self.fmriprep_smoothingSpinbox.setDecimals(2)
+        self.fmriprep_smoothingSpinbox.setSingleStep(1.0)
+        fmriprep_smoothingLayout.addWidget(smoothingLabel)
+        fmriprep_smoothingLayout.addWidget(self.fmriprep_smoothingSpinbox)
+        fmriprep_smoothingLayout.addStretch(1)
+        fmriprep_smoothingLayout.setContentsMargins(0, 0, 0, 0)
+        self.fmriprep_smoothingContainer.setLayout(fmriprep_smoothingLayout)
+        fmriprep_confoundsLayout.addWidget(self.fmriprep_smoothingContainer)
 
         # Filtering Layout Container
-        self.bids_filteringContainer = QWidget()
-        bids_filteringLayout = QHBoxLayout(self.bids_filteringContainer)
-        bids_highPassLabel = QLabel("High Pass:")
-        self.bids_highPassCutoff = CustomDoubleSpinbox(special_value=None, min=0.0, max=1.0)
-        self.bids_highPassCutoff.setDecimals(3)
-        self.bids_highPassCutoff.setSingleStep(0.001)
+        self.fmriprep_filteringContainer = QWidget()
+        fmriprep_filteringLayout = QHBoxLayout(self.fmriprep_filteringContainer)
+        fmriprep_highPassLabel = QLabel("High Pass:")
+        self.fmriprep_highPassCutoff = CustomDoubleSpinbox(special_value=None, min=0.0, max=1.0)
+        self.fmriprep_highPassCutoff.setDecimals(3)
+        self.fmriprep_highPassCutoff.setSingleStep(0.001)
 
-        bids_lowPassLabel = QLabel("Low Pass:")
-        self.bids_lowPassCutoff = CustomDoubleSpinbox(special_value=None, min=0.0, max=1.0)
-        self.bids_lowPassCutoff.setDecimals(3)
-        self.bids_lowPassCutoff.setSingleStep(0.001)
+        fmriprep_lowPassLabel = QLabel("Low Pass:")
+        self.fmriprep_lowPassCutoff = CustomDoubleSpinbox(special_value=None, min=0.0, max=1.0)
+        self.fmriprep_lowPassCutoff.setDecimals(3)
+        self.fmriprep_lowPassCutoff.setSingleStep(0.001)
 
-        bids_trLabel = QLabel("TR:")
-        self.bids_trValue = CustomDoubleSpinbox(special_value=None, min=0.0, max=5.0)
-        self.bids_trValue.setDecimals(3)
-        self.bids_trValue.setSingleStep(0.5)
+        fmriprep_trLabel = QLabel("TR:")
+        self.fmriprep_trValue = CustomDoubleSpinbox(special_value=None, min=0.0, max=5.0)
+        self.fmriprep_trValue.setDecimals(3)
+        self.fmriprep_trValue.setSingleStep(0.5)
 
-        bids_filteringLayout.addWidget(bids_highPassLabel)
-        bids_filteringLayout.addWidget(self.bids_highPassCutoff)
-        bids_filteringLayout.addWidget(bids_lowPassLabel)
-        bids_filteringLayout.addWidget(self.bids_lowPassCutoff)
-        bids_filteringLayout.addWidget(bids_trLabel)
-        bids_filteringLayout.addWidget(self.bids_trValue)
-        bids_filteringLayout.addStretch(1)
-        bids_filteringLayout.setContentsMargins(0, 0, 0, 0)
-        self.bids_filteringContainer.setLayout(bids_filteringLayout)
-        bids_confoundsLayout.addWidget(self.bids_filteringContainer)
+        fmriprep_filteringLayout.addWidget(fmriprep_highPassLabel)
+        fmriprep_filteringLayout.addWidget(self.fmriprep_highPassCutoff)
+        fmriprep_filteringLayout.addWidget(fmriprep_lowPassLabel)
+        fmriprep_filteringLayout.addWidget(self.fmriprep_lowPassCutoff)
+        fmriprep_filteringLayout.addWidget(fmriprep_trLabel)
+        fmriprep_filteringLayout.addWidget(self.fmriprep_trValue)
+        fmriprep_filteringLayout.addStretch(1)
+        fmriprep_filteringLayout.setContentsMargins(0, 0, 0, 0)
+        self.fmriprep_filteringContainer.setLayout(fmriprep_filteringLayout)
+        fmriprep_confoundsLayout.addWidget(self.fmriprep_filteringContainer)
 
         # Discard values container
-        self.bids_discardContainer = QWidget()
-        bids_discardLayout = QHBoxLayout()
-        bids_discardLayout.setContentsMargins(0, 0, 0, 0)
-        bids_discardLabel = QLabel("Discard initial frames:")
-        self.bids_discardSpinBox = CustomSpinBox(None)
-        self.bids_discardSpinBox.setSuffix(" frames")
-        self.bids_discardSpinBox.setSingleStep(5)
-        bids_discardLayout.addWidget(bids_discardLabel)
-        bids_discardLayout.addWidget(self.bids_discardSpinBox)
-        bids_discardLayout.addStretch(1)
-        self.bids_discardContainer.setLayout(bids_discardLayout)
-        bids_confoundsLayout.addWidget(self.bids_discardContainer)
+        self.fmriprep_discardContainer = QWidget()
+        fmriprep_discardLayout = QHBoxLayout()
+        fmriprep_discardLayout.setContentsMargins(0, 0, 0, 0)
+        fmriprep_discardLabel = QLabel("Discard initial frames:")
+        self.fmriprep_discardSpinBox = CustomSpinBox(None)
+        self.fmriprep_discardSpinBox.setSuffix(" frames")
+        self.fmriprep_discardSpinBox.setSingleStep(5)
+        fmriprep_discardLayout.addWidget(fmriprep_discardLabel)
+        fmriprep_discardLayout.addWidget(self.fmriprep_discardSpinBox)
+        fmriprep_discardLayout.addStretch(1)
+        self.fmriprep_discardContainer.setLayout(fmriprep_discardLayout)
+        fmriprep_confoundsLayout.addWidget(self.fmriprep_discardContainer)
 
         # Confound strategy container widget
-        bids_confoundsStrategyWidget = self.loadConfounds()
-        bids_confoundsLayout.addWidget(bids_confoundsStrategyWidget)
+        fmriprep_confoundsStrategyWidget = self.loadConfounds()
+        fmriprep_confoundsLayout.addWidget(fmriprep_confoundsStrategyWidget)
 
         ####################
         # Combine containers
-        self.bidsLayout.addWidget(self.bids_fileContainer)
-        self.bidsLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
-        self.bidsLayout.addWidget(bids_confoundsContainer)
+        self.fmriprepLayout.addWidget(self.fmriprep_fileContainer)
+        self.fmriprepLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        self.fmriprepLayout.addWidget(fmriprep_confoundsContainer)
 
         ####################
         # Calculation button
-        self.bids_calculateButton = QPushButton('Extract time series')
-        self.bids_calculateButton.clicked.connect(self.calculateTimeSeries)
-        self.bidsLayout.addWidget(self.bids_calculateButton)
+        self.fmriprep_calculateButton = QPushButton('Extract time series')
+        self.fmriprep_calculateButton.clicked.connect(self.calculateTimeSeries)
+        self.fmriprepLayout.addWidget(self.fmriprep_calculateButton)
 
-        # Add the BIDS layout to the main layout
-        leftLayout.addWidget(self.bidsContainer)
-        self.bidsContainer.hide()
+        # Add the fmriprep layout to the main layout
+        leftLayout.addWidget(self.fmriprepContainer)
+        self.fmriprepContainer.hide()
 
         return
 
@@ -1750,7 +1750,7 @@ class App(QMainWindow):
         self.plotLogo(self.boldFigure)
         self.loadContainer.hide()
         self.boldCanvas.draw()
-        self.bids_layout = None
+        self.fmriprep_layout = None
         self.data.sample_mask = None
         self.transposeCheckbox.hide()
         self.processingResultsLabel.setText("")
@@ -1847,7 +1847,7 @@ class App(QMainWindow):
             self.staticCheckBox.setChecked(True)
 
         # Reset and enable the GUI elements
-        self.bidsContainer.hide()
+        self.fmriprepContainer.hide()
 
         self.methodComboBox.setEnabled(True)
         self.methodComboBox.setEnabled(True)
@@ -2023,8 +2023,8 @@ class App(QMainWindow):
 
         return
 
-    # BIDS dataset functions
-    def loadBIDS(self):
+    # fmriprep dataset functions
+    def loadFMriprep(self):
         # Clear plot and layout
         self.plotLogo(self.boldFigure)
         self.boldCanvas.draw()
@@ -2032,14 +2032,14 @@ class App(QMainWindow):
         self.transposeCheckbox.hide()
         self.processingResultsLabel.setText("")
 
-        # Open a dialog to select the BIDS directory
-        bids_folder = QFileDialog.getExistingDirectory(self, "Select fMRIprep directory")
+        # Open a dialog to select the fmriprep outputs directory
+        fmriprep_folder = QFileDialog.getExistingDirectory(self, "Select fMRIprep directory")
 
         # User canceled the selection
-        if not bids_folder:
+        if not fmriprep_folder:
             return
 
-        # Initialize a BIDS Layout
+        # Initialize a fmriprep Layout
         try:
             # Reset GUI elements
             self.currentSliderValue = 0
@@ -2047,65 +2047,65 @@ class App(QMainWindow):
             self.plotLogo(self.connectivityFigure)
             self.connectivityCanvas.draw()
 
-            # Initialize BIDS layout
-            self.bidsContainer.hide()
-            self.bids_subjectDropdown.clear()
-            self.bids_subjectDropdown.setEnabled(False)
-            self.fileNameLabel.setText(f"Initializing BIDS layout, please wait...")
+            # Initialize fmriprep layout
+            self.fmriprepContainer.hide()
+            self.fmriprep_subjectDropdown.clear()
+            self.fmriprep_subjectDropdown.setEnabled(False)
+            self.fileNameLabel.setText(f"Initializing fMRIprep layout, please wait...")
 
             QApplication.processEvents()
 
-            # Load BIDS layout in a separate thread
+            # Load fmriprep layout in a separate thread
             self.workerThread = QThread()
-            self.worker = Worker(self.loadBIDSThread, {'bids_folder': bids_folder})
+            self.worker = Worker(self.loadFmriprepThread, {'fmriprep_folder': fmriprep_folder})
             self.worker.moveToThread(self.workerThread)
 
             self.worker.finished.connect(self.workerThread.quit)
             self.workerThread.started.connect(self.worker.run)
-            self.worker.result.connect(lambda: self.onBidsResult(bids_folder))
-            self.worker.error.connect(self.onBidsError)
+            self.worker.result.connect(lambda: self.onFmriprepResult(fmriprep_folder))
+            self.worker.error.connect(self.onFmriprepError)
             self.workerThread.start()
 
         except Exception as e:
             QMessageBox.warning(self, "Load Error", f"Failed to load fMRIprep data: {str(e)}")
 
-    def loadBIDSThread(self, bids_folder):
+    def loadFmriprepThread(self, fmriprep_folder):
         # Get the layout
-        self.bids_layout = BIDSLayout(bids_folder, is_derivative=True)
+        self.fmriprep_layout = BIDSLayout(fmriprep_folder, is_derivative=True)
 
         # Get subjects and update the dropdown
-        subjects = self.bids_layout.get_subjects()
+        subjects = self.fmriprep_layout.get_subjects()
         sub_id = [f"sub-{subject}" for subject in subjects]
-        self.bids_subjectDropdown.addItems(sub_id)
+        self.fmriprep_subjectDropdown.addItems(sub_id)
 
         # Update the GUI
-        self.onBIDSLayoutChanged()
-        self.onBIDSAtlasChanged()
+        self.onFmriprepLayoutChanged()
+        self.onFmriprepAtlasChanged()
 
         return
 
-    def onBidsResult(self, bids_folder):
+    def onFmriprepResult(self, fmriprep_folder):
         # Layout loaded successfully
-        self.fileNameLabel.setText(f"Loaded BIDS data from {bids_folder}")
-        self.bids_subjectDropdown.setEnabled(True)
-        self.bids_subjectDropdown.show()
-        self.bidsContainer.show()
+        self.fileNameLabel.setText(f"Loaded fMRIprep data from {fmriprep_folder}")
+        self.fmriprep_subjectDropdown.setEnabled(True)
+        self.fmriprep_subjectDropdown.show()
+        self.fmriprepContainer.show()
         return
 
-    def onBidsError(self, error):
-        self.fileNameLabel.setText("Failed to load BIDS data, please try again.")
-        QMessageBox.warning(self, "Failed to load BIDS data", f"Error when loading BIDS: {error}")
+    def onFmriprepError(self, error):
+        self.fileNameLabel.setText("Failed to load fMRIprep data, please try again.")
+        QMessageBox.warning(self, "Failed to load fMRIprep data", f"Error when loading fMRIprep data: {error}")
 
         return
 
     def getNifti(self):
-        selected_subject = self.bids_subjectDropdown.currentText()
-        selected_task = self.bids_taskDropdown.currentText()
-        selected_session = self.bids_sessionDropdown.currentText()
-        selected_run = self.bids_runDropdown.currentText()
+        selected_subject = self.fmriprep_subjectDropdown.currentText()
+        selected_task = self.fmriprep_taskDropdown.currentText()
+        selected_session = self.fmriprep_sessionDropdown.currentText()
+        selected_run = self.fmriprep_runDropdown.currentText()
 
         # Nifti file
-        img = self.bids_layout.get(return_type='file', suffix='bold', extension='nii.gz',
+        img = self.fmriprep_layout.get(return_type='file', suffix='bold', extension='nii.gz',
                                    subject=selected_subject.split('-')[-1], task=selected_task, run=selected_run, session=selected_session, space='MNI152NLin2009cAsym')
 
         # result is a list of a single path, we get rid of the list
@@ -2116,7 +2116,7 @@ class App(QMainWindow):
             self.data.file_name = None
 
         # Mask file
-        mask = self.bids_layout.get(return_type='file', suffix='mask', extension='nii.gz',
+        mask = self.fmriprep_layout.get(return_type='file', suffix='mask', extension='nii.gz',
                                    subject=selected_subject.split('-')[-1], task=selected_task, run=selected_run, session=selected_session, space='MNI152NLin2009cAsym')
         if mask:
             self.mask_name = mask[0]
@@ -2124,7 +2124,7 @@ class App(QMainWindow):
             self.mask_name = None
 
         # AROMA file
-        aroma = self.bids_layout.get(subject=selected_subject.split('-')[-1], session=selected_session, task=selected_task, run=selected_run, suffix='bold', desc='smoothAROMAnonaggr', extension='nii.gz', return_type='file')
+        aroma = self.fmriprep_layout.get(subject=selected_subject.split('-')[-1], session=selected_session, task=selected_task, run=selected_run, suffix='bold', desc='smoothAROMAnonaggr', extension='nii.gz', return_type='file')
         if aroma:
             self.aroma_file = aroma[0]
         else:
@@ -2133,28 +2133,28 @@ class App(QMainWindow):
 
         return
 
-    def onBIDSLayoutChanged(self):
+    def onFmriprepLayoutChanged(self):
         # Disconnect the signal to avoid recursive calls
         dropdowns = [
-            self.bids_subjectDropdown,
-            self.bids_taskDropdown,
-            self.bids_sessionDropdown,
-            self.bids_runDropdown,
-            self.bids_parcellationOptions
+            self.fmriprep_subjectDropdown,
+            self.fmriprep_taskDropdown,
+            self.fmriprep_sessionDropdown,
+            self.fmriprep_runDropdown,
+            self.fmriprep_parcellationOptions
         ]
 
         for dropdown in dropdowns:
             try:
-                dropdown.currentIndexChanged.disconnect(self.onBIDSLayoutChanged)
+                dropdown.currentIndexChanged.disconnect(self.onFmriprepLayoutChanged)
             except TypeError:
                 pass
 
         # Disable inputs while loading
-        self.bids_taskDropdown.setEnabled(False)
-        self.bids_sessionDropdown.setEnabled(False)
-        self.bids_runDropdown.setEnabled(False)
-        self.bids_parcellationDropdown.setEnabled(False)
-        self.bids_parcellationOptions.setEnabled(False)
+        self.fmriprep_taskDropdown.setEnabled(False)
+        self.fmriprep_sessionDropdown.setEnabled(False)
+        self.fmriprep_runDropdown.setEnabled(False)
+        self.fmriprep_parcellationDropdown.setEnabled(False)
+        self.fmriprep_parcellationOptions.setEnabled(False)
 
         QApplication.processEvents()
 
@@ -2164,40 +2164,40 @@ class App(QMainWindow):
         """
         try:
             # 1. Get selected subject and sessions
-            selected_subject = self.bids_subjectDropdown.currentText()
+            selected_subject = self.fmriprep_subjectDropdown.currentText()
             subject_id = selected_subject.split('-')[-1]
 
             # 2. Available tasks for the selected subject
-            tasks = self.bids_layout.get_tasks(subject=subject_id)
-            current_task = self.bids_taskDropdown.currentText() if self.bids_taskDropdown.count() > 0 else tasks[0]
+            tasks = self.fmriprep_layout.get_tasks(subject=subject_id)
+            current_task = self.fmriprep_taskDropdown.currentText() if self.fmriprep_taskDropdown.count() > 0 else tasks[0]
 
-            self.bids_taskDropdown.clear()
-            self.bids_taskDropdown.addItems(tasks)
+            self.fmriprep_taskDropdown.clear()
+            self.fmriprep_taskDropdown.addItems(tasks)
             if current_task in tasks:
-                self.bids_taskDropdown.setCurrentText(current_task)
+                self.fmriprep_taskDropdown.setCurrentText(current_task)
 
             # 3. Available sessions for the selected subject and task
-            sessions = self.bids_layout.get_sessions(subject=subject_id, task=current_task)
-            current_session = self.bids_sessionDropdown.currentText() if (self.bids_sessionDropdown.count() > 0 and self.bids_sessionDropdown.currentText() in sessions) else str(sessions[0])
+            sessions = self.fmriprep_layout.get_sessions(subject=subject_id, task=current_task)
+            current_session = self.fmriprep_sessionDropdown.currentText() if (self.fmriprep_sessionDropdown.count() > 0 and self.fmriprep_sessionDropdown.currentText() in sessions) else str(sessions[0])
             session_ids = [f"{session}" for session in sessions]
 
-            self.bids_sessionDropdown.clear()
-            self.bids_sessionDropdown.addItems(session_ids)
+            self.fmriprep_sessionDropdown.clear()
+            self.fmriprep_sessionDropdown.addItems(session_ids)
             if current_session in session_ids:
-                self.bids_sessionDropdown.setCurrentText(current_session)
+                self.fmriprep_sessionDropdown.setCurrentText(current_session)
 
             # 4. Available runs for the selected subject, sessions, and task
-            runs = self.bids_layout.get_runs(subject=subject_id, session=current_session, task=current_task)
-            current_run = self.bids_runDropdown.currentText() if (self.bids_runDropdown.count() > 0 and self.bids_runDropdown.currentText() in runs) else str(runs[0])
+            runs = self.fmriprep_layout.get_runs(subject=subject_id, session=current_session, task=current_task)
+            current_run = self.fmriprep_runDropdown.currentText() if (self.fmriprep_runDropdown.count() > 0 and self.fmriprep_runDropdown.currentText() in runs) else str(runs[0])
             run_ids = [f"{run}" for run in runs]
 
-            self.bids_runDropdown.clear()
-            self.bids_runDropdown.addItems(run_ids)
+            self.fmriprep_runDropdown.clear()
+            self.fmriprep_runDropdown.addItems(run_ids)
             if current_run in run_ids:
-                self.bids_runDropdown.setCurrentText(current_run)
+                self.fmriprep_runDropdown.setCurrentText(current_run)
 
             # 5. ICA-AROMA files
-            aroma_files = self.bids_layout.get(subject=subject_id, session=current_session, task=current_task, suffix='bold', desc='smoothAROMAnonaggr', extension='nii.gz', return_type='file')
+            aroma_files = self.fmriprep_layout.get(subject=subject_id, session=current_session, task=current_task, suffix='bold', desc='smoothAROMAnonaggr', extension='nii.gz', return_type='file')
             if aroma_files:
                 self.aroma_file = aroma_files[0]
             else:
@@ -2207,49 +2207,49 @@ class App(QMainWindow):
             self.getNifti()  # get currently selected image
 
         except Exception as e:
-            print(f"Error when updating BIDS layout: {str(e)}")
+            print(f"Error when updating fMRIprep layout: {str(e)}")
             print("TODO: This might not a problem, but it should be handled properly.")
 
         """
         End of hierarchical scan selection
         """
         # Enable GUI elements
-        self.bids_taskDropdown.setEnabled(True)
-        self.bids_sessionDropdown.setEnabled(True)
-        self.bids_runDropdown.setEnabled(True)
-        self.bids_parcellationDropdown.setEnabled(True)
-        self.bids_parcellationOptions.setEnabled(True)
+        self.fmriprep_taskDropdown.setEnabled(True)
+        self.fmriprep_sessionDropdown.setEnabled(True)
+        self.fmriprep_runDropdown.setEnabled(True)
+        self.fmriprep_parcellationDropdown.setEnabled(True)
+        self.fmriprep_parcellationOptions.setEnabled(True)
 
         # Reconnect the signals
-        self.bids_subjectDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
-        self.bids_taskDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
-        self.bids_sessionDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
-        self.bids_runDropdown.currentIndexChanged.connect(self.onBIDSLayoutChanged)
-        self.bids_parcellationOptions.currentIndexChanged.connect(self.onBIDSLayoutChanged)
+        self.fmriprep_subjectDropdown.currentIndexChanged.connect(self.onFmriprepLayoutChanged)
+        self.fmriprep_taskDropdown.currentIndexChanged.connect(self.onFmriprepLayoutChanged)
+        self.fmriprep_sessionDropdown.currentIndexChanged.connect(self.onFmriprepLayoutChanged)
+        self.fmriprep_runDropdown.currentIndexChanged.connect(self.onFmriprepLayoutChanged)
+        self.fmriprep_parcellationOptions.currentIndexChanged.connect(self.onFmriprepLayoutChanged)
 
         return
 
-    def onBIDSAtlasChanged(self):
+    def onFmriprepAtlasChanged(self):
         """
         Atlas dropdown event
         """
-        self.bids_parcellationOptions.clear()
+        self.fmriprep_parcellationOptions.clear()
 
-        if self.bids_parcellationDropdown.currentText() in self.atlas_options.keys():
-            self.bids_parcellationOptions.addItems(self.atlas_options[self.bids_parcellationDropdown.currentText()])
+        if self.fmriprep_parcellationDropdown.currentText() in self.atlas_options.keys():
+            self.fmriprep_parcellationOptions.addItems(self.atlas_options[self.fmriprep_parcellationDropdown.currentText()])
 
-        elif self.bids_parcellationDropdown.currentText() in self.atlas_options_cifti.keys():
-            self.bids_parcellationOptions.addItems(self.atlas_options_cifti[self.bids_parcellationDropdown.currentText()])
+        elif self.fmriprep_parcellationDropdown.currentText() in self.atlas_options_cifti.keys():
+            self.fmriprep_parcellationOptions.addItems(self.atlas_options_cifti[self.fmriprep_parcellationDropdown.currentText()])
 
         else:
             QMessageBox.warning(self, "Error when extracting time series", f"Atlas not found in options list")
 
         # Enable/disable cleaning options depending on the atlas
-        current_atlas = self.bids_parcellationDropdown.currentText()
+        current_atlas = self.fmriprep_parcellationDropdown.currentText()
         if current_atlas in ["Power et al. (2011)", "Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
-            self.bids_sphereContainer.show()
+            self.fmriprep_sphereContainer.show()
         else:
-            self.bids_sphereContainer.hide()
+            self.fmriprep_sphereContainer.hide()
 
         return
 
@@ -2435,21 +2435,21 @@ class App(QMainWindow):
     def calculateTimeSeries(self):
         # Disable the buttons
         self.parcellationCalculateButton.setEnabled(False)
-        self.bids_calculateButton.setEnabled(False)
+        self.fmriprep_calculateButton.setEnabled(False)
 
         QApplication.processEvents()
 
-        # Load BIDS layout in a separate thread
+        # Load fmriprep layout in a separate thread
         self.workerThread = QThread()
 
-        if self.bids_layout is None:
+        if self.fmriprep_layout is None:
             self.worker = Worker(self.calculateTimeSeriesThread, {"img_path": self.data.file_path,
                                                                   "atlas": self.parcellationDropdown.currentText(),
                                                                   "option": self.parcellationOptions.currentText()})
         else:
             self.worker = Worker(self.calculateTimeSeriesThread, {"img_path": self.data.file_path,
-                                                                  "atlas": self.bids_parcellationDropdown.currentText(),
-                                                                  "option": self.bids_parcellationOptions.currentText()})
+                                                                  "atlas": self.fmriprep_parcellationDropdown.currentText(),
+                                                                  "option": self.fmriprep_parcellationOptions.currentText()})
 
         self.worker.moveToThread(self.workerThread)
         self.worker.finished.connect(self.workerThread.quit)
@@ -2470,7 +2470,7 @@ class App(QMainWindow):
         confounds = None
 
         # Collect cleaning arguments
-        if self.bids_layout is None:
+        if self.fmriprep_layout is None:
             radius = self.sphereRadiusSpinbox.value() if self.sphereRadiusSpinbox.value() > 0 else None # none is single voxel
             allow_ovelap = self.overlapCheckbox.isChecked()
 
@@ -2492,21 +2492,21 @@ class App(QMainWindow):
                 confounds = None
 
         else:
-            radius = self.bids_sphereRadiusSpinbox.value() if self.bids_sphereRadiusSpinbox.value() > 0 else None # none is single voxel
-            allow_ovelap = self.bids_overlapCheckbox.isChecked()
+            radius = self.fmriprep_sphereRadiusSpinbox.value() if self.fmriprep_sphereRadiusSpinbox.value() > 0 else None # none is single voxel
+            allow_ovelap = self.fmriprep_overlapCheckbox.isChecked()
 
-            standardize = self.bids_standardizeCheckbox.isChecked()
-            detrend = self.bids_detrendCheckbox.isChecked()
-            high_variance_confounds = self.bids_highVarianceCheckbox.isChecked()
-            smoothing_fwhm = self.bids_smoothingSpinbox.value() if self.bids_smoothingSpinbox.value() > 0 else None
+            standardize = self.fmriprep_standardizeCheckbox.isChecked()
+            detrend = self.fmriprep_detrendCheckbox.isChecked()
+            high_variance_confounds = self.fmriprep_highVarianceCheckbox.isChecked()
+            smoothing_fwhm = self.fmriprep_smoothingSpinbox.value() if self.fmriprep_smoothingSpinbox.value() > 0 else None
 
-            high_pass = self.bids_highPassCutoff.value() if self.bids_highPassCutoff.value() > 0 else None
-            low_pass = self.bids_lowPassCutoff.value() if self.bids_lowPassCutoff.value() > 0 else None
-            tr = self.bids_trValue.value() if self.bids_trValue.value() > 0 else None
+            high_pass = self.fmriprep_highPassCutoff.value() if self.fmriprep_highPassCutoff.value() > 0 else None
+            low_pass = self.fmriprep_lowPassCutoff.value() if self.fmriprep_lowPassCutoff.value() > 0 else None
+            tr = self.fmriprep_trValue.value() if self.fmriprep_trValue.value() > 0 else None
 
         standardize_confounds = True if standardize else False
 
-        if self.bids_layout is not None:
+        if self.fmriprep_layout is not None:
             args = self.collectCleaningArguments()
             confounds, self.data.sample_mask = load_confounds(img_path, **args)
             mask = self.mask_name
@@ -2548,8 +2548,8 @@ class App(QMainWindow):
         # Discard flagged volumes
         original_data_shape = self.data.file_data.shape
 
-        if self.bids_layout is not None:
-            discard_value = self.bids_discardSpinBox.value()
+        if self.fmriprep_layout is not None:
+            discard_value = self.fmriprep_discardSpinBox.value()
             self.data.sample_mask = self.data.sample_mask[self.data.sample_mask >= discard_value]
             self.createCarpetPlot() # Create carpet plot before removing volumes
             self.data.file_data = self.data.file_data[self.data.sample_mask,:]
@@ -2569,7 +2569,7 @@ class App(QMainWindow):
 
         # Re-enable buttons
         self.parcellationCalculateButton.setEnabled(True)
-        self.bids_calculateButton.setEnabled(True)
+        self.fmriprep_calculateButton.setEnabled(True)
         self.resetButton.setEnabled(True)
 
         return
@@ -2579,7 +2579,7 @@ class App(QMainWindow):
         QMessageBox.warning(self, "Error when extracting time series", f"Error when extracting time series: {error}")
 
         self.parcellationCalculateButton.setEnabled(True)
-        self.bids_calculateButton.setEnabled(True)
+        self.fmriprep_calculateButton.setEnabled(True)
         return
 
     # Cleaning only
