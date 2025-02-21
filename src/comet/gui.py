@@ -1411,17 +1411,24 @@ class App(QMainWindow):
     def addGraphLayout(self, leftLayout):
         buttonsLayout = QHBoxLayout()
 
-        self.loadGraphFileButton = QPushButton('Load adjacency matrix')
+        self.loadGraphFileButton = QPushButton('Load from data')
         self.loadGraphFileButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         buttonsLayout.addWidget(self.loadGraphFileButton, 1)
         self.loadGraphFileButton.clicked.connect(self.loadGraphFile)
 
-        self.takeCurrentButton = QPushButton('Use current dFC estimate')
-        self.takeCurrentButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        buttonsLayout.addWidget(self.takeCurrentButton, 1)
-        self.takeCurrentButton.clicked.connect(self.takeCurrentData)
+        self.graphTakeCurrentButton = QPushButton('Use single connectivity estimate')
+        self.graphTakeCurrentButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        buttonsLayout.addWidget(self.graphTakeCurrentButton, 2)
+        self.graphTakeCurrentButton.clicked.connect(self.takeCurrentData)
+        self.graphTakeCurrentButton.setEnabled(False)
 
-        self.graphFileNameLabel = QLabel('No data available')
+        self.graphTakeAllButton = QPushButton('Use all connectivity estimates')
+        self.graphTakeAllButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        buttonsLayout.addWidget(self.graphTakeAllButton, 2)
+        self.graphTakeAllButton.clicked.connect(self.takeAllData)
+        self.graphTakeAllButton.setEnabled(False)
+
+        self.graphFileNameLabel = QLabel('No data loaded yet.')
         self.graphStepCounter = 1
 
         leftLayout.addLayout(buttonsLayout)
@@ -3059,6 +3066,9 @@ class App(QMainWindow):
         self.plotTimeSeries()
 
         self.calculateConnectivityButton.setEnabled(True)
+        self.graphTakeCurrentButton.setEnabled(True)
+        self.graphTakeAllButton.setEnabled(True)
+
         self.onTabChanged()
         self.update()
 
@@ -3302,6 +3312,10 @@ class App(QMainWindow):
         self.distributionCanvas.draw()
 
         self.calculatingLabel.setText(f"Cleared memory")
+
+        self.graphTakeCurrentButton.setEnabled(False)
+        self.graphTakeAllButton.setEnabled(False)
+
         return
 
     # Plotting
@@ -3736,7 +3750,7 @@ class App(QMainWindow):
 
     def takeCurrentData(self):
         if self.data.dfc_data is None:
-            QMessageBox.warning(self, "Output Error", "No current dFC data available.")
+            QMessageBox.warning(self, "Output Error", "No dFC data available.")
             return
 
         if len(self.data.dfc_data.shape) == 3:
@@ -3750,7 +3764,27 @@ class App(QMainWindow):
         self.data.graph_raw = self.data.graph_data
 
         self.graphFileNameLabel.setText(f"Used current dFC data with shape {self.data.graph_data.shape}")
-        self.data.graph_file = f"dfC from {self.data.file_name}" #with {self.data.dfc_name} at t={self.currentSliderValue}"
+        self.data.graph_file = f"dfC from {self.data.file_name} at t={self.currentSliderValue}"
+        self.plotGraphMatrix()
+        self.onGraphCombobox()
+
+    def takeAllData(self):
+        if self.data.dfc_data is None:
+            QMessageBox.warning(self, "Output Error", "No dFC data available.")
+            return
+
+        if len(self.data.dfc_data.shape) == 3:
+            self.data.graph_data = self.data.dfc_data[:,:,self.currentSliderValue]
+        elif len(self.data.dfc_data.shape) == 2:
+            self.data.graph_data = self.data.dfc_data
+        else:
+            QMessageBox.warning(self, "Output Error", "FC data seems to have the wrong shape.")
+            return
+
+        self.data.graph_raw = self.data.graph_data
+
+        self.graphFileNameLabel.setText(f"Used current dFC data with shape {self.data.graph_data.shape}")
+        self.data.graph_file = f"dfC from {self.data.file_name}"
         self.plotGraphMatrix()
         self.onGraphCombobox()
 
