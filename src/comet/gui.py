@@ -936,7 +936,7 @@ class App(QMainWindow):
         self.niftiExtractButtonContainer.setLayout(calculateLayout)
 
         # Cleaning button
-        self.niftiExtractButtonContainer2 = QWidget()
+        self.niftiCleanButtonContainer = QWidget()
         calculateLayout2 = QHBoxLayout()
         calculateLayout2.setContentsMargins(5, 5, 5, 0)
 
@@ -948,7 +948,7 @@ class App(QMainWindow):
         calculateLayout2.addStretch(2)
         calculateLayout2.addWidget(self.resetButton, 1)
         calculateLayout2.addWidget(self.cleanButton, 1)
-        self.niftiExtractButtonContainer2.setLayout(calculateLayout2)
+        self.niftiCleanButtonContainer.setLayout(calculateLayout2)
 
         # Transpose checkpox
         self.transposeCheckbox = QCheckBox("Transpose data (time has to be the first dimension).")
@@ -957,15 +957,15 @@ class App(QMainWindow):
         #loadLayout.addItem(QSpacerItem(0, 15, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
         # Container for timne series extraction
-        self.loadContainer = QGroupBox("Time series extraction")
-        loadContainerLayout = QVBoxLayout()
+        self.tsExtractionContainer = QGroupBox("Time series extraction")
+        tsExtractionContainerLayout = QVBoxLayout()
 
-        loadContainerLayout.addWidget(self.subjectDropdownContainer)
-        loadContainerLayout.addWidget(self.cleaningContainer)
-        loadContainerLayout.addWidget(self.parcellationContainer)
-        loadContainerLayout.addWidget(self.discardContainer)
-        loadContainerLayout.addWidget(self.niftiExtractButtonContainer)
-        loadContainerLayout.addWidget(self.niftiExtractButtonContainer2)
+        tsExtractionContainerLayout.addWidget(self.subjectDropdownContainer)
+        tsExtractionContainerLayout.addWidget(self.cleaningContainer)
+        tsExtractionContainerLayout.addWidget(self.parcellationContainer)
+        tsExtractionContainerLayout.addWidget(self.discardContainer)
+        tsExtractionContainerLayout.addWidget(self.niftiExtractButtonContainer)
+        tsExtractionContainerLayout.addWidget(self.niftiCleanButtonContainer)
 
         # Connect widgets
         self.transposeCheckbox.stateChanged.connect(self.onTransposeChecked)
@@ -977,10 +977,10 @@ class App(QMainWindow):
         leftLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
         # Add the parcellation container to the left layout
-        self.loadContainer.setLayout(loadContainerLayout)
-        self.loadContainer.hide()
+        self.tsExtractionContainer.setLayout(tsExtractionContainerLayout)
+        self.tsExtractionContainer.hide()
 
-        leftLayout.addWidget(self.loadContainer)
+        leftLayout.addWidget(self.tsExtractionContainer)
         return
 
     def addFmriprepLayout(self, leftLayout):
@@ -1110,17 +1110,20 @@ class App(QMainWindow):
         fmriprep_highPassLabel = QLabel("High Pass:")
         self.fmriprep_highPassCutoff = CustomDoubleSpinbox(special_value=None, min=0.0, max=1.0)
         self.fmriprep_highPassCutoff.setDecimals(3)
-        self.fmriprep_highPassCutoff.setSingleStep(0.001)
+        self.fmriprep_highPassCutoff.setSingleStep(0.01)
+        self.fmriprep_highPassCutoff.setSuffix(" Hz")
 
         fmriprep_lowPassLabel = QLabel("Low Pass:")
         self.fmriprep_lowPassCutoff = CustomDoubleSpinbox(special_value=None, min=0.0, max=1.0)
         self.fmriprep_lowPassCutoff.setDecimals(3)
-        self.fmriprep_lowPassCutoff.setSingleStep(0.001)
+        self.fmriprep_lowPassCutoff.setSingleStep(0.1)
+        self.fmriprep_lowPassCutoff.setSuffix(" Hz")
 
         fmriprep_trLabel = QLabel("TR:")
-        self.fmriprep_trValue = CustomDoubleSpinbox(special_value=None, min=0.0, max=5.0)
+        self.fmriprep_trValue = CustomListSpinbox(special_value=None, min=0.0, max=20.0, values=[0.72, 0.8, 1.5, 2.5])
         self.fmriprep_trValue.setDecimals(3)
         self.fmriprep_trValue.setSingleStep(0.5)
+        self.fmriprep_trValue.setSuffix(" s  ")
 
         fmriprep_filteringLayout.addWidget(fmriprep_highPassLabel)
         fmriprep_filteringLayout.addWidget(self.fmriprep_highPassCutoff)
@@ -1776,26 +1779,27 @@ class App(QMainWindow):
 
         # Initial setup
         self.data.ts_data = None
+        self.data.file_data = None
+        self.data.roi_names = None
         self.data.file_path = file_path
         self.data.file_name = file_path.split('/')[-1]
-        self.cleaningContainer.hide()
-        self.niftiExtractButtonContainer2.hide()
-        self.parcellationContainer.hide()
+        
         self.plotLogo(self.boldFigure)
-        self.loadContainer.hide()
         self.boldCanvas.draw()
+
         self.fmriprep_layout = None
         self.data.sample_mask = None
-        self.transposeCheckbox.hide()
         self.processingResultsLabel.setText("")
         self.detrendCheckbox.setChecked(True)
         self.standardizeCheckbox.setChecked(True)
-        self.saveTimeSeriesButton.hide()
+
+        # Disable/enable containers
+        self.tsExtractionContainer.show() # main container
+        self.fmriprepContainer.hide() # fMRIprep container
 
         try:
             self.subjectDropdown.currentIndexChanged.disconnect(self.onSubjectChanged)
-            self.subjectDropdown.clear()
-            
+            self.subjectDropdown.clear()   
             #self.connectivity_subjectDropdown.currentIndexChanged.disconnect(self.onSubjectChanged)
             #self.connectivity_subjectDropdown.clear()
 
@@ -1845,14 +1849,15 @@ class App(QMainWindow):
         
         elif file_path.endswith(".nii") or file_path.endswith(".nii.gz"):
             self.parcellationDropdown.currentIndexChanged.disconnect(self.onAtlasChanged)
-            self.parcellationDropdown.clear()            
-        
+            self.parcellationDropdown.clear()
+
         else:
             self.time_series_textbox.setText("Unsupported file format")
             self.data.file_data = None
 
         # Copy file_data into ts_data for further processing
-        self.data.ts_data = self.data.file_data.copy()
+        if self.data.file_data is not None:
+            self.data.ts_data = self.data.file_data.copy()
 
         # Enable/disable layouts corresponding to file types
         self.setFileLayout(file_path)
@@ -1862,20 +1867,94 @@ class App(QMainWindow):
         self.slider.setValue(0)
         self.connectivityFigure.clear()
         self.connectivityCanvas.draw()
-
-        # Set filenames depending on file type
-        self.time_series_textbox.setText(self.data.file_name)
         
-        if np.ndim(self.data.ts_data) == 3:
-            self.stateBasedCheckBox.setEnabled(True)
-            self.stateBasedCheckBox.setChecked(True)
+        # Reset and enable the GUI elements
+        self.methodComboBox.setEnabled(True)
+        self.methodComboBox.setEnabled(True)
+        self.calculateConnectivityButton.setEnabled(True)
+        self.clearMemoryButton.setEnabled(True)
+        self.keepInMemoryCheckbox.setEnabled(True)
 
-            self.continuousCheckBox.setEnabled(False)
-            self.continuousCheckBox.setChecked(False)
+        # Setting the labels
+        self.time_series_textbox.setText(self.data.file_name)
+        fname = self.data.file_name[:20] + self.data.file_name[-30:] if len(self.data.file_name) > 50 else self.data.file_name
 
-            self.staticCheckBox.setEnabled(False)
-            self.staticCheckBox.setChecked(False)    
+        if file_path.endswith(".nii") or file_path.endswith(".nii.gz"):
+            self.fileNameLabel.setText(f"Loaded {fname}.")
         else:
+            fshape = self.data.ts_data.shape
+
+            if file_path.endswith(".npy"):
+                self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}.")
+                self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}.")
+                self.connectivityFileNameLabel.setText(f"Time series data with shape {fshape} is available for state-based analysis.")
+                self.saveTimeSeriesButton.show()
+            elif file_path.endswith(".mat"):
+                self.fileNameLabel.setText(f"Loaded data from {fname} (key: {list(data_dict.keys())[-1]}) with shape {fshape}.")
+                self.connectivityFileNameLabel.setText(f"Time series data with shape {fshape} is available for connectivity analysis.")
+            else:
+                self.fileNameLabel.setText(f"Loaded {fname} with shape {fshape}.")
+                self.connectivityFileNameLabel.setText(f"Time series data with shape {fshape} is available for connectivity analysis.")
+            
+            self.processingResultsLabel.setText(f"Time series data with shape {fshape} is ready for connectivity analysis.")
+            self.saveTimeSeriesButton.show()
+
+        return
+
+    def setFileLayout(self, file_path):
+
+        self.cleaningContainer.show()
+        self.miscCleaningContainer.hide()
+        self.sphereContainer.hide()
+        self.smoothingContainer.hide()
+        self.filteringContainer.hide()
+
+        self.transposeCheckbox.hide()
+        self.subjectDropdownContainer.hide()
+        self.parcellationContainer.hide()
+        self.discardContainer.hide()
+        self.saveTimeSeriesButton.hide()
+
+        self.niftiExtractButtonContainer.hide()
+        self.niftiCleanButtonContainer.hide()
+
+        # Some kind of nifti/cifti file
+        if self.data.file_data is None:      
+            if file_path.endswith(".dtseries.nii") or file_path.endswith(".ptseries.nii"):
+                self.parcellationDropdown.addItems(self.atlas_options_cifti.keys())      
+            
+            elif file_path.endswith(".nii") or file_path.endswith(".nii.gz"):
+                self.parcellationDropdown.addItems(self.atlas_options.keys()) 
+                self.sphereContainer.show()
+                self.smoothingContainer.show()       
+            
+            else:
+                QMessageBox.warning(self, "Error", "File type not supported.")
+                return
+            
+            self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
+            self.onAtlasChanged()
+            self.plotLogo(self.boldFigure)
+
+            # Containers
+            self.miscCleaningContainer.show()
+            self.parcellationContainer.show()
+            self.filteringContainer.show()
+            self.discardContainer.show()
+            self.niftiExtractButtonContainer.show()
+
+        # 2D time series data
+        elif np.ndim(self.data.file_data) == 2:
+            self.plotCarpet()
+
+            # Containers
+            self.transposeCheckbox.show()
+            self.miscCleaningContainer.show()
+            self.filteringContainer.show()
+            self.discardContainer.show()
+            self.niftiCleanButtonContainer.show()
+
+            # Connectivity checkboxes
             self.stateBasedCheckBox.setEnabled(True)
             self.stateBasedCheckBox.setChecked(True)
 
@@ -1885,81 +1964,35 @@ class App(QMainWindow):
             self.staticCheckBox.setEnabled(True)
             self.staticCheckBox.setChecked(True)
 
-        # Reset and enable the GUI elements
-        self.fmriprepContainer.hide()
-
-        self.methodComboBox.setEnabled(True)
-        self.methodComboBox.setEnabled(True)
-        self.calculateConnectivityButton.setEnabled(True)
-        self.clearMemoryButton.setEnabled(True)
-        self.keepInMemoryCheckbox.setEnabled(True)
-
-        # Update file name label
-        fname = self.data.file_name[:20] + self.data.file_name[-30:] if len(self.data.file_name) > 50 else self.data.file_name
-
-        if file_path.endswith('.nii') or file_path.endswith('.nii.gz'):
-            self.fileNameLabel.setText(f"Loaded {fname}.")
-        elif file_path.endswith('.npy'):
-            fshape = self.data.ts_data.shape
-            self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}.")
-            self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}.")
-            self.processingResultsLabel.setText(f'Time series data with shape {fshape} is available for connectivity analysis.')
-            self.connectivityFileNameLabel.setText(f"Time series data with shape {fshape} is available for state-based analysis.")
-            self.saveTimeSeriesButton.show()
-        else:
-            fshape = self.data.ts_data.shape
-            self.fileNameLabel.setText(f"Loaded {fname} with shape {fshape}.")
-            self.connectivityFileNameLabel.setText(f"Time series data with shape {fshape} is available for connectivity analysis.")
-            self.processingResultsLabel.setText(f'Time series data with shape {fshape} is ready for connectivity analysis.')
-            self.saveTimeSeriesButton.show()
-
-        return
-
-    def setFileLayout(self, file_path):
-        self.loadContainer.show()
-        self.transposeCheckbox.hide()
-        self.cleaningContainer.hide()
-        self.sphereContainer.hide()
-        self.smoothingContainer.hide()
-        self.niftiExtractButtonContainer.hide()
-        self.niftiExtractButtonContainer2.hide()
-        
-        if np.ndim(self.data.file_data) == 2:
-            self.transposeCheckbox.show()
-            self.cleaningContainer.show()
-            self.niftiExtractButtonContainer2.show()
-            self.smoothingContainer.hide()
-            self.createCarpetPlot()
-
+        # 3D time series data
         elif np.ndim(self.data.file_data) == 3:
             self.subjectDropdown.addItems(np.arange(self.data.file_data.shape[0]).astype(str))
-            self.subjectDropdownContainer.show()
             self.subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
 
             #self.connectivity_subjectDropdown.addItems(np.arange(self.data.file_data.shape[0]).astype(str))
             #self.connectivity_subjectDropdownContainer.show()
             #self.connectivity_subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
 
-            self.transposeCheckbox.show()   
-            self.cleaningContainer.show()
-            self.niftiExtractButtonContainer2.show()
-            self.createCarpetPlot()
+            self.plotCarpet()
 
-        elif file_path.endswith(".nii") or file_path.endswith(".nii.gz"):
-            if file_path.endswith(".dtseries.nii") or file_path.endswith(".ptseries.nii"):
-                self.parcellationDropdown.addItems(self.atlas_options_cifti.keys())
-                self.sphereContainer.hide()
-                self.smoothingContainer.hide()
-            else:
-                self.parcellationDropdown.addItems(self.atlas_options.keys())
-                self.sphereContainer.show()
-                self.smoothingContainer.show()
-            self.cleaningContainer.show()
-            self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
-            self.onAtlasChanged()
-            self.niftiExtractButtonContainer.show()
-            self.parcellationContainer.show()
-            self.plotLogo(self.boldFigure)
+            # Containers
+            self.subjectDropdownContainer.show()
+            self.transposeCheckbox.show()
+            self.miscCleaningContainer.show()
+            self.filteringContainer.show()
+            self.discardContainer.show()
+            self.niftiCleanButtonContainer.show() 
+            self.niftiCleanButtonContainer.show()
+
+            # Connectivity checkboxes
+            self.stateBasedCheckBox.setEnabled(True)
+            self.stateBasedCheckBox.setChecked(True)
+
+            self.continuousCheckBox.setEnabled(False)
+            self.continuousCheckBox.setChecked(False)
+
+            self.staticCheckBox.setEnabled(False)
+            self.staticCheckBox.setChecked(False)    
 
         else:
             QMessageBox.warning(self, "Error", "File type not supported.")
@@ -1987,13 +2020,13 @@ class App(QMainWindow):
         self.time_series_textbox.setText(self.data.file_name)
 
         # Update carpet plot
-        self.createCarpetPlot()
+        self.plotCarpet()
 
     def onSubjectChanged(self):
         """
         .npy file subject dropdown event
         """
-        self.createCarpetPlot()
+        self.plotCarpet()
         return
 
     def fetchAtlas(self, atlasname, option):
@@ -2077,10 +2110,20 @@ class App(QMainWindow):
         # Clear plot and layout
         self.plotLogo(self.boldFigure)
         self.boldCanvas.draw()
-        self.loadContainer.hide()
+        self.processingResultsLabel.setText("")
+
+        # Reset data
+        self.data.ts_data = None
+        self.data.file_data = None
+        self.data.file_name = None
+        self.data.file_path = None
+        self.data.sample_mask = None
+        self.data.roi_names = None
+
+        # Hide containers
+        self.tsExtractionContainer.hide()
         self.transposeCheckbox.hide()
         self.saveTimeSeriesButton.hide()
-        self.processingResultsLabel.setText("")
 
         # Open a dialog to select the fmriprep outputs directory
         fmriprep_folder = QFileDialog.getExistingDirectory(self, "Select fMRIprep directory")
@@ -2517,14 +2560,38 @@ class App(QMainWindow):
         atlas = params["atlas"]
         option = params["option"]
         mask = None
-        confounds = None
+        confounds_df = None
+        self.data.sample_mask
 
         # Collect cleaning arguments
         if self.fmriprep_layout is None:
+
+            # Discard the initial n volumes
+            discarded_values = self.discardSpinBox.value()
+            if discarded_values > 0:
+                if self.data.file_name.endswith(".dtseries.nii") or self.data.file_name.endswith(".ptseries.nii"):
+                    img = nib.load(self.data.file_path)
+                    img_data = img.get_fdata()
+                    img_data = img_data[discarded_values:, :]
+                    img = nib.Cifti2Image(img_data, header=img.header)  
+                
+                elif self.data.file_name.endswith(".nii") or self.data.file_name.endswith(".nii.gz"):
+                    img = nib.load(self.data.file_path)
+                    img_data = img.get_fdata()
+                    img_data = img_data[:,:,:, discarded_values:]
+                    img = nib.Nifti1Image(img_data, affine=img.affine, header=img.header)
+
+                else:
+                    QMessageBox.warning(self, "Error when extracting time series", f"File type not supported.")
+                    return
+            else:
+                img = nib.load(self.data.file_path)
+                
             radius = self.sphereRadiusSpinbox.value() if self.sphereRadiusSpinbox.value() > 0 else None # none is single voxel
             allow_ovelap = self.overlapCheckbox.isChecked()
 
             standardize = self.standardizeCheckbox.isChecked()
+            standardize_confounds = True if standardize else False
             detrend = self.detrendCheckbox.isChecked()
             high_variance_confounds = self.highVarianceCheckbox.isChecked()
             smoothing_fwhm = self.smoothingSpinbox.value() if self.smoothingSpinbox.value() > 0 else None
@@ -2534,18 +2601,25 @@ class App(QMainWindow):
             tr = self.trValue.value() if self.trValue.value() > 0 else None
 
             # GSR
+            fdata = img.get_fdata()
             if self.gsrCheckbox.isChecked():
-                confounds = pd.DataFrame()
-                nifti_data = nib.load(self.data.file_path).get_fdata()
-                confounds["global_signal"] = np.mean(nifti_data, axis=(0, 1, 2))
+                confounds_df = pd.DataFrame()
+                
+                if np.ndim(fdata) == 4:
+                    confounds_df["global_signal"] = np.mean(fdata, axis=(0, 1, 2))
+                else:
+                    confounds_df["global_signal"] = np.mean(fdata, axis=1)
             else:
-                confounds = None
+                confounds_df = None
 
         else:
+            img = nib.load(self.data.file_path)
+            
             radius = self.fmriprep_sphereRadiusSpinbox.value() if self.fmriprep_sphereRadiusSpinbox.value() > 0 else None # none is single voxel
             allow_ovelap = self.fmriprep_overlapCheckbox.isChecked()
 
             standardize = self.fmriprep_standardizeCheckbox.isChecked()
+            standardize_confounds = True if standardize else False
             detrend = self.fmriprep_detrendCheckbox.isChecked()
             high_variance_confounds = self.fmriprep_highVarianceCheckbox.isChecked()
             smoothing_fwhm = self.fmriprep_smoothingSpinbox.value() if self.fmriprep_smoothingSpinbox.value() > 0 else None
@@ -2554,16 +2628,13 @@ class App(QMainWindow):
             low_pass = self.fmriprep_lowPassCutoff.value() if self.fmriprep_lowPassCutoff.value() > 0 else None
             tr = self.fmriprep_trValue.value() if self.fmriprep_trValue.value() > 0 else None
 
-        standardize_confounds = True if standardize else False
-
-        if self.fmriprep_layout is not None:
             args = self.collectCleaningArguments()
-            confounds, self.data.sample_mask = load_confounds(img_path, **args)
+            confounds_df, self.data.sample_mask = load_confounds(img_path, **args)
             mask = self.mask_name
 
             # Workaround for nilearn bug, will be fixed in the next nilearn release
-            if confounds is not None and confounds.empty:
-                confounds = None
+            if confounds_df is not None and confounds_df.empty:
+                confounds_df = None
 
         if atlas in ["Power et al. (2011)", "Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
             if atlas == "Power et al. (2011)":
@@ -2575,12 +2646,12 @@ class App(QMainWindow):
                                                 standardize=standardize, standardize_confounds=standardize_confounds, detrend=detrend, 
                                                 smoothing_fwhm=smoothing_fwhm, high_variance_confounds=high_variance_confounds,
                                                 low_pass=low_pass, high_pass=high_pass, t_r=tr)
-            time_series = masker.fit_transform(img_path, confounds=confounds)
+            time_series = masker.fit_transform(img, confounds=confounds_df)
 
         # Select the correct atlas for Schaefer and Glasser
         elif (atlas.startswith("Schaefer") or atlas.startswith("Glasser")) and atlas != "Schaefer et al. (2018)":
             atlas_string = self.atlas_map.get(f"{atlas} {option}", None)
-            time_series_raw = cifti.parcellate(img_path, atlas=atlas_string)
+            time_series_raw = cifti.parcellate(img, atlas=atlas_string)
             time_series = utils.clean(time_series_raw, standardize=standardize, detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
         else:
             atlas, _ = self.fetchAtlas(atlas, option)
@@ -2588,7 +2659,7 @@ class App(QMainWindow):
                                                standardize=standardize, standardize_confounds=standardize_confounds, 
                                                detrend=detrend, smoothing_fwhm=smoothing_fwhm, high_variance_confounds=high_variance_confounds,
                                                low_pass=low_pass, high_pass=high_pass, t_r=tr)
-            time_series = masker.fit_transform(img_path, confounds=confounds)
+            time_series = masker.fit_transform(img, confounds=confounds_df)
 
         self.data.ts_data = time_series
 
@@ -2599,14 +2670,10 @@ class App(QMainWindow):
         original_data_shape = self.data.ts_data.shape
 
         if self.fmriprep_layout is not None:
-            discard_value = self.fmriprep_discardSpinBox.value()
-            self.data.sample_mask = self.data.sample_mask[self.data.sample_mask >= discard_value]
-            self.createCarpetPlot() # Create carpet plot before removing volumes
+            self.plotCarpet()
             self.data.ts_data = self.data.ts_data[self.data.sample_mask,:]
         else:
-            discard_value = self.discardSpinBox.value()
-            self.data.ts_data = self.data.ts_data[discard_value:,:]
-            self.createCarpetPlot() # Plot after removing volumes as we have no mask
+            self.plotCarpet()
 
         # Set the labels
         n_removed_volumes = original_data_shape[0] - self.data.ts_data.shape[0]
@@ -2656,14 +2723,41 @@ class App(QMainWindow):
         high_pass = self.highPassCutoff.value() if self.highPassCutoff.value() > 0 else None
         low_pass = self.lowPassCutoff.value() if self.lowPassCutoff.value() > 0 else None
         tr = self.trValue.value() if self.trValue.value() > 0 else None
-        discard_value = self.discardSpinBox.value()
+        
+        # Copy the data to keep the original
+        self.data.ts_data = self.data.file_data.copy()
 
+        # Discard initial n volumes
+        discarded_values = self.discardSpinBox.value()
+
+        if discarded_values:
+            if np.ndim(self.data.ts_data) == 3:
+                temp_data = np.zeros((self.data.ts_data.shape[0], self.data.ts_data.shape[1]
+                                      - discarded_values, self.data.ts_data.shape[2]))
+                for i in range(self.data.ts_data.shape[0]):
+                    temp_data[i,:,:] = self.data.ts_data[i,discarded_values:,:]
+                self.data.ts_data = temp_data
+            else:
+                self.data.ts_data = self.data.ts_data[discarded_values:,:]
+
+        # Calculate global signal regressor
         if self.gsrCheckbox.isChecked():
-            confounds_df = pd.DataFrame()
-            confounds_df["global_signal"] = np.mean(self.data.ts_data, axis=1)
+            if np.ndim(self.data.ts_data) == 3:
+                confounds_df_list = []
+                for i in range(self.data.ts_data.shape[0]):
+                    confounds_df = pd.DataFrame()
+                    confounds_df["global_signal"] = np.mean(self.data.ts_data[i,:,:], axis=1)
+                    confounds_df_list.append(confounds_df)
+            else:
+                confounds_df = pd.DataFrame()
+                confounds_df["global_signal"] = np.mean(self.data.ts_data, axis=1)
         else:
-            confounds_df = None
+            if np.ndim(self.data.ts_data) == 3:
+                confounds_df_list = [None] * self.data.ts_data.shape[0]
+            else:
+                confounds_df = None
 
+        # Standardize
         if self.standardizeCheckbox.isChecked():
             standardize = True
             standardize_confounds = True
@@ -2671,32 +2765,23 @@ class App(QMainWindow):
             standardize = False
             standardize_confounds = False
 
-        if self.data.file_path.endswith('.npy'):
+        # Cleaning
+        if np.ndim(self.data.ts_data) == 3:
             for i in range(self.data.ts_data.shape[0]):
                 self.data.ts_data[i,:,:] = utils.clean(self.data.ts_data[i,:,:], standardize=standardize,
-                                                         confounds=confounds_df, standardize_confounds=standardize_confounds,
+                                                         confounds=confounds_df_list[i], standardize_confounds=standardize_confounds,
                                                          detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
         else:
             self.data.ts_data = utils.clean(self.data.ts_data, standardize=standardize,
                                                confounds=confounds_df, standardize_confounds=standardize_confounds,
                                                detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
         
-        if discard_value:
-            if self.data.file_path.endswith('.npy'):
-                temp_data = np.zeros((self.data.ts_data.shape[0], self.data.ts_data.shape[1]
-                                      - discard_value, self.data.ts_data.shape[2]))
-                for i in range(self.data.ts_data.shape[0]):
-                    temp_data[i,:,:] = self.data.ts_data[i,discard_value:,:]
-                self.data.ts_data = temp_data
-            else:
-                self.data.ts_data = self.data.ts_data[discard_value:,:]
-        
         return
 
     def handleCleaningResult(self):
         self.processingResultsLabel.setText(f'Time series data with shape {self.data.ts_data.shape} is ready for connectivity analysis')
         self.time_series_textbox.setText(self.data.file_name)
-        self.createCarpetPlot()
+        self.plotCarpet()
         self.cleanButton.setEnabled(True)
         self.resetButton.setEnabled(True)
         self.saveTimeSeriesButton.show()
@@ -2710,10 +2795,12 @@ class App(QMainWindow):
 
     def resetTimeSeries(self):
         self.data.ts_data = self.data.file_data.copy()
+        self.data.sample_mask = None
         self.resetButton.setEnabled(False)
+        self.processingResultsLabel.setText(f'Time series data with shape {self.data.ts_data.shape} is ready for connectivity analysis.')
 
         if isinstance(self.data.file_data, np.ndarray):
-            self.createCarpetPlot()
+            self.plotCarpet()
         else:
             self.plotLogo(self.boldFigure)
             self.boldCanvas.draw()
@@ -2721,31 +2808,42 @@ class App(QMainWindow):
         return
 
     # Plotting
-    def createCarpetPlot(self):
+    def plotCarpet(self):
         # Clear the current plot
         self.boldFigure.clear()
         ax = self.boldFigure.add_subplot(111)
+        
+        # Custom colormap with nans being red
         cmap = plt.cm.gray
+        cmap.set_bad(color='red')
 
         if np.ndim(self.data.ts_data) == 3:
             current_subject = int(self.subjectDropdown.currentText())
-            ts = self.data.ts_data[current_subject]
+            ts = self.data.ts_data[current_subject].copy()
         else:
-            ts = np.copy(self.data.ts_data)
-
+            ts = self.data.ts_data.copy()
+        
+        # Show scrubbed volumes
+        print("HI")
+        print(ts.shape)
+        print(self.data.sample_mask)
         if self.data.sample_mask is not None:
             # We have data with missing scans (non-steady states or scrubbing)
             # Create a mask of the same shape as ts and set the values to 0 where sample_mask is False
             mask = np.ones(ts.shape, dtype=bool)
             mask[self.data.sample_mask] = False
-            ts[mask] = 0
+            ts[mask] = np.nan
 
-            # Create a custom colormap
-            cmap = plt.cm.gray
-            cmap.set_bad(color='red')  # Set color for masked/invalid data points
-
-            # Mask the data array where sample_mask is False
             ts = np.ma.masked_where(mask, ts)
+
+        # Prepend a red block for discarded volumes
+        if self.fmriprep_layout is None:
+            discarded_values = self.discardSpinBox.value()
+        else:
+            discarded_values = self.fmriprep_discardSpinBox.value()
+        
+        red_block = np.full((discarded_values, ts.shape[1]), np.nan)
+        ts = np.vstack((red_block, ts))
 
         # Plot the data
         im = ax.imshow(ts, cmap=cmap, aspect='auto')
@@ -2784,10 +2882,11 @@ class App(QMainWindow):
             QMessageBox.warning(self, "Output Error", "No time series data available to save.")
             return
 
-        import os, numpy as np
-        from scipy.io import savemat
-
         base, ext = os.path.splitext(self.data.file_name)
+
+        if ext == ".nii" or ext == ".gz":
+            ext = ".txt"
+
         if self.data.ts_data.ndim == 3:
             default_file_name = f"{base}_processed.npy"
             fileFilter = ("All supported files (*.mat *.npy);;"
@@ -2795,9 +2894,9 @@ class App(QMainWindow):
                         "NumPy file (*.npy)")
         else:
             default_file_name = f"{base}_processed{ext}"
-            fileFilter = ("All supported files (*.mat *.txt *.npy *.tsv);;"
-                        "MAT file (*.mat);;"
+            fileFilter = ("All supported files (*.txt *.mat *.npy *.tsv);;"
                         "Text file (*.txt);;"
+                        "MAT file (*.mat);;"
                         "NumPy file (*.npy);;"
                         "TSV file (*.tsv)")
 
