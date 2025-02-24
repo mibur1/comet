@@ -1206,7 +1206,7 @@ class App(QMainWindow):
 
     # Connectivity layouts
     def addConnectivityLayout(self, leftLayout):
-        self.connectivityFileNameLabel = QLabel('No time series data available.')
+        self.connectivityFileNameLabel = QLabel('No time series data available. Please use the "Data Preparation" tab first.')
         leftLayout.addWidget(self.connectivityFileNameLabel)
 
         # Subject dropdown in case there are multiple subjects
@@ -1431,7 +1431,7 @@ class App(QMainWindow):
         self.graphTakeAllButton.clicked.connect(self.takeAllData)
         self.graphTakeAllButton.setEnabled(False)
 
-        self.graphFileNameLabel = QLabel('No data loaded yet.')
+        self.graphFileNameLabel = QLabel('No data available')
         self.graphStepCounter = 1
 
         leftLayout.addLayout(buttonsLayout)
@@ -1486,18 +1486,24 @@ class App(QMainWindow):
         # Stretch empty space
         graphContainerLayout.addStretch()
 
-        # Create a layout for the buttons
+        # Option add/clear buttons
         buttonsLayout = QHBoxLayout()
-        addOptionButton = QPushButton('Add current option')
-        buttonsLayout.addWidget(addOptionButton, 1)
-        addOptionButton.clicked.connect(self.calculateGraph)
+        self.addOptionButton = QPushButton('Add current option')
+        buttonsLayout.addWidget(self.addOptionButton, 2)
+        self.addOptionButton.clicked.connect(self.calculateGraph)
 
-        # Create the "Save" button
-        saveButton = QPushButton('Clear options')
-        buttonsLayout.addWidget(saveButton, 1)
-        saveButton.clicked.connect(self.onClearGraphOptions)
+        self.clearPreviousButton = QPushButton('Clear previous')
+        buttonsLayout.addWidget(self.clearPreviousButton, 1)
+        self.clearPreviousButton.clicked.connect(self.onClearPreviousGraphOption)
 
-        # Add the buttons layout to the left layout
+        self.clearAllButton = QPushButton('Clear all')
+        buttonsLayout.addWidget(self.clearAllButton, 1)
+        self.clearAllButton.clicked.connect(self.onClearAllGraphOptions)
+
+        self.addOptionButton.setEnabled(False)
+        self.clearPreviousButton.setEnabled(False)
+        self.clearAllButton.setEnabled(False)
+
         graphContainerLayout.addLayout(buttonsLayout)
         self.graphContainer.setLayout(graphContainerLayout)
         leftLayout.addWidget(self.graphContainer)
@@ -2614,7 +2620,7 @@ class App(QMainWindow):
 
         else:
             img = nib.load(self.data.file_path)
-            
+
             radius = self.fmriprep_sphereRadiusSpinbox.value() if self.fmriprep_sphereRadiusSpinbox.value() > 0 else None # none is single voxel
             allow_ovelap = self.fmriprep_overlapCheckbox.isChecked()
 
@@ -3201,7 +3207,7 @@ class App(QMainWindow):
         time_series_label.setMinimumSize(time_series_label.sizeHint())
         labels.append(time_series_label)
 
-        self.time_series_textbox.setPlaceholderText("No data loaded yet")
+        self.time_series_textbox.setPlaceholderText("No data available")
         if self.data.file_name:
             self.time_series_textbox.setText(self.data.file_name)
         self.time_series_textbox.setEnabled(True)
@@ -3404,10 +3410,11 @@ class App(QMainWindow):
 
     def onClearMemory(self):
         self.data_storage = DataStorage()
-
-        self.connectivityFigure.clear()
+        self.plotLogo(self.connectivityFigure)
         self.connectivityCanvas.draw()
-        self.distributionFigure.clear()
+        self.plotLogo(self.timeSeriesFigure)
+        self.timeSeriesCanvas.draw()
+        self.plotLogo(self.distributionFigure)
         self.distributionCanvas.draw()
 
         self.calculatingLabel.setText(f"Cleared memory")
@@ -4058,7 +4065,7 @@ class App(QMainWindow):
                 # For the first parameter, set its value based on the data source and lock it
                 if is_first_parameter:
                     param_widget = QLineEdit()
-                    param_widget.setPlaceholderText("No data loaded yet")
+                    param_widget.setPlaceholderText("No data available")
                     if self.data.graph_file:
                         param_widget = QLineEdit("as shown in plot")
                     param_widget.setReadOnly(True)  # Make the widget read-only
@@ -4173,7 +4180,14 @@ class App(QMainWindow):
         # Return the current option and its parameters
         return current_option, params_dict
 
-    def onClearGraphOptions(self):
+    def onClearAllGraphOptions(self):
+        self.data.graph_data = self.data.graph_raw
+        self.plotGraphMatrix()
+        self.optionsTextbox.clear()
+        self.graphTextbox.clear()
+        self.graphStepCounter = 1
+
+    def onClearPreviousGraphOption(self):
         self.data.graph_data = self.data.graph_raw
         self.plotGraphMatrix()
         self.optionsTextbox.clear()
