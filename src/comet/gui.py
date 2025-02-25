@@ -662,6 +662,7 @@ class App(QMainWindow):
         self.graphTab()
         self.multiverseTab()
         self.currentTabIndex = 0
+        self.currentGrapTabIndex = 0
 
         # Set main window layout to the top-level layout
         centralWidget = QWidget()
@@ -1529,23 +1530,52 @@ class App(QMainWindow):
         return
 
     def addGraphPlotLayout(self, rightLayout):
-        # Different plotting tabs
-        graphTabWidget = QTabWidget()
+        self.graphTabWidget = QTabWidget()
 
         # Tab 1: Adjacency matrix plot
         matrixTab = QWidget()
-        matrixLayout = QVBoxLayout()
-        matrixTab.setLayout(matrixLayout)
+        matrixLayout = QVBoxLayout(matrixTab)
 
         self.matrixFigure = Figure()
         self.matrixCanvas = FigureCanvas(self.matrixFigure)
         self.matrixFigure.patch.set_facecolor('#f3f1f5')
         matrixLayout.addWidget(self.matrixCanvas)
-        graphTabWidget.addTab(matrixTab, "Adjacency Matrix")
 
         # Draw default plot (logo)
         self.plotLogo(self.matrixFigure)
         self.matrixCanvas.draw()
+
+        # Add the slider below the plot in the same layout
+        self.graphSlider = QSlider(Qt.Orientation.Horizontal)
+        self.graphSlider.setMinimum(0)  # Set the minimum value of the slider
+        self.graphSlider.setMaximum(0)
+        self.graphSlider.valueChanged.connect(self.onGraphSliderValueChanged)
+        matrixLayout.addWidget(self.graphSlider)
+
+        # Navigation buttons layout below the slider
+        navButtonLayout = QHBoxLayout()
+        navButtonLayout.addStretch(1)  # Spacer to the left of the buttons
+
+        self.graphBackLargeButton = QPushButton("<<")
+        self.graphBackButton = QPushButton("<")
+        self.graphPositionLabel = QLabel('no data available')
+        self.graphForwardButton = QPushButton(">")
+        self.graphForwardLargeButton = QPushButton(">>")
+
+        navButtonLayout.addWidget(self.graphBackLargeButton)
+        navButtonLayout.addWidget(self.graphBackButton)
+        navButtonLayout.addWidget(self.graphPositionLabel)
+        navButtonLayout.addWidget(self.graphForwardButton)
+        navButtonLayout.addWidget(self.graphForwardLargeButton)
+        navButtonLayout.addStretch(1)  # Spacer to the right of the buttons
+
+        self.graphBackLargeButton.clicked.connect(self.onGraphSliderButtonClicked)
+        self.graphBackButton.clicked.connect(self.onGraphSliderButtonClicked)
+        self.graphForwardButton.clicked.connect(self.onGraphSliderButtonClicked)
+        self.graphForwardLargeButton.clicked.connect(self.onGraphSliderButtonClicked)
+
+        matrixLayout.addLayout(navButtonLayout)
+        self.graphTabWidget.addTab(matrixTab, "Adjacency Matrix")
 
         # Tab 2: Graph measures plot
         measureTab = QWidget()
@@ -1570,14 +1600,14 @@ class App(QMainWindow):
         # Add the plot widget and the textbox to the measure layout
         measureLayout.addWidget(plotWidget, 2)
         measureLayout.addWidget(self.graphTextbox, 1)
-        graphTabWidget.addTab(measureTab, "Graph Measure")
+        self.graphTabWidget.addTab(measureTab, "Graph Measure")
 
         # Draw default plot (e.g., logo)
         self.plotLogo(self.graphFigure)
         self.graphCanvas.draw()
 
         # Add widgets to the right layout
-        rightLayout.addWidget(graphTabWidget)
+        rightLayout.addWidget(self.graphTabWidget)
 
         return
 
@@ -2830,9 +2860,6 @@ class App(QMainWindow):
             ts = self.data.ts_data.copy()
         
         # Show scrubbed volumes
-        print("HI")
-        print(ts.shape)
-        print(self.data.sample_mask)
         if self.data.sample_mask is not None:
             # We have data with missing scans (non-steady states or scrubbing)
             # Create a mask of the same shape as ts and set the values to 0 where sample_mask is False
@@ -4325,6 +4352,91 @@ class App(QMainWindow):
         self.graphCanvas.draw()
 
         return
+
+    def onGraphTabChanged(self):
+        self.currentGraphTabIndex = self.graphTabWidget.currentIndex()
+        # index 0: Graph matrix plot
+        # index 1: Graph measure plot
+
+        if self.data.graph_data is None:
+            self.plotLogo(self.graphFigure)
+            self.graphCanvas.draw()
+            self.graphBackLargeButton.hide()
+            self.graphBackButton.hide()
+            self.graphForwardButton.hide()
+            self.graphForwardLargeButton.hide()
+            self.graphSlider.hide()
+            position_text = ""
+            return
+
+        if self.currentTabIndex == 0:
+            pass
+
+        elif self.currentTabIndex == 1:
+           pass
+        
+        else:
+            QMessageBox.warning(self, "Error", "Invalid tab index, this should not happen.")
+
+        self.graphPositionLabel.setText(position_text)
+        self.update()
+
+    def onGraphSliderValueChanged(self, value):
+        # Ensure there is data to work with
+        if self.data.graph_data is None:
+            return
+
+        if self.currentGraphTabIndex == 0 or self.currentGraphTabIndex == 2:
+            # Get and update the data of the imshow object
+            self.currentGraphSliderValue = value
+            data = self.data.graph_data
+            
+            self.im.set_data(data[:, :, value]) if len(data.shape) == 3 else self.im.set_data(data)
+
+            vlim = np.max(np.abs(data[:, :, value])) if len(data.shape) == 3 else np.max(np.abs(data))
+            self.im.set_clim(-vlim, vlim)
+
+            # Redraw the canvas
+            #self.connectivityCanvas.draw()
+            #self.plotDistribution()
+
+            total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
+
+            if self.data.dfc_states is None:
+                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+            else:
+                position_text = f"State {self.currentSliderValue+1}"
+            
+            self.positionLabel.setText(position_text)
+
+        if self.currentTabIndex == 1:
+            self.currentGraphSliderValue = value
+            position_text = f"Subject {self.currentGraphSliderValue}"
+            self.graphPositionLabel.setText(position_text)
+            #self.plotTimeSeries()
+
+    def onGraphSliderButtonClicked(self):
+        button = self.sender()
+        delta = 0
+
+        if button == self.graphBackButton:
+            delta = -1
+
+        if button == self.graphForwardButton:
+            delta = 1
+
+        if button == self.graphBackLargeButton:
+            delta = -10
+
+        if button == self.graphForwardLargeButton:
+            delta = 10
+
+        self.currentGraphSliderValue = max(0, min(self.graphSlider.value() + delta, self.graphSlider.maximum()))
+        self.graphSlider.setValue(self.currentGraphSliderValue)
+        self.graphSlider.update()
+
+        #self.plotConnectivity()
+        #self.plotDistribution()
 
 
     """
