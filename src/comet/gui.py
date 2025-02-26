@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from importlib import util
 from typing import Any, Dict, get_type_hints, get_origin, Literal, Optional
 
-# BIDS data imports
+# fMRI data related imports
 import nibabel as nib
 from bids import BIDSLayout
 from nilearn import datasets, maskers
@@ -1358,8 +1358,9 @@ class App(QMainWindow):
         rightLayout.addWidget(self.slider)
 
         # Navigation buttons layout
+        self.navButtonContainer = QWidget()
         navButtonLayout = QHBoxLayout()
-        navButtonLayout.addStretch(1)  # Spacer to the left of the buttons
+        navButtonLayout.addStretch(1)  # left stretch
 
         # Creating navigation buttons
         self.backLargeButton = QPushButton("<<")
@@ -1380,25 +1381,36 @@ class App(QMainWindow):
         self.forwardButton.clicked.connect(self.onSliderButtonClicked)
         self.forwardLargeButton.clicked.connect(self.onSliderButtonClicked)
 
-        navButtonLayout.addStretch(1) # Spacer to the right of the buttons
-        rightLayout.addLayout(navButtonLayout)
+        navButtonLayout.addStretch(1) # right stretch
+        navButtonLayout.setContentsMargins(0, 0, 0, 0)
+        self.navButtonContainer.setLayout(navButtonLayout)
+        rightLayout.addWidget(self.navButtonContainer)
 
-        # UI elements for dFC time series plotting
+        # Roi selector widget for time series plot
+        self.roiSelectorWidget = QWidget()
+        
         self.rowSelector = QSpinBox()
         self.rowSelector.setMaximum(0)
         self.rowSelector.valueChanged.connect(self.plotTimeSeries)
-
+        
         self.colSelector = QSpinBox()
         self.colSelector.setMaximum(0)
         self.colSelector.valueChanged.connect(self.plotTimeSeries)
 
-        self.timeSeriesSelectorLayout = QHBoxLayout()
-        self.timeSeriesSelectorLayout.addWidget(QLabel("Brain region 1 (row):"))
-        self.timeSeriesSelectorLayout.addWidget(self.rowSelector)
-        self.timeSeriesSelectorLayout.addWidget(QLabel("Brain region 2 (column):"))
-        self.timeSeriesSelectorLayout.addWidget(self.colSelector)
+        timeSeriesSelectorLayout = QHBoxLayout()
+        timeSeriesSelectorLayout.addWidget(QLabel("Brain region 1 (row):"))
+        timeSeriesSelectorLayout.addWidget(self.rowSelector)
+        timeSeriesSelectorLayout.addWidget(QLabel("Brain region 2 (column):"))
+        timeSeriesSelectorLayout.addWidget(self.colSelector)
 
-        timeSeriesLayout.addLayout(self.timeSeriesSelectorLayout)
+        timeSeriesSelectorLayout.setContentsMargins(0, 0, 0, 0)
+        self.roiSelectorWidget.setLayout(timeSeriesSelectorLayout)
+        rightLayout.addWidget(self.roiSelectorWidget)
+
+        # Hide all the elements at first
+        self.slider.hide()
+        self.navButtonContainer.hide()
+        self.roiSelectorWidget.hide()
 
         # Connect the stateChanged signal of checkboxes to the slot
         self.continuousCheckBox.stateChanged.connect(self.updateMethodComboBox)
@@ -1545,36 +1557,6 @@ class App(QMainWindow):
         self.plotLogo(self.matrixFigure)
         self.matrixCanvas.draw()
 
-        # Add the slider below the plot in the same layout
-        self.graphSlider = QSlider(Qt.Orientation.Horizontal)
-        self.graphSlider.setMinimum(0)  # Set the minimum value of the slider
-        self.graphSlider.setMaximum(0)
-        self.graphSlider.valueChanged.connect(self.onGraphSliderValueChanged)
-        matrixLayout.addWidget(self.graphSlider)
-
-        # Navigation buttons layout below the slider
-        navButtonLayout = QHBoxLayout()
-        navButtonLayout.addStretch(1)  # Spacer to the left of the buttons
-
-        self.graphBackLargeButton = QPushButton("<<")
-        self.graphBackButton = QPushButton("<")
-        self.graphPositionLabel = QLabel('no data available')
-        self.graphForwardButton = QPushButton(">")
-        self.graphForwardLargeButton = QPushButton(">>")
-
-        navButtonLayout.addWidget(self.graphBackLargeButton)
-        navButtonLayout.addWidget(self.graphBackButton)
-        navButtonLayout.addWidget(self.graphPositionLabel)
-        navButtonLayout.addWidget(self.graphForwardButton)
-        navButtonLayout.addWidget(self.graphForwardLargeButton)
-        navButtonLayout.addStretch(1)  # Spacer to the right of the buttons
-
-        self.graphBackLargeButton.clicked.connect(self.onGraphSliderButtonClicked)
-        self.graphBackButton.clicked.connect(self.onGraphSliderButtonClicked)
-        self.graphForwardButton.clicked.connect(self.onGraphSliderButtonClicked)
-        self.graphForwardLargeButton.clicked.connect(self.onGraphSliderButtonClicked)
-
-        matrixLayout.addLayout(navButtonLayout)
         self.graphTabWidget.addTab(matrixTab, "Adjacency Matrix")
 
         # Tab 2: Graph measures plot
@@ -1608,6 +1590,41 @@ class App(QMainWindow):
 
         # Add widgets to the right layout
         rightLayout.addWidget(self.graphTabWidget)
+
+        # Slider and navigation buttons
+        self.graphSlider = QSlider(Qt.Orientation.Horizontal)
+        self.graphSlider.setMinimum(0)
+        self.graphSlider.setMaximum(0)
+        self.graphSlider.valueChanged.connect(self.onGraphSliderValueChanged)
+        self.graphSlider.hide()
+        rightLayout.addWidget(self.graphSlider)
+
+        self.graphNavButtonContainer = QWidget()
+        navButtonLayout = QHBoxLayout()
+        navButtonLayout.addStretch(1) # left stretch
+
+        self.graphBackLargeButton = QPushButton("<<")
+        self.graphBackButton = QPushButton("<")
+        self.graphPositionLabel = QLabel('no data available')
+        self.graphForwardButton = QPushButton(">")
+        self.graphForwardLargeButton = QPushButton(">>")
+
+        navButtonLayout.addWidget(self.graphBackLargeButton)
+        navButtonLayout.addWidget(self.graphBackButton)
+        navButtonLayout.addWidget(self.graphPositionLabel)
+        navButtonLayout.addWidget(self.graphForwardButton)
+        navButtonLayout.addWidget(self.graphForwardLargeButton)
+        
+        navButtonLayout.addStretch(1) # right stretch
+        navButtonLayout.setContentsMargins(0, 0, 0, 0)
+        self.graphNavButtonContainer.setLayout(navButtonLayout)
+
+        self.graphBackLargeButton.clicked.connect(self.onGraphSliderButtonClicked)
+        self.graphBackButton.clicked.connect(self.onGraphSliderButtonClicked)
+        self.graphForwardButton.clicked.connect(self.onGraphSliderButtonClicked)
+        self.graphForwardLargeButton.clicked.connect(self.onGraphSliderButtonClicked)
+
+        rightLayout.addWidget(self.graphNavButtonContainer)
 
         return
 
@@ -3630,7 +3647,6 @@ class App(QMainWindow):
         # index 0: Connectivity plot
         # index 1: Time series plot
         # index 2: Distribution plot
-        # index 3: Graph analysis
 
         if self.data.dfc_data is None:
             self.plotLogo(self.connectivityFigure)
@@ -3639,21 +3655,19 @@ class App(QMainWindow):
             self.distributionCanvas.draw()
             self.timeSeriesFigure.clear()
             self.timeSeriesCanvas.draw()
-            self.backLargeButton.hide()
-            self.backButton.hide()
-            self.forwardButton.hide()
-            self.forwardLargeButton.hide()
+           
+            self.roiSelectorWidget.hide()
             self.slider.hide()
+            self.navButtonContainer.hide()
+            
             position_text = ""
             return
 
         if self.currentTabIndex == 0 or self.currentTabIndex == 2:
-            self.slider.show()
             self.slider.setValue(self.currentSliderValue)
-            self.backLargeButton.show()
-            self.backButton.show()
-            self.forwardButton.show()
-            self.forwardLargeButton.show()
+            self.slider.show()
+            self.navButtonContainer.show()
+            self.roiSelectorWidget.hide()
 
             if self.currentTabIndex == 0 or self.currentTabIndex == 2:
                 total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
@@ -3667,66 +3681,31 @@ class App(QMainWindow):
             self.positionLabel.setText(position_text)
 
         elif self.currentTabIndex == 1:
-            self.backLargeButton.hide()
-            self.backButton.hide()
-            self.forwardButton.hide()
-            self.forwardLargeButton.hide()
-
-            # If we have nothing to scroll though, hide some GUI elements
+            # Nothing to scroll though
             if len(self.data.dfc_data.shape) == 2 or self.data.dfc_edge_ts is not None:
                 position_text = ""
                 self.slider.hide()
+                self.navButtonContainer.hide()
+                self.roiSelectorWidget.show()
 
-                # Disable brain area selector widgets
-                for i in range(self.timeSeriesSelectorLayout.count()):
-                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
-                    if widget is not None:
-                        widget.setVisible(False)
-
+            # Also nothing to scroll though
             elif self.data.dfc_state_tc is not None:
-                self.backLargeButton.show()
-                self.backButton.show()
-                self.forwardButton.show()
-                self.forwardLargeButton.show()
-
                 self.slider.setValue(self.currentSliderValue)
+                self.slider.show()
+                self.navButtonContainer.show()
+                self.roiSelectorWidget.hide()
                 position_text = f"Subject {self.currentSliderValue}"
-                # Disable brain area selector widgets
-                for i in range(self.timeSeriesSelectorLayout.count()):
-                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
-                    if widget is not None:
-                        widget.setVisible(False)
-
 
             else:
                 self.slider.hide()
+                self.navButtonContainer.hide()
+                self.roiSelectorWidget.show()
                 position_text = ""
-                #position_text = f"Use the slider to zoom in and scroll through the time series"
-
-                # Enable brain area selector widgets
-                for i in range(self.timeSeriesSelectorLayout.count()):
-                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
-                    if widget is not None:
-                        widget.setVisible(True)
 
             # We have a static measure
             if len(self.data.dfc_data.shape) == 2 and self.data.dfc_edge_ts is None and self.data.dfc_state_tc is None:
                 self.timeSeriesFigure.clear()
                 self.timeSeriesCanvas.draw()
-
-                # Disable brain area selector widgets
-                for i in range(self.timeSeriesSelectorLayout.count()):
-                    widget = self.timeSeriesSelectorLayout.itemAt(i).widget()
-                    if widget is not None:
-                        widget.setVisible(False)
-
-        if self.currentTabIndex == 3:
-            self.backLargeButton.hide()
-            self.backButton.hide()
-            self.forwardButton.hide()
-            self.forwardLargeButton.hide()
-            self.slider.hide()
-            position_text = ""
 
         self.positionLabel.setText(position_text)
         self.update()
@@ -4226,9 +4205,13 @@ class App(QMainWindow):
         current_data = self.data.graph_data
 
         if current_data is None:
+            self.plotLogo(self.matrixFigure)
+            self.matrixCanvas.draw()
+            self.graphSlider.hide()
+
             QMessageBox.warning(self, "No calculated data available for plotting")
             return
-
+        
         self.matrixFigure.clear()
         ax = self.matrixFigure.add_subplot(111)
 
@@ -4246,6 +4229,8 @@ class App(QMainWindow):
         self.matrixFigure.set_facecolor('#f3f1f5')
         self.matrixFigure.tight_layout()
         self.matrixCanvas.draw()
+
+        self.graphSlider.show()
 
     def plotGraphMeasure(self, measure):
         self.graphFigure.clear()
