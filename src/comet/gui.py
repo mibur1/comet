@@ -351,7 +351,7 @@ class ParameterOptions:
         "Iterations":               "Number of iterations",
         "Sliding window":           "Sliding window method",
         "State ratio":              "Observation/state ratio for the DHMM",
-        "vlim":                     "Limit for color axis (edge time series)"
+        "vlim":                     "Limit for color axis (for eTS visualization only)"
     }
 
     CONFOUND_OPTIONS = {
@@ -530,6 +530,7 @@ class Data:
     dfc_states:    np.ndarray = field(default=None)         # dfc states
     dfc_state_tc:  np.ndarray = field(default=None)         # dfc state time course
     dfc_edge_ts:   np.ndarray = field(default=None)         # dfc edge time series
+    dfc_edge_rms:  np.ndarray = field(default=None)         # dfc edge time series RMS
 
     # Graph variables
     graph_file:    str        = field(default=None)         # graph file name
@@ -1916,7 +1917,9 @@ class App(QMainWindow):
         self.setFileLayout(file_path)
 
         # New data, reset slider and plot
-        self.currentSliderValue = 0
+        self.sliderValueForGraph = 0
+        self.backupSliderValueTab02 = 0
+        self.backupSliderValueTab1 = 0
         self.slider.setValue(0)
         self.connectivityFigure.clear()
         self.connectivityCanvas.draw()
@@ -2188,7 +2191,7 @@ class App(QMainWindow):
         # Initialize a fmriprep Layout
         try:
             # Reset GUI elements
-            self.currentSliderValue = 0
+            self.sliderValueForGraph = 0
             self.slider.setValue(0)
             self.plotLogo(self.connectivityFigure)
             self.connectivityCanvas.draw()
@@ -3013,8 +3016,15 @@ class App(QMainWindow):
         return
 
     def onMethodCombobox(self, methodName=None):
+        self.data.clear_dfc_data()
+        
         # Clear old variables and data
         self.clearParameters(self.parameterLayout)
+
+        # Hide widgets below the plot
+        self.slider.hide()
+        self.navButtonContainer.hide()
+        self.roiSelectorWidget.hide()
 
         # Return if no methods are available
         if methodName == None or methodName == "Use checkboxes to get available methods":
@@ -3046,9 +3056,11 @@ class App(QMainWindow):
 
             # Update the slider
             total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
-            position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+            position_text = f"t = {self.slider.value()} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
             self.positionLabel.setText(position_text)
             self.slider.setValue(self.slider.value())
+
+            self.onTabChanged()
 
         # If connectivity data does not exist we reset the figure and slider to prepare for a new calculation
         # This also indicates to the user that this data was not yet calculated/saved
@@ -3160,9 +3172,9 @@ class App(QMainWindow):
         self.data.dfc_edge_ts = None
         self.data.dfc_states = None
 
-        # Edge time series contains multiple connectivity estimates (eFC and eTS)
+        # Edge time series can be contain either eFC (3D) or eTS (2D)
         if self.data.dfc_instance == connectivity.EdgeConnectivity:
-            self.data.dfc_edge_ts = connectivityObject.eTS
+            self.data.dfc_edge_ts = self.data.dfc_data if clean_params["method"] == "eTS" else None
 
         # Result is state-based connectivity
         if self.data.dfc_instance in [connectivity.SlidingWindowClustering, 
@@ -3200,9 +3212,9 @@ class App(QMainWindow):
 
             if self.currentTabIndex == 0 or self.currentTabIndex == 2:
                 if self.data.dfc_states is None:
-                    position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+                    position_text = f"t = {self.slider.value()} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
                 else:
-                    position_text = f"State {self.currentSliderValue+1 }"
+                    position_text = f"State {self.slider.value()}"
             else:
                 position_text = ""
 
@@ -3471,43 +3483,73 @@ class App(QMainWindow):
     # Plotting
     def plotConnectivity(self):
         current_data = self.data.dfc_data
-    
-        if current_data is None:
+        self.connectivityFigure.clear()
+        
+        if current_data is None and self.data.dfc_edge_ts is None:
+            # No connectivity data
             QMessageBox.warning(self, "No calculated data available for plotting")
             return
+        
+        elif self.data.dfc_edge_ts is not None:
+            # Edge time series
+            gs = gridspec.GridSpec(3, 1, self.connectivityFigure, height_ratios=[2, 0.5, 1]) # GridSpec with 3 rows and 1 column
 
-        vmax = np.abs(current_data.flatten()).max()
-        self.connectivityFigure.clear()
-        ax = self.connectivityFigure.add_subplot(111)
+            # The first subplot occupies the 1st row
+            ax1 = self.connectivityFigure.add_subplot(gs[:1, 0])
+            ax1.imshow(self.data.dfc_edge_ts.T, cmap='coolwarm', aspect='auto', vmin=-1*self.data.dfc_params["vlim"], vmax=self.data.dfc_params["vlim"])
+            ax1.set_title("Edge time series")
+            ax1.set_xlabel("Time (TRs)")
+            ax1.set_ylabel("Edges")
 
-        try:
-            current_slice = current_data[:, :, self.currentSliderValue] if len(current_data.shape) == 3 else current_data
-            self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
-        except:
-            current_slice = current_data[:, :, 0] if len(current_data.shape) == 3 else current_data
-            self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+            # The second subplot occupies the 3rd row
+            ax2 = self.connectivityFigure.add_subplot(gs[2, 0])
+            self.data.dfc_edge_rms = np.sqrt(np.mean(self.data.dfc_edge_ts.T ** 2, axis=0))
+            ax2.plot(self.data.dfc_edge_rms)
+            ax2.set_xlim(0, len(self.data.dfc_edge_rms) - 1)
+            ax2.set_title("RMS Time Series")
+            ax2.set_xlabel("Time (TRs)")
+            ax2.set_ylabel("Mean Edge Value")
+            
+            self.connectivityFigure.set_facecolor('#f3f1f5')
+            self.connectivityFigure.tight_layout()
+            self.connectivityCanvas.draw()
+            return
+        
+        else:
+            # Plot normal 3D connectivity matrix
+            vmax = np.abs(current_data.flatten()).max()
+            ax = self.connectivityFigure.add_subplot(111)
 
-        ax.set_xlabel("ROI")
-        ax.set_ylabel("ROI")
+            try:
+                current_slice = current_data[:, :, self.slider.value()] if len(current_data.shape) == 3 else current_data
+                self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+            except:
+                current_slice = current_data[:, :, 0] if len(current_data.shape) == 3 else current_data
+                self.im = ax.imshow(current_slice, cmap='coolwarm', vmin=-vmax, vmax=vmax)
 
-        # If we have roi names and less than 100 ROIS, we can plot the names
-        if self.data.roi_names is not None and len(self.data.roi_names) < 100:
-            ax.set_xticks(np.arange(len(self.data.roi_names)))
-            ax.set_yticks(np.arange(len(self.data.roi_names)))
-            ax.set_xticklabels(self.data.roi_names, rotation=45, fontsize=120/len(self.data.roi_names) + 2)
-            ax.set_yticklabels(self.data.roi_names,              fontsize=120/len(self.data.roi_names) + 2)
+            ax.set_xlabel("ROI")
+            ax.set_ylabel("ROI")
 
-        # Create the colorbar
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.15)
-        cbar = self.connectivityFigure.colorbar(self.im, cax=cax)
-        cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
+            # If we have roi names and less than 100 ROIS, we can plot the names
+            if self.data.roi_names is not None and len(self.data.roi_names) < 100:
+                ax.set_xticks(np.arange(len(self.data.roi_names)))
+                ax.set_yticks(np.arange(len(self.data.roi_names)))
+                ax.set_xticklabels(self.data.roi_names, rotation=45, fontsize=120/len(self.data.roi_names) + 2)
+                ax.set_yticklabels(self.data.roi_names,              fontsize=120/len(self.data.roi_names) + 2)
 
-        self.slider.setMaximum(current_data.shape[2] - 1 if len(current_data.shape) == 3 else 0)
+            # Create the colorbar
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.15)
+            cbar = self.connectivityFigure.colorbar(self.im, cax=cax)
+            cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
 
-        self.connectivityFigure.set_facecolor('#f3f1f5')
-        self.connectivityFigure.tight_layout()
-        self.connectivityCanvas.draw()
+            self.slider.setMaximum(current_data.shape[2] - 1 if len(current_data.shape) == 3 else 0)
+
+            self.connectivityFigure.set_facecolor('#f3f1f5')
+            self.connectivityFigure.tight_layout()
+            self.connectivityCanvas.draw()
+
+            return
 
     def plotTimeSeries(self):
         current_data = self.data.dfc_data
@@ -3519,8 +3561,6 @@ class App(QMainWindow):
 
         row = self.rowSelector.value()
         col = self.colSelector.value()
-        self.rowSelector.show()
-        self.colSelector.show()
 
         if current_data is not None and row < current_data.shape[0] and col < current_data.shape[1] and self.data.dfc_edge_ts is None and self.data.dfc_state_tc is None:
             self.timeSeriesFigure.clear()
@@ -3533,16 +3573,12 @@ class App(QMainWindow):
         elif self.data.dfc_state_tc is not None:
             self.timeSeriesFigure.clear()
             
-            current_subject = self.currentSliderValue if self.currentSliderValue <= self.data.dfc_state_tc.shape[0] else 0
+            current_subject = self.slider.value() if self.slider.value() < self.data.dfc_state_tc.shape[0] else 0
             time_series = self.data.dfc_state_tc[current_subject,:]
             num_states = self.data.dfc_states.shape[2]
 
             # Setup the gridspec layout
             gs = gridspec.GridSpec(3, num_states, self.timeSeriesFigure, height_ratios=[1, 0.5, 1])
-
-            # Hite selectors
-            self.rowSelector.hide()
-            self.colSelector.hide()
 
             # Plotting the state time course across all columns
             ax_time_series = self.timeSeriesFigure.add_subplot(gs[0, :])
@@ -3557,29 +3593,9 @@ class App(QMainWindow):
                 vmax = np.abs(matrix).max()
                 ax_state = self.timeSeriesFigure.add_subplot(gs[2, col])
                 ax_state.imshow(matrix, cmap='coolwarm', aspect=1, vmin=-vmax, vmax=vmax)
-                ax_state.set_title(f"State {col+1}")
+                ax_state.set_title(f"State {col}")
                 ax_state.set_xticks([])
                 ax_state.set_yticks([])
-
-        elif self.data.dfc_edge_ts is not None:
-            self.timeSeriesFigure.clear()
-            gs = gridspec.GridSpec(3, 1, self.timeSeriesFigure, height_ratios=[2, 0.5, 1]) # GridSpec with 3 rows and 1 column
-
-            # The first subplot occupies the 1st row
-            ax1 = self.timeSeriesFigure.add_subplot(gs[:1, 0])
-            ax1.imshow(self.data.dfc_edge_ts.T, cmap='coolwarm', aspect='auto', vmin=-1*self.data.dfc_params["vlim"], vmax=self.data.dfc_params["vlim"])
-            ax1.set_title("Edge time series")
-            ax1.set_xlabel("Time (TRs)")
-            ax1.set_ylabel("Edges")
-
-            # The second subplot occupies the 3rd row
-            ax2 = self.timeSeriesFigure.add_subplot(gs[2, 0])
-            rms_edge_values = np.sqrt(np.mean(self.data.dfc_edge_ts.T ** 2, axis=0))
-            ax2.plot(rms_edge_values)
-            ax2.set_xlim(0, len(rms_edge_values) - 1)
-            ax2.set_title("RMS Time Series")
-            ax2.set_xlabel("Time (TRs)")
-            ax2.set_ylabel("Mean Edge Value")
 
         else:
             # Clear the plot if the data is not available
@@ -3642,12 +3658,15 @@ class App(QMainWindow):
 
         return
 
-    def onTabChanged(self):
-        self.currentTabIndex = self.tabWidget.currentIndex()
+    def onTabChanged(self):        
         # index 0: Connectivity plot
         # index 1: Time series plot
         # index 2: Distribution plot
+        self.currentTabIndex = self.tabWidget.currentIndex()
 
+        print("Stored backups:", self.backupSliderValueTab02, self.backupSliderValueTab1)
+            
+        # No dFC data: reset everything and return
         if self.data.dfc_data is None:
             self.plotLogo(self.connectivityFigure)
             self.connectivityCanvas.draw()
@@ -3656,92 +3675,129 @@ class App(QMainWindow):
             self.timeSeriesFigure.clear()
             self.timeSeriesCanvas.draw()
            
-            self.roiSelectorWidget.hide()
             self.slider.hide()
+            self.roiSelectorWidget.hide()
             self.navButtonContainer.hide()
             
-            position_text = ""
             return
+        
+        # Static or edge FC: hide slider/roi widgets and return
+        elif np.ndim(self.data.dfc_data.shape) == 2:
+            self.slider.hide()
+            self.navButtonContainer.hide()
+            self.roiSelectorWidget.hide()
 
+            self.timeSeriesFigure.clear()
+            self.timeSeriesCanvas.draw()
+            
+            return
+        
+        # Normal 3D dFC data: get initial values
+        else:
+            # Get number of subjects and states (if applicable)
+            if self.data.dfc_state_tc is not None:
+                maxTab1 = self.data.dfc_state_tc.shape[0]
+                maxTab02 = self.data.dfc_states.shape[2]
+            else:
+                maxTab1 = 1
+                maxTab02 = self.data.dfc_data.shape[2]
+
+        # Individual tab settings  
+        # Connectivity and distribution tab (index 0 and 2)
         if self.currentTabIndex == 0 or self.currentTabIndex == 2:
-            self.slider.setValue(self.currentSliderValue)
+            self.slider.setRange(0, max(0, maxTab02 - 1))
+            self.slider.setValue(self.backupSliderValueTab02)
             self.slider.show()
+            
             self.navButtonContainer.show()
             self.roiSelectorWidget.hide()
 
-            if self.currentTabIndex == 0 or self.currentTabIndex == 2:
-                total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
-                if self.data.dfc_states is None:
-                    position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
-                else:
-                    position_text = f"State {self.currentSliderValue+1}"
+            total_length = self.data.dfc_data.shape[2] if np.ndim(self.data.dfc_data) == 3 else 0
+            if self.data.dfc_states is None:
+                text_label = f"t = {self.slider.value()} / {total_length - 1}"
             else:
-                position_text = "no data available"
+                text_label = f"State {self.slider.value()}"
 
-            self.positionLabel.setText(position_text)
+        # Time series tab (index 1)
+        else:
+            self.slider.setRange(0, max(0, maxTab1 - 1))
+            self.slider.setValue(self.backupSliderValueTab1)
+            # State based FC
+            if self.data.dfc_state_tc is not None:
+                # Only one subject
+                if self.data.dfc_state_tc.shape[0] == 1:
+                    text_label = "Single subject"
+                # Multiple subjects
+                else:
+                    text_label = f"Subject {self.slider.value()}"
 
-        elif self.currentTabIndex == 1:
-            # Nothing to scroll though
-            if len(self.data.dfc_data.shape) == 2 or self.data.dfc_edge_ts is not None:
-                position_text = ""
-                self.slider.hide()
-                self.navButtonContainer.hide()
-                self.roiSelectorWidget.show()
-
-            # Also nothing to scroll though
-            elif self.data.dfc_state_tc is not None:
-                self.slider.setValue(self.currentSliderValue)
                 self.slider.show()
                 self.navButtonContainer.show()
                 self.roiSelectorWidget.hide()
-                position_text = f"Subject {self.currentSliderValue}"
-
+ 
+            # Continuous FC (3D data)
             else:
+                self.slider.setMaximum(self.data.dfc_data.shape[2] - 1)
+                text_label = f"t = {self.slider.value()} / {self.data.dfc_data.shape[2] - 1}"
+
                 self.slider.hide()
                 self.navButtonContainer.hide()
                 self.roiSelectorWidget.show()
-                position_text = ""
 
-            # We have a static measure
-            if len(self.data.dfc_data.shape) == 2 and self.data.dfc_edge_ts is None and self.data.dfc_state_tc is None:
-                self.timeSeriesFigure.clear()
-                self.timeSeriesCanvas.draw()
 
-        self.positionLabel.setText(position_text)
+        self.positionLabel.setText(text_label)
         self.update()
 
-    def onSliderValueChanged(self, value):
+        return
+
+    def onSliderValueChanged(self, value):          
         # Ensure there is data to work with
         if self.data.dfc_data is None or self.im is None:
             return
 
+        # Tab 0 or 2: Connectivity or distribution plot
         if self.currentTabIndex == 0 or self.currentTabIndex == 2:
-            # Get and update the data of the imshow object
-            self.currentSliderValue = value
-            data = self.data.dfc_data
-            self.im.set_data(data[:, :, value]) if len(data.shape) == 3 else self.im.set_data(data)
+            
+            if np.ndim(self.data.dfc_data) == 3:
+                self.im.set_data(self.data.dfc_data[:, :, value])
+                vlim = np.max(np.abs(self.data.dfc_data[:, :, value]))
+                self.im.set_clim(-vlim, vlim)
 
-            vlim = np.max(np.abs(data[:, :, value])) if len(data.shape) == 3 else np.max(np.abs(data))
-            self.im.set_clim(-vlim, vlim)
+                total_length = self.data.dfc_data.shape[2]
+
+                if self.data.dfc_states is None:
+                    position_text = f"t = {value} / {total_length-1}"
+                else:
+                    position_text = f"State {value}"
+                
+            else:
+                self.im.set_data(self.data.dfc_data)
+                vlim = np.max(np.abs(self.data.dfc_data))
+                self.im.set_clim(-vlim, vlim)
+
+                total_length = 0
+
+                if self.data.dfc_states is not None:
+                    position_text = f"State {value}"
 
             # Redraw the canvas
             self.connectivityCanvas.draw()
             self.plotDistribution()
 
-            total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
+            # Store backup value
+            self.backupSliderValueTab02 = self.slider.value()
 
-            if self.data.dfc_states is None:
-                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
-            else:
-                position_text = f"State {self.currentSliderValue+1}"
-            
-            self.positionLabel.setText(position_text)
-
-        if self.currentTabIndex == 1:
-            self.currentSliderValue = value
-            position_text = f"Subject {self.currentSliderValue}"
-            self.positionLabel.setText(position_text)
+        # Tab 1: Time series plot
+        else:
+            position_text = f"Subject {value}"
             self.plotTimeSeries()
+
+            # Store backup value
+            self.backupSliderValueTab1 = self.slider.value()
+
+        self.positionLabel.setText(position_text)
+
+        return
 
     def onSliderButtonClicked(self):
         # Clicking a button moves the slider by x steps
@@ -3760,13 +3816,12 @@ class App(QMainWindow):
         if button == self.forwardLargeButton:
             delta = 10
 
-        self.currentSliderValue = max(0, min(self.slider.value() + delta, self.slider.maximum()))
-        self.slider.setValue(self.currentSliderValue)
+        old = self.slider.value()
+
+        self.slider.setValue(max(0, min(self.slider.value() + delta, self.slider.maximum())))
         self.slider.update()
-
-        self.plotConnectivity()
-        self.plotDistribution()
-
+  
+        return
 
     """
     Graph tab
@@ -3866,7 +3921,7 @@ class App(QMainWindow):
             return
 
         if len(self.data.dfc_data.shape) == 3:
-            self.data.graph_data = self.data.dfc_data[:,:,self.currentSliderValue]
+            self.data.graph_data = self.data.dfc_data[:,:,self.sliderValueForGraph]
         elif len(self.data.dfc_data.shape) == 2:
             self.data.graph_data = self.data.dfc_data
         else:
@@ -3876,7 +3931,7 @@ class App(QMainWindow):
         self.data.graph_raw = self.data.graph_data
 
         self.graphFileNameLabel.setText(f"Used current dFC data with shape {self.data.graph_data.shape}")
-        self.data.graph_file = f"dfC from {self.data.file_name} at t={self.currentSliderValue}"
+        self.data.graph_file = f"dfC from {self.data.file_name} at t={self.sliderValueForGraph}"
         self.plotGraphMatrix()
         self.onGraphCombobox()
 
@@ -3886,7 +3941,7 @@ class App(QMainWindow):
             return
 
         if len(self.data.dfc_data.shape) == 3:
-            self.data.graph_data = self.data.dfc_data[:,:,self.currentSliderValue]
+            self.data.graph_data = self.data.dfc_data[:,:,self.sliderValueForGraph]
         elif len(self.data.dfc_data.shape) == 2:
             self.data.graph_data = self.data.dfc_data
         else:
@@ -4388,9 +4443,9 @@ class App(QMainWindow):
             total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
 
             if self.data.dfc_states is None:
-                position_text = f"t = {self.currentSliderValue} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+                position_text = f"t = {self.sliderValueForGraph} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
             else:
-                position_text = f"State {self.currentSliderValue+1}"
+                position_text = f"State {self.sliderValueForGraph}"
             
             self.positionLabel.setText(position_text)
 
@@ -4419,9 +4474,6 @@ class App(QMainWindow):
         self.currentGraphSliderValue = max(0, min(self.graphSlider.value() + delta, self.graphSlider.maximum()))
         self.graphSlider.setValue(self.currentGraphSliderValue)
         self.graphSlider.update()
-
-        #self.plotConnectivity()
-        #self.plotDistribution()
 
 
     """
