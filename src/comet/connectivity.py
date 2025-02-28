@@ -1196,6 +1196,10 @@ class EdgeConnectivity(ConnectivityMethod):
     ----------
     time_series : np.ndarray
         The input time series data.
+    method : string, optional
+        The specific connectivity to calculate. Default is "eTS".
+            - eTS: returns the edge time series (edges x time)
+            - eFC: returns the edge functional connectivity (edges x edges x time).
     standardizeData : bool, optional
         Whether to standardize the time series data. Default is True.
     vlim : float, optional
@@ -1211,35 +1215,32 @@ class EdgeConnectivity(ConnectivityMethod):
 
     def __init__(self,
                  time_series: np.ndarray,
+                 method: Literal["eTS", "eFC"] = "eTS",
                  standardizeData: bool = True,
                  vlim: float = 3):
 
         super().__init__(time_series, 0, False, False)
+        self.method = method
         self.standardizeData = standardizeData
         self.u = None # Row indices of the upper triangle of the connectivity matrix
         self.v = None # Column indices of the upper triangle of the connectivity matrix
 
-    def estimate(self, type: Literal["eTS", "eFC"] = "eTS"):
+    def estimate(self):
         """
-        Calculate edge-centric connectivity.
-
-        Parameters
-        ----------
-        type : string, optional
-            The type of connectivity to calculate. Default is "eTS".
-                - eTS: returns the edge time series (edges x time)
-                - eFC: returns the edge functional connectivity (edges x edges x time).
+        Calculate edge-centric connectivity (eTS or eFC).
 
         Returns
         -------
         np.ndarray
-            Dynamic functional connectivity as an Edge x Edge x Time array.
+            Dynamic functional connectivity depending on the method.
+                For eTS: Edge x Time array.
+                For eFC: Edge x Edge x Time array.
         """
         z = zscore(self.time_series, axis=0, ddof=1) if self.standardizeData else self.time_series
         self.u, self.v = np.triu_indices(self.time_series.shape[1], k=1)
         a = np.multiply(z[:, self.u], z[:, self.v]) # edge time series
 
-        if type == "eTS":
+        if self.method == "eTS":
             return a
 
         b = a.T @ a # Inner product
