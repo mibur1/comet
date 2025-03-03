@@ -1919,10 +1919,10 @@ class App(QMainWindow):
         self.setFileLayout(file_path)
 
         # New data, reset slider and plot
-        self.currentGraphSliderValue = 0
         self.backupSliderValueTab02 = 0
         self.backupSliderValueTab1 = 0
         self.slider.setValue(0)
+        self.graphSlider.setValue(0)
         self.connectivityFigure.clear()
         self.connectivityCanvas.draw()
         
@@ -2193,7 +2193,7 @@ class App(QMainWindow):
         # Initialize a fmriprep Layout
         try:
             # Reset GUI elements
-            self.currentGraphSliderValue = 0
+            self.graphSlider.setValue(0)
             self.slider.setValue(0)
             self.plotLogo(self.connectivityFigure)
             self.connectivityCanvas.draw()
@@ -3868,10 +3868,16 @@ class App(QMainWindow):
         self.data.graph_raw = self.data.graph_data
         self.graphFileNameLabel.setText(f"Loaded {self.data.graph_file} with shape {self.data.graph_data.shape}")
 
+        total_length = self.data.graph_data.shape[2] if np.ndim(self.data.graph_data) == 3 else 0
+        position_text = f"t = {self.graphSlider.value()} / {total_length-1}" if len(self.data.graph_data.shape) == 3 else " static "
+        self.graphPositionLabel.setText(position_text)
+        self.currentGraphOption = None
+        
         self.plotGraphMatrix()
         self.onGraphCombobox()
 
         self.addOptionButton.setEnabled(True)
+
         return
 
     def saveGraphFile(self):
@@ -3926,7 +3932,7 @@ class App(QMainWindow):
             return
 
         if np.ndim(self.data.dfc_data) == 3:
-            self.data.graph_data = self.data.dfc_data[:,:,self.currentGraphSliderValue]
+            self.data.graph_data = self.data.dfc_data[:,:,self.graphSlider.value()]
         elif np.ndim(self.data.dfc_data) == 2:
             self.data.graph_data = self.data.dfc_data
         else:
@@ -3936,11 +3942,12 @@ class App(QMainWindow):
         self.data.graph_raw = self.data.graph_data.copy()
 
         self.graphFileNameLabel.setText(f"Used single dFC estimate with shape {self.data.graph_data.shape}")
-        self.data.graph_file = f"dfC from {self.data.file_name} at t={self.currentGraphSliderValue}"
+        self.data.graph_file = f"dfC from {self.data.file_name} at t={self.graphSlider.value()}"
         self.plotGraphMatrix()
         self.onGraphCombobox()
 
         self.addOptionButton.setEnabled(True)
+        self.currentGraphOption = None
         
         return
 
@@ -3963,6 +3970,7 @@ class App(QMainWindow):
             self.onGraphCombobox()
 
             self.addOptionButton.setEnabled(True)
+            self.currentGraphOption = None
             
             return
 
@@ -4083,6 +4091,10 @@ class App(QMainWindow):
         self.optionsTextbox.setPlainText(updated_text)
 
         self.graphStepCounter += 1
+        self.currentGraphOption = option
+
+        self.clearAllButton.setEnabled(True)
+        self.clearPreviousButton.setEnabled(True)
 
     def handleGraphError(self, error):
         # Handle errors in the worker thread
@@ -4264,14 +4276,17 @@ class App(QMainWindow):
         self.plotGraphMatrix()
         self.optionsTextbox.clear()
         self.graphTextbox.clear()
-        self.graphStepCounter = 1
+
+        self.graphStepCounter = 0
+        self.clearAllButton.setEnabled(False)
+        self.clearPreviousButton.setEnabled(False)
 
     def onClearPreviousGraphOption(self):
         self.data.graph_data = self.data.graph_raw
         self.plotGraphMatrix()
         self.optionsTextbox.clear()
         self.graphTextbox.clear()
-        self.graphStepCounter = 1
+        self.graphStepCounter = max(0, self.graphStepCounter - 1)
 
     # Plotting
     def plotGraphMatrix(self):
@@ -4288,9 +4303,9 @@ class App(QMainWindow):
 
         # Enable/disable slider
         if np.ndim(current_data) == 3:
-            current_data = current_data[:, :, self.currentGraphSliderValue]
+            current_data = current_data[:, :, self.graphSlider.value()]
             self.graphSlider.setRange(0, self.data.graph_data.shape[2] - 1)
-            self.graphSlider.setValue(self.currentGraphSliderValue)
+            self.graphSlider.setValue(self.graphSlider.value())
             self.graphSlider.show()
             self.graphNavButtonContainer.show()
         else:
@@ -4320,40 +4335,45 @@ class App(QMainWindow):
         self.graphFigure.clear()
         ax = self.graphFigure.add_subplot(111)
 
+        if isinstance(self.data.graph_out, list):
+            plot_data = self.data.graph_out[self.graphSlider.value()]
+        else:
+            plot_data = self.data.graph_out
+
         # Check type of the graph output data
-        if isinstance(self.data.graph_out, (np.ndarray, np.float64)):
-            if self.data.graph_out.ndim == 0:
+        if isinstance(plot_data, (np.ndarray, np.float64)):
+            if np.ndim(plot_data) == 0:
                 # If graph_out is a single value (0D array)
-                self.graphTextbox.append(f"{measure}: {self.data.graph_out.item()}")
-            elif self.data.graph_out.ndim == 1:
+                self.graphTextbox.setText(f"{measure}: {plot_data.item()}")
+            elif np.ndim(plot_data) == 1:
                 # For a 1D array, plot a vertical lollipop plot
-                ax.stem(self.data.graph_out, linefmt="#19232d", markerfmt='o', basefmt=" ")
+                ax.stem(plot_data, linefmt="#19232d", markerfmt='o', basefmt=" ")
                 ax.set_xlabel("ROI")
                 ax.set_ylabel(measure)
 
                 # Calculate mean and std, and update the textbox
-                mean_val = np.mean(self.data.graph_out)
-                std_val = np.std(self.data.graph_out)
-                self.graphTextbox.append(f"{measure} (mean: {mean_val:.2f}, std: {std_val:.2f})")
+                mean_val = np.mean(plot_data)
+                std_val = np.std(plot_data)
+                self.graphTextbox.setText(f"{measure} (mean: {mean_val:.2f}, std: {std_val:.2f})")
 
-            elif self.data.graph_out.ndim == 2:
+            elif np.ndim(plot_data) == 2:
                 # For a 2D array, use imshow
-                vmax = np.max(np.abs(self.data.graph_out))
-                im = ax.imshow(self.data.graph_out, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+                vmax = np.max(np.abs(plot_data))
+                im = ax.imshow(plot_data, cmap='coolwarm', vmin=-vmax, vmax=vmax)
 
                 # Create the colorbar
                 divider = make_axes_locatable(ax)
                 cax = divider.append_axes("right", size="5%", pad=0.15)
                 self.graphFigure.colorbar(im, cax=cax).ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
             else:
-                self.graphTextbox.append("3D graph data not currently supported for plotting.")
+                self.graphTextbox.setText("3D graph data not currently supported for plotting.")
 
-        elif isinstance(self.data.graph_out, tuple):
+        elif isinstance(plot_data, tuple):
             # Setup data for output
             output_string = f""
             output_arrays = []
 
-            data = self.data.graph_out[0]
+            data = plot_data[0]
             label = self.graphAnalysisComboBox.currentText()
 
             if isinstance(data, (int, float)):
@@ -4373,10 +4393,11 @@ class App(QMainWindow):
                         output_arrays.append((label[i], dat))
 
             else:
-                self.graphTextbox.append("Graph output data is not in expected format.")
+                self.graphTextbox.setText("Graph output data is not in expected format.")
+                return
 
             # Print the output string
-            self.graphTextbox.append(output_string.strip(', '))  # Remove the trailing comma
+            self.graphTextbox.setText(output_string.strip(', '))  # Remove the trailing comma
 
             # Plot the output arrays
             if output_arrays:
@@ -4395,7 +4416,7 @@ class App(QMainWindow):
                         # Calculate mean and std, and update the textbox
                         mean_val = np.mean(value)
                         std_val = np.std(value)
-                        self.graphTextbox.append(f"{measure} (mean: {mean_val:.2f}, variance: {std_val:.2f})")
+                        self.graphTextbox.setText(f"{measure} (mean: {mean_val:.2f}, variance: {std_val:.2f})")
 
                     elif value.ndim == 2:
                         # For a 2D array, use imshow
@@ -4408,7 +4429,7 @@ class App(QMainWindow):
                         cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
 
                     else:
-                        self.graphTextbox.append("Graph output data is not in expected format.")
+                        self.graphTextbox.setText("Graph output data is not in expected format.")
 
                     ax.set_title(label)
 
@@ -4435,43 +4456,42 @@ class App(QMainWindow):
             self.graphPositionLabel.setText("")
             return
 
-        if self.currentGraphTabIndex == 0:
-            self.graphSlider.show()
-            self.graphNavButtonContainer.show()
+        if self.data.graph_data is not None:
+            if np.ndim(self.data.graph_data) == 3:
+                self.graphSlider.show()
+                self.graphNavButtonContainer.show()
 
-        else:
-            self.graphSlider.hide()
-            self.graphNavButtonContainer.hide()
+            else:
+                self.graphSlider.hide()
+                self.graphNavButtonContainer.hide()
 
         return
 
-    def onGraphSliderValueChanged(self, value):
+    def onGraphSliderValueChanged(self):
         # Ensure there is data to work with
         if self.data.graph_data is None:
             return
 
         if self.currentGraphTabIndex == 0:
-            # Get and update the data of the imshow object
-            self.currentGraphSliderValue = value
-            self.graph_im.set_data(self.data.graph_data[:, :, value]) if np.ndim(self.data.graph_data) == 3 else self.graph_im.set_data(self.data.graph_data)
-
-            vlim = np.max(np.abs(self.data.graph_data[:, :, value])) if np.ndim(self.data.graph_data) == 3 else np.max(np.abs(self.data.graph_data))
+            # Matrix plot
+            self.graph_im.set_data(self.data.graph_data[:, :, self.graphSlider.value()]) if np.ndim(self.data.graph_data) == 3 else self.graph_im.set_data(self.data.graph_data)
+            vlim = np.max(np.abs(self.data.graph_data[:, :, self.graphSlider.value()])) if np.ndim(self.data.graph_data) == 3 else np.max(np.abs(self.data.graph_data))
             self.graph_im.set_clim(-vlim, vlim)
-
-            # Redraw the canvas
             self.matrixCanvas.draw()
 
-            total_length = self.data.graph_data.shape[2] if len(self.data.graph_data.shape) == 3 else 0
+        # Measure plot
+        if self.currentGraphOption:
+            print("Updating graph measure plot...")
+            self.plotGraphMeasure(self.currentGraphOption)
 
-            if self.data.dfc_states is None:
-                position_text = f"t = {self.currentGraphSliderValue} / {total_length-1}" if np.ndim(self.data.graph_data) == 3 else " static "
-            else:
-                position_text = f"State {self.currentGraphSliderValue}"
-            
-            self.graphPositionLabel.setText(position_text)
+        total_length = self.data.graph_data.shape[2] if len(self.data.graph_data.shape) == 3 else 0
 
+        if self.data.dfc_states is None:
+            position_text = f"t = {self.graphSlider.value()} / {total_length-1}" if np.ndim(self.data.graph_data) == 3 else " static "
         else:
-            pass
+            position_text = f"State {self.graphSlider.value()}"
+        
+        self.graphPositionLabel.setText(position_text)
         
         return
 
@@ -4491,8 +4511,7 @@ class App(QMainWindow):
         if button == self.graphForwardLargeButton:
             delta = 10
 
-        self.currentGraphSliderValue = max(0, min(self.graphSlider.value() + delta, self.graphSlider.maximum()))
-        self.graphSlider.setValue(self.currentGraphSliderValue)
+        self.graphSlider.setValue(max(0, min(self.graphSlider.value() + delta, self.graphSlider.maximum())))
         self.graphSlider.update()
 
         return
