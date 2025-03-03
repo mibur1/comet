@@ -663,7 +663,7 @@ class App(QMainWindow):
         self.graphTab()
         self.multiverseTab()
         self.currentTabIndex = 0
-        self.currentGrapTabIndex = 0
+        self.currentGraphTabIndex = 0
 
         # Set main window layout to the top-level layout
         centralWidget = QWidget()
@@ -1591,6 +1591,7 @@ class App(QMainWindow):
 
         # Add widgets to the right layout
         rightLayout.addWidget(self.graphTabWidget)
+        self.graphTabWidget.currentChanged.connect(self.onGraphTabChanged)
 
         # Slider and navigation buttons
         self.graphSlider = QSlider(Qt.Orientation.Horizontal)
@@ -1619,6 +1620,7 @@ class App(QMainWindow):
         navButtonLayout.addStretch(1) # right stretch
         navButtonLayout.setContentsMargins(0, 0, 0, 0)
         self.graphNavButtonContainer.setLayout(navButtonLayout)
+        self.graphNavButtonContainer.hide()
 
         self.graphBackLargeButton.clicked.connect(self.onGraphSliderButtonClicked)
         self.graphBackButton.clicked.connect(self.onGraphSliderButtonClicked)
@@ -1917,7 +1919,7 @@ class App(QMainWindow):
         self.setFileLayout(file_path)
 
         # New data, reset slider and plot
-        self.sliderValueForGraph = 0
+        self.currentGraphSliderValue = 0
         self.backupSliderValueTab02 = 0
         self.backupSliderValueTab1 = 0
         self.slider.setValue(0)
@@ -2191,7 +2193,7 @@ class App(QMainWindow):
         # Initialize a fmriprep Layout
         try:
             # Reset GUI elements
-            self.sliderValueForGraph = 0
+            self.currentGraphSliderValue = 0
             self.slider.setValue(0)
             self.plotLogo(self.connectivityFigure)
             self.connectivityCanvas.draw()
@@ -3219,7 +3221,9 @@ class App(QMainWindow):
                 position_text = ""
 
             self.positionLabel.setText(position_text)
-            self.slider.setValue(self.slider.value())
+            self.backupSliderValueTab02 = 0
+            self.backupSliderValueTab1 = 0
+            self.slider.setValue(0)
 
         # Plot
         self.plotConnectivity()
@@ -3663,8 +3667,6 @@ class App(QMainWindow):
         # index 1: Time series plot
         # index 2: Distribution plot
         self.currentTabIndex = self.tabWidget.currentIndex()
-
-        print("Stored backups:", self.backupSliderValueTab02, self.backupSliderValueTab1)
             
         # No dFC data: reset everything and return
         if self.data.dfc_data is None:
@@ -3843,7 +3845,7 @@ class App(QMainWindow):
                 data_dict = mat73.loadmat(file_path)
 
             try:
-                self.data.graph_data = data_dict["graph_data"] # Try to load graph_data (saving files with comet will create this field)
+                self.data.graph_data = data_dict["dfc_data"] # Try to load dfc_data (saving connectivity estimates with Comet will create this field)
             except:
                 self.data.graph_data = data_dict[list(data_dict.keys())[-1]] # Else get the last item in the file (which is the data if there is only one field)
 
@@ -3855,11 +3857,11 @@ class App(QMainWindow):
 
         else:
             self.data.graph_data = None
-            self.time_series_textbox.setText("Unsupported file format")
+            QMessageBox.warning(self, "Data Error", "Unsupported file format.")
+            return
 
-        # Check if data is square
-        if self.data.graph_data.ndim != 2 or self.data.graph_data.shape[0] != self.data.graph_data.shape[1]:
-            QMessageBox.warning(self, "Data Error", "The loaded data is not a square matrix.")
+        if self.data.graph_data.shape[0] != self.data.graph_data.shape[1]:
+            QMessageBox.warning(self, "Data Error", "Input data needs to be of shape PxP (square matrix) or PxPxN (multiple square matrices).")
             self.data.graph_data = None
             return
 
@@ -3868,6 +3870,9 @@ class App(QMainWindow):
 
         self.plotGraphMatrix()
         self.onGraphCombobox()
+
+        self.addOptionButton.setEnabled(True)
+        return
 
     def saveGraphFile(self):
         if self.data.graph_data is None:
@@ -3920,43 +3925,50 @@ class App(QMainWindow):
             QMessageBox.warning(self, "Output Error", "No dFC data available.")
             return
 
-        if len(self.data.dfc_data.shape) == 3:
-            self.data.graph_data = self.data.dfc_data[:,:,self.sliderValueForGraph]
-        elif len(self.data.dfc_data.shape) == 2:
+        if np.ndim(self.data.dfc_data) == 3:
+            self.data.graph_data = self.data.dfc_data[:,:,self.currentGraphSliderValue]
+        elif np.ndim(self.data.dfc_data) == 2:
             self.data.graph_data = self.data.dfc_data
         else:
             QMessageBox.warning(self, "Output Error", "FC data seems to have the wrong shape.")
             return
 
-        self.data.graph_raw = self.data.graph_data
+        self.data.graph_raw = self.data.graph_data.copy()
 
-        self.graphFileNameLabel.setText(f"Used current dFC data with shape {self.data.graph_data.shape}")
-        self.data.graph_file = f"dfC from {self.data.file_name} at t={self.sliderValueForGraph}"
+        self.graphFileNameLabel.setText(f"Used single dFC estimate with shape {self.data.graph_data.shape}")
+        self.data.graph_file = f"dfC from {self.data.file_name} at t={self.currentGraphSliderValue}"
         self.plotGraphMatrix()
         self.onGraphCombobox()
+
+        self.addOptionButton.setEnabled(True)
+        
+        return
 
     def takeAllData(self):
         if self.data.dfc_data is None:
             QMessageBox.warning(self, "Output Error", "No dFC data available.")
             return
-
-        if len(self.data.dfc_data.shape) == 3:
-            self.data.graph_data = self.data.dfc_data[:,:,self.sliderValueForGraph]
-        elif len(self.data.dfc_data.shape) == 2:
-            self.data.graph_data = self.data.dfc_data
         else:
-            QMessageBox.warning(self, "Output Error", "FC data seems to have the wrong shape.")
+            self.data.graph_data = self.data.dfc_data
+            self.data.graph_raw = self.data.graph_data.copy()
+
+            self.graphFileNameLabel.setText(f"Used dFC estimates with shape {self.data.graph_data.shape}")
+            self.data.graph_file = f"dfC from {self.data.file_name}"
+            
+            total_length = self.data.graph_data.shape[2] if np.ndim(self.data.graph_data) == 3 else 0
+            position_text = f"t = {self.graphSlider.value()} / {total_length-1}" if len(self.data.graph_data.shape) == 3 else " static "
+            self.graphPositionLabel.setText(position_text)
+            
+            self.plotGraphMatrix()
+            self.onGraphCombobox()
+
+            self.addOptionButton.setEnabled(True)
+            
             return
-
-        self.data.graph_raw = self.data.graph_data
-
-        self.graphFileNameLabel.setText(f"Used current dFC data with shape {self.data.graph_data.shape}")
-        self.data.graph_file = f"dfC from {self.data.file_name}"
-        self.plotGraphMatrix()
-        self.onGraphCombobox()
 
     def onGraphCombobox(self):
         self.setGraphParameters()
+        return
 
     def updateGraphComboBox(self):
         def shouldIncludeFunc(funcName):
@@ -4023,7 +4035,13 @@ class App(QMainWindow):
         graph_params.update({k: v for k, v in params.items() if k != first_param})
 
         # Calculate graph measure
-        graph_data = func(**graph_params)
+        if np.ndim(self.data.graph_data) == 3:
+            graph_data = []
+            for estimate in range(self.data.graph_data.shape[2]):
+                graph_params[first_param] = self.data.graph_data[:, :, estimate]
+                graph_data.append(func(**graph_params))
+        else:
+            graph_data = func(**graph_params)
 
         return f'graph_{option.split()[0].lower()}', graph_data, option_name, graph_params
 
@@ -4035,7 +4053,7 @@ class App(QMainWindow):
 
         # Update self.data.graph_data or self.data.graph_out based on the result
         if output == 'graph_prep':
-            self.data.graph_data = data
+            self.data.graph_data = np.asarray(data).T
             self.plotGraphMatrix()
         else:
             self.data.graph_out = data
@@ -4263,30 +4281,41 @@ class App(QMainWindow):
             self.plotLogo(self.matrixFigure)
             self.matrixCanvas.draw()
             self.graphSlider.hide()
+            self.graphNavButtonContainer.hide()
 
             QMessageBox.warning(self, "No calculated data available for plotting")
             return
+
+        # Enable/disable slider
+        if np.ndim(current_data) == 3:
+            current_data = current_data[:, :, self.currentGraphSliderValue]
+            self.graphSlider.setRange(0, self.data.graph_data.shape[2] - 1)
+            self.graphSlider.setValue(self.currentGraphSliderValue)
+            self.graphSlider.show()
+            self.graphNavButtonContainer.show()
+        else:
+            self.graphSlider.setValue(0)
+            self.graphSlider.hide()
+            self.graphNavButtonContainer.hide()
         
         self.matrixFigure.clear()
         ax = self.matrixFigure.add_subplot(111)
 
         vmax = np.max(np.abs(current_data))
-        self.im = ax.imshow(current_data, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+        self.graph_im = ax.imshow(current_data, cmap='coolwarm', vmin=-vmax, vmax=vmax)
         ax.set_xlabel("ROI")
         ax.set_ylabel("ROI")
 
         # Create the colorbar
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.15)
-        cbar = self.matrixFigure.colorbar(self.im, cax=cax)
+        cbar = self.matrixFigure.colorbar(self.graph_im, cax=cax)
         cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
 
         self.matrixFigure.set_facecolor('#f3f1f5')
         self.matrixFigure.tight_layout()
         self.matrixCanvas.draw()
-
-        self.graphSlider.show()
-
+        
     def plotGraphMeasure(self, measure):
         self.graphFigure.clear()
         ax = self.graphFigure.add_subplot(111)
@@ -4400,60 +4429,51 @@ class App(QMainWindow):
 
         if self.data.graph_data is None:
             self.plotLogo(self.graphFigure)
-            self.graphCanvas.draw()
-            self.graphBackLargeButton.hide()
-            self.graphBackButton.hide()
-            self.graphForwardButton.hide()
-            self.graphForwardLargeButton.hide()
+            self.matrixCanvas.draw()
             self.graphSlider.hide()
-            position_text = ""
+            self.graphNavButtonContainer.hide()
+            self.graphPositionLabel.setText("")
             return
 
-        if self.currentTabIndex == 0:
-            pass
+        if self.currentGraphTabIndex == 0:
+            self.graphSlider.show()
+            self.graphNavButtonContainer.show()
 
-        elif self.currentTabIndex == 1:
-           pass
-        
         else:
-            QMessageBox.warning(self, "Error", "Invalid tab index, this should not happen.")
+            self.graphSlider.hide()
+            self.graphNavButtonContainer.hide()
 
-        self.graphPositionLabel.setText(position_text)
-        self.update()
+        return
 
     def onGraphSliderValueChanged(self, value):
         # Ensure there is data to work with
         if self.data.graph_data is None:
             return
 
-        if self.currentGraphTabIndex == 0 or self.currentGraphTabIndex == 2:
+        if self.currentGraphTabIndex == 0:
             # Get and update the data of the imshow object
             self.currentGraphSliderValue = value
-            data = self.data.graph_data
-            
-            self.im.set_data(data[:, :, value]) if len(data.shape) == 3 else self.im.set_data(data)
+            self.graph_im.set_data(self.data.graph_data[:, :, value]) if np.ndim(self.data.graph_data) == 3 else self.graph_im.set_data(self.data.graph_data)
 
-            vlim = np.max(np.abs(data[:, :, value])) if len(data.shape) == 3 else np.max(np.abs(data))
-            self.im.set_clim(-vlim, vlim)
+            vlim = np.max(np.abs(self.data.graph_data[:, :, value])) if np.ndim(self.data.graph_data) == 3 else np.max(np.abs(self.data.graph_data))
+            self.graph_im.set_clim(-vlim, vlim)
 
             # Redraw the canvas
-            #self.connectivityCanvas.draw()
-            #self.plotDistribution()
+            self.matrixCanvas.draw()
 
-            total_length = self.data.dfc_data.shape[2] if len(self.data.dfc_data.shape) == 3 else 0
+            total_length = self.data.graph_data.shape[2] if len(self.data.graph_data.shape) == 3 else 0
 
             if self.data.dfc_states is None:
-                position_text = f"t = {self.sliderValueForGraph} / {total_length-1}" if len(self.data.dfc_data.shape) == 3 else " static "
+                position_text = f"t = {self.currentGraphSliderValue} / {total_length-1}" if np.ndim(self.data.graph_data) == 3 else " static "
             else:
-                position_text = f"State {self.sliderValueForGraph}"
+                position_text = f"State {self.currentGraphSliderValue}"
             
-            self.positionLabel.setText(position_text)
-
-        if self.currentTabIndex == 1:
-            self.currentGraphSliderValue = value
-            position_text = f"Subject {self.currentGraphSliderValue}"
             self.graphPositionLabel.setText(position_text)
-            #self.plotTimeSeries()
+
+        else:
+            pass
+        
+        return
 
     def onGraphSliderButtonClicked(self):
         button = self.sender()
@@ -4474,6 +4494,8 @@ class App(QMainWindow):
         self.currentGraphSliderValue = max(0, min(self.graphSlider.value() + delta, self.graphSlider.maximum()))
         self.graphSlider.setValue(self.currentGraphSliderValue)
         self.graphSlider.update()
+
+        return
 
 
     """
