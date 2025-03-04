@@ -1308,6 +1308,12 @@ class App(QMainWindow):
         self.calculatingLabel = QLabel('No data calculated yet.')
         leftLayout.addWidget(self.calculatingLabel)
 
+        # Disable buttons
+        self.calculateConnectivityButton.setEnabled(False)
+        self.saveConnectivityButton.setEnabled(False)
+        self.keepInMemoryCheckbox.setEnabled(False)
+        self.clearMemoryButton.setEnabled(False)
+
         return
 
     def addConnectivityPlotLayout(self, rightLayout):
@@ -1433,24 +1439,43 @@ class App(QMainWindow):
         buttonsLayout.addWidget(self.loadGraphFileButton, 1)
         self.loadGraphFileButton.clicked.connect(self.loadGraphFile)
 
-        self.graphTakeCurrentButton = QPushButton('Use single connectivity estimate')
-        self.graphTakeCurrentButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        buttonsLayout.addWidget(self.graphTakeCurrentButton, 2)
-        self.graphTakeCurrentButton.clicked.connect(self.takeCurrentData)
-        self.graphTakeCurrentButton.setEnabled(False)
-
-        self.graphTakeAllButton = QPushButton('Use all connectivity estimates')
-        self.graphTakeAllButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        buttonsLayout.addWidget(self.graphTakeAllButton, 2)
-        self.graphTakeAllButton.clicked.connect(self.takeAllData)
-        self.graphTakeAllButton.setEnabled(False)
-
-        self.graphFileNameLabel = QLabel('No data available')
+        self.graphFileNameLabel = QLabel('No data available.')
         self.graphStepCounter = 1
 
         leftLayout.addLayout(buttonsLayout)
         leftLayout.addWidget(self.graphFileNameLabel)
         leftLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+
+        self.selectionContainer = QGroupBox("Select connectivity estimates:")
+        selectionLayout = QHBoxLayout()
+
+        self.graphUseAllCheckbox = QCheckBox("All")
+        self.graphUseAllCheckbox.clicked.connect(self.handleGraphCheckboxes)
+        self.graphUseSingleCheckbox = QCheckBox("Current (as plotted)")
+        self.graphUseSingleCheckbox.clicked.connect(self.handleGraphCheckboxes)
+        self.graphUseCustomCheckbox = QCheckBox("Custom:")
+        self.graphUseCustomCheckbox.clicked.connect(self.handleGraphCheckboxes)
+        self.graphUseSpecificTextbox = QLineEdit()
+        self.graphUseSpecificTextbox.setPlaceholderText("e.g.: 10:50:2, 100, 200")
+        self.graphUsePushButton = QPushButton("  Apply  ")
+        self.graphUsePushButton.clicked.connect(self.onGraphAmountSelected)
+
+        selectionLayout.addWidget(self.graphUseAllCheckbox)
+        selectionLayout.addItem(QSpacerItem(7, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        selectionLayout.addWidget(self.graphUseSingleCheckbox)
+        selectionLayout.addItem(QSpacerItem(7, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        selectionLayout.addWidget(self.graphUseCustomCheckbox)
+        selectionLayout.addItem(QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        selectionLayout.addWidget(self.graphUseSpecificTextbox)
+        selectionLayout.addItem(QSpacerItem(7, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        selectionLayout.addWidget(self.graphUsePushButton)
+
+        self.selectionContainer.setLayout(selectionLayout)
+        leftLayout.addWidget(self.selectionContainer)
+        leftLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        
+        self.graphUseAllCheckbox.setChecked(True)
+        self.graphUsePushButton.setEnabled(False)
 
         # Graph analysis container
         self.graphContainer = QGroupBox("Graph analysis options")
@@ -1533,9 +1558,10 @@ class App(QMainWindow):
         graphContainerLayout.addWidget(self.optionsTextbox)
 
         # Save button
-        saveButton = QPushButton('Save')
-        graphContainerLayout.addWidget(saveButton)
-        saveButton.clicked.connect(self.saveGraphFile)
+        self.graphSaveButton = QPushButton('Save')
+        graphContainerLayout.addWidget(self.graphSaveButton)
+        self.graphSaveButton.clicked.connect(self.saveGraphFile)
+        self.graphSaveButton.setEnabled(False)
 
         self.graphStepContainer.setLayout(graphContainerLayout)
         leftLayout.addWidget(self.graphStepContainer)
@@ -1956,6 +1982,12 @@ class App(QMainWindow):
             
             self.processingResultsLabel.setText(f"Time series data with shape {fshape} is ready for connectivity analysis.")
             self.saveTimeSeriesButton.show()
+
+        # Enable connectivity buttions
+        self.calculateConnectivityButton.setEnabled(True)
+        self.saveConnectivityButton.setEnabled(True)
+        self.keepInMemoryCheckbox.setEnabled(True)
+        self.clearMemoryButton.setEnabled(True)
 
         return
 
@@ -3199,9 +3231,9 @@ class App(QMainWindow):
         # Update the sliders and text
         if self.data.dfc_data is not None:
             if self.data.dfc_states is not None:
-                self.calculatingLabel.setText(f"Calculated {self.data.dfc_name} with for {self.data.dfc_state_tc.shape[1]} subjects and {self.data.dfc_states.shape[0]} states")
+                self.calculatingLabel.setText(f"Calculated {self.data.dfc_name} with for {self.data.dfc_state_tc.shape[1]} subjects and {self.data.dfc_states.shape[0]} states.")
             else:
-                self.calculatingLabel.setText(f"Calculated {self.data.dfc_name} with shape {self.data.dfc_data.shape}")
+                self.calculatingLabel.setText(f"Calculated {self.data.dfc_name} with shape {self.data.dfc_data.shape}.")
 
             if len(self.data.dfc_data.shape) == 3:
                 self.slider.show()
@@ -3231,11 +3263,28 @@ class App(QMainWindow):
         self.plotTimeSeries()
 
         self.calculateConnectivityButton.setEnabled(True)
-        self.graphTakeCurrentButton.setEnabled(True)
-        self.graphTakeAllButton.setEnabled(True)
-
         self.onTabChanged()
+
+        # Init the graph tab
+        self.data.graph_data = self.data.dfc_data.copy()
+        self.data.graph_raw  = self.data.dfc_data.copy()
+
+        self.graphFileNameLabel.setText(f"Using connectivity data with shape {self.data.graph_data.shape}")
+
+        total_length = self.data.graph_data.shape[2] if np.ndim(self.data.graph_data) == 3 else 0
+        position_text = f"t = {self.graphSlider.value()} / {total_length-1}" if len(self.data.graph_data.shape) == 3 else " static "
+        self.graphPositionLabel.setText(position_text)
+        self.currentGraphOption = None
+        
+        self.plotGraphMatrix()
+        self.onGraphCombobox()
+        self.addOptionButton.setEnabled(True)
+        self.graphUsePushButton.setEnabled(True)
+
+        # Update the GUI
         self.update()
+
+        return
 
     def handleConnectivityError(self, error):
         # Handles errors in the worker thread
@@ -3479,9 +3528,6 @@ class App(QMainWindow):
 
         self.calculatingLabel.setText(f"Cleared memory")
 
-        self.graphTakeCurrentButton.setEnabled(False)
-        self.graphTakeAllButton.setEnabled(False)
-
         return
 
     # Plotting
@@ -3667,7 +3713,7 @@ class App(QMainWindow):
         # index 1: Time series plot
         # index 2: Distribution plot
         self.currentTabIndex = self.tabWidget.currentIndex()
-            
+
         # No dFC data: reset everything and return
         if self.data.dfc_data is None:
             self.plotLogo(self.connectivityFigure)
@@ -3684,7 +3730,7 @@ class App(QMainWindow):
             return
         
         # Static or edge FC: hide slider/roi widgets and return
-        elif np.ndim(self.data.dfc_data.shape) == 2:
+        elif np.ndim(self.data.dfc_data) == 2:
             self.slider.hide()
             self.navButtonContainer.hide()
             self.roiSelectorWidget.hide()
@@ -3757,6 +3803,7 @@ class App(QMainWindow):
         if self.data.dfc_data is None or self.im is None:
             return
 
+        position_text = ""
         # Tab 0 or 2: Connectivity or distribution plot
         if self.currentTabIndex == 0 or self.currentTabIndex == 2:
             
@@ -3865,7 +3912,7 @@ class App(QMainWindow):
             self.data.graph_data = None
             return
 
-        self.data.graph_raw = self.data.graph_data
+        self.data.graph_raw = self.data.graph_data.copy()
         self.graphFileNameLabel.setText(f"Loaded {self.data.graph_file} with shape {self.data.graph_data.shape}")
 
         total_length = self.data.graph_data.shape[2] if np.ndim(self.data.graph_data) == 3 else 0
@@ -3877,6 +3924,7 @@ class App(QMainWindow):
         self.onGraphCombobox()
 
         self.addOptionButton.setEnabled(True)
+        self.graphUsePushButton.setEnabled(True)
 
         return
 
@@ -3926,54 +3974,6 @@ class App(QMainWindow):
 
             return
 
-    def takeCurrentData(self):
-        if self.data.dfc_data is None:
-            QMessageBox.warning(self, "Output Error", "No dFC data available.")
-            return
-
-        if np.ndim(self.data.dfc_data) == 3:
-            self.data.graph_data = self.data.dfc_data[:,:,self.graphSlider.value()]
-        elif np.ndim(self.data.dfc_data) == 2:
-            self.data.graph_data = self.data.dfc_data
-        else:
-            QMessageBox.warning(self, "Output Error", "FC data seems to have the wrong shape.")
-            return
-
-        self.data.graph_raw = self.data.graph_data.copy()
-
-        self.graphFileNameLabel.setText(f"Used single dFC estimate with shape {self.data.graph_data.shape}")
-        self.data.graph_file = f"dfC from {self.data.file_name} at t={self.graphSlider.value()}"
-        self.plotGraphMatrix()
-        self.onGraphCombobox()
-
-        self.addOptionButton.setEnabled(True)
-        self.currentGraphOption = None
-        
-        return
-
-    def takeAllData(self):
-        if self.data.dfc_data is None:
-            QMessageBox.warning(self, "Output Error", "No dFC data available.")
-            return
-        else:
-            self.data.graph_data = self.data.dfc_data
-            self.data.graph_raw = self.data.graph_data.copy()
-
-            self.graphFileNameLabel.setText(f"Used dFC estimates with shape {self.data.graph_data.shape}")
-            self.data.graph_file = f"dfC from {self.data.file_name}"
-            
-            total_length = self.data.graph_data.shape[2] if np.ndim(self.data.graph_data) == 3 else 0
-            position_text = f"t = {self.graphSlider.value()} / {total_length-1}" if len(self.data.graph_data.shape) == 3 else " static "
-            self.graphPositionLabel.setText(position_text)
-            
-            self.plotGraphMatrix()
-            self.onGraphCombobox()
-
-            self.addOptionButton.setEnabled(True)
-            self.currentGraphOption = None
-            
-            return
-
     def onGraphCombobox(self):
         self.setGraphParameters()
         return
@@ -4009,6 +4009,58 @@ class App(QMainWindow):
         # Trigger the onGraphCombobox for the initial setup if there are any options
         if filtered_options:
             self.onGraphCombobox()
+
+        return
+
+    def handleGraphCheckboxes(self):
+        # Make sure at most one checkbox is checked
+        sender = self.sender()
+        if sender.isChecked():
+            for cb in (self.graphUseAllCheckbox, self.graphUseSingleCheckbox, self.graphUseCustomCheckbox):
+                if cb is not sender:
+                    cb.setChecked(False)
+
+    def onGraphAmountSelected(self):
+        # Handle the graph slice selection
+        if not isinstance(self.data.graph_raw, np.ndarray):
+            return
+
+        if self.graphUseAllCheckbox.isChecked():
+            selectedIndices = slice(None)
+ 
+        elif self.graphUseSingleCheckbox.isChecked():
+            selectedIndices = self.graphSlider.value()
+
+        elif self.graphUseCustomCheckbox.isChecked():
+            inds = []
+            for t in self.graphUseSpecificTextbox.text().split(','):
+                t = t.strip()
+                if t:
+                    if '-' in t or ':' in t:
+                        sep = '-' if '-' in t else ':'
+                        a, b, c = map(int, t.split(sep))
+                        inds += list(np.arange(a, b + 1, c))
+                    else:
+                        inds.append(int(t))
+            selectedIndices = inds if inds else slice(None)
+
+        # Subset the data
+        self.data.graph_data = self.data.graph_raw[:, :, selectedIndices]
+        
+        self.graphFileNameLabel.setText(f"Used dFC estimates with shape {self.data.graph_data.shape}")
+        self.data.graph_file = f"dfC from {self.data.file_name}"
+        
+        total_length = self.data.graph_data.shape[2] if np.ndim(self.data.graph_data) == 3 else 0
+        position_text = f"t = {self.graphSlider.value()} / {total_length-1}" if len(self.data.graph_data.shape) == 3 else " static "
+        self.graphPositionLabel.setText(position_text)
+        
+        self.plotGraphMatrix()
+        self.onGraphCombobox()
+
+        self.addOptionButton.setEnabled(True)
+        self.currentGraphOption = None
+        
+        self.update()
 
         return
 
@@ -4280,6 +4332,7 @@ class App(QMainWindow):
         self.graphStepCounter = 0
         self.clearAllButton.setEnabled(False)
         self.clearPreviousButton.setEnabled(False)
+        self.graphSaveButton.setEnabled(False)
 
     def onClearPreviousGraphOption(self):
         self.data.graph_data = self.data.graph_raw
@@ -4287,6 +4340,11 @@ class App(QMainWindow):
         self.optionsTextbox.clear()
         self.graphTextbox.clear()
         self.graphStepCounter = max(0, self.graphStepCounter - 1)
+
+        if self.graphStepCounter == 0:
+            self.clearPreviousButton.setEnabled(False)
+            self.clearAllButton.setEnabled(False)
+            self.graphSaveButton.setEnabled(False)
 
     # Plotting
     def plotGraphMatrix(self):
