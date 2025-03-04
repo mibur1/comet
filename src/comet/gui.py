@@ -1446,7 +1446,7 @@ class App(QMainWindow):
         leftLayout.addWidget(self.graphFileNameLabel)
         leftLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
-        self.selectionContainer = QGroupBox("Select connectivity estimates:")
+        self.selectionContainer = QGroupBox("Select connectivity estimates")
         selectionLayout = QHBoxLayout()
 
         self.graphUseAllCheckbox = QCheckBox("All")
@@ -1545,7 +1545,7 @@ class App(QMainWindow):
 
         graphContainerLayout.addLayout(buttonsLayout)
         self.graphContainer.setLayout(graphContainerLayout)
-        leftLayout.addWidget(self.graphContainer)
+        leftLayout.addWidget(self.graphContainer, 3)
 
         # Step container
         leftLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
@@ -1553,18 +1553,28 @@ class App(QMainWindow):
         self.graphStepContainer = QGroupBox("List of performed steps")
         graphContainerLayout = QVBoxLayout()
 
+        processingLabel = QLabel("Processing:")
+        graphContainerLayout.addWidget(processingLabel)
+
         self.optionsTextbox = QTextEdit()
         self.optionsTextbox.setReadOnly(True)
-        graphContainerLayout.addWidget(self.optionsTextbox)
+        graphContainerLayout.addWidget(self.optionsTextbox, 2)
+
+        measureLabel = QLabel("Graph measures:")
+        graphContainerLayout.addWidget(measureLabel)
+
+        self.measureTextbox = QTextEdit()
+        self.measureTextbox.setReadOnly(True)
+        graphContainerLayout.addWidget(self.measureTextbox, 1)
+
+        self.graphStepContainer.setLayout(graphContainerLayout)
+        leftLayout.addWidget(self.graphStepContainer, 4)
 
         # Save button
         self.graphSaveButton = QPushButton('Save')
-        graphContainerLayout.addWidget(self.graphSaveButton)
+        leftLayout.addWidget(self.graphSaveButton)
         self.graphSaveButton.clicked.connect(self.saveGraphFile)
         self.graphSaveButton.setEnabled(False)
-
-        self.graphStepContainer.setLayout(graphContainerLayout)
-        leftLayout.addWidget(self.graphStepContainer)
 
         return
 
@@ -1607,7 +1617,7 @@ class App(QMainWindow):
         self.graphTextbox.setReadOnly(True)
 
         # Add the plot widget and the textbox to the measure layout
-        measureLayout.addWidget(plotWidget, 2)
+        measureLayout.addWidget(plotWidget, 4)
         measureLayout.addWidget(self.graphTextbox, 1)
         self.graphTabWidget.addTab(measureTab, "Graph Measure")
 
@@ -4031,7 +4041,7 @@ class App(QMainWindow):
         elif self.graphUseSingleCheckbox.isChecked():
             selectedIndices = self.graphSlider.value()
 
-        elif self.graphUseCustomCheckbox.isChecked():
+        else:
             inds = []
             for t in self.graphUseSpecificTextbox.text().split(','):
                 t = t.strip()
@@ -4043,30 +4053,51 @@ class App(QMainWindow):
                     else:
                         inds.append(int(t))
             selectedIndices = inds if inds else slice(None)
-
+            
         # Subset the data
         self.data.graph_data = self.data.graph_raw[:, :, selectedIndices]
         
+        # Set labels
         self.graphFileNameLabel.setText(f"Used dFC estimates with shape {self.data.graph_data.shape}")
         self.data.graph_file = f"dfC from {self.data.file_name}"
         
         total_length = self.data.graph_data.shape[2] if np.ndim(self.data.graph_data) == 3 else 0
-        position_text = f"t = {self.graphSlider.value()} / {total_length-1}" if len(self.data.graph_data.shape) == 3 else " static "
+        position_text = f"t = {self.graphSlider.value()} / {total_length-1}" if len(self.data.graph_data.shape) == 3 else " "
         self.graphPositionLabel.setText(position_text)
         
+        # Perform all plotting and GUI operations
         self.plotGraphMatrix()
         self.onGraphCombobox()
 
+        self.optionsTextbox.clear()
+        self.measureTextbox.clear()
+        self.graphTextbox.clear()
+        self.graphStepCounter = 1
+        self.clearAllButton.setEnabled(False)
+        self.clearPreviousButton.setEnabled(False)
+        self.graphSaveButton.setEnabled(False)
+
+        self.graphFigure.clear()
+        self.graphCanvas.draw()
+
         self.addOptionButton.setEnabled(True)
         self.currentGraphOption = None
-        
-        self.update()
 
+        if np.ndim(self.data.graph_data) == 3:
+            self.graphSlider.setMaximum(self.data.graph_data.shape[2] - 1)
+            self.graphSlider.setValue(min(self.graphSlider.value(), self.data.graph_data.shape[2] - 1))
+        
         return
 
     # Calculations
     def calculateGraph(self):
-    # Start worker thread for graph calculations
+        self.graphUsePushButton.setEnabled(False)
+        self.addOptionButton.setEnabled(False)
+        self.clearPreviousButton.setEnabled(False)
+        self.clearAllButton.setEnabled(False)
+        self.graphSaveButton.setEnabled(False)
+        
+        # Start worker thread for graph calculations
         self.graphThread = QThread()
         self.graphWorker = Worker(self.calculateGraphThread, {})
         self.graphWorker.moveToThread(self.graphThread)
@@ -4088,7 +4119,11 @@ class App(QMainWindow):
         func = getattr(graph, func_name)
 
         option_name = re.sub(r'^\S+\s+', '', option) # regex to remove the PREP/GRAPH part
-        self.optionsTextbox.append(f"{self.graphStepCounter}. {option_name}: calculating, please wait...")
+
+        if option.split()[0].lower() == 'prep':
+            self.optionsTextbox.append(f"Calculating {option_name.lower()}, please wait...")
+        else:
+            self.measureTextbox.append(f"Calculating {option_name.lower()}, please wait...")
 
         first_param = next(iter(params))
         graph_params = {first_param: self.data.graph_data}
@@ -4115,42 +4150,69 @@ class App(QMainWindow):
         if output == 'graph_prep':
             self.data.graph_data = np.asarray(data).T
             self.plotGraphMatrix()
+
+            # Output step and options to textbox, remove unused parameters
+            if option == 'Threshold':
+                if params.get('type') == 'absolute':
+                    filtered_params = {k: v for k, v in params.items() if k != 'density'}
+                elif params.get('type') == 'density':
+                    filtered_params = {k: v for k, v in params.items() if k != 'threshold'}
+            else:
+                filtered_params = params
+
+            filtered_params = {k: v for k, v in list(filtered_params.items())[1:]}
+
+            for k, v in filtered_params.items():
+                if isinstance(v, np.ndarray) or isinstance(v, float):
+                    filtered_params[k] = f"{v:.2f}"
+
+            # Update the textbox with the current step and options
+            current_text = self.optionsTextbox.toPlainText()
+            lines = current_text.split('\n')
+
+            if len(filtered_params) > 0:
+                output_text = f"{self.graphStepCounter}. {option} {filtered_params}"
+            else:
+                output_text = f"{self.graphStepCounter}. {option}"
+            
+            if len(lines) > 1:
+                lines[-1] = output_text
+            else:
+                lines = [output_text]
+
+            updated_text = '\n'.join(lines)
+            self.optionsTextbox.setPlainText(updated_text)
+            
+            self.graphStepCounter += 1
+            self.currentGraphOption = option
+
         else:
             self.data.graph_out = data
             self.plotGraphMeasure(option)
 
-        # Output step and options to textbox, remove unused parameters
-        if option == 'Threshold':
-            if params.get('type') == 'absolute':
-                filtered_params = {k: v for k, v in params.items() if k != 'density'}
-            elif params.get('type') == 'density':
-                filtered_params = {k: v for k, v in params.items() if k != 'threshold'}
-        else:
-            filtered_params = params
+            current_text = self.measureTextbox.toPlainText()
+            lines = current_text.split('\n')
+            output_text = f"{option} (see 'Graph Measure' tab for the results)"
+            
+            if len(lines) > 1:
+                lines[-1] = output_text
+            else:
+                lines = [output_text]
 
-        filtered_params = {k: v for k, v in list(filtered_params.items())[1:]}
+            updated_text = '\n'.join(lines)
+            self.measureTextbox.setPlainText(updated_text)
+            self.currentGraphOption = option
 
-        # Update the textbox with the current step and options
-        current_text = self.optionsTextbox.toPlainText()
-        lines = current_text.split('\n')
-
-        if len(lines) > 1:
-            lines[-1] = f"{self.graphStepCounter}. {option}: {filtered_params}"
-        else:
-            lines = [f"{self.graphStepCounter}. {option}: {filtered_params}"]
-
-        updated_text = '\n'.join(lines)
-        self.optionsTextbox.setPlainText(updated_text)
-
-        self.graphStepCounter += 1
-        self.currentGraphOption = option
-
-        self.clearAllButton.setEnabled(True)
+        self.graphUsePushButton.setEnabled(True)
+        self.addOptionButton.setEnabled(True)
         self.clearPreviousButton.setEnabled(True)
+        self.clearAllButton.setEnabled(True)
+        self.graphSaveButton.setEnabled(True)
 
     def handleGraphError(self, error):
         # Handle errors in the worker thread
         self.optionsTextbox.clear()
+        self.measureTextbox.clear()
         QMessageBox.warning(self, "Calculation Error", f"Error calculating graph measure: {error}.")
 
         return
@@ -4209,8 +4271,8 @@ class App(QMainWindow):
                 if is_first_parameter:
                     param_widget = QLineEdit()
                     param_widget.setPlaceholderText("No data available")
-                    if self.data.graph_file:
-                        param_widget = QLineEdit("as shown in plot")
+                    if self.data.graph_file or self.data.graph_data is not None:
+                        param_widget = QLineEdit("As shown in plot")
                     param_widget.setReadOnly(True)  # Make the widget read-only
                     is_first_parameter = False  # Update the flag so this block runs only for the first parameter
                 else:
@@ -4327,9 +4389,13 @@ class App(QMainWindow):
         self.data.graph_data = self.data.graph_raw
         self.plotGraphMatrix()
         self.optionsTextbox.clear()
+        self.measureTextbox.clear()
         self.graphTextbox.clear()
 
-        self.graphStepCounter = 0
+        self.plotLogo(self.graphFigure)
+        self.graphCanvas.draw()
+
+        self.graphStepCounter = 1
         self.clearAllButton.setEnabled(False)
         self.clearPreviousButton.setEnabled(False)
         self.graphSaveButton.setEnabled(False)
@@ -4338,10 +4404,11 @@ class App(QMainWindow):
         self.data.graph_data = self.data.graph_raw
         self.plotGraphMatrix()
         self.optionsTextbox.clear()
+        self.measureTextbox.clear()
         self.graphTextbox.clear()
-        self.graphStepCounter = max(0, self.graphStepCounter - 1)
+        self.graphStepCounter = max(1, self.graphStepCounter - 1)
 
-        if self.graphStepCounter == 0:
+        if self.graphStepCounter == 1:
             self.clearPreviousButton.setEnabled(False)
             self.clearAllButton.setEnabled(False)
             self.graphSaveButton.setEnabled(False)
@@ -4361,7 +4428,7 @@ class App(QMainWindow):
 
         # Enable/disable slider
         if np.ndim(current_data) == 3:
-            current_data = current_data[:, :, self.graphSlider.value()]
+            current_data = current_data[:, :, min(self.data.graph_data.shape[2] - 1, self.graphSlider.value())]
             self.graphSlider.setRange(0, self.data.graph_data.shape[2] - 1)
             self.graphSlider.setValue(self.graphSlider.value())
             self.graphSlider.show()
@@ -4539,7 +4606,6 @@ class App(QMainWindow):
 
         # Measure plot
         if self.currentGraphOption:
-            print("Updating graph measure plot...")
             self.plotGraphMeasure(self.currentGraphOption)
 
         total_length = self.data.graph_data.shape[2] if len(self.data.graph_data.shape) == 3 else 0
