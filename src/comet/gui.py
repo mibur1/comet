@@ -537,6 +537,7 @@ class Data:
     graph_raw:     np.ndarray = field(default=None)         # raw input data for graph (dFC matrix)
     graph_data:    np.ndarray = field(default=None)         # working data for graph (while processing)
     graph_out:     Any = field(default=None)                # output graph measure data
+    graph_memory:  Dict       = field(default_factory=dict) # saved measures (for plotting and saving)
 
     # Multiverse variables
     multiverse_folder: str   = field(default=None)         # folder for multiverse analysis
@@ -1440,7 +1441,8 @@ class App(QMainWindow):
         self.loadGraphFileButton.clicked.connect(self.loadGraphFile)
 
         self.graphFileNameLabel = QLabel('No data available.')
-        self.graphStepCounter = 1
+        self.graphProcessingStepCounter = 1
+        self.graphMeasureStepCounter = 1
 
         leftLayout.addLayout(buttonsLayout)
         leftLayout.addWidget(self.graphFileNameLabel)
@@ -1528,20 +1530,15 @@ class App(QMainWindow):
 
         # Option add/clear buttons
         buttonsLayout = QHBoxLayout()
-        self.addOptionButton = QPushButton('Add current option')
+        self.addOptionButton = QPushButton('Add option')
         buttonsLayout.addWidget(self.addOptionButton, 2)
         self.addOptionButton.clicked.connect(self.calculateGraph)
 
-        self.clearPreviousButton = QPushButton('Clear previous')
-        buttonsLayout.addWidget(self.clearPreviousButton, 1)
-        self.clearPreviousButton.clicked.connect(self.onClearPreviousGraphOption)
-
-        self.clearAllButton = QPushButton('Clear all')
+        self.clearAllButton = QPushButton('Clear options')
         buttonsLayout.addWidget(self.clearAllButton, 1)
         self.clearAllButton.clicked.connect(self.onClearAllGraphOptions)
 
         self.addOptionButton.setEnabled(False)
-        self.clearPreviousButton.setEnabled(False)
         self.clearAllButton.setEnabled(False)
 
         graphContainerLayout.addLayout(buttonsLayout)
@@ -1552,22 +1549,26 @@ class App(QMainWindow):
         leftLayout.addItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
         self.graphStepContainer = QGroupBox("List of performed steps")
-        graphContainerLayout = QVBoxLayout()
+        graphContainerLayout = QHBoxLayout()
 
+        graphContainerLayoutBox1 = QVBoxLayout()
         processingLabel = QLabel("Processing:")
-        graphContainerLayout.addWidget(processingLabel)
+        graphContainerLayoutBox1.addWidget(processingLabel)
 
         self.optionsTextbox = QTextEdit()
         self.optionsTextbox.setReadOnly(True)
-        graphContainerLayout.addWidget(self.optionsTextbox, 2)
+        graphContainerLayoutBox1.addWidget(self.optionsTextbox)
 
+        graphContainerLayoutBox2 = QVBoxLayout()
         measureLabel = QLabel("Graph measures:")
-        graphContainerLayout.addWidget(measureLabel)
+        graphContainerLayoutBox2.addWidget(measureLabel)
 
         self.measureTextbox = QTextEdit()
         self.measureTextbox.setReadOnly(True)
-        graphContainerLayout.addWidget(self.measureTextbox, 1)
+        graphContainerLayoutBox2.addWidget(self.measureTextbox)
 
+        graphContainerLayout.addLayout(graphContainerLayoutBox1, 2)
+        graphContainerLayout.addLayout(graphContainerLayoutBox2, 1)
         self.graphStepContainer.setLayout(graphContainerLayout)
         leftLayout.addWidget(self.graphStepContainer, 4)
 
@@ -1595,12 +1596,24 @@ class App(QMainWindow):
         self.plotLogo(self.matrixFigure)
         self.matrixCanvas.draw()
 
-        self.graphTabWidget.addTab(matrixTab, "Adjacency Matrix")
+        self.graphTabWidget.addTab(matrixTab, "Processing")
 
         # Tab 2: Graph measures plot
         measureTab = QWidget()
         measureLayout = QVBoxLayout()
         measureTab.setLayout(measureLayout)
+
+        dropdownWidget = QWidget()
+        dropdownLayout = QHBoxLayout()
+        dropdownLayout.addWidget(QLabel("Available graph measures:"))
+        self.graphResultMeasureDropdown = QComboBox()
+        self.graphResultMeasureDropdown.currentIndexChanged.connect(self.onGraphResultMeasureSelected)
+        self.graphResultMeasureDropdown.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.graphResultMeasureDropdown.setPlaceholderText("No graph measure available")
+        dropdownLayout.addWidget(self.graphResultMeasureDropdown)
+        dropdownLayout.setContentsMargins(0, 0, 0, 0)
+        dropdownWidget.setLayout(dropdownLayout)
+        measureLayout.addWidget(dropdownWidget)
 
         # Widget for the plot
         plotWidget = QWidget()  # Create a widget to hold the plot
@@ -1620,7 +1633,7 @@ class App(QMainWindow):
         # Add the plot widget and the textbox to the measure layout
         measureLayout.addWidget(plotWidget, 4)
         measureLayout.addWidget(self.graphTextbox, 1)
-        self.graphTabWidget.addTab(measureTab, "Graph Measure")
+        self.graphTabWidget.addTab(measureTab, "Graph Measures")
 
         # Draw default plot (e.g., logo)
         self.plotLogo(self.graphFigure)
@@ -3921,6 +3934,14 @@ class App(QMainWindow):
         if self.data.graph_data.shape[0] != self.data.graph_data.shape[1]:
             QMessageBox.warning(self, "Data Error", "Input data needs to be of shape PxP (square matrix) or PxPxN (multiple square matrices).")
             self.data.graph_data = None
+            
+            self.plotLogo(self.matrixFigure)
+            self.matrixCanvas.draw()
+
+            self.plotLogo(self.graphFigure)
+            self.graphCanvas.draw()
+
+            self.graphFileNameLabel.setText(f"No data available.")
             return
 
         self.data.graph_raw = self.data.graph_data.copy()
@@ -4086,9 +4107,9 @@ class App(QMainWindow):
         self.optionsTextbox.clear()
         self.measureTextbox.clear()
         self.graphTextbox.clear()
-        self.graphStepCounter = 1
+        self.graphProcessingStepCounter = 1
+        self.graphMeasureStepCounter = 1
         self.clearAllButton.setEnabled(False)
-        self.clearPreviousButton.setEnabled(False)
         self.graphSaveButton.setEnabled(False)
 
         self.graphFigure.clear()
@@ -4107,7 +4128,6 @@ class App(QMainWindow):
     def calculateGraph(self):
         self.graphUsePushButton.setEnabled(False)
         self.addOptionButton.setEnabled(False)
-        self.clearPreviousButton.setEnabled(False)
         self.clearAllButton.setEnabled(False)
         self.graphSaveButton.setEnabled(False)
         
@@ -4185,9 +4205,9 @@ class App(QMainWindow):
             lines = current_text.split('\n')
 
             if len(filtered_params) > 0:
-                output_text = f"{self.graphStepCounter}. {option} {filtered_params}"
+                output_text = f"{self.graphProcessingStepCounter}. {option} {filtered_params}"
             else:
-                output_text = f"{self.graphStepCounter}. {option}"
+                output_text = f"{self.graphProcessingStepCounter}. {option}"
             
             if len(lines) > 1:
                 lines[-1] = output_text
@@ -4197,16 +4217,17 @@ class App(QMainWindow):
             updated_text = '\n'.join(lines)
             self.optionsTextbox.setPlainText(updated_text)
             
-            self.graphStepCounter += 1
+            self.graphProcessingStepCounter += 1
             self.currentGraphOption = option
 
+        # Graph measure
         else:
             self.data.graph_out = data
             self.plotGraphMeasure(option)
 
             current_text = self.measureTextbox.toPlainText()
             lines = current_text.split('\n')
-            output_text = f"{option} (see 'Graph Measure' tab for the results)"
+            output_text = f"{self.graphMeasureStepCounter}. {option}"   
             
             if len(lines) > 1:
                 lines[-1] = output_text
@@ -4216,10 +4237,20 @@ class App(QMainWindow):
             updated_text = '\n'.join(lines)
             self.measureTextbox.setPlainText(updated_text)
             self.currentGraphOption = option
+            self.graphMeasureStepCounter += 1
+
+            # Add result to memory for easy switching in the plot dropown
+            self.data.graph_memory[option] = self.data.graph_out
+
+            if self.graphResultMeasureDropdown.findText(option) == -1:
+                self.graphResultMeasureDropdown.addItem(option)
+                
+            index = self.graphResultMeasureDropdown.findText(option)
+            self.graphResultMeasureDropdown.setCurrentIndex(index)
+            
 
         self.graphUsePushButton.setEnabled(True)
         self.addOptionButton.setEnabled(True)
-        self.clearPreviousButton.setEnabled(True)
         self.clearAllButton.setEnabled(True)
         self.graphSaveButton.setEnabled(True)
 
@@ -4401,31 +4432,25 @@ class App(QMainWindow):
 
     def onClearAllGraphOptions(self):
         self.data.graph_data = self.data.graph_raw
+        self.data.graph_out = None
+        self.data.graph_memory = {}
+
         self.plotGraphMatrix()
         self.optionsTextbox.clear()
         self.measureTextbox.clear()
         self.graphTextbox.clear()
+        self.graphResultMeasureDropdown.clear()
+        self.graphResultMeasureDropdown.setCurrentIndex(-1)
+        self.graphResultMeasureDropdown.setPlaceholderText("No graph measure calculated yet")
+
 
         self.plotLogo(self.graphFigure)
         self.graphCanvas.draw()
 
-        self.graphStepCounter = 1
+        self.graphProcessingStepCounter = 1
+        self.graphMeasureStepCounter = 1
         self.clearAllButton.setEnabled(False)
-        self.clearPreviousButton.setEnabled(False)
         self.graphSaveButton.setEnabled(False)
-
-    def onClearPreviousGraphOption(self):
-        self.data.graph_data = self.data.graph_raw
-        self.plotGraphMatrix()
-        self.optionsTextbox.clear()
-        self.measureTextbox.clear()
-        self.graphTextbox.clear()
-        self.graphStepCounter = max(1, self.graphStepCounter - 1)
-
-        if self.graphStepCounter == 1:
-            self.clearPreviousButton.setEnabled(False)
-            self.clearAllButton.setEnabled(False)
-            self.graphSaveButton.setEnabled(False)
 
     # Plotting
     def plotGraphMatrix(self):
@@ -4598,6 +4623,9 @@ class App(QMainWindow):
             else:
                 self.graphTextbox.setText("3D graph data not currently supported for plotting.")  
         
+        elif plot_data == None:
+            pass
+        
         else:
             self.graphTextbox.append("Graph output data is not in expected format.")
 
@@ -4606,6 +4634,15 @@ class App(QMainWindow):
         self.graphFigure.tight_layout()
         self.graphCanvas.draw()
 
+        return
+
+    def onGraphResultMeasureSelected(self):
+        # Update the graph measure plot based on the selected measure in the dropdown
+        key = self.graphResultMeasureDropdown.currentText()
+        if key in self.data.graph_memory:
+            self.data.graph_out = self.data.graph_memory[key]
+            self.plotGraphMeasure(key)
+        
         return
 
     def onGraphTabChanged(self):
