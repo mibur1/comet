@@ -1457,6 +1457,7 @@ class App(QMainWindow):
         self.graphUseCustomCheckbox.clicked.connect(self.handleGraphCheckboxes)
         self.graphUseSpecificTextbox = QLineEdit()
         self.graphUseSpecificTextbox.setPlaceholderText("e.g.: 10:50:2, 100, 200")
+        self.graphUseSpecificTextbox.setEnabled(False)
         self.graphUsePushButton = QPushButton("  Apply  ")
         self.graphUsePushButton.clicked.connect(self.onGraphAmountSelected)
 
@@ -4030,6 +4031,11 @@ class App(QMainWindow):
                 if cb is not sender:
                     cb.setChecked(False)
 
+        if self.graphUseCustomCheckbox.isChecked():
+            self.graphUseSpecificTextbox.setEnabled(True)
+        else:
+            self.graphUseSpecificTextbox.setEnabled(False)
+
     def onGraphAmountSelected(self):
         # Handle the graph slice selection
         if not isinstance(self.data.graph_raw, np.ndarray):
@@ -4048,8 +4054,16 @@ class App(QMainWindow):
                 if t:
                     if '-' in t or ':' in t:
                         sep = '-' if '-' in t else ':'
-                        a, b, c = map(int, t.split(sep))
-                        inds += list(np.arange(a, b + 1, c))
+                        parts = t.split(sep)
+                        if len(parts) == 3:
+                            a, b, c = map(int, parts)
+                            # For three parts, include b by setting stop to b + (1 if c>0 else -1)
+                            inds += list(np.arange(a, b + (1 if c > 0 else -1), c))
+                        elif len(parts) == 2:
+                            a, b = map(int, parts)
+                            # Default step: 1 if a <= b else -1, and adjust stop accordingly
+                            step = 1 if a <= b else -1
+                            inds += list(np.arange(a, b + step, step))
                     else:
                         inds.append(int(t))
             selectedIndices = inds if inds else slice(None)
@@ -4058,7 +4072,7 @@ class App(QMainWindow):
         self.data.graph_data = self.data.graph_raw[:, :, selectedIndices]
         
         # Set labels
-        self.graphFileNameLabel.setText(f"Used dFC estimates with shape {self.data.graph_data.shape}")
+        self.graphFileNameLabel.setText(f"Using dFC estimates with shape {self.data.graph_data.shape}")
         self.data.graph_file = f"dfC from {self.data.file_name}"
         
         total_length = self.data.graph_data.shape[2] if np.ndim(self.data.graph_data) == 3 else 0
@@ -4459,11 +4473,7 @@ class App(QMainWindow):
     def plotGraphMeasure(self, measure):
         self.graphFigure.clear()
         ax = self.graphFigure.add_subplot(111)
-
-        if isinstance(self.data.graph_out, list):
-            plot_data = self.data.graph_out[self.graphSlider.value()]
-        else:
-            plot_data = self.data.graph_out
+        plot_data = self.data.graph_out
 
         # Check type of the graph output data
         if isinstance(plot_data, (np.ndarray, np.float64)):
@@ -4558,6 +4568,36 @@ class App(QMainWindow):
 
                     ax.set_title(label)
 
+        elif isinstance(plot_data, list):
+            if np.ndim(plot_data[0]) == 0:
+                # If graph_out is a single value (0D array)
+                im = ax.plot(plot_data)
+                ax.set_xlabel("t")
+                ax.set_ylabel(measure)
+                self.graphTextbox.setText(f"{measure}: {plot_data[self.graphSlider.value()]}")
+            elif np.ndim(plot_data[0]) == 1:
+                # For a 1D array, plot a vertical lollipop plot
+                ax.stem(plot_data[self.graphSlider.value()], linefmt="#19232d", markerfmt='o', basefmt=" ")
+                ax.set_xlabel("ROI")
+                ax.set_ylabel(measure)
+
+                # Calculate mean and std, and update the textbox
+                mean_val = np.mean(plot_data[self.graphSlider.value()])
+                std_val = np.std(plot_data[self.graphSlider.value()])
+                self.graphTextbox.setText(f"{measure} (mean: {mean_val:.2f}, std: {std_val:.2f})")
+
+            elif np.ndim(plot_data[0]) == 2:
+                # For a 2D array, use imshow
+                vmax = np.max(np.abs(plot_data[self.graphSlider.value()]))
+                im = ax.imshow(plot_data[self.graphSlider.value()], cmap='coolwarm', vmin=-vmax, vmax=vmax)
+
+                # Create the colorbar
+                divider = make_axes_locatable(ax)
+                cax = divider.append_axes("right", size="5%", pad=0.15)
+                self.graphFigure.colorbar(im, cax=cax).ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
+            else:
+                self.graphTextbox.setText("3D graph data not currently supported for plotting.")  
+        
         else:
             self.graphTextbox.append("Graph output data is not in expected format.")
 
