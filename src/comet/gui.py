@@ -536,8 +536,7 @@ class Data:
     graph_file:    str        = field(default=None)         # graph file name
     graph_raw:     np.ndarray = field(default=None)         # raw input data for graph (dFC matrix)
     graph_data:    np.ndarray = field(default=None)         # working data for graph (while processing)
-    graph_out:     Any = field(default=None)                # output graph measure data
-    graph_memory:  Dict       = field(default_factory=dict) # saved measures (for plotting and saving)
+    graph_results: Dict       = field(default_factory=dict) # calculated graph measures
 
     # Multiverse variables
     multiverse_folder: str   = field(default=None)         # folder for multiverse analysis
@@ -1534,7 +1533,7 @@ class App(QMainWindow):
         buttonsLayout.addWidget(self.addOptionButton, 2)
         self.addOptionButton.clicked.connect(self.calculateGraph)
 
-        self.clearAllButton = QPushButton('Clear options')
+        self.clearAllButton = QPushButton('Clear all')
         buttonsLayout.addWidget(self.clearAllButton, 1)
         self.clearAllButton.clicked.connect(self.onClearAllGraphOptions)
 
@@ -4180,7 +4179,7 @@ class App(QMainWindow):
         option = result[2]
         params = result[3]
 
-        # Update self.data.graph_data or self.data.graph_out based on the result
+        # Update self.data.graph_data based on the result
         if output == 'graph_prep':
             self.data.graph_data = np.asarray(data).T
             self.plotGraphMatrix()
@@ -4222,9 +4221,16 @@ class App(QMainWindow):
 
         # Graph measure
         else:
-            self.data.graph_out = data
-            self.plotGraphMeasure(option)
+            self.data.graph_results[option] = data
 
+            # Populate dropdown
+            if self.graphResultMeasureDropdown.findText(option) == -1:
+                self.graphResultMeasureDropdown.addItem(option)
+                
+            index = self.graphResultMeasureDropdown.findText(option)
+            self.graphResultMeasureDropdown.setCurrentIndex(index)
+
+            # Textbox stuff
             current_text = self.measureTextbox.toPlainText()
             lines = current_text.split('\n')
             output_text = f"{self.graphMeasureStepCounter}. {option}"   
@@ -4239,15 +4245,8 @@ class App(QMainWindow):
             self.currentGraphOption = option
             self.graphMeasureStepCounter += 1
 
-            # Add result to memory for easy switching in the plot dropown
-            self.data.graph_memory[option] = self.data.graph_out
-
-            if self.graphResultMeasureDropdown.findText(option) == -1:
-                self.graphResultMeasureDropdown.addItem(option)
-                
-            index = self.graphResultMeasureDropdown.findText(option)
-            self.graphResultMeasureDropdown.setCurrentIndex(index)
-            
+            # Plot the results
+            self.plotGraphMeasure(option)
 
         self.graphUsePushButton.setEnabled(True)
         self.addOptionButton.setEnabled(True)
@@ -4260,6 +4259,10 @@ class App(QMainWindow):
         self.measureTextbox.clear()
         QMessageBox.warning(self, "Calculation Error", f"Error calculating graph measure: {error}.")
 
+        self.graphUsePushButton.setEnabled(True)
+        self.addOptionButton.setEnabled(True)
+        self.clearAllButton.setEnabled(True)
+        self.graphSaveButton.setEnabled(True)
         return
 
     # Parameters
@@ -4432,16 +4435,18 @@ class App(QMainWindow):
 
     def onClearAllGraphOptions(self):
         self.data.graph_data = self.data.graph_raw
-        self.data.graph_out = None
-        self.data.graph_memory = {}
+        self.data.graph_results = {}
 
         self.plotGraphMatrix()
         self.optionsTextbox.clear()
         self.measureTextbox.clear()
         self.graphTextbox.clear()
+
         self.graphResultMeasureDropdown.clear()
         self.graphResultMeasureDropdown.setCurrentIndex(-1)
         self.graphResultMeasureDropdown.setPlaceholderText("No graph measure calculated yet")
+
+        self.graphAnalysisComboBox.setCurrentIndex(0)
 
 
         self.plotLogo(self.graphFigure)
@@ -4498,7 +4503,7 @@ class App(QMainWindow):
     def plotGraphMeasure(self, measure):
         self.graphFigure.clear()
         ax = self.graphFigure.add_subplot(111)
-        plot_data = self.data.graph_out
+        plot_data = self.data.graph_results[measure]
 
         # Check type of the graph output data
         if isinstance(plot_data, (np.ndarray, np.float64)):
@@ -4638,10 +4643,10 @@ class App(QMainWindow):
 
     def onGraphResultMeasureSelected(self):
         # Update the graph measure plot based on the selected measure in the dropdown
-        key = self.graphResultMeasureDropdown.currentText()
-        if key in self.data.graph_memory:
-            self.data.graph_out = self.data.graph_memory[key]
-            self.plotGraphMeasure(key)
+        self.currentGraphOption = self.graphResultMeasureDropdown.currentText()
+        
+        if self.currentGraphOption in self.data.graph_results:
+            self.plotGraphMeasure(self.currentGraphOption)
         
         return
 
