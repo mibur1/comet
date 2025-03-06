@@ -45,6 +45,10 @@ Whether you want to take full advantage of multiverse analysis or stick with tra
 From dFC estimation to graph analyses, Comet offers a wide range of methods. Plus, with an easy-to-use graphical user interface and comprehensive demo scripts, even the most Python-phobic among us can dive in and
 start exploring brain dynamics like never before. So, buckle up, and let's bring some cosmic clarity to your research universe!
 
+.. note::
+
+ The Comet toolbox is under active development. If you have any questions, suggestions, or want to contribute, please don't hesitate to reach out on GitHub or via email.
+
 
 Current features
 ----------------

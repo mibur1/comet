@@ -3298,6 +3298,7 @@ class App(QMainWindow):
         position_text = f"t = {self.graphSlider.value()} / {total_length-1}" if len(self.data.graph_data.shape) == 3 else " static "
         self.graphPositionLabel.setText(position_text)
         self.currentGraphOption = None
+        self.data.graph_file = self.data.file_name
         
         self.plotGraphMatrix()
         self.onGraphCombobox()
@@ -4093,7 +4094,7 @@ class App(QMainWindow):
         
         # Set labels
         self.graphFileNameLabel.setText(f"Using dFC estimates with shape {self.data.graph_data.shape}")
-        self.data.graph_file = f"dfC from {self.data.file_name}"
+        self.data.graph_file = f"dfC from {self.data.graph_file}"
         
         total_length = self.data.graph_data.shape[2] if np.ndim(self.data.graph_data) == 3 else 0
         position_text = f"t = {self.graphSlider.value()} / {total_length-1}" if len(self.data.graph_data.shape) == 3 else " "
