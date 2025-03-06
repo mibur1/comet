@@ -2,7 +2,12 @@ Usage
 =====
 
 The toolbox is designed in a modular way, which means the individual modules can be used in combination with others, but also by themselves.
-For full functionality the scripting API is recommended, however the graphical user interface (GUI) offers many of the same features.
+Users also have the option to choose between a normal Python scripting API and a graphical user interface (GUI). 
+
+.. tip::
+
+  The GUI offers many features for data loading and processing, (dynamic) functional connectivity estimation, graph analysis, and multiverse analysis. The scripting API is recommended if more flexibility is needed.
+
 
 GUI
 ---
@@ -15,9 +20,10 @@ After installation, graphical user interface can be accessed through the termina
 
 For exploration with example data, data included in the ``tutorials/example_data/`` folder can be loaded:
 
-* ``simulation.txt`` contains simulated BOLD data for 10 brain regions with 2 changing brain states (usable for continuous and static dFC measures)
-* ``abide_50088.txt`` contains parcellated BOLD data for a single subject from the ABIDE data set (usable for continuous and static dFC measures)
-* ``aomic_multi.pkl`` contains parcellated BOLD data for 5 subjects from the AOMIC data set (usable for state-based dFC measures)
+* ``simulation.txt``           Simulated BOLD data for 10 brain regions with 2 changing brain states (as used in the preprint).
+* ``time_series.txt``          Parcellated BOLD data for a single subject.
+* ``time_series_multiple.npy`` Parcellated BOLD data for 5 subjects.
+
 
 Scripting
 ---------
