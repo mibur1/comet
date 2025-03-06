@@ -77,55 +77,27 @@ def load_timeseries(path=None):
     else:
         return data
 
-def load_example(ftype=None):
+def load_example(fname="time_series.txt"):
     """
     Load simulation time series with two randomly changing connectivity states.
 
     Parameters
     ----------
-    ftype : str, optional
-        File type to load. If specified as "pkl", a .pkl file with additional
-        information is loaded. Otherwise, only time series data is returned.
-        Default is None.
+    fname : str, optional
+        File name for any of the included data
+            - 'time_series.txt':          Parcellated BOLD time series data for one subject
+            - 'time_series_multiple.npy': Parcellated BOLD time series data for 5 subjects
+            - 'simulation.txt':           Simulated time series data from the preprint
+            - 'simulation.pkl':           Simulated time series data from the preprint + parameters
+        Default is 'time_series.txt'.
 
     Returns
     -------
-    data : np.ndarray or tuple
-        If `ftype` is not specified or is None, the function returns a
-        TxP np.ndarray containing the time series data
+    data : np.ndarray
+       TxP np.ndarray containing the time series data
 
-        If `ftype` is "pkl", the function returns a tuple containing:
-         - data[0] : TxP np.ndarray
-           Time series data.
-         - data[1] : np.ndarray
-           Time in seconds.
-         - data[2] : np.ndarray
-           Trial onsets in seconds.
-         - data[3] : np.ndarray
-           Trial labels indicating two changing connectivity states.
     """
-
-    if ftype == "pkl":
-        with importlib_resources.path("comet.data", "simulation.pkl") as file_path:
-            with open(file_path, 'rb') as file:
-                data = pickle.load(file)
-    else:
-        with importlib_resources.path("comet.data", "simulation.txt") as file_path:
-            data = np.loadtxt(file_path)
-
-    return data
-
-def load_single_state():
-    """
-    Load simulated time series data with a single connectivity state
-
-    Returns
-    -------
-    data : TxP np.ndarray
-        Single state time series data
-    """
-
-    with importlib_resources.path("comet.data", "single_state.txt") as file_path:
+    with importlib_resources.path("comet.data", fname) as file_path:
         data = np.loadtxt(file_path)
 
     return data
