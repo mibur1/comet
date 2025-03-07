@@ -515,36 +515,36 @@ class Data:
     '''
     Data class which stores all relevant data for the GUI.
     '''
-    # File variables
-    file_path:     str        = field(default=None)         # data file path
-    file_name:     str        = field(default=None)         # data file name
-    file_data:     np.ndarray = field(default=None)         # data file data
-    ts_data:       np.ndarray = field(default=None)         # (processed) time series data (dFC input)
-    sample_mask:   np.ndarray = field(default=None)         # time series mask
+    # Input file variables
+    data_path:        str        = field(default=None)        # data file path
+    data_name:        str        = field(default=None)        # data file name
+    data_data:        np.ndarray = field(default=None)        # data file data
+    data_ts_data:     np.ndarray = field(default=None)        # (processed) time series data (dFC input)
+    data_sample_mask: np.ndarray = field(default=None)        # time series mask
 
     # DFC variables
-    dfc_instance:  Any        = field(default=None)         # instance of the dFC class
-    dfc_name:      str        = field(default=None)         # method class name
-    dfc_params:    Dict       = field(default_factory=dict) # input parameters
-    dfc_data:      np.ndarray = field(default=None)         # dfc data
-    dfc_states:    np.ndarray = field(default=None)         # dfc states
-    dfc_state_tc:  np.ndarray = field(default=None)         # dfc state time course
-    dfc_edge_ts:   np.ndarray = field(default=None)         # dfc edge time series
-    dfc_edge_rms:  np.ndarray = field(default=None)         # dfc edge time series RMS
+    dfc_instance:  Any        = field(default=None)           # instance of the dFC class
+    dfc_name:      str        = field(default=None)           # method class name
+    dfc_params:    Dict       = field(default_factory=dict)   # input parameters
+    dfc_data:      np.ndarray = field(default=None)           # dfc data
+    dfc_states:    np.ndarray = field(default=None)           # dfc states
+    dfc_state_tc:  np.ndarray = field(default=None)           # dfc state time course
+    dfc_edge_ts:   np.ndarray = field(default=None)           # dfc edge time series
+    dfc_edge_rms:  np.ndarray = field(default=None)           # dfc edge time series RMS
 
     # Graph variables
-    graph_file:    str        = field(default=None)         # graph file name
-    graph_raw:     np.ndarray = field(default=None)         # raw input data for graph (dFC matrix)
-    graph_data:    np.ndarray = field(default=None)         # working data for graph (while processing)
-    graph_results: Dict       = field(default_factory=dict) # calculated graph measures
+    graph_file:    str        = field(default=None)           # graph file name
+    graph_raw:     np.ndarray = field(default=None)           # raw input data for graph (dFC matrix)
+    graph_data:    np.ndarray = field(default=None)           # working data for graph (while processing)
+    graph_results: Dict       = field(default_factory=dict)   # calculated graph measures
 
     # Multiverse variables
-    multiverse_folder: str   = field(default=None)         # folder for multiverse analysis
-    forking_paths: Dict      = field(default_factory=dict) # decision points for multiverse analysis
-    invalid_paths: list      = field(default_factory=list) # invalid paths for multiverse analysis
+    mv_folder:        str       = field(default=None)         # folder for multiverse analysis
+    mv_forking_paths: Dict      = field(default_factory=dict) # decision points for multiverse analysis
+    mv_invalid_paths: list      = field(default_factory=list) # invalid paths for multiverse analysis
 
     # Misc variables
-    roi_names:     np.ndarray = field(default=None)         # input roi data (for .tsv files)
+    roi_names:     np.ndarray = field(default=None)           # input roi data (for .tsv files)
 
     def clear_dfc_data(self):
         self.dfc_params   = {}
@@ -1882,17 +1882,17 @@ class App(QMainWindow):
             return
 
         # Initial setup
-        self.data.ts_data = None
-        self.data.file_data = None
+        self.data.data_ts_data = None
+        self.data.data_data = None
         self.data.roi_names = None
-        self.data.file_path = file_path
-        self.data.file_name = file_path.split('/')[-1]
+        self.data.data_path = file_path
+        self.data.data_name = file_path.split('/')[-1]
         
         self.plotLogo(self.boldFigure)
         self.boldCanvas.draw()
 
         self.fmriprep_layout = None
-        self.data.sample_mask = None
+        self.data.file_sample_mask = None
         self.processingResultsLabel.setText("")
         self.detrendCheckbox.setChecked(True)
         self.standardizeCheckbox.setChecked(True)
@@ -1917,15 +1917,15 @@ class App(QMainWindow):
                 data_dict = mat73.loadmat(file_path)
             print("Loaded mat file with keys:", data_dict.keys())
             print(f"Using data from key: {list(data_dict.keys())[-1]}")
-            self.data.file_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
+            self.data.data_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
 
         elif file_path.endswith('.txt'):
-            self.data.file_data = np.loadtxt(file_path)
+            self.data.data_data = np.loadtxt(file_path)
 
         elif file_path.endswith('.npy'):
-            self.data.file_data = np.load(file_path)
+            self.data.data_data = np.load(file_path)
 
-            if not np.ndim(self.data.file_data) == 3:
+            if not np.ndim(self.data.data_data) == 3:
                 QMessageBox.warning(self, "Error", ".npy files must contain a single 3D array.")
                 return
 
@@ -1948,7 +1948,7 @@ class App(QMainWindow):
                 rois = rois.drop(empty_columns)
             data = data.dropna(axis=1, how='all').dropna(axis=0, how='all')
 
-            self.data.file_data = data.to_numpy()
+            self.data.data_data = data.to_numpy()
             self.data.roi_names = np.array(rois, dtype=object)
         
         elif file_path.endswith(".nii") or file_path.endswith(".nii.gz"):
@@ -1957,11 +1957,11 @@ class App(QMainWindow):
 
         else:
             self.time_series_textbox.setText("Unsupported file format")
-            self.data.file_data = None
+            self.data.data_data = None
 
         # Copy file_data into ts_data for further processing
-        if self.data.file_data is not None:
-            self.data.ts_data = self.data.file_data.copy()
+        if self.data.data_data is not None:
+            self.data.data_ts_data = self.data.data_data.copy()
 
         # Enable/disable layouts corresponding to file types
         self.setFileLayout(file_path)
@@ -1982,13 +1982,13 @@ class App(QMainWindow):
         self.keepInMemoryCheckbox.setEnabled(True)
 
         # Setting the labels
-        self.time_series_textbox.setText(self.data.file_name)
-        fname = self.data.file_name[:20] + self.data.file_name[-30:] if len(self.data.file_name) > 50 else self.data.file_name
+        self.time_series_textbox.setText(self.data.data_name)
+        fname = self.data.data_name[:20] + self.data.data_name[-30:] if len(self.data.data_name) > 50 else self.data.data_name
 
         if file_path.endswith(".nii") or file_path.endswith(".nii.gz"):
             self.fileNameLabel.setText(f"Loaded {fname}.")
         else:
-            fshape = self.data.ts_data.shape
+            fshape = self.data.data_ts_data.shape
 
             if file_path.endswith(".npy"):
                 self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}.")
@@ -2031,7 +2031,7 @@ class App(QMainWindow):
         self.niftiCleanButtonContainer.hide()
 
         # Some kind of nifti/cifti file
-        if self.data.file_data is None:      
+        if self.data.data_data is None:      
             if file_path.endswith(".dtseries.nii") or file_path.endswith(".ptseries.nii"):
                 self.parcellationDropdown.addItems(self.atlas_options_cifti.keys())      
             
@@ -2056,7 +2056,7 @@ class App(QMainWindow):
             self.niftiExtractButtonContainer.show()
 
         # 2D time series data
-        elif np.ndim(self.data.file_data) == 2:
+        elif np.ndim(self.data.data_data) == 2:
             self.plotCarpet()
 
             # Containers
@@ -2077,11 +2077,11 @@ class App(QMainWindow):
             self.staticCheckBox.setChecked(True)
 
         # 3D time series data
-        elif np.ndim(self.data.file_data) == 3:
-            self.subjectDropdown.addItems(np.arange(self.data.file_data.shape[0]).astype(str))
+        elif np.ndim(self.data.data_data) == 3:
+            self.subjectDropdown.addItems(np.arange(self.data.data_data.shape[0]).astype(str))
             self.subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
 
-            #self.connectivity_subjectDropdown.addItems(np.arange(self.data.file_data.shape[0]).astype(str))
+            #self.connectivity_subjectDropdown.addItems(np.arange(self.data.data_data.shape[0]).astype(str))
             #self.connectivity_subjectDropdownContainer.show()
             #self.connectivity_subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
 
@@ -2114,22 +2114,22 @@ class App(QMainWindow):
         """
         Transpose checkbox event
         """
-        if self.data.ts_data is None:
+        if self.data.data_ts_data is None:
             return  # No data loaded
         
         # Transpose the data
-        self.data.ts_data = self.data.ts_data.transpose(0, 2, 1) if self.data.ts_data.ndim == 3 else self.data.ts_data.transpose()
+        self.data.data_ts_data = self.data.data_ts_data.transpose(0, 2, 1) if self.data.data_ts_data.ndim == 3 else self.data.data_ts_data.transpose()
 
         # Update the labels
-        fshape = self.data.ts_data.shape
+        fshape = self.data.data_ts_data.shape
         fname = self.time_series_textbox.text()
   
-        if self.data.file_name.endswith('.npy'):
+        if self.data.data_name.endswith('.npy'):
             self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}")
         else:
             self.fileNameLabel.setText(f"Loaded {fname} with shape {fshape}")
 
-        self.time_series_textbox.setText(self.data.file_name)
+        self.time_series_textbox.setText(self.data.data_name)
 
         # Update carpet plot
         self.plotCarpet()
@@ -2225,11 +2225,11 @@ class App(QMainWindow):
         self.processingResultsLabel.setText("")
 
         # Reset data
-        self.data.ts_data = None
-        self.data.file_data = None
-        self.data.file_name = None
-        self.data.file_path = None
-        self.data.sample_mask = None
+        self.data.data_ts_data = None
+        self.data.data_data = None
+        self.data.data_name = None
+        self.data.data_path = None
+        self.data.file_sample_mask = None
         self.data.roi_names = None
 
         # Hide containers
@@ -2315,10 +2315,10 @@ class App(QMainWindow):
 
         # result is a list of a single path, we get rid of the list
         if img:
-            self.data.file_path = img[0]
-            self.data.file_name = img[0].split('/')[-1]
+            self.data.data_path = img[0]
+            self.data.data_name = img[0].split('/')[-1]
         else:
-            self.data.file_name = None
+            self.data.data_name = None
 
         # Mask file
         mask = self.fmriprep_layout.get(return_type='file', suffix='mask', extension='nii.gz',
@@ -2648,11 +2648,11 @@ class App(QMainWindow):
         self.workerThread = QThread()
 
         if self.fmriprep_layout is None:
-            self.worker = Worker(self.calculateTimeSeriesThread, {"img_path": self.data.file_path,
+            self.worker = Worker(self.calculateTimeSeriesThread, {"img_path": self.data.data_path,
                                                                   "atlas": self.parcellationDropdown.currentText(),
                                                                   "option": self.parcellationOptions.currentText()})
         else:
-            self.worker = Worker(self.calculateTimeSeriesThread, {"img_path": self.data.file_path,
+            self.worker = Worker(self.calculateTimeSeriesThread, {"img_path": self.data.data_path,
                                                                   "atlas": self.fmriprep_parcellationDropdown.currentText(),
                                                                   "option": self.fmriprep_parcellationOptions.currentText()})
 
@@ -2673,7 +2673,7 @@ class App(QMainWindow):
         option = params["option"]
         mask = None
         confounds_df = None
-        self.data.sample_mask
+        self.data.file_sample_mask
 
         # Collect cleaning arguments
         if self.fmriprep_layout is None:
@@ -2681,14 +2681,14 @@ class App(QMainWindow):
             # Discard the initial n volumes
             discarded_values = self.discardSpinBox.value()
             if discarded_values > 0:
-                if self.data.file_name.endswith(".dtseries.nii") or self.data.file_name.endswith(".ptseries.nii"):
-                    img = nib.load(self.data.file_path)
+                if self.data.data_name.endswith(".dtseries.nii") or self.data.data_name.endswith(".ptseries.nii"):
+                    img = nib.load(self.data.data_path)
                     img_data = img.get_fdata()
                     img_data = img_data[discarded_values:, :]
                     img = nib.Cifti2Image(img_data, header=img.header)  
                 
-                elif self.data.file_name.endswith(".nii") or self.data.file_name.endswith(".nii.gz"):
-                    img = nib.load(self.data.file_path)
+                elif self.data.data_name.endswith(".nii") or self.data.data_name.endswith(".nii.gz"):
+                    img = nib.load(self.data.data_path)
                     img_data = img.get_fdata()
                     img_data = img_data[:,:,:, discarded_values:]
                     img = nib.Nifti1Image(img_data, affine=img.affine, header=img.header)
@@ -2697,7 +2697,7 @@ class App(QMainWindow):
                     QMessageBox.warning(self, "Error when extracting time series", f"File type not supported.")
                     return
             else:
-                img = nib.load(self.data.file_path)
+                img = nib.load(self.data.data_path)
                 
             radius = self.sphereRadiusSpinbox.value() if self.sphereRadiusSpinbox.value() > 0 else None # none is single voxel
             allow_ovelap = self.overlapCheckbox.isChecked()
@@ -2725,7 +2725,7 @@ class App(QMainWindow):
                 confounds_df = None
 
         else:
-            img = nib.load(self.data.file_path)
+            img = nib.load(self.data.data_path)
 
             radius = self.fmriprep_sphereRadiusSpinbox.value() if self.fmriprep_sphereRadiusSpinbox.value() > 0 else None # none is single voxel
             allow_ovelap = self.fmriprep_overlapCheckbox.isChecked()
@@ -2741,7 +2741,7 @@ class App(QMainWindow):
             tr = self.fmriprep_trValue.value() if self.fmriprep_trValue.value() > 0 else None
 
             args = self.collectCleaningArguments()
-            confounds_df, self.data.sample_mask = load_confounds(img_path, **args)
+            confounds_df, self.data.file_sample_mask = load_confounds(img_path, **args)
             mask = self.mask_name
 
             # Workaround for nilearn bug, will be fixed in the next nilearn release
@@ -2773,29 +2773,29 @@ class App(QMainWindow):
                                                low_pass=low_pass, high_pass=high_pass, t_r=tr)
             time_series = masker.fit_transform(img, confounds=confounds_df)
 
-        self.data.ts_data = time_series
+        self.data.data_ts_data = time_series
 
         return
 
     def handleTimeSeriesResult(self):
         # Discard flagged volumes
-        original_data_shape = self.data.ts_data.shape
+        original_data_shape = self.data.data_ts_data.shape
 
         if self.fmriprep_layout is not None:
             self.plotCarpet()
-            self.data.ts_data = self.data.ts_data[self.data.sample_mask,:]
+            self.data.data_ts_data = self.data.data_ts_data[self.data.file_sample_mask,:]
         else:
             self.plotCarpet()
 
         # Set the labels
-        n_removed_volumes = original_data_shape[0] - self.data.ts_data.shape[0]
+        n_removed_volumes = original_data_shape[0] - self.data.data_ts_data.shape[0]
         if n_removed_volumes > 0:
-            self.processingResultsLabel.setText(f'Time series data with shape {self.data.ts_data.shape} is ready for connectivity analysis.\n{n_removed_volumes} volumes were removed.')
+            self.processingResultsLabel.setText(f'Time series data with shape {self.data.data_ts_data.shape} is ready for connectivity analysis.\n{n_removed_volumes} volumes were removed.')
         else:
-            self.processingResultsLabel.setText(f'Time series data with shape {self.data.ts_data.shape} is ready for connectivity analysis.')
+            self.processingResultsLabel.setText(f'Time series data with shape {self.data.data_ts_data.shape} is ready for connectivity analysis.')
         
-        self.time_series_textbox.setText(self.data.file_name)
-        self.connectivityFileNameLabel.setText(f"Time series data with shape {self.data.ts_data.shape} is available for connectivity analysis.")
+        self.time_series_textbox.setText(self.data.data_name)
+        self.connectivityFileNameLabel.setText(f"Time series data with shape {self.data.data_ts_data.shape} is available for connectivity analysis.")
 
         # Re-enable buttons
         self.parcellationCalculateButton.setEnabled(True)
@@ -2837,35 +2837,35 @@ class App(QMainWindow):
         tr = self.trValue.value() if self.trValue.value() > 0 else None
         
         # Copy the data to keep the original
-        self.data.ts_data = self.data.file_data.copy()
+        self.data.data_ts_data = self.data.data_data.copy()
 
         # Discard initial n volumes
         discarded_values = self.discardSpinBox.value()
 
         if discarded_values:
-            if np.ndim(self.data.ts_data) == 3:
-                temp_data = np.zeros((self.data.ts_data.shape[0], self.data.ts_data.shape[1]
-                                      - discarded_values, self.data.ts_data.shape[2]))
-                for i in range(self.data.ts_data.shape[0]):
-                    temp_data[i,:,:] = self.data.ts_data[i,discarded_values:,:]
-                self.data.ts_data = temp_data
+            if np.ndim(self.data.data_ts_data) == 3:
+                temp_data = np.zeros((self.data.data_ts_data.shape[0], self.data.data_ts_data.shape[1]
+                                      - discarded_values, self.data.data_ts_data.shape[2]))
+                for i in range(self.data.data_ts_data.shape[0]):
+                    temp_data[i,:,:] = self.data.data_ts_data[i,discarded_values:,:]
+                self.data.data_ts_data = temp_data
             else:
-                self.data.ts_data = self.data.ts_data[discarded_values:,:]
+                self.data.data_ts_data = self.data.data_ts_data[discarded_values:,:]
 
         # Calculate global signal regressor
         if self.gsrCheckbox.isChecked():
-            if np.ndim(self.data.ts_data) == 3:
+            if np.ndim(self.data.data_ts_data) == 3:
                 confounds_df_list = []
-                for i in range(self.data.ts_data.shape[0]):
+                for i in range(self.data.data_ts_data.shape[0]):
                     confounds_df = pd.DataFrame()
-                    confounds_df["global_signal"] = np.mean(self.data.ts_data[i,:,:], axis=1)
+                    confounds_df["global_signal"] = np.mean(self.data.data_ts_data[i,:,:], axis=1)
                     confounds_df_list.append(confounds_df)
             else:
                 confounds_df = pd.DataFrame()
-                confounds_df["global_signal"] = np.mean(self.data.ts_data, axis=1)
+                confounds_df["global_signal"] = np.mean(self.data.data_ts_data, axis=1)
         else:
-            if np.ndim(self.data.ts_data) == 3:
-                confounds_df_list = [None] * self.data.ts_data.shape[0]
+            if np.ndim(self.data.data_ts_data) == 3:
+                confounds_df_list = [None] * self.data.data_ts_data.shape[0]
             else:
                 confounds_df = None
 
@@ -2878,21 +2878,21 @@ class App(QMainWindow):
             standardize_confounds = False
 
         # Cleaning
-        if np.ndim(self.data.ts_data) == 3:
-            for i in range(self.data.ts_data.shape[0]):
-                self.data.ts_data[i,:,:] = utils.clean(self.data.ts_data[i,:,:], standardize=standardize,
+        if np.ndim(self.data.data_ts_data) == 3:
+            for i in range(self.data.data_ts_data.shape[0]):
+                self.data.data_ts_data[i,:,:] = utils.clean(self.data.data_ts_data[i,:,:], standardize=standardize,
                                                          confounds=confounds_df_list[i], standardize_confounds=standardize_confounds,
                                                          detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
         else:
-            self.data.ts_data = utils.clean(self.data.ts_data, standardize=standardize,
+            self.data.data_ts_data = utils.clean(self.data.data_ts_data, standardize=standardize,
                                                confounds=confounds_df, standardize_confounds=standardize_confounds,
                                                detrend=detrend, high_pass=high_pass, low_pass=low_pass, t_r=tr)
         
         return
 
     def handleCleaningResult(self):
-        self.processingResultsLabel.setText(f'Time series data with shape {self.data.ts_data.shape} is ready for connectivity analysis')
-        self.time_series_textbox.setText(self.data.file_name)
+        self.processingResultsLabel.setText(f'Time series data with shape {self.data.data_ts_data.shape} is ready for connectivity analysis')
+        self.time_series_textbox.setText(self.data.data_name)
         self.plotCarpet()
         self.cleanButton.setEnabled(True)
         self.resetButton.setEnabled(True)
@@ -2906,12 +2906,12 @@ class App(QMainWindow):
         return
 
     def resetTimeSeries(self):
-        self.data.ts_data = self.data.file_data.copy()
-        self.data.sample_mask = None
+        self.data.data_ts_data = self.data.data_data.copy()
+        self.data.file_sample_mask = None
         self.resetButton.setEnabled(False)
-        self.processingResultsLabel.setText(f'Time series data with shape {self.data.ts_data.shape} is ready for connectivity analysis.')
+        self.processingResultsLabel.setText(f'Time series data with shape {self.data.data_ts_data.shape} is ready for connectivity analysis.')
 
-        if isinstance(self.data.file_data, np.ndarray):
+        if isinstance(self.data.data_data, np.ndarray):
             self.plotCarpet()
         else:
             self.plotLogo(self.boldFigure)
@@ -2929,18 +2929,18 @@ class App(QMainWindow):
         cmap = plt.cm.gray
         cmap.set_bad(color='red')
 
-        if np.ndim(self.data.ts_data) == 3:
+        if np.ndim(self.data.data_ts_data) == 3:
             current_subject = int(self.subjectDropdown.currentText())
-            ts = self.data.ts_data[current_subject].copy()
+            ts = self.data.data_ts_data[current_subject].copy()
         else:
-            ts = self.data.ts_data.copy()
+            ts = self.data.data_ts_data.copy()
         
         # Show scrubbed volumes
-        if self.data.sample_mask is not None:
+        if self.data.file_sample_mask is not None:
             # We have data with missing scans (non-steady states or scrubbing)
             # Create a mask of the same shape as ts and set the values to 0 where sample_mask is False
             mask = np.ones(ts.shape, dtype=bool)
-            mask[self.data.sample_mask] = False
+            mask[self.data.file_sample_mask] = False
             ts[mask] = np.nan
 
             ts = np.ma.masked_where(mask, ts)
@@ -2987,16 +2987,16 @@ class App(QMainWindow):
         """
         Save the time series data to a file
         """
-        if self.data.ts_data is None:
+        if self.data.data_ts_data is None:
             QMessageBox.warning(self, "Output Error", "No time series data available to save.")
             return
 
-        base, ext = os.path.splitext(self.data.file_name)
+        base, ext = os.path.splitext(self.data.data_name)
 
         if ext == ".nii" or ext == ".gz":
             ext = ".txt"
 
-        if self.data.ts_data.ndim == 3:
+        if self.data.data_ts_data.ndim == 3:
             default_file_name = f"{base}_processed.npy"
             fileFilter = ("All supported files (*.mat *.npy);;"
                         "MAT file (*.mat);;"
@@ -3014,13 +3014,13 @@ class App(QMainWindow):
             return
 
         if filePath.lower().endswith('.mat'):
-            savemat(filePath, {"time_series": self.data.ts_data})
+            savemat(filePath, {"time_series": self.data.data_ts_data})
         elif filePath.lower().endswith(('.txt', '.tsv')):
-            np.savetxt(filePath, self.data.ts_data, delimiter="\t")
+            np.savetxt(filePath, self.data.data_ts_data, delimiter="\t")
         elif filePath.lower().endswith('.npy'):
-            np.save(filePath, self.data.ts_data)
+            np.save(filePath, self.data.data_ts_data)
         else:
-            np.save(filePath, self.data.ts_data)
+            np.save(filePath, self.data.data_ts_data)
 
     """
     Connectivity tab
@@ -3042,6 +3042,7 @@ class App(QMainWindow):
             try:
                 data_dict = {}
                 for field in self.data.__dataclass_fields__:
+                    print(field)
                     value = getattr(self.data, field)
 
                     if isinstance(value, np.ndarray):
@@ -3179,7 +3180,7 @@ class App(QMainWindow):
     # Calculations
     def calculateConnectivity(self):
         # Check if time series data is available
-        if self.data.ts_data is None:
+        if self.data.data_ts_data is None:
             QMessageBox.warning(self, "Load Error", f"No time series data is currently available.")
             return
 
@@ -3297,7 +3298,7 @@ class App(QMainWindow):
         position_text = f"t = {self.graphSlider.value()} / {total_length-1}" if len(self.data.graph_data.shape) == 3 else " static "
         self.graphPositionLabel.setText(position_text)
         self.currentGraphOption = None
-        self.data.graph_file = self.data.file_name
+        self.data.graph_file = self.data.data_name
         
         self.plotGraphMatrix()
         self.onGraphCombobox()
@@ -3340,8 +3341,8 @@ class App(QMainWindow):
         labels.append(time_series_label)
 
         self.time_series_textbox.setPlaceholderText("No data available")
-        if self.data.file_name:
-            self.time_series_textbox.setText(self.data.file_name)
+        if self.data.data_name:
+            self.time_series_textbox.setText(self.data.data_name)
         self.time_series_textbox.setEnabled(True)
 
         # Create info button for time_series
@@ -3429,7 +3430,7 @@ class App(QMainWindow):
     def getParameters(self):
         # Get the time series and parameters (from the UI) for the selected connectivity method and store them in a dictionary
         # TODO: Should I allow multiple subjects for continuous and static FC as well? This could be added here
-        self.data.dfc_params['time_series'] = self.data.ts_data # Time series data
+        self.data.dfc_params['time_series'] = self.data.data_ts_data # Time series data
 
         # Converts string to boolean, float, or retains as string if conversion is not applicable
         def convert_value(value):
@@ -3651,7 +3652,7 @@ class App(QMainWindow):
             num_states = self.data.dfc_states.shape[2]
 
             # Setup the gridspec layout
-            gs = gridspec.GridSpec(3, num_states, self.timeSeriesFigure, height_ratios=[1, 0.5, 1])
+            gs = gridspec.GridSpec(3, num_states, self.timeSeriesFigure, height_ratios=[1, 0.1, 1])
 
             # Plotting the state time course across all columns
             ax_time_series = self.timeSeriesFigure.add_subplot(gs[0, :])
@@ -5268,11 +5269,11 @@ class App(QMainWindow):
         }
 
         # Append the new option to the existing list in the data dictionary
-        if currentName not in self.data.forking_paths:
-            self.data.forking_paths[currentName] = []
+        if currentName not in self.data.mv_forking_paths:
+            self.data.mv_forking_paths[currentName] = []
 
         # Add to forking paths
-        self.data.forking_paths[currentName].append(option_dict)
+        self.data.mv_forking_paths[currentName].append(option_dict)
         return
 
     def collapseOption(self, collapseButton, parameterContainer):
@@ -5304,9 +5305,9 @@ class App(QMainWindow):
 
         if category == "General":
             options = [self.setDtypeForOption(option.strip()) for option in optionsInput.text().split(',') if option.strip()]
-            self.data.forking_paths[name] = options
+            self.data.mv_forking_paths[name] = options
         else:
-            options = self.data.forking_paths[name]
+            options = self.data.mv_forking_paths[name]
 
         if name and options:
             self.generateMultiverseScript()
@@ -5352,8 +5353,8 @@ class App(QMainWindow):
                 self.generateMultiverseScript()
                 return
 
-        if key in self.data.forking_paths:
-            options = self.data.forking_paths[key]
+        if key in self.data.mv_forking_paths:
+            options = self.data.mv_forking_paths[key]
 
             # Remove the last option and update the input field
             if options:
@@ -5363,7 +5364,7 @@ class App(QMainWindow):
 
             # If all options are removed or there are no options, clear and delete everything
             if not options:
-                del self.data.forking_paths[key]
+                del self.data.mv_forking_paths[key]
                 if decisionWidget.layout():
                     self.clearLayout(decisionWidget.layout())  # Clear all child widgets and sub-layouts
                 decisionWidget.deleteLater()  # Delete the decision widget
@@ -5436,7 +5437,7 @@ class App(QMainWindow):
                 "\n"
                 "forking_paths = {\n"
             )
-            for name, options in self.data.forking_paths.items():
+            for name, options in self.data.mv_forking_paths.items():
                 if isinstance(options, list) and all(isinstance(item, dict) for item in options):
                     formatted_options = json.dumps(options, indent=4)
                     formatted_options = formatted_options.replace('true', 'True').replace('false', 'False').replace('null', 'None')
@@ -5478,7 +5479,7 @@ class App(QMainWindow):
                     "\n"
                     "forking_paths = {\n"
                 )
-                for name, options in self.data.forking_paths.items():
+                for name, options in self.data.mv_forking_paths.items():
                     if isinstance(options, list) and all(isinstance(item, dict) for item in options):
                         formatted_options = json.dumps(options, indent=4)
                         formatted_options = formatted_options.replace('true', 'True').replace('false', 'False').replace('null', 'None')
@@ -5492,7 +5493,7 @@ class App(QMainWindow):
                     "    # The following forking paths are available for multiverse analysis:\n"
                 )
 
-                for name in self.data.forking_paths:
+                for name in self.data.mv_forking_paths:
                     script_content += f"    {{{{{name}}}}}\n"
 
         self.scriptDisplay.setText(script_content)
@@ -5500,10 +5501,10 @@ class App(QMainWindow):
         self.toggleButton.setText("🔒")
 
     def selectMultiverseFolder(self):
-        self.data.multiverse_folder = QFileDialog.getExistingDirectory(self, "Select folder for multiverse analysis")
-        self.chooseFolderEdit.setText(self.data.multiverse_folder)
+        self.data.mv_folder = QFileDialog.getExistingDirectory(self, "Select folder for multiverse analysis")
+        self.chooseFolderEdit.setText(self.data.mv_folder)
         # User canceled the selection
-        if not self.data.multiverse_folder:
+        if not self.data.mv_folder:
             return
 
     def loadMultiverseScript(self):
@@ -5519,7 +5520,7 @@ class App(QMainWindow):
         self.paralleliseMultiverseSpinbox.setEnabled(False)
         self.plotButton.setEnabled(False)
 
-        self.data.forking_paths = {}
+        self.data.mv_forking_paths = {}
 
         if self.multiverseFileName:
             try:
@@ -5614,7 +5615,7 @@ class App(QMainWindow):
         Create the multiverse from the template file
         """
         if hasattr(self, 'multiverseFileName'):
-            multiverse_save_path = self.data.multiverse_folder
+            multiverse_save_path = self.data.mv_folder
             os.makedirs(multiverse_save_path, exist_ok=True)
 
             # Create a template script in the multiverse folder (the script content is taken from the GUI)
@@ -5692,7 +5693,7 @@ class App(QMainWindow):
         self.plotButton.setEnabled(False)
 
         self.mvThread = QThread()
-        self.mvWorker = Worker(self.mverse.run, {"parallel": self.paralleliseMultiverseSpinbox.value(), "folder": self.data.multiverse_folder})
+        self.mvWorker = Worker(self.mverse.run, {"parallel": self.paralleliseMultiverseSpinbox.value(), "folder": self.data.mv_folder})
         self.mvWorker.moveToThread(self.mvThread)
 
         self.mvThread.started.connect(self.mvWorker.run)
