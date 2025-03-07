@@ -1863,7 +1863,6 @@ class App(QMainWindow):
         # Add the tab widget to the right layout
         rightLayout.addWidget(multiverseTabWidget)
 
-
     """
     Data tab
     """
@@ -3896,6 +3895,7 @@ class App(QMainWindow):
   
         return
 
+
     """
     Graph tab
     """
@@ -4722,7 +4722,6 @@ class App(QMainWindow):
         self.graphSlider.update()
 
         return
-
 
     """
     Multiverse tab
