@@ -533,7 +533,6 @@ class Data:
     dfc_edge_rms:  np.ndarray = field(default=None)           # dfc edge time series RMS
 
     # Graph variables
-    graph_file:    str        = field(default=None)           # graph file name
     graph_raw:     np.ndarray = field(default=None)           # raw input data for graph (dFC matrix)
     graph_data:    np.ndarray = field(default=None)           # working data for graph (while processing)
     graph_results: Dict       = field(default_factory=dict)   # calculated graph measures
@@ -583,7 +582,7 @@ class DataStorage:
         # This hash will be used to check if identical data exists
         hashable_params = {k: v for k, v in data_obj.dfc_params.items() if not isinstance(v, np.ndarray)}
         params_tuple = tuple(sorted(hashable_params.items()))
-        return hash((data_obj.file_name, data_obj.dfc_name, params_tuple))
+        return hash((data_obj.data_name, data_obj.dfc_name, params_tuple))
 
     def add_data(self, data_obj):
         self.delete_data(data_obj) # Delete existing data for the same method
@@ -1183,7 +1182,7 @@ class App(QMainWindow):
         leftLayout.addStretch()
 
         self.saveTimeSeriesButton = QPushButton('Save time series')
-        self.saveTimeSeriesButton.clicked.connect(self.saveTimeSeries)
+        self.saveTimeSeriesButton.clicked.connect(self.saveFile)
         leftLayout.addWidget(self.saveTimeSeriesButton)
         self.saveTimeSeriesButton.hide()
 
@@ -2010,6 +2009,47 @@ class App(QMainWindow):
         self.saveConnectivityButton.setEnabled(True)
         self.keepInMemoryCheckbox.setEnabled(True)
         self.clearMemoryButton.setEnabled(True)
+
+        return
+
+    def saveFile(self):
+        """
+        Save the time series data to a file
+        """
+        if self.data.data_ts_data is None:
+            QMessageBox.warning(self, "Output Error", "No time series data available to save.")
+            return
+
+        base, ext = os.path.splitext(self.data.data_name)
+
+        if ext == ".nii" or ext == ".gz":
+            ext = ".txt"
+
+        if self.data.data_ts_data.ndim == 3:
+            default_file_name = f"{base}_processed.npy"
+            fileFilter = ("All supported files (*.mat *.npy);;"
+                        "MAT file (*.mat);;"
+                        "NumPy file (*.npy)")
+        else:
+            default_file_name = f"{base}_processed{ext}"
+            fileFilter = ("All supported files (*.txt *.mat *.npy *.tsv);;"
+                        "Text file (*.txt);;"
+                        "MAT file (*.mat);;"
+                        "NumPy file (*.npy);;"
+                        "TSV file (*.tsv)")
+
+        filePath, _ = QFileDialog.getSaveFileName(self, "Save File", default_file_name, fileFilter)
+        if not filePath:
+            return
+
+        if filePath.lower().endswith('.mat'):
+            savemat(filePath, {"time_series": self.data.data_ts_data})
+        elif filePath.lower().endswith(('.txt', '.tsv')):
+            np.savetxt(filePath, self.data.data_ts_data, delimiter="\t")
+        elif filePath.lower().endswith('.npy'):
+            np.save(filePath, self.data.data_ts_data)
+        else:
+            np.save(filePath, self.data.data_ts_data)
 
         return
 
@@ -2982,45 +3022,6 @@ class App(QMainWindow):
         figure.set_facecolor('#f4f1f6')
         figure.tight_layout()
 
-    # Saving
-    def saveTimeSeries(self):
-        """
-        Save the time series data to a file
-        """
-        if self.data.data_ts_data is None:
-            QMessageBox.warning(self, "Output Error", "No time series data available to save.")
-            return
-
-        base, ext = os.path.splitext(self.data.data_name)
-
-        if ext == ".nii" or ext == ".gz":
-            ext = ".txt"
-
-        if self.data.data_ts_data.ndim == 3:
-            default_file_name = f"{base}_processed.npy"
-            fileFilter = ("All supported files (*.mat *.npy);;"
-                        "MAT file (*.mat);;"
-                        "NumPy file (*.npy)")
-        else:
-            default_file_name = f"{base}_processed{ext}"
-            fileFilter = ("All supported files (*.txt *.mat *.npy *.tsv);;"
-                        "Text file (*.txt);;"
-                        "MAT file (*.mat);;"
-                        "NumPy file (*.npy);;"
-                        "TSV file (*.tsv)")
-
-        filePath, _ = QFileDialog.getSaveFileName(self, "Save File", default_file_name, fileFilter)
-        if not filePath:
-            return
-
-        if filePath.lower().endswith('.mat'):
-            savemat(filePath, {"time_series": self.data.data_ts_data})
-        elif filePath.lower().endswith(('.txt', '.tsv')):
-            np.savetxt(filePath, self.data.data_ts_data, delimiter="\t")
-        elif filePath.lower().endswith('.npy'):
-            np.save(filePath, self.data.data_ts_data)
-        else:
-            np.save(filePath, self.data.data_ts_data)
 
     """
     Connectivity tab
@@ -3042,28 +3043,28 @@ class App(QMainWindow):
             try:
                 data_dict = {}
                 for field in self.data.__dataclass_fields__:
-                    print(field)
-                    value = getattr(self.data, field)
+                    if field.startswith("dfc"):
+                        value = getattr(self.data, field)
 
-                    if isinstance(value, np.ndarray):
-                        data_dict[field] = value
-                    elif isinstance(value, dict):
-                        # Ensure all dict values are appropriately converted
-                        converted_dict = {}
-                        for k, v in value.items():
-                            if isinstance(v, np.ndarray):
-                                converted_dict[k] = v
-                            elif v is None:
-                                converted_dict[k] = np.array([])
-                            else:
-                                converted_dict[k] = v
-                        data_dict[field] = converted_dict
-                    elif value is None:
-                        data_dict[field] = np.array([])
-                    elif field == 'dfc_instance':
-                        pass
-                    else:
-                        data_dict[field] = value
+                        if isinstance(value, np.ndarray):
+                            data_dict[field] = value
+                        elif isinstance(value, dict):
+                            # Ensure all dict values are appropriately converted
+                            converted_dict = {}
+                            for k, v in value.items():
+                                if isinstance(v, np.ndarray):
+                                    converted_dict[k] = v
+                                elif v is None:
+                                    converted_dict[k] = np.array([])
+                                else:
+                                    converted_dict[k] = v
+                            data_dict[field] = converted_dict
+                        elif value is None:
+                            data_dict[field] = np.array([])
+                        elif field == 'dfc_instance':
+                            pass
+                        else:
+                            data_dict[field] = value
 
                 savemat(filePath, data_dict)
 
@@ -3298,7 +3299,7 @@ class App(QMainWindow):
         position_text = f"t = {self.graphSlider.value()} / {total_length-1}" if len(self.data.graph_data.shape) == 3 else " static "
         self.graphPositionLabel.setText(position_text)
         self.currentGraphOption = None
-        self.data.graph_file = self.data.data_name
+        self.data.data_name = self.data.data_name
         
         self.plotGraphMatrix()
         self.onGraphCombobox()
@@ -3905,7 +3906,7 @@ class App(QMainWindow):
                       MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
         file_name = file_path.split('/')[-1]
-        self.data.graph_file = file_name
+        self.data.data_name = file_name
 
         if not file_path:
             return  # Early exit if no file is selected
@@ -3946,7 +3947,7 @@ class App(QMainWindow):
             return
 
         self.data.graph_raw = self.data.graph_data.copy()
-        self.graphFileNameLabel.setText(f"Loaded {self.data.graph_file} with shape {self.data.graph_data.shape}")
+        self.graphFileNameLabel.setText(f"Loaded {self.data.data_name} with shape {self.data.graph_data.shape}")
 
         total_length = self.data.graph_data.shape[2] if np.ndim(self.data.graph_data) == 3 else 0
         position_text = f"t = {self.graphSlider.value()} / {total_length-1}" if len(self.data.graph_data.shape) == 3 else " static "
@@ -3978,27 +3979,28 @@ class App(QMainWindow):
             try:
                 data_dict = {}
                 for field in [f for f in self.data.__dataclass_fields__ if f.startswith('graph_')]:
-                    value = getattr(self.data, field)
+                    if field.startswith("graph"):
+                        value = getattr(self.data, field)
 
-                    if isinstance(value, np.ndarray):
-                        data_dict[field] = value
-                    elif isinstance(value, dict):
-                        # Ensure all dict values are appropriately converted
-                        converted_dict = {}
-                        for k, v in value.items():
-                            if isinstance(v, np.ndarray):
-                                converted_dict[k] = v
-                            elif v is None:
-                                converted_dict[k] = np.array([])
-                            else:
-                                converted_dict[k] = v
-                        data_dict[field] = converted_dict
-                    elif value is None:
-                        data_dict[field] = np.array([])
-                    elif field == 'dfc_instance':
-                        pass
-                    else:
-                        data_dict[field] = value
+                        if isinstance(value, np.ndarray):
+                            data_dict[field] = value
+                        elif isinstance(value, dict):
+                            # Ensure all dict values are appropriately converted
+                            converted_dict = {}
+                            for k, v in value.items():
+                                if isinstance(v, np.ndarray):
+                                    converted_dict[k] = v
+                                elif v is None:
+                                    converted_dict[k] = np.array([])
+                                else:
+                                    converted_dict[k] = v
+                            data_dict[field] = converted_dict
+                        elif value is None:
+                            data_dict[field] = np.array([])
+                        elif field == 'dfc_instance':
+                            pass
+                        else:
+                            data_dict[field] = value
 
                 savemat(filePath, data_dict)
 
@@ -4095,7 +4097,7 @@ class App(QMainWindow):
         
         # Set labels
         self.graphFileNameLabel.setText(f"Using dFC estimates with shape {self.data.graph_data.shape}")
-        self.data.graph_file = f"dfC from {self.data.graph_file}"
+        self.data.data_name = f"dfC from {self.data.data_name}"
         
         total_length = self.data.graph_data.shape[2] if np.ndim(self.data.graph_data) == 3 else 0
         position_text = f"t = {self.graphSlider.value()} / {total_length-1}" if len(self.data.graph_data.shape) == 3 else " "
@@ -4321,7 +4323,7 @@ class App(QMainWindow):
                 if is_first_parameter:
                     param_widget = QLineEdit()
                     param_widget.setPlaceholderText("No data available")
-                    if self.data.graph_file or self.data.graph_data is not None:
+                    if self.data.data_name or self.data.graph_data is not None:
                         param_widget = QLineEdit("As shown in plot")
                     param_widget.setReadOnly(True)  # Make the widget read-only
                     is_first_parameter = False  # Update the flag so this block runs only for the first parameter
