@@ -516,13 +516,14 @@ class Data:
     Data class which stores all relevant data for the GUI.
     '''
     # Input file variables
-    data_path:        str        = field(default=None)        # data file path
-    data_name:        str        = field(default=None)        # data file name
-    data_data:        np.ndarray = field(default=None)        # data file data
+    data_filepath:    str        = field(default=None)        # data file path
+    data_filename:    str        = field(default=None)        # data file name
+    data_filedata:    np.ndarray = field(default=None)        # data file data
     data_ts_data:     np.ndarray = field(default=None)        # (processed) time series data (dFC input)
     data_sample_mask: np.ndarray = field(default=None)        # time series mask
+    data_roi_names:   np.ndarray = field(default=None)        # roi names
 
-    # DFC variables
+    # dFC variables
     dfc_instance:  Any        = field(default=None)           # instance of the dFC class
     dfc_name:      str        = field(default=None)           # method class name
     dfc_params:    Dict       = field(default_factory=dict)   # input parameters
@@ -541,9 +542,6 @@ class Data:
     mv_folder:        str       = field(default=None)         # folder for multiverse analysis
     mv_forking_paths: Dict      = field(default_factory=dict) # decision points for multiverse analysis
     mv_invalid_paths: list      = field(default_factory=list) # invalid paths for multiverse analysis
-
-    # Misc variables
-    roi_names:     np.ndarray = field(default=None)           # input roi data (for .tsv files)
 
     def clear_dfc_data(self):
         self.dfc_params   = {}
@@ -582,7 +580,7 @@ class DataStorage:
         # This hash will be used to check if identical data exists
         hashable_params = {k: v for k, v in data_obj.dfc_params.items() if not isinstance(v, np.ndarray)}
         params_tuple = tuple(sorted(hashable_params.items()))
-        return hash((data_obj.data_name, data_obj.dfc_name, params_tuple))
+        return hash((data_obj.data_filename, data_obj.dfc_name, params_tuple))
 
     def add_data(self, data_obj):
         self.delete_data(data_obj) # Delete existing data for the same method
@@ -1882,16 +1880,16 @@ class App(QMainWindow):
 
         # Initial setup
         self.data.data_ts_data = None
-        self.data.data_data = None
-        self.data.roi_names = None
-        self.data.data_path = file_path
-        self.data.data_name = file_path.split('/')[-1]
+        self.data.data_filedata = None
+        self.data.data_roi_names = None
+        self.data.data_filepath = file_path
+        self.data.data_filename = file_path.split('/')[-1]
         
         self.plotLogo(self.boldFigure)
         self.boldCanvas.draw()
 
         self.fmriprep_layout = None
-        self.data.file_sample_mask = None
+        self.data.data_sample_mask = None
         self.processingResultsLabel.setText("")
         self.detrendCheckbox.setChecked(True)
         self.standardizeCheckbox.setChecked(True)
@@ -1916,15 +1914,15 @@ class App(QMainWindow):
                 data_dict = mat73.loadmat(file_path)
             print("Loaded mat file with keys:", data_dict.keys())
             print(f"Using data from key: {list(data_dict.keys())[-1]}")
-            self.data.data_data = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
+            self.data.data_filedata = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
 
         elif file_path.endswith('.txt'):
-            self.data.data_data = np.loadtxt(file_path)
+            self.data.data_filedata = np.loadtxt(file_path)
 
         elif file_path.endswith('.npy'):
-            self.data.data_data = np.load(file_path)
+            self.data.data_filedata = np.load(file_path)
 
-            if not np.ndim(self.data.data_data) == 3:
+            if not np.ndim(self.data.data_filedata) == 3:
                 QMessageBox.warning(self, "Error", ".npy files must contain a single 3D array.")
                 return
 
@@ -1947,8 +1945,8 @@ class App(QMainWindow):
                 rois = rois.drop(empty_columns)
             data = data.dropna(axis=1, how='all').dropna(axis=0, how='all')
 
-            self.data.data_data = data.to_numpy()
-            self.data.roi_names = np.array(rois, dtype=object)
+            self.data.data_filedata = data.to_numpy()
+            self.data.data_roi_names = np.array(rois, dtype=object)
         
         elif file_path.endswith(".nii") or file_path.endswith(".nii.gz"):
             self.parcellationDropdown.currentIndexChanged.disconnect(self.onAtlasChanged)
@@ -1956,11 +1954,11 @@ class App(QMainWindow):
 
         else:
             self.time_series_textbox.setText("Unsupported file format")
-            self.data.data_data = None
+            self.data.data_filedata = None
 
         # Copy file_data into ts_data for further processing
-        if self.data.data_data is not None:
-            self.data.data_ts_data = self.data.data_data.copy()
+        if self.data.data_filedata is not None:
+            self.data.data_ts_data = self.data.data_filedata.copy()
 
         # Enable/disable layouts corresponding to file types
         self.setFileLayout(file_path)
@@ -1975,14 +1973,13 @@ class App(QMainWindow):
         
         # Reset and enable the GUI elements
         self.methodComboBox.setEnabled(True)
-        self.methodComboBox.setEnabled(True)
         self.calculateConnectivityButton.setEnabled(True)
         self.clearMemoryButton.setEnabled(True)
         self.keepInMemoryCheckbox.setEnabled(True)
 
         # Setting the labels
-        self.time_series_textbox.setText(self.data.data_name)
-        fname = self.data.data_name[:20] + self.data.data_name[-30:] if len(self.data.data_name) > 50 else self.data.data_name
+        self.time_series_textbox.setText(self.data.data_filename)
+        fname = self.data.data_filename[:20] + self.data.data_filename[-30:] if len(self.data.data_filename) > 50 else self.data.data_filename
 
         if file_path.endswith(".nii") or file_path.endswith(".nii.gz"):
             self.fileNameLabel.setText(f"Loaded {fname}.")
@@ -2006,7 +2003,6 @@ class App(QMainWindow):
 
         # Enable connectivity buttions
         self.calculateConnectivityButton.setEnabled(True)
-        self.saveConnectivityButton.setEnabled(True)
         self.keepInMemoryCheckbox.setEnabled(True)
         self.clearMemoryButton.setEnabled(True)
 
@@ -2020,36 +2016,40 @@ class App(QMainWindow):
             QMessageBox.warning(self, "Output Error", "No time series data available to save.")
             return
 
-        base, ext = os.path.splitext(self.data.data_name)
+        # Open a file dialog to specify where to save the file
+        filePath, _ = QFileDialog.getSaveFileName(self, "Save File", "", ".mat file (*.mat)")
 
-        if ext == ".nii" or ext == ".gz":
-            ext = ".txt"
+        if filePath:
+            if not filePath.endswith('.mat'):
+                filePath += '.mat'
 
-        if self.data.data_ts_data.ndim == 3:
-            default_file_name = f"{base}_processed.npy"
-            fileFilter = ("All supported files (*.mat *.npy);;"
-                        "MAT file (*.mat);;"
-                        "NumPy file (*.npy)")
-        else:
-            default_file_name = f"{base}_processed{ext}"
-            fileFilter = ("All supported files (*.txt *.mat *.npy *.tsv);;"
-                        "Text file (*.txt);;"
-                        "MAT file (*.mat);;"
-                        "NumPy file (*.npy);;"
-                        "TSV file (*.tsv)")
+            # Save the the current data object to a .mat file
+            try:
+                data_dict = {}
+                for field in [f for f in self.data.__dataclass_fields__ if f.startswith('data_')]:
+                    value = getattr(self.data, field)
 
-        filePath, _ = QFileDialog.getSaveFileName(self, "Save File", default_file_name, fileFilter)
-        if not filePath:
-            return
+                    if isinstance(value, np.ndarray):
+                        data_dict[field] = value
+                    elif isinstance(value, dict):
+                        converted_dict = {}
+                        for k, v in value.items():
+                            if isinstance(v, np.ndarray):
+                                converted_dict[k] = v
+                            elif v is None:
+                                converted_dict[k] = np.array([])
+                            else:
+                                converted_dict[k] = v
+                        data_dict[field] = converted_dict
+                    elif value is None:
+                        pass
+                    else:
+                        data_dict[field] = value
 
-        if filePath.lower().endswith('.mat'):
-            savemat(filePath, {"time_series": self.data.data_ts_data})
-        elif filePath.lower().endswith(('.txt', '.tsv')):
-            np.savetxt(filePath, self.data.data_ts_data, delimiter="\t")
-        elif filePath.lower().endswith('.npy'):
-            np.save(filePath, self.data.data_ts_data)
-        else:
-            np.save(filePath, self.data.data_ts_data)
+                savemat(filePath, data_dict)
+
+            except Exception as e:
+                QMessageBox.warning(self, "Output Error", f"Error saving data: {e}")
 
         return
 
@@ -2071,7 +2071,7 @@ class App(QMainWindow):
         self.niftiCleanButtonContainer.hide()
 
         # Some kind of nifti/cifti file
-        if self.data.data_data is None:      
+        if self.data.data_filedata is None:      
             if file_path.endswith(".dtseries.nii") or file_path.endswith(".ptseries.nii"):
                 self.parcellationDropdown.addItems(self.atlas_options_cifti.keys())      
             
@@ -2096,7 +2096,7 @@ class App(QMainWindow):
             self.niftiExtractButtonContainer.show()
 
         # 2D time series data
-        elif np.ndim(self.data.data_data) == 2:
+        elif np.ndim(self.data.data_filedata) == 2:
             self.plotCarpet()
 
             # Containers
@@ -2117,11 +2117,11 @@ class App(QMainWindow):
             self.staticCheckBox.setChecked(True)
 
         # 3D time series data
-        elif np.ndim(self.data.data_data) == 3:
-            self.subjectDropdown.addItems(np.arange(self.data.data_data.shape[0]).astype(str))
+        elif np.ndim(self.data.data_filedata) == 3:
+            self.subjectDropdown.addItems(np.arange(self.data.data_filedata.shape[0]).astype(str))
             self.subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
 
-            #self.connectivity_subjectDropdown.addItems(np.arange(self.data.data_data.shape[0]).astype(str))
+            #self.connectivity_subjectDropdown.addItems(np.arange(self.data.data_filedata.shape[0]).astype(str))
             #self.connectivity_subjectDropdownContainer.show()
             #self.connectivity_subjectDropdown.currentIndexChanged.connect(self.onSubjectChanged)
 
@@ -2164,12 +2164,12 @@ class App(QMainWindow):
         fshape = self.data.data_ts_data.shape
         fname = self.time_series_textbox.text()
   
-        if self.data.data_name.endswith('.npy'):
+        if self.data.data_filename.endswith('.npy'):
             self.fileNameLabel.setText(f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}")
         else:
             self.fileNameLabel.setText(f"Loaded {fname} with shape {fshape}")
 
-        self.time_series_textbox.setText(self.data.data_name)
+        self.time_series_textbox.setText(self.data.data_filename)
 
         # Update carpet plot
         self.plotCarpet()
@@ -2266,11 +2266,11 @@ class App(QMainWindow):
 
         # Reset data
         self.data.data_ts_data = None
-        self.data.data_data = None
-        self.data.data_name = None
-        self.data.data_path = None
-        self.data.file_sample_mask = None
-        self.data.roi_names = None
+        self.data.data_filedata = None
+        self.data.data_filename = None
+        self.data.data_filepath = None
+        self.data.data_sample_mask = None
+        self.data.data_roi_names = None
 
         # Hide containers
         self.tsExtractionContainer.hide()
@@ -2355,10 +2355,10 @@ class App(QMainWindow):
 
         # result is a list of a single path, we get rid of the list
         if img:
-            self.data.data_path = img[0]
-            self.data.data_name = img[0].split('/')[-1]
+            self.data.data_filepath = img[0]
+            self.data.data_filename = img[0].split('/')[-1]
         else:
-            self.data.data_name = None
+            self.data.data_filename = None
 
         # Mask file
         mask = self.fmriprep_layout.get(return_type='file', suffix='mask', extension='nii.gz',
@@ -2688,11 +2688,11 @@ class App(QMainWindow):
         self.workerThread = QThread()
 
         if self.fmriprep_layout is None:
-            self.worker = Worker(self.calculateTimeSeriesThread, {"img_path": self.data.data_path,
+            self.worker = Worker(self.calculateTimeSeriesThread, {"img_path": self.data.data_filepath,
                                                                   "atlas": self.parcellationDropdown.currentText(),
                                                                   "option": self.parcellationOptions.currentText()})
         else:
-            self.worker = Worker(self.calculateTimeSeriesThread, {"img_path": self.data.data_path,
+            self.worker = Worker(self.calculateTimeSeriesThread, {"img_path": self.data.data_filepath,
                                                                   "atlas": self.fmriprep_parcellationDropdown.currentText(),
                                                                   "option": self.fmriprep_parcellationOptions.currentText()})
 
@@ -2713,7 +2713,7 @@ class App(QMainWindow):
         option = params["option"]
         mask = None
         confounds_df = None
-        self.data.file_sample_mask
+        self.data.data_sample_mask = None
 
         # Collect cleaning arguments
         if self.fmriprep_layout is None:
@@ -2721,14 +2721,14 @@ class App(QMainWindow):
             # Discard the initial n volumes
             discarded_values = self.discardSpinBox.value()
             if discarded_values > 0:
-                if self.data.data_name.endswith(".dtseries.nii") or self.data.data_name.endswith(".ptseries.nii"):
-                    img = nib.load(self.data.data_path)
+                if self.data.data_filename.endswith(".dtseries.nii") or self.data.data_filename.endswith(".ptseries.nii"):
+                    img = nib.load(self.data.data_filepath)
                     img_data = img.get_fdata()
                     img_data = img_data[discarded_values:, :]
                     img = nib.Cifti2Image(img_data, header=img.header)  
                 
-                elif self.data.data_name.endswith(".nii") or self.data.data_name.endswith(".nii.gz"):
-                    img = nib.load(self.data.data_path)
+                elif self.data.data_filename.endswith(".nii") or self.data.data_filename.endswith(".nii.gz"):
+                    img = nib.load(self.data.data_filepath)
                     img_data = img.get_fdata()
                     img_data = img_data[:,:,:, discarded_values:]
                     img = nib.Nifti1Image(img_data, affine=img.affine, header=img.header)
@@ -2737,7 +2737,7 @@ class App(QMainWindow):
                     QMessageBox.warning(self, "Error when extracting time series", f"File type not supported.")
                     return
             else:
-                img = nib.load(self.data.data_path)
+                img = nib.load(self.data.data_filepath)
                 
             radius = self.sphereRadiusSpinbox.value() if self.sphereRadiusSpinbox.value() > 0 else None # none is single voxel
             allow_ovelap = self.overlapCheckbox.isChecked()
@@ -2765,7 +2765,7 @@ class App(QMainWindow):
                 confounds_df = None
 
         else:
-            img = nib.load(self.data.data_path)
+            img = nib.load(self.data.data_filepath)
 
             radius = self.fmriprep_sphereRadiusSpinbox.value() if self.fmriprep_sphereRadiusSpinbox.value() > 0 else None # none is single voxel
             allow_ovelap = self.fmriprep_overlapCheckbox.isChecked()
@@ -2781,7 +2781,7 @@ class App(QMainWindow):
             tr = self.fmriprep_trValue.value() if self.fmriprep_trValue.value() > 0 else None
 
             args = self.collectCleaningArguments()
-            confounds_df, self.data.file_sample_mask = load_confounds(img_path, **args)
+            confounds_df, self.data.data_sample_mask = load_confounds(img_path, **args)
             mask = self.mask_name
 
             # Workaround for nilearn bug, will be fixed in the next nilearn release
@@ -2792,7 +2792,7 @@ class App(QMainWindow):
             if atlas == "Power et al. (2011)":
                 rois = self.fetchAtlas(atlas, option)
             else:
-                rois, _, self.data.roi_names = self.fetchAtlas(atlas, option)
+                rois, _, self.data.data_roi_names = self.fetchAtlas(atlas, option)
 
             masker = maskers.NiftiSpheresMasker(seeds=rois, mask_img=mask, radius=radius, allow_overlap=allow_ovelap,
                                                 standardize=standardize, standardize_confounds=standardize_confounds, detrend=detrend, 
@@ -2823,7 +2823,7 @@ class App(QMainWindow):
 
         if self.fmriprep_layout is not None:
             self.plotCarpet()
-            self.data.data_ts_data = self.data.data_ts_data[self.data.file_sample_mask,:]
+            self.data.data_ts_data = self.data.data_ts_data[self.data.data_sample_mask,:]
         else:
             self.plotCarpet()
 
@@ -2834,7 +2834,7 @@ class App(QMainWindow):
         else:
             self.processingResultsLabel.setText(f'Time series data with shape {self.data.data_ts_data.shape} is ready for connectivity analysis.')
         
-        self.time_series_textbox.setText(self.data.data_name)
+        self.time_series_textbox.setText(self.data.data_filename)
         self.connectivityFileNameLabel.setText(f"Time series data with shape {self.data.data_ts_data.shape} is available for connectivity analysis.")
 
         # Re-enable buttons
@@ -2842,6 +2842,12 @@ class App(QMainWindow):
         self.fmriprep_calculateButton.setEnabled(True)
 
         self.saveTimeSeriesButton.show()
+
+        # Enable connectivity tab elements
+        self.methodComboBox.setEnabled(True)
+        self.calculateConnectivityButton.setEnabled(True)
+        self.clearMemoryButton.setEnabled(True)
+        self.keepInMemoryCheckbox.setEnabled(True)
 
         return
 
@@ -2877,7 +2883,7 @@ class App(QMainWindow):
         tr = self.trValue.value() if self.trValue.value() > 0 else None
         
         # Copy the data to keep the original
-        self.data.data_ts_data = self.data.data_data.copy()
+        self.data.data_ts_data = self.data.data_filedata.copy()
 
         # Discard initial n volumes
         discarded_values = self.discardSpinBox.value()
@@ -2932,7 +2938,7 @@ class App(QMainWindow):
 
     def handleCleaningResult(self):
         self.processingResultsLabel.setText(f'Time series data with shape {self.data.data_ts_data.shape} is ready for connectivity analysis')
-        self.time_series_textbox.setText(self.data.data_name)
+        self.time_series_textbox.setText(self.data.data_filename)
         self.plotCarpet()
         self.cleanButton.setEnabled(True)
         self.resetButton.setEnabled(True)
@@ -2946,12 +2952,12 @@ class App(QMainWindow):
         return
 
     def resetTimeSeries(self):
-        self.data.data_ts_data = self.data.data_data.copy()
-        self.data.file_sample_mask = None
+        self.data.data_ts_data = self.data.data_filedata.copy()
+        self.data.data_sample_mask = None
         self.resetButton.setEnabled(False)
         self.processingResultsLabel.setText(f'Time series data with shape {self.data.data_ts_data.shape} is ready for connectivity analysis.')
 
-        if isinstance(self.data.data_data, np.ndarray):
+        if isinstance(self.data.data_filedata, np.ndarray):
             self.plotCarpet()
         else:
             self.plotLogo(self.boldFigure)
@@ -2976,11 +2982,11 @@ class App(QMainWindow):
             ts = self.data.data_ts_data.copy()
         
         # Show scrubbed volumes
-        if self.data.file_sample_mask is not None:
+        if self.data.data_sample_mask is not None:
             # We have data with missing scans (non-steady states or scrubbing)
             # Create a mask of the same shape as ts and set the values to 0 where sample_mask is False
             mask = np.ones(ts.shape, dtype=bool)
-            mask[self.data.file_sample_mask] = False
+            mask[self.data.data_sample_mask] = False
             ts[mask] = np.nan
 
             ts = np.ma.masked_where(mask, ts)
@@ -3032,7 +3038,7 @@ class App(QMainWindow):
             return
 
         # Open a file dialog to specify where to save the file
-        filePath, _ = QFileDialog.getSaveFileName(self, "Save File", "", "MAT Files (*.mat)")
+        filePath, _ = QFileDialog.getSaveFileName(self, "Save File", "", ".mat file (*.mat)")
 
         if filePath:
             # Ensure the file has the correct extension
@@ -3042,29 +3048,25 @@ class App(QMainWindow):
             # Save the the current data object to a .mat file
             try:
                 data_dict = {}
-                for field in self.data.__dataclass_fields__:
-                    if field.startswith("dfc"):
-                        value = getattr(self.data, field)
+                for field in [f for f in self.data.__dataclass_fields__ if f.startswith('dfc_')]:
+                    value = getattr(self.data, field)
 
-                        if isinstance(value, np.ndarray):
-                            data_dict[field] = value
-                        elif isinstance(value, dict):
-                            # Ensure all dict values are appropriately converted
-                            converted_dict = {}
-                            for k, v in value.items():
-                                if isinstance(v, np.ndarray):
-                                    converted_dict[k] = v
-                                elif v is None:
-                                    converted_dict[k] = np.array([])
-                                else:
-                                    converted_dict[k] = v
-                            data_dict[field] = converted_dict
-                        elif value is None:
-                            data_dict[field] = np.array([])
-                        elif field == 'dfc_instance':
-                            pass
-                        else:
-                            data_dict[field] = value
+                    if isinstance(value, np.ndarray):
+                        data_dict[field] = value
+                    elif isinstance(value, dict):
+                        converted_dict = {}
+                        for k, v in value.items():
+                            if isinstance(v, np.ndarray):
+                                converted_dict[k] = v
+                            elif v is None:
+                                converted_dict[k] = np.array([])
+                            else:
+                                converted_dict[k] = v
+                        data_dict[field] = converted_dict
+                    elif value is None or field == 'dfc_instance':
+                        pass
+                    else:
+                        data_dict[field] = value
 
                 savemat(filePath, data_dict)
 
@@ -3287,6 +3289,8 @@ class App(QMainWindow):
         self.plotTimeSeries()
 
         self.calculateConnectivityButton.setEnabled(True)
+        self.saveConnectivityButton.setEnabled(True)
+
         self.onTabChanged()
 
         # Init the graph tab
@@ -3299,7 +3303,7 @@ class App(QMainWindow):
         position_text = f"t = {self.graphSlider.value()} / {total_length-1}" if len(self.data.graph_data.shape) == 3 else " static "
         self.graphPositionLabel.setText(position_text)
         self.currentGraphOption = None
-        self.data.data_name = self.data.data_name
+        self.data.data_filename = self.data.data_filename
         
         self.plotGraphMatrix()
         self.onGraphCombobox()
@@ -3342,8 +3346,8 @@ class App(QMainWindow):
         labels.append(time_series_label)
 
         self.time_series_textbox.setPlaceholderText("No data available")
-        if self.data.data_name:
-            self.time_series_textbox.setText(self.data.data_name)
+        if self.data.data_filename:
+            self.time_series_textbox.setText(self.data.data_filename)
         self.time_series_textbox.setEnabled(True)
 
         # Create info button for time_series
@@ -3604,13 +3608,6 @@ class App(QMainWindow):
 
             ax.set_xlabel("ROI")
             ax.set_ylabel("ROI")
-
-            # If we have roi names and less than 100 ROIS, we can plot the names
-            if self.data.roi_names is not None and len(self.data.roi_names) < 100:
-                ax.set_xticks(np.arange(len(self.data.roi_names)))
-                ax.set_yticks(np.arange(len(self.data.roi_names)))
-                ax.set_xticklabels(self.data.roi_names, rotation=45, fontsize=120/len(self.data.roi_names) + 2)
-                ax.set_yticklabels(self.data.roi_names,              fontsize=120/len(self.data.roi_names) + 2)
 
             # Create the colorbar
             divider = make_axes_locatable(ax)
@@ -3906,7 +3903,7 @@ class App(QMainWindow):
                       MAT files (*.mat);;Text files (*.txt);;NumPy files (*.npy);;TSV files (*.tsv);;CIFTI files (*.dtseries.nii *.ptseries.nii)"
         file_path, _ = QFileDialog.getOpenFileName(self, "Load File", "", fileFilter)
         file_name = file_path.split('/')[-1]
-        self.data.data_name = file_name
+        self.data.data_filename = file_name
 
         if not file_path:
             return  # Early exit if no file is selected
@@ -3947,7 +3944,7 @@ class App(QMainWindow):
             return
 
         self.data.graph_raw = self.data.graph_data.copy()
-        self.graphFileNameLabel.setText(f"Loaded {self.data.data_name} with shape {self.data.graph_data.shape}")
+        self.graphFileNameLabel.setText(f"Loaded {self.data.data_filename} with shape {self.data.graph_data.shape}")
 
         total_length = self.data.graph_data.shape[2] if np.ndim(self.data.graph_data) == 3 else 0
         position_text = f"t = {self.graphSlider.value()} / {total_length-1}" if len(self.data.graph_data.shape) == 3 else " static "
@@ -3968,7 +3965,7 @@ class App(QMainWindow):
             return
 
         # Open a file dialog to specify where to save the file
-        filePath, _ = QFileDialog.getSaveFileName(self, "Save File", "", "MAT Files (*.mat)")
+        filePath, _ = QFileDialog.getSaveFileName(self, "Save File", "", ".mat file (*.mat)")
 
         if filePath:
             # Ensure the file has the correct extension
@@ -3979,28 +3976,25 @@ class App(QMainWindow):
             try:
                 data_dict = {}
                 for field in [f for f in self.data.__dataclass_fields__ if f.startswith('graph_')]:
-                    if field.startswith("graph"):
-                        value = getattr(self.data, field)
+                    value = getattr(self.data, field)
 
-                        if isinstance(value, np.ndarray):
-                            data_dict[field] = value
-                        elif isinstance(value, dict):
-                            # Ensure all dict values are appropriately converted
-                            converted_dict = {}
-                            for k, v in value.items():
-                                if isinstance(v, np.ndarray):
-                                    converted_dict[k] = v
-                                elif v is None:
-                                    converted_dict[k] = np.array([])
-                                else:
-                                    converted_dict[k] = v
-                            data_dict[field] = converted_dict
-                        elif value is None:
-                            data_dict[field] = np.array([])
-                        elif field == 'dfc_instance':
-                            pass
-                        else:
-                            data_dict[field] = value
+                    if isinstance(value, np.ndarray):
+                        data_dict[field] = value
+                    elif isinstance(value, dict):
+                        # Ensure all dict values are appropriately converted
+                        converted_dict = {}
+                        for k, v in value.items():
+                            if isinstance(v, np.ndarray):
+                                converted_dict[k] = v
+                            elif v is None:
+                                converted_dict[k] = np.array([])
+                            else:
+                                converted_dict[k] = v
+                        data_dict[field] = converted_dict
+                    elif value is None:
+                        pass
+                    else:
+                        data_dict[field] = value
 
                 savemat(filePath, data_dict)
 
@@ -4097,7 +4091,7 @@ class App(QMainWindow):
         
         # Set labels
         self.graphFileNameLabel.setText(f"Using dFC estimates with shape {self.data.graph_data.shape}")
-        self.data.data_name = f"dfC from {self.data.data_name}"
+        self.data.data_filename = f"dfC from {self.data.data_filename}"
         
         total_length = self.data.graph_data.shape[2] if np.ndim(self.data.graph_data) == 3 else 0
         position_text = f"t = {self.graphSlider.value()} / {total_length-1}" if len(self.data.graph_data.shape) == 3 else " "
@@ -4323,7 +4317,7 @@ class App(QMainWindow):
                 if is_first_parameter:
                     param_widget = QLineEdit()
                     param_widget.setPlaceholderText("No data available")
-                    if self.data.data_name or self.data.graph_data is not None:
+                    if self.data.data_filename or self.data.graph_data is not None:
                         param_widget = QLineEdit("As shown in plot")
                     param_widget.setReadOnly(True)  # Make the widget read-only
                     is_first_parameter = False  # Update the flag so this block runs only for the first parameter
