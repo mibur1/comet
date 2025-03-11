@@ -30,13 +30,22 @@ class Multiverse:
     ----------
     name : str
         Name of the multiverse analysis. Default is "multiverse".
+    folder : str
+        Folder to save the multiverse analysis. Default is None (will use current directory).
     """
 
-    def __init__(self, name="multiverse"):
+    def __init__(self, name="multiverse", folder=None):
         self.name = name.split('/')[-1].split('.')[0]
-        self.calling_script_dir = os.getcwd() if in_notebook() else os.path.abspath(sys.modules['__main__'].__file__).rsplit('/', 1)[0]
-        self.multiverse_dir = os.path.join(self.calling_script_dir, self.name)
-        self.results_dir = os.path.join(self.multiverse_dir, "results")
+        
+        if folder is not None:
+            self.multiverse_dir = folder
+            self.results_dir = os.path.join(folder, "results")
+        else:
+            self.calling_script_dir = os.getcwd() if in_notebook() else os.path.abspath(sys.modules['__main__'].__file__).rsplit('/', 1)[0]
+            self.multiverse_dir = os.path.join(self.calling_script_dir, self.name)
+            self.results_dir = os.path.join(self.multiverse_dir, "results")
+
+        os.makedirs(self.results_dir, exist_ok=True)
 
     # Public methods
     def create(self, analysis_template, forking_paths, config={}):
@@ -115,7 +124,7 @@ class Multiverse:
             valid_universes = all_universes
 
         # Create Python scripts for each combination
-        for i, combination in enumerate(valid_universes, start=1):
+        for i, combination in enumerate(valid_universes, start=1):            
             context = {key: self._format_type(value) for key, value in combination}
             rendered_content = jinja_template.render(**context)
             
@@ -152,11 +161,6 @@ class Multiverse:
         parallel : int
             Number of universes to run in parallel
         """
-        if folder is not None:
-            self.multiverse_dir = folder
-            self.results_dir = os.path.join(self.multiverse_dir, "results")
-        
-        os.makedirs(self.multiverse_dir, exist_ok=True)
         sorted_files = sorted(os.listdir(self.multiverse_dir))
 
         # Delete previous results (.pkl files)
@@ -196,6 +200,8 @@ class Multiverse:
             multiverse_selection = multiverse_summary.iloc[universe-1]
         elif isinstance(universe, range):
             multiverse_selection = multiverse_summary.iloc[universe.start-1:universe.stop]
+        else:
+            multiverse_selection = multiverse_summary
 
         if in_notebook():
             from IPython.display import display
@@ -251,7 +257,7 @@ class Multiverse:
 
             return G
 
-        # List of dicts. Each dict is a decision with its options
+        # Map each value column to its corresponding decision column
         value_to_decision_map = {value_col: decision_col for value_col, decision_col in zip(value_columns[1:], decision_columns)}
 
         parameters = [
@@ -259,7 +265,7 @@ class Multiverse:
             for parameter in multiverse_values.columns[1:]
             if len(multiverse_values[parameter].unique()) > 1
         ]
-        parameters = [(decision, values[pd.notna(values)]) for decision, values in parameters] # remove nans
+        parameters = [(decision, values[pd.notna(values)]) for decision, values in parameters]  # remove nans
 
         # Initialize and build the graph
         G = nx.DiGraph()
@@ -278,7 +284,7 @@ class Multiverse:
             row_dict = filtered_df.iloc[0].to_dict()
             values.extend([f"{column}: {value}" for column, value in row_dict.items()])
 
-        # Red edge colors for the edges that are part of the universe
+        # Define edge colors: highlight edges part of the selected universe
         universe_edges = [(source_value, target_value) for source_value, target_value in G.edges if source_value in values and target_value in values]
         edge_colors = ["black"] * len(G.edges)
         edge_widths = [1.0] * len(G.edges)
@@ -313,47 +319,45 @@ class Multiverse:
             nodes_at_level = [node for node in G.nodes if G.nodes[node].get('level') == level]
             nx.draw_networkx_nodes(G, pos, nodelist=nodes_at_level, node_size=node_size, node_color=[level_colors[level] for _ in nodes_at_level], ax=ax)
 
-        # Draw labels using corresponding entries from multiverse_decision DataFrame
+        # Draw labels for nodes: Only display the option text
         node_labels = {}
         for node in G.nodes:
-            if node != root_node and 'decision' in G.nodes[node]:
-                decision = G.nodes[node]['decision']
+            if node != root_node and 'option' in G.nodes[node]:
                 option = G.nodes[node]['option']
-                
-                # Find the first matching row where the column equals the decision
-                if decision in multiverse_decision.columns:
-                    decision_label = multiverse_decision[decision].iloc[0]  # Extract the first value for simplicity
-                    node_labels[node] = f"{decision_label}\n{option}"  # Combine the corresponding decision entry with the option
-                else:
-                    node_labels[node] = f"{decision}\n{option}"  # Fallback if no matching entry found
+                node_labels[node] = str(option)
             else:
                 node_labels[node] = G.nodes[node]['label']  # For the root node
 
         nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=12, ax=ax)
 
-        # Identify and annotate the bottom-most node at each level with the decision label
+        # Identify and annotate the bottom-most node at each level with the actual decision value
         levels = set(nx.get_node_attributes(G, 'level').values())
 
-        # Create an appropriate label offset based on the maximum level node count
+        # Create an appropriate label offset based on the maximum number of nodes at any level
         node_nums = []
         for level in levels:
             nodes_at_level = [node for node in G.nodes if G.nodes[node].get('level') == level]
             node_nums.append(len(nodes_at_level))
 
-        # Draw the labels
+        # Annotate bottom nodes with the decision value (using multiverse_decision data when available)
         for level in levels:
             nodes_at_level = [node for node in G.nodes if G.nodes[node].get('level') == level]
-
             if nodes_at_level:
                 bottom_node = min(nodes_at_level, key=lambda node: pos[node][1])
                 if bottom_node != root_node and 'decision' in G.nodes[bottom_node]:
                     decision = G.nodes[bottom_node]['decision']
+                    if decision in multiverse_decision.columns:
+                        decision_value = multiverse_decision[decision].iloc[0]
+                    else:
+                        decision_value = decision
                     x, y = pos[bottom_node]
-                    ax.text(x, y-label_offset * max(node_nums), decision, horizontalalignment='center', fontsize=12, fontweight='bold')
+                    ax.text(x, y - label_offset * max(node_nums), decision_value,
+                            horizontalalignment='center', fontsize=12, fontweight='bold')
 
         plt.savefig(f"{self.results_dir}/multiverse.png", bbox_inches='tight')
 
         return fig
+
 
     def specification_curve(self, measure, baseline=None, p_value=None, ci=None, smooth_ci=True, \
                             title="Specification Curve", name_map=None, cmap="Set3", linewidth=2, figsize=(16,9), \
@@ -859,7 +863,6 @@ class Multiverse:
         sorted_universes = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
 
         return sorted_universes, forking_paths
-
 
 # Helper function
 def in_notebook():

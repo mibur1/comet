@@ -1683,7 +1683,7 @@ class App(QMainWindow):
         self.mv_containers = []  # decision containers for multiverse analysis
         self.mv_from_file = False
 
-        createMvContainer = QGroupBox("Create multiverse analysis template")
+        self.createMvContainer = QGroupBox("Create multiverse analysis template")
         self.createMvContainerLayout = QVBoxLayout()  # Make it an instance variable to access it globally
         self.createMvContainerLayout.addItem(QSpacerItem(0, 5, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
@@ -1705,26 +1705,14 @@ class App(QMainWindow):
         buttonLayoutWidget.setLayout(buttonLayout)
         self.createMvContainerLayout.addWidget(buttonLayoutWidget)
 
-        createMvContainer.setLayout(self.createMvContainerLayout)
-        leftLayout.addWidget(createMvContainer)
+        self.createMvContainer.setLayout(self.createMvContainerLayout)
+        leftLayout.addWidget(self.createMvContainer)
         leftLayout.addStretch()
 
         # Bottom section
         performMvContainer = QGroupBox("Perform multiverse analysis")
         performMvContainerLayout = QVBoxLayout()
         performMvContainerLayout.addItem(QSpacerItem(0, 5, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
-
-        # Choose folder layout
-        chooseFolderLayout = QHBoxLayout()
-        chooseFolderButton = QPushButton('Select multiverse folder')
-        chooseFolderLayout.addWidget(chooseFolderButton, 3)
-
-        # Textbox to display the loaded script path
-        self.chooseFolderEdit = QLineEdit()
-        self.chooseFolderEdit.setPlaceholderText("No folder selected yet")
-        self.chooseFolderEdit.setReadOnly(True)
-        chooseFolderLayout.addWidget(self.chooseFolderEdit, 5)
-        performMvContainerLayout.addLayout(chooseFolderLayout)
 
         # Load script layout
         loadLayout = QHBoxLayout()
@@ -1774,7 +1762,6 @@ class App(QMainWindow):
         self.runMultiverseButton.setEnabled(False)
         self.paralleliseMultiverseSpinbox.setEnabled(False)
 
-        chooseFolderButton.clicked.connect(self.selectMultiverseFolder)
         loadMultiverseScriptButton.clicked.connect(self.loadMultiverseScript)
         self.createMultiverseButton.clicked.connect(self.createMultiverse)
         self.runMultiverseButton.clicked.connect(self.runMultiverseScript)
@@ -5455,17 +5442,24 @@ class App(QMainWindow):
                     "\n"
                     "Multiverse analysis requires a Python script to be created by the user.\n"
                     "An initial template for this can be created through the GUI, with forking paths being stored in a dict and later used through double curly braces in the template function.\n\n"
-                    "This example shows how one would create and run a multiverse analysis which will generate 3 Python scripts (universes) printing the numbers 1, 2, and 3, respectively.\n"
+                    "This example shows how one would create and run a multiverse analysis which will generate 4 universes (2*2) which perform addition of two numbers, respectively.\n"
+                    "Results of a universe can be passed to the `save_universe_results()` function as a dictionary.\n"
                     "\"\"\"\n"
                     "\n"
                     "from comet.multiverse import Multiverse\n"
                     "\n"
                     "forking_paths = {\n"
-                    "    \"numbers\": [1, 2, 3]\n"
+                    "    \"number_1\": [1, 2],\n"
+                    "    \"number_2\": [3, 4]\n"  
                     "}\n"
                     "\n"
                     "def analysis_template():\n"
-                    "    print({{numbers}})\n"
+                    "   import os\n\n"
+                    "   # The result of each universe is the addition of two numbers\n"
+                    "   addition = {{number_1}} + {{number_2}}\n\n"
+                    "   # Save results\n"
+                    "   result = {\"addition\": addition}\n"
+                    "   comet.utils.save_universe_results(result, universe=os.path.abspath(__file__))\n"
                     "\n"
                 )
 
@@ -5496,67 +5490,69 @@ class App(QMainWindow):
         self.scriptDisplay.setReadOnly(True)
         self.toggleButton.setText("🔒")
 
-    def selectMultiverseFolder(self):
-        self.data.mv_folder = QFileDialog.getExistingDirectory(self, "Select folder for multiverse analysis")
-        self.chooseFolderEdit.setText(self.data.mv_folder)
-        # User canceled the selection
-        if not self.data.mv_folder:
-            return
-
     def loadMultiverseScript(self):
         """
         Load a multiverse script and extract specific components.
         """
         fileFilter = "All supported files (*.py *.ipynb);;MAT files (*.mat);;Python files (*.py);;Jupyter notebooks (*.ipynb)"
         self.multiverseFileName, _ = QFileDialog.getOpenFileName(self, "Load multiverse template file", "", fileFilter)
-        self.multiverseName = self.multiverseFileName.split('/')[-1].split('.')[0]
-        self.mv_from_file = True
-        self.createMultiverseButton.setEnabled(True)
-        self.runMultiverseButton.setEnabled(False)
-        self.paralleliseMultiverseSpinbox.setEnabled(False)
-        self.plotButton.setEnabled(False)
-
+        self.data.mv_folder, _ = os.path.splitext(self.multiverseFileName)
         self.data.mv_forking_paths = {}
 
         if self.multiverseFileName:
-            try:
-                if self.multiverseFileName.endswith('.ipynb'):
-                    # Convert .ipynb to Python script
-                    with open(self.multiverseFileName, 'r', encoding='utf-8') as file:
-                        notebook = json.load(file)
-                        self.multiverseScriptContent = self.convertNotebookToScript(notebook)
-                else:
-                    # Load as a normal Python script
-                    with open(self.multiverseFileName, 'r', encoding='utf-8') as file:
-                        self.multiverseScriptContent = file.read()
+            self.onMultiverseFile()
+            self.createMvContainer.setEnabled(False)
+        
+        return   
 
-                # Parse the script and extract components
-                extracted_content = self.extractScriptComponents(self.multiverseScriptContent)
-                self.scriptDisplay.setText(extracted_content)
-                self.scriptDisplay.setReadOnly(False)
+    def onMultiverseFile(self):   
+        try:
+            if self.multiverseFileName.endswith('.ipynb'):
+                # Convert .ipynb to Python script
+                with open(self.multiverseFileName, 'r', encoding='utf-8') as file:
+                    notebook = json.load(file)
+                    self.multiverseScriptContent = self.convertNotebookToScript(notebook)
+            else:
+                # Load as a normal Python script
+                with open(self.multiverseFileName, 'r', encoding='utf-8') as file:
+                    self.multiverseScriptContent = file.read()
 
-                # Update the text box
-                self.loadedScriptDisplay.setText(self.multiverseFileName.split('/')[-1])
+            # Parse the script and extract components
+            extracted_content = self.extractScriptComponents(self.multiverseScriptContent)
+            self.scriptDisplay.setText(extracted_content)
+            self.scriptDisplay.setReadOnly(False)
 
-                # Load the forking paths and populate the decision containers
-                tree = ast.parse(extracted_content)
+            # Update the text box
+            self.loadedScriptDisplay.setText(self.multiverseFileName.split('/')[-1])
 
-                # Traverse the AST to find the forking_paths assignment
-                for node in ast.walk(tree):
-                    if isinstance(node, ast.Assign):
-                        for target in node.targets:
-                            if isinstance(target, ast.Name) and target.id == 'forking_paths':
-                                # Safely evaluate the forking_paths dictionary (node.value)
-                                forking_paths = ast.literal_eval(node.value)
+            # Load the forking paths and populate the decision containers
+            tree = ast.parse(extracted_content)
 
-                self.populateMultiverseContainers(forking_paths)
+            # Traverse the AST to find the forking_paths assignment
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Assign):
+                    for target in node.targets:
+                        if isinstance(target, ast.Name) and target.id == 'forking_paths':
+                            # Safely evaluate the forking_paths dictionary (node.value)
+                            forking_paths = ast.literal_eval(node.value)
 
-                self.specFigure.clf()
-                self.specCanvas.draw()
+            self.multiverseName = self.multiverseFileName.split('/')[-1].split('.')[0]
+            self.mv_from_file = True
+            self.createMultiverseButton.setEnabled(True)
+            self.runMultiverseButton.setEnabled(False)
+            self.paralleliseMultiverseSpinbox.setEnabled(False)
+            self.plotButton.setEnabled(False)
+
+            self.populateMultiverseContainers(forking_paths)
+
+            self.specFigure.clf()
+            self.specCanvas.draw()
 
 
-            except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to read the file: {str(e)}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to read the file: {str(e)}")
+
+        return
 
     def extractScriptComponents(self, script_content):
         """
@@ -5611,11 +5607,10 @@ class App(QMainWindow):
         Create the multiverse from the template file
         """
         if hasattr(self, 'multiverseFileName'):
-            multiverse_save_path = self.data.mv_folder
-            os.makedirs(multiverse_save_path, exist_ok=True)
-
             # Create a template script in the multiverse folder (the script content is taken from the GUI)
-            template_file = os.path.join(multiverse_save_path, "template.py")
+            os.makedirs(self.data.mv_folder, exist_ok=True)
+            template_file = os.path.join(self.data.mv_folder, "template.py")
+            
             with open(template_file, "w") as file:
                 file.write("# Template script containing the required data for multiverse analysis.\n")
                 file.write("# This file is used/overwritten by the GUI, users should usually directly interact with their own multiverse script.\n\n")
@@ -5629,8 +5624,8 @@ class App(QMainWindow):
 
             forking_paths = getattr(module, 'forking_paths', None)
             analysis_template = getattr(module, 'analysis_template', None)
-
-            self.mverse = multiverse.Multiverse(name=self.multiverseFileName)
+            
+            self.mverse = multiverse.Multiverse(name=self.multiverseFileName, folder=self.data.mv_folder)
             self.mverse.create(analysis_template, forking_paths)
 
             # If we already have results, we can populate the measure input
@@ -5647,7 +5642,7 @@ class App(QMainWindow):
             self.plotMultiverseSummary()
 
             # Check size of the multiverse. If we have an identical amount of results we take this as a heuristic that the multiverse was already run
-            summary_df = self.mverse.summary()
+            summary_df = self.mverse.summary(universe=None)
             all_files = os.listdir(self.mverse.results_dir)
             num_results = len([f for f in all_files if f.startswith('universe_') and f.endswith('.pkl')])
 
@@ -5664,6 +5659,7 @@ class App(QMainWindow):
     def resetMultiverseScript(self):
         self.mv_from_file = False
         self.generateMultiverseScript(init_template=True)
+        self.createMvContainer.setEnabled(True)
 
     def saveMultiverseScript(self):
         """
@@ -5683,13 +5679,15 @@ class App(QMainWindow):
         """
         Run the multiverse analysis from the generated/loaded script
         """
+        os.makedirs(os.path.join(self.data.mv_folder, 'results'), exist_ok=True)
+
         self.createMultiverseButton.setEnabled(False)
         self.runMultiverseButton.setEnabled(False)
         self.paralleliseMultiverseSpinbox.setEnabled(False)
         self.plotButton.setEnabled(False)
 
         self.mvThread = QThread()
-        self.mvWorker = Worker(self.mverse.run, {"parallel": self.paralleliseMultiverseSpinbox.value(), "folder": self.data.mv_folder})
+        self.mvWorker = Worker(self.mverse.run, {"parallel": self.paralleliseMultiverseSpinbox.value()})
         self.mvWorker.moveToThread(self.mvThread)
 
         self.mvThread.started.connect(self.mvWorker.run)
