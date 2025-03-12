@@ -4,7 +4,7 @@ Running Multiverse analysis
 Multiverse analysis requires a Python script to be created by the user.
 An initial template for this can be created through the GUI, with forking paths being stored in a dict and later used through double curly braces in the template function.
 
-This example shows how one would create and run a multiverse analysis which will generate 4 (2*2) Python scripts (universes) and saves the the sum of the addition.
+This example shows how one would create and run a multiverse analysis which will generate 4 (2*2) Python scripts (universes) calculating the sum of two numbers.
 """
 
 from comet.multiverse import Multiverse

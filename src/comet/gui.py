@@ -1,3 +1,4 @@
+import io
 import os
 import re
 import ast
@@ -5625,7 +5626,7 @@ class App(QMainWindow):
             forking_paths = getattr(module, 'forking_paths', None)
             analysis_template = getattr(module, 'analysis_template', None)
             
-            self.mverse = multiverse.Multiverse(name=self.multiverseFileName, folder=self.data.mv_folder)
+            self.mverse = multiverse.Multiverse(name=self.multiverseFileName, path=self.data.mv_folder)
             self.mverse.create(analysis_template, forking_paths)
 
             # If we already have results, we can populate the measure input
@@ -5728,10 +5729,12 @@ class App(QMainWindow):
         if hasattr(self, 'multiverseCanvas'):
             self.plotMvTab.layout().removeWidget(self.multiverseCanvas)
             self.multiverseCanvas.setParent(None)
+            plt.close(self.multiverseCanvas.figure)  # Close the old figure to free resources
 
-        fig = self.mverse.visualize()
+        # Generate a new figure using the visualization method
+        fig = self.mverse.visualize(universe=self.universeInput.value(), node_size=self.nodeSizeInput.value(), figsize=str(self.figsizeInput2), label_offset=self.labelOffsetInput.value())
+
         self.multiverseCanvas = FigureCanvas(fig)
-
         self.plotMvTab.layout().addWidget(self.multiverseCanvas)
         self.multiverseCanvas.draw()
 
@@ -5786,9 +5789,9 @@ class App(QMainWindow):
 
         # Figure Size (two numbers for width and height)
         secondRowLayout.addWidget(QLabel('Figsize:'))
-        self.figsizeInput = QLineEdit(self)
-        self.figsizeInput.setText("5,6")
-        secondRowLayout.addWidget(self.figsizeInput)
+        self.figsizeInput1 = QLineEdit(self)
+        self.figsizeInput1.setText("5,6")
+        secondRowLayout.addWidget(self.figsizeInput1)
 
         # Plot Button
         self.plotButton = QPushButton(' Create Plot ', self)
@@ -5824,9 +5827,9 @@ class App(QMainWindow):
 
         # Figure Size (two numbers for width and height)
         firstRowLayout.addWidget(QLabel('Figsize:'))
-        self.figsizeInput = QLineEdit(self)
-        self.figsizeInput.setText("8,6")
-        firstRowLayout.addWidget(self.figsizeInput)
+        self.figsizeInput2 = QLineEdit(self)
+        self.figsizeInput2.setText("8,6")
+        firstRowLayout.addWidget(self.figsizeInput2)
 
         # Label Offset (float spin box)
         firstRowLayout.addWidget(QLabel('Label Offset:'))
@@ -5850,7 +5853,7 @@ class App(QMainWindow):
         # Get input values
         universe = None if self.universeInput.value() == 0 else self.universeInput.value()
         node_size = self.nodeSizeInput.value()
-        figsize = tuple(map(int, self.figsizeInput.text().split(',')))
+        figsize = tuple(map(int, self.figsizeInput2.text().split(',')))
         label_offset = self.labelOffsetInput.value()
 
         # Plot the multiverse summary
@@ -5862,13 +5865,12 @@ class App(QMainWindow):
             plt.close(self.multiverseCanvas.figure)  # Close the old figure
 
         with tempfile.NamedTemporaryFile(suffix='.png', delete=True) as tmpfile:
-            fig.savefig(tmpfile.name, bbox_inches='tight')
+            fig.savefig(tmpfile.name, bbox_inches='tight', dpi=300)
 
-            fig = plt.figure()
             img = plt.imread(tmpfile.name)
-            plt.imshow(img)
-            plt.tight_layout()
-            plt.axis('off')
+            fig, ax = plt.subplots()
+            ax.imshow(img)
+            ax.axis('off')
 
             self.multiverseCanvas = FigureCanvas(fig)
             self.plotMvTab.layout().insertWidget(0, self.multiverseCanvas)  # Insert the canvas at the top
@@ -5884,7 +5886,7 @@ class App(QMainWindow):
         p_value = None if self.pValueInput.value() == self.pValueInput.minimum() else self.pValueInput.value()
         ci = None if self.ciInput.value() == self.ciInput.minimum() else self.ciInput.value()
         smooth_ci = self.smoothCiCheckbox.isChecked()
-        figsize = tuple(map(int, self.figsizeInput.text().split(',')))  # make string a tuple
+        figsize = tuple(map(int, self.figsizeInput1.text().split(',')))  # make string a tuple
 
         self.plotButton.setEnabled(False)
 
@@ -5910,19 +5912,22 @@ class App(QMainWindow):
             self.specCanvas.setParent(None)
             plt.close(self.specCanvas.figure)  # Close the old figure
 
-        with tempfile.NamedTemporaryFile(suffix='.png', delete=True) as tmpfile:
-            result.savefig(tmpfile.name, bbox_inches='tight')
-
-            fig = plt.figure()
-            img = plt.imread(tmpfile.name)
-            plt.imshow(img)
-            plt.tight_layout()
-            plt.axis('off')
-
-            self.specCanvas = FigureCanvas(fig)
-            self.specTab.layout().insertWidget(0, self.specCanvas)  # Insert the canvas at the top
-            self.specCanvas.draw()
-            self.plotButton.setEnabled(True)
+        # Use an in-memory bytes buffer instead of a temporary file
+        buf = io.BytesIO()
+        result.savefig(buf, format='png', bbox_inches='tight', dpi=300)
+        buf.seek(0)
+        
+        # Read the image from the buffer and create a new figure
+        img = plt.imread(buf)
+        fig, ax = plt.subplots()
+        ax.imshow(img)
+        ax.axis('off')
+        
+        # Create and insert the new canvas into the layout
+        self.specCanvas = FigureCanvas(fig)
+        self.specTab.layout().insertWidget(0, self.specCanvas)  # Insert at the top
+        self.specCanvas.draw()
+        self.plotButton.setEnabled(True)
 
     def handleSpecificationCurveError(self, error):
         QMessageBox.warning(self, "Specification Curve", f"An error occurred while plotting the specification curve: {error}")
