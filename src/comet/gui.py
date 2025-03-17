@@ -5501,9 +5501,23 @@ class App(QMainWindow):
         self.data.mv_forking_paths = {}
 
         if self.multiverseFileName:
+            # Reset the plotting options
+            self.universeInput.setValue(-1)
+            self.nodeSizeInput.setValue(1000)
+            self.figsizeInput_summary.setText("8,7")
+            self.labelOffsetInput.setValue(0.04)
+
+            self.titleInput.setText("Specification Curve")
+            self.baselineInput.setValue(-1)
+            self.pValueInput.setValue(-1)
+            self.ciInput.setValue(-1)
+            self.smoothCiCheckbox.setChecked(True) 
+            self.figsizeInput_spec.setText("None")
+
+            # Init multiverse workflow
             self.onMultiverseFile()
             self.createMvContainer.setEnabled(False)
-        
+
         return   
 
     def onMultiverseFile(self):   
@@ -5543,12 +5557,18 @@ class App(QMainWindow):
             self.runMultiverseButton.setEnabled(False)
             self.paralleliseMultiverseSpinbox.setEnabled(False)
             self.plotButton.setEnabled(False)
+            self.plotMvButton.setEnabled(False)
 
             self.populateMultiverseContainers(forking_paths)
 
-            self.specFigure.clf()
-            self.specCanvas.draw()
+            # Clear the figures
+            self.multiverseFigure.clf()
+            self.plotLogo(self.multiverseFigure)
+            self.multiverseCanvas.draw()
 
+            self.specFigure.clf()
+            self.plotLogo(self.specFigure)
+            self.specCanvas.draw()
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to read the file: {str(e)}")
@@ -5639,13 +5659,14 @@ class App(QMainWindow):
                 self.measureInput.clear()
                 self.measureInput.addItems(variable_names)
 
-            # Create the summary plot
-            self.plotMultiverseSummary()
-
             # Check size of the multiverse. If we have an identical amount of results we take this as a heuristic that the multiverse was already run
-            summary_df = self.mverse.summary(universe=None)
+            summary_df = self.mverse.summary(universe=None, print_df=False)
             all_files = os.listdir(self.mverse.results_dir)
             num_results = len([f for f in all_files if f.startswith('universe_') and f.endswith('.pkl')])
+
+            # Plot figures
+            self.plotMultiverseSummary()
+            self.plotMvButton.setEnabled(True)
 
             if num_results == len(summary_df):
                 self.plotSpecificationCurve()
@@ -5724,20 +5745,6 @@ class App(QMainWindow):
         self.runMultiverseButton.setEnabled(True)
         self.paralleliseMultiverseSpinbox.setEnabled(True)
 
-    def plotMultiverse(self):
-        # Remove the old canvas from the layout if it exists
-        if hasattr(self, 'multiverseCanvas'):
-            self.plotMvTab.layout().removeWidget(self.multiverseCanvas)
-            self.multiverseCanvas.setParent(None)
-            plt.close(self.multiverseCanvas.figure)  # Close the old figure to free resources
-
-        # Generate a new figure using the visualization method
-        fig = self.mverse.visualize(universe=self.universeInput.value(), node_size=self.nodeSizeInput.value(), figsize=str(self.figsizeInput2), label_offset=self.labelOffsetInput.value())
-
-        self.multiverseCanvas = FigureCanvas(fig)
-        self.plotMvTab.layout().addWidget(self.multiverseCanvas)
-        self.multiverseCanvas.draw()
-
     def createSpecificationCurveWidgets(self):
         # Create a layout for the parameter inputs
         paramLayout = QVBoxLayout()
@@ -5789,9 +5796,9 @@ class App(QMainWindow):
 
         # Figure Size (two numbers for width and height)
         secondRowLayout.addWidget(QLabel('Figsize:'))
-        self.figsizeInput1 = QLineEdit(self)
-        self.figsizeInput1.setText("5,6")
-        secondRowLayout.addWidget(self.figsizeInput1)
+        self.figsizeInput_spec = QLineEdit(self)
+        self.figsizeInput_spec.setText("None")
+        secondRowLayout.addWidget(self.figsizeInput_spec)
 
         # Plot Button
         self.plotButton = QPushButton(' Create Plot ', self)
@@ -5827,9 +5834,9 @@ class App(QMainWindow):
 
         # Figure Size (two numbers for width and height)
         firstRowLayout.addWidget(QLabel('Figsize:'))
-        self.figsizeInput2 = QLineEdit(self)
-        self.figsizeInput2.setText("8,6")
-        firstRowLayout.addWidget(self.figsizeInput2)
+        self.figsizeInput_summary = QLineEdit(self)
+        self.figsizeInput_summary.setText("8,6")
+        firstRowLayout.addWidget(self.figsizeInput_summary)
 
         # Label Offset (float spin box)
         firstRowLayout.addWidget(QLabel('Label Offset:'))
@@ -5853,81 +5860,82 @@ class App(QMainWindow):
         # Get input values
         universe = None if self.universeInput.value() == 0 else self.universeInput.value()
         node_size = self.nodeSizeInput.value()
-        figsize = tuple(map(int, self.figsizeInput2.text().split(',')))
+        figsize = tuple(map(int, self.figsizeInput_summary.text().split(',')))
         label_offset = self.labelOffsetInput.value()
 
-        # Plot the multiverse summary
         fig = self.mverse.visualize(universe=universe, node_size=node_size, figsize=figsize, label_offset=label_offset)
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', bbox_inches='tight', dpi=300)
+        buf.seek(0)
+        img = plt.imread(buf)
 
-        if hasattr(self, 'multiverseCanvas'):
-            self.plotMvTab.layout().removeWidget(self.multiverseCanvas)
-            self.multiverseCanvas.setParent(None)
-            plt.close(self.multiverseCanvas.figure)  # Close the old figure
-
-        with tempfile.NamedTemporaryFile(suffix='.png', delete=True) as tmpfile:
-            fig.savefig(tmpfile.name, bbox_inches='tight', dpi=300)
-
-            img = plt.imread(tmpfile.name)
-            fig, ax = plt.subplots()
-            ax.imshow(img)
-            ax.axis('off')
-
-            self.multiverseCanvas = FigureCanvas(fig)
-            self.plotMvTab.layout().insertWidget(0, self.multiverseCanvas)  # Insert the canvas at the top
-            self.multiverseCanvas.draw()
+        self.multiverseFigure.clf()
+        #self.multiverseFigure.patch.set_facecolor('#ffffff')
+        ax = self.multiverseFigure.add_subplot(111)
+        ax.axis('off')
+        ax.set_position([0, 0, 1, 1])
+        ax.imshow(img)
+        self.multiverseCanvas.draw()
 
     def plotSpecificationCurve(self):
         """
         Run the multiverse analysis from the generated/loaded script
         """
-        measure = self.measureInput.currentText()
-        title = self.titleInput.text()
-        baseline = None if self.baselineInput.value() == self.baselineInput.minimum() else self.baselineInput.value()
-        p_value = None if self.pValueInput.value() == self.pValueInput.minimum() else self.pValueInput.value()
-        ci = None if self.ciInput.value() == self.ciInput.minimum() else self.ciInput.value()
-        smooth_ci = self.smoothCiCheckbox.isChecked()
-        figsize = tuple(map(int, self.figsizeInput1.text().split(',')))  # make string a tuple
+        if hasattr(self, 'mverse'):
+            measure = self.measureInput.currentText()
+            title = self.titleInput.text()
+            baseline = None if self.baselineInput.value() == self.baselineInput.minimum() else self.baselineInput.value()
+            p_value = None if self.pValueInput.value() == self.pValueInput.minimum() else self.pValueInput.value()
+            ci = None if self.ciInput.value() == self.ciInput.minimum() else self.ciInput.value()
+            smooth_ci = self.smoothCiCheckbox.isChecked()
 
-        self.plotButton.setEnabled(False)
+            figsize = tuple(map(int, self.figsizeInput_spec.text().split(','))) if self.figsizeInput_spec.text() != "None" else None
+            if figsize is None:
+                num_options = sum(len(values) for values in self.mverse.forking_paths.values())
+                figsize = (max(8, int(self.mverse.num_universes*0.07)), max(7, num_options))
+                self.figsizeInput_spec.setText(str(figsize[0]) + ',' + str(figsize[1]))
 
-        self.plotSpecificationCurveThread = QThread()
-        self.plotSpecificationCurveWorker = Worker(self.mverse.specification_curve, {"measure": measure, "title": title, "baseline": baseline, \
-                                                                                     "p_value": p_value, "ci": ci, "smooth_ci": smooth_ci, "figsize": figsize})
-        self.plotSpecificationCurveWorker.moveToThread(self.plotSpecificationCurveThread)
+            self.plotMvButton.setEnabled(False)
+            self.plotButton.setEnabled(False)
+            self.createMultiverseButton.setEnabled(False)
+            self.runMultiverseButton.setEnabled(False)
 
-        self.plotSpecificationCurveThread.started.connect(self.plotSpecificationCurveWorker.run)
-        self.plotSpecificationCurveWorker.finished.connect(self.plotSpecificationCurveThread.quit)
-        self.plotSpecificationCurveWorker.finished.connect(self.plotSpecificationCurveWorker.deleteLater)
-        self.plotSpecificationCurveThread.finished.connect(self.plotSpecificationCurveWorker.deleteLater)
+            self.plotSpecificationCurveThread = QThread()
+            self.plotSpecificationCurveWorker = Worker(self.mverse.specification_curve, {"measure": measure, "title": title, "baseline": baseline, \
+                                                                                        "p_value": p_value, "ci": ci, "smooth_ci": smooth_ci, "figsize": figsize})
+            self.plotSpecificationCurveWorker.moveToThread(self.plotSpecificationCurveThread)
 
-        self.plotSpecificationCurveWorker.result.connect(self.handleSpecificationCurveResult)
-        self.plotSpecificationCurveWorker.error.connect(self.handleSpecificationCurveError)
+            self.plotSpecificationCurveThread.started.connect(self.plotSpecificationCurveWorker.run)
+            self.plotSpecificationCurveWorker.finished.connect(self.plotSpecificationCurveThread.quit)
+            self.plotSpecificationCurveWorker.finished.connect(self.plotSpecificationCurveWorker.deleteLater)
+            self.plotSpecificationCurveThread.finished.connect(self.plotSpecificationCurveWorker.deleteLater)
 
-        self.plotSpecificationCurveThread.start()
+            self.plotSpecificationCurveWorker.result.connect(self.handleSpecificationCurveResult)
+            self.plotSpecificationCurveWorker.error.connect(self.handleSpecificationCurveError)
+
+            self.plotSpecificationCurveThread.start()
+        else:
+            pass
 
     def handleSpecificationCurveResult(self, result):
-        # Remove the old canvas from the layout if it exists
-        if hasattr(self, 'specCanvas'):
-            self.specTab.layout().removeWidget(self.specCanvas)
-            self.specCanvas.setParent(None)
-            plt.close(self.specCanvas.figure)  # Close the old figure
-
-        # Use an in-memory bytes buffer instead of a temporary file
         buf = io.BytesIO()
         result.savefig(buf, format='png', bbox_inches='tight', dpi=300)
         buf.seek(0)
-        
-        # Read the image from the buffer and create a new figure
         img = plt.imread(buf)
-        fig, ax = plt.subplots()
-        ax.imshow(img)
+
+        self.specFigure.clf()
+        self.specFigure.patch.set_facecolor('#ffffff')
+        ax = self.specFigure.add_subplot(111)
         ax.axis('off')
-        
-        # Create and insert the new canvas into the layout
-        self.specCanvas = FigureCanvas(fig)
-        self.specTab.layout().insertWidget(0, self.specCanvas)  # Insert at the top
+        ax.set_position([0, 0, 1, 1])
+        ax.imshow(img)
         self.specCanvas.draw()
+
+        # Re-enable buttons
+        self.plotMvButton.setEnabled(True)
         self.plotButton.setEnabled(True)
+        self.createMultiverseButton.setEnabled(True)
+        self.runMultiverseButton.setEnabled(True)
 
     def handleSpecificationCurveError(self, error):
         QMessageBox.warning(self, "Specification Curve", f"An error occurred while plotting the specification curve: {error}")

@@ -30,12 +30,20 @@ class Multiverse:
     ----------
     name : str
         Name of the multiverse analysis. Default is "multiverse".
-    path : str
-        Path to save the multiverse analysis. Default is None (will use current directory).
+    num_universes : str
+        Number of universes in the multiverse.
+    forking_paths : dict
+        Dictionary containing the forking paths.
+    multiverse_dir : str
+        Path to the multiverse directory.
+    results_dir : str
+        Path to the results directory.
     """
 
     def __init__(self, name="multiverse", path=None):
         self.name = name.split('/')[-1].split('.')[0]
+        self.num_universes = None
+        self.forking_paths = None
 
         if path is not None:
             # Use provide path, mainly used by the GUI
@@ -149,6 +157,10 @@ class Multiverse:
         with open(f"{self.results_dir}/forking_paths.pkl", "wb") as file:
             pickle.dump(forking_paths, file)
 
+        # Set some attributes
+        self.num_universes = len(valid_universes)
+        self.forking_paths = forking_paths
+
         return
 
     def run(self, universe_number=None, parallel=1, folder=None):
@@ -186,7 +198,7 @@ class Multiverse:
 
         return
 
-    def summary(self, universe=range(1,5)):
+    def summary(self, universe=range(1,5), print_df=True):
         """
         Print the multiverse summary to the terminal/notebook
 
@@ -205,11 +217,12 @@ class Multiverse:
         else:
             multiverse_selection = multiverse_summary
 
-        if in_notebook():
-            from IPython.display import display
-            display(multiverse_selection)
-        else:
-            print(multiverse_selection)
+        if print_df:
+            if in_notebook():
+                from IPython.display import display
+                display(multiverse_selection)
+            else:
+                print(multiverse_selection)
 
         return multiverse_summary
 
@@ -399,7 +412,7 @@ class Multiverse:
         return fig
 
     def specification_curve(self, measure, baseline=None, p_value=None, ci=None, smooth_ci=True, 
-                          title="Specification Curve", name_map=None, cmap="Set3", linewidth=2, figsize=(16,9), 
+                          title="Specification Curve", name_map=None, cmap="Set3", linewidth=2, figsize=None, 
                           height_ratio=(2,1), fontsize=10, dotsize=50, ftype="png", dpi=72):
         """
         Create and save a specification curve plot from multiverse results
@@ -434,7 +447,7 @@ class Multiverse:
             Width of the boxplots. Default is 2
 
         figsize : tuple
-            Size of the figure. Default is (16,9)
+            Size of the figure. Default is None (will automatically try to determine the size).
 
         height_ratio : tuple
             Height ratio of the two subplots. Default is (2,1)
@@ -470,6 +483,11 @@ class Multiverse:
         # Sort the universes based on the measure and get the forking paths
         sorted_universes, forking_paths = self._load_and_prepare_data(measure, self.results_dir)
 
+        # Try to automatically determine the figure size
+        if figsize is None:
+            num_options = sum(len(values) for values in forking_paths.values())
+            figsize = (max(8, len(sorted_universes)*0.07), max(6, num_options))
+    
         # Plotting
         sns.set_theme(style="whitegrid")
         fig, ax = plt.subplots(2, 1, figsize=figsize, gridspec_kw={'height_ratios': height_ratio}, sharex=True)
