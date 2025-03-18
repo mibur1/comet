@@ -12,7 +12,9 @@
 
 Please refer to the **[documentation](https://comet-toolbox.readthedocs.io/en/latest/)** for detailed information about the toolbox. The following README will only provide a very brief overview.
 
-Please also note that the package is in an early stage of development, with frequent changes being made. If you intend to use this package at this stage, please feel free to contact me via the email address in the [`pyproject.toml`](https://github.com/mibur1/dfc-multiverse/blob/main/pyproject.toml) file. Some features are also not yet tested, so there will be bugs (the question is just how many).
+```{note}
+ The Comet toolbox is under active development. If you have any questions, suggestions, or want to contribute, please don't hesitate to reach out on GitHub or via the email address in the [`pyproject.toml`](https://github.com/mibur1/dfc-multiverse/blob/main/pyproject.toml) file. Some features are also not yet tested, so there will be bugs (the question is just how many).
+```
 
 ### Installation and usage
 
@@ -30,12 +32,20 @@ Usage of the toolbox is then possible through either the GUI:
 comet-gui
 ```
 
-or (for more versatile usage) through the scripting API. For this, **[demo scripts](https://github.com/mibur1/dfc-multiverse/tree/main/tutorials)** are provided as starting points:
+or through the scripting API:
 
-* Demo script for **[calculating dFC](tutorials/example_dfc.ipynb)**
-* Demo script for **[performing multiverse analysis](tutorials/example_multiverse.ipynb)**
-* Demo script for **[multiverse analysis example from the preprint](tutorials/example_analysis.ipynb)** (+ additional visualizations)
-* Demo script for **[graph analysis](tutorials/example_graph.ipynb)**
+```{code}python
+from comet import connectivity, graph, multiverse
+```
+
+For this, **[demo scripts](https://github.com/mibur1/dfc-multiverse/tree/main/tutorials)** are provided as starting points:
+
+* **[Dynamic functional connectivity (dFC)](tutorials/example_dfc.ipynb)**
+* **[State-based dFC](tutorials/example_state.ipynb)**
+* **[Graph analysis](tutorials/example_graph.ipynb)**
+* **[Multiverse analysis (general introduction)](tutorials/example_multiverse.ipynb)**
+* **[Multiverse analysis example from the preprint](tutorials/example_fmri.ipynb)**
+* **[Multiverse analysis example with simulated EEG data](tutorials/example_eeg.ipynb)**
 
 ### Current features
 
