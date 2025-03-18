@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import networkx as nx
-import scipy.stats as stats
+from scipy import stats
 from jinja2 import Template
 from matplotlib import transforms
 from matplotlib import pyplot as plt
@@ -106,7 +106,6 @@ class Multiverse:
         if config.get("order"):
             all_universes = []
             for order in config["order"]:
-                
                 reordered_values = [forking_paths[key] for key in order]
                 unused_keys = [key for key in keys if key not in order]
 
@@ -247,10 +246,6 @@ class Multiverse:
         exclude_single : bool
             Whether to exclude parameters with only one unique option.
         """
-        import networkx as nx
-        import matplotlib.pyplot as plt
-        import pandas as pd
-
         # Read the CSV summary into a DataFrame.
         multiverse_summary = self._read_csv()
 
@@ -464,17 +459,6 @@ class Multiverse:
         dpi : int
             Dots per inch for the saved figure.
         """
-
-        import os
-        import numpy as np
-        import matplotlib.pyplot as plt
-        import matplotlib.lines as mlines
-        import matplotlib.patches as mpatches
-        from matplotlib import transforms
-        import seaborn as sns
-        from scipy import stats
-        from scipy.interpolate import make_interp_spline
-
         # Check if the results directory exists
         universe_files = [f for f in os.listdir(self.results_dir) if f.startswith('universe_') and f.endswith('.pkl')]
         if not universe_files:
@@ -912,15 +896,15 @@ def in_notebook():
     return True
 
 def notebookToScript(notebook):
-        """
-        Convert a Jupyter notebook JSON to a Python script.
-        """
-        scriptContent = ""
-        try:
-            for cell in notebook['cells']:
-                if cell['cell_type'] == 'code':
-                    scriptContent += ''.join(cell['source']) + '\n\n'
-        except KeyError as e:
-            print("Error", f"Invalid notebook format: {str(e)}")
+    """
+    Convert a Jupyter notebook JSON to a Python script.
+    """
+    scriptContent = ""
+    try:
+        for cell in notebook['cells']:
+            if cell['cell_type'] == 'code':
+                scriptContent += ''.join(cell['source']) + '\n\n'
+    except KeyError as e:
+        print("Error", f"Invalid notebook format: {str(e)}")
 
-        return scriptContent
+    return scriptContent

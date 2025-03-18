@@ -693,9 +693,9 @@ def small_world_propensity(G: np.ndarray) -> np.ndarray:
 
     # Path length calculations for the network, ignore divide by zero warnings
     with np.errstate(divide='ignore'):
-            G_reg_inv = np.divide(1.0, G_reg)
-            G_rand_inv = np.divide(1.0, G_rand)
-            G_inv = np.divide(1.0, G)
+        G_reg_inv = np.divide(1.0, G_reg)
+        G_rand_inv = np.divide(1.0, G_rand)
+        G_inv = np.divide(1.0, G)
 
     reg_path = avg_shortest_path(G_reg_inv)
     rand_path = avg_shortest_path(G_rand_inv)

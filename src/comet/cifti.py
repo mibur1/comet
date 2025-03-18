@@ -261,7 +261,8 @@ SECTION: Class for handling HCP WM data
 """
 class Hcp():
     def __init__(self, path, task="WM", TR=0.72, ts_length=405):
-        assert(os.path.exists(path)), f"{path} does not seem to exist"
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"{path} does not seem to exist")
         self.path = path
         self.task = task
         self.TR = TR
