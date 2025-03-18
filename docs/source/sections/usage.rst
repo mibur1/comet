@@ -18,7 +18,7 @@ After installation, graphical user interface can be accessed through the termina
 
     comet-gui
 
-For exploration with example data, data included in the ``tutorials/example_data/`` folder can be loaded:
+For exploration with example data, data included in the ``src/comet/data/`` folder can be loaded:
 
 * ``simulation.txt``           Simulated BOLD data for 10 brain regions with 2 changing brain states (as used in the preprint).
 * ``time_series.txt``          Parcellated BOLD data for a single subject.
@@ -32,9 +32,9 @@ Dynamic functional connectivity can be estimated through the ``connectivity`` mo
 
 .. code-block:: python
 
-    from comet import data, connectivity
+    from comet import connectivity, utils
 
-    ts = data.load_example_data()
+    ts = utils.load_example()
     dFC = connectivity.SlidingWindow(ts, windowsize=30, shape="gaussian").estimate()
 
 
@@ -42,14 +42,15 @@ Graph measures can be calculated through the graph module. An example for global
 
 .. code-block:: python
 
-    from comet import data, connectivity, graph
+    from comet import connectivity, graph, utils
 
-    ts = data.load_example_data()
-    dFC = connectivity.SlidingWindow(ts, windowsize=30, shape="gaussian").estimate()
+    ts = utils.load_example()
+
+    sw = connectivity.SlidingWindow(ts, windowsize=30, shape="gaussian")
+    dFC = sw.estimate()
 
     adj = dFC[:,:,0]
-    dFC = graph.efficiency(adj, local=False)
-
+    global_eff = graph.efficiency(adj, local=False)
 
 Multiverse analysis can be conducted through the multiverse module.
 This exaple will create and run a multiverse analysis with two decisions (6 possible combinations):
