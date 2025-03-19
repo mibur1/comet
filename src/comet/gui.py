@@ -5414,7 +5414,7 @@ class App(QMainWindow):
         self.toggleButton.move(self.scriptDisplay.width() - self.toggleButton.width() - 25, 5)
         QTextEdit.resizeEvent(self.scriptDisplay, event)
 
-    def generateMultiverseScript(self, init_template=False):
+    def generateMultiverseScript(self, init_template=False, reset_script=False):
         """
         Generates the multiverse script on the right side of the tab.
         """
@@ -5447,16 +5447,27 @@ class App(QMainWindow):
             )
             
             # Initial population of the decision widget
+            self.mv_original_script = script_content
             pattern = r"forking_paths\s*=\s*(\{.*?\})"
             match = re.search(pattern, script_content, flags=re.DOTALL)
             dict_str = match.group(1)
             forking_paths = ast.literal_eval(dict_str)
             self.populateMultiverseContainers(forking_paths)
-
+        
+        elif reset_script:
+            script_content = self.mv_original_script
+            
+            # Populate he decision widget
+            self.mv_original_script = script_content
+            pattern = r"forking_paths\s*=\s*(\{.*?\})"
+            match = re.search(pattern, script_content, flags=re.DOTALL)
+            dict_str = match.group(1)
+            forking_paths = ast.literal_eval(dict_str)
+            self.populateMultiverseContainers(forking_paths)
+        
         else:
             # Get the current script content and remove the information string
             script_content = self.scriptDisplay.toPlainText()
-            self.scriptDisplay.clear()
             
             if not self.mv_init: 
                 keyword = "from comet.multiverse import Multiverse"
@@ -5513,6 +5524,7 @@ class App(QMainWindow):
             self.multiverseFileName = filePath
             self.data.mv_folder, _ = os.path.splitext(filePath)
             self.data.mv_forking_paths = {}
+            self.multiverseFolderTextbox.setText("No multiverse analysis created yet.")
             self.universeInput.setValue(-1)
             self.nodeSizeInput.setValue(1000)
             self.figsizeInput_summary.setText("8,7")
@@ -5543,14 +5555,17 @@ class App(QMainWindow):
                     self.multiverseScriptContent = file.read()
 
             # Parse the script and extract components
-            extracted_content = self.extractScriptComponents(self.multiverseScriptContent)
-            self.scriptDisplay.setText(extracted_content)
+            script_content = self.extractScriptComponents(self.multiverseScriptContent)
+            self.scriptDisplay.setText(script_content)
+            
+            # Save the original script for resetting
+            self.mv_original_script = script_content
 
             # Update the text box
             self.loadedScriptDisplay.setText(self.multiverseFileName.split('/')[-1])
 
             # Load the forking paths and populate the decision containers
-            tree = ast.parse(extracted_content)
+            tree = ast.parse(script_content)
 
             # Traverse the AST to find the forking_paths assignment
             for node in ast.walk(tree):
@@ -5710,9 +5725,8 @@ class App(QMainWindow):
         self.data.mv_folder = None
         self.mv_init = True
         
-        self.generateMultiverseScript(init_template=True)
-        self.updateMultiverseScript()
-        self.generateMultiverseScript(init_template=True)
+        self.generateMultiverseScript(reset_script=True)
+        self.runMultiverseButton.setEnabled(False)
 
         # Clear the figures
         self.multiverseFigure.clf()
@@ -5732,8 +5746,9 @@ class App(QMainWindow):
             namespace = {}
             exec(script_text, namespace)
             forking_paths = namespace.get('forking_paths', None)
+            self.data.mv_forking_paths = forking_paths
             self.populateMultiverseContainers(forking_paths)
-
+            
             # If all containers were previously deleted, we add an empty one
             if len(self.mv_containers) == 0:
                 self.addNewDecision(self.createMvContainerLayout, self.buttonLayoutWidget)
