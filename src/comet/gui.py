@@ -1681,7 +1681,9 @@ class App(QMainWindow):
     # Multiverse layouts
     def addMultiverseLayout(self, leftLayout):
         # Top section
-        self.mv_containers = []  # decision containers for multiverse analysis
+        self.mv_containers = []  # Decision containers for multiverse analysis
+        self.mv_init = True  # True if the multiverse is just the init and no custom one has been created
+        self.data.mv_folder = None
         
         self.createMvContainer = QGroupBox("Create multiverse analysis template")
         self.createMvContainerLayout = QVBoxLayout()  # Make it an instance variable to access it globally
@@ -1714,18 +1716,16 @@ class App(QMainWindow):
         performMvContainerLayout = QVBoxLayout()
         performMvContainerLayout.addItem(QSpacerItem(0, 5, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
-        # Load script layout
+        # Loading widgets
         loadLayout = QHBoxLayout()
-        loadMultiverseScriptButton = QPushButton('Load multiverse script   ')
-        loadLayout.addWidget(loadMultiverseScriptButton, 3)
+        loadMultiverseScriptButton = QPushButton('Load script')
+        loadLayout.addWidget(loadMultiverseScriptButton, 1)
+        loadMultiverseScriptButton.clicked.connect(self.loadMultiverseScript)
 
-        # Textbox to display the loaded script path
         self.loadedScriptDisplay = QLineEdit()
-        self.loadedScriptDisplay.setPlaceholderText("No script loaded, using the current template")
+        self.loadedScriptDisplay.setPlaceholderText("Using template script")
         self.loadedScriptDisplay.setReadOnly(True)
-        loadLayout.addWidget(self.loadedScriptDisplay, 5)
-
-        # Add the horizontal layout to the container layout
+        loadLayout.addWidget(self.loadedScriptDisplay, 4)
         performMvContainerLayout.addLayout(loadLayout)
 
         # Row with the three buttons
@@ -1754,7 +1754,6 @@ class App(QMainWindow):
         # Multiverse folder textbox
         self.multiverseFolderTextbox = QLabel()
         self.multiverseFolderTextbox.setText("No multiverse analysis created yet.")
-        self.multiverseFolderTextbox.hide()
         performMvContainerLayout.addWidget(self.multiverseFolderTextbox)
 
         # Set the layout for the container
@@ -1766,8 +1765,7 @@ class App(QMainWindow):
         # Disable and connect
         self.runMultiverseButton.setEnabled(False)
         self.paralleliseMultiverseSpinbox.setEnabled(False)
-
-        loadMultiverseScriptButton.clicked.connect(self.loadMultiverseScript)
+        
         self.createMultiverseButton.clicked.connect(self.createMultiverse)
         self.runMultiverseButton.clicked.connect(self.runMultiverseScript)
 
@@ -1802,17 +1800,17 @@ class App(QMainWindow):
         # Create a layout for the buttons (reset, save))
         scriptButtonLayout = QHBoxLayout()
 
-        updateMultiverseScriptButton = QPushButton('Update multiverse')
+        updateMultiverseScriptButton = QPushButton('Update decision containers')
         updateMultiverseScriptButton.clicked.connect(self.updateMultiverseScript)
         scriptButtonLayout.addWidget(updateMultiverseScriptButton, 1)
 
-        resetMultiverseScriptButton = QPushButton('Reset multiverse')
+        resetMultiverseScriptButton = QPushButton('Reset script')
         resetMultiverseScriptButton.clicked.connect(self.resetMultiverseScript)
         scriptButtonLayout.addWidget(resetMultiverseScriptButton, 1)
 
-        saveMultiverseScriptButton = QPushButton('Save multiverse script')
+        saveMultiverseScriptButton = QPushButton('Save script')
         saveMultiverseScriptButton.clicked.connect(self.saveMultiverseScript)
-        scriptButtonLayout.addWidget(saveMultiverseScriptButton, 2)
+        scriptButtonLayout.addWidget(saveMultiverseScriptButton, 1)
 
         # Add to the layout
         templateLayout.addLayout(scriptButtonLayout)
@@ -5214,8 +5212,10 @@ class App(QMainWindow):
         if not name:
             QMessageBox.warning(self, "Input Error", "Please ensure a name is provided for the decision.")
             return
-
-
+        
+        # We now have a custom multierse
+        self.mv_init = False 
+        
         # Retrieve the selected function key and determine its module prefix
         func_key = functionComboBox.currentData()
 
@@ -5265,6 +5265,7 @@ class App(QMainWindow):
 
         # Add to forking paths
         self.data.mv_forking_paths[currentName].append(option_dict)
+
         return
 
     def collapseOption(self, collapseButton, parameterContainer):
@@ -5289,7 +5290,7 @@ class App(QMainWindow):
         """
         category = categoryComboBox.currentText()
         name = nameInput.text().strip()
-        self.runMultiverseButton.setEnabled(False)
+        self.mv_init = False 
 
         if not name:
             QMessageBox.warning(self, "Input Error", "Please ensure a name is provided for the decision.")
@@ -5334,7 +5335,7 @@ class App(QMainWindow):
         Remove one option with each click and finally the entire decision
         """
         key = decisionNameInput.text().strip()
-        self.runMultiverseButton.setEnabled(False)
+        self.mv_init = False 
 
         # No key means the decision widget is empty, so clear and delete everything
         if key == "":
@@ -5344,7 +5345,7 @@ class App(QMainWindow):
                 optionsInputField.clear()
                 self.mv_containers.remove(decisionWidget)
 
-                # If all containers have been deleted, we ad an empty one
+                # If all containers have been deleted, we add an empty one
                 if len(self.mv_containers) == 0:
                     self.addNewDecision(self.createMvContainerLayout, self.buttonLayoutWidget)
         
@@ -5443,7 +5444,6 @@ class App(QMainWindow):
                 "    # Save results\n"
                 "    result = {\"addition\": addition}\n"
                 "    comet.utils.save_universe_results(result, universe=os.path.abspath(__file__))\n"
-                "\n"
             )
             
             # Initial population of the decision widget
@@ -5452,10 +5452,17 @@ class App(QMainWindow):
             dict_str = match.group(1)
             forking_paths = ast.literal_eval(dict_str)
             self.populateMultiverseContainers(forking_paths)
+
         else:
-            # Get the current script content
+            # Get the current script content and remove the information string
             script_content = self.scriptDisplay.toPlainText()
             self.scriptDisplay.clear()
+            
+            if not self.mv_init: 
+                keyword = "from comet.multiverse import Multiverse"
+                start_index = script_content.find(keyword)
+                if start_index != -1:
+                    script_content = script_content[start_index:]
 
             # Define a regex pattern that matches the entire forking_paths dictionary block.
             # It captures:
@@ -5487,7 +5494,7 @@ class App(QMainWindow):
 
             # Use re.sub to replace the content of the forking_paths block.
             script_content = re.sub(pattern, repl, script_content, flags=re.DOTALL)
-
+    
         # Set the new script text in the display.
         self.scriptDisplay.setText(script_content)
         self.scriptDisplay.update()
@@ -5498,15 +5505,13 @@ class App(QMainWindow):
         """
         Load a multiverse script and extract specific components.
         """
-        fileFilter = "All supported files (*.py *.ipynb);;MAT files (*.mat);;Python files (*.py);;Jupyter notebooks (*.ipynb)"
+        fileFilter = "All supported files (*.py *.ipynb);;Jupyter notebooks (*.ipynb)"
         filePath, _ = QFileDialog.getOpenFileName(self, "Load multiverse template file", "", fileFilter)
         
         if filePath:
             # Reset multiverse and options
             self.multiverseFileName = filePath
             self.data.mv_folder, _ = os.path.splitext(filePath)
-            self.multiverseFolderTextbox.setText("Results are saved in: " + self.data.mv_folder)
-            self.multiverseFolderTextbox.show()
             self.data.mv_forking_paths = {}
             self.universeInput.setValue(-1)
             self.nodeSizeInput.setValue(1000)
@@ -5631,19 +5636,18 @@ class App(QMainWindow):
         """
         self.createMultiverseButton.setEnabled(False)
         # No multiverse file was loaded, so the user needs to select a save path
-        if not hasattr(self, 'multiverseFileName'):
+        if self.data.mv_folder == None:
             folder = QFileDialog.getExistingDirectory(self, "Select a folder to save the multiverse analysis")
             if folder:
-                self.multiverseFileName = "multiverse.py"
+                self.multiverseFileName = "multiverse_analysis"
                 self.data.mv_folder = os.path.join(folder, "multiverse_analysis")
 
         # Create a template script in the multiverse folder (the script content is taken from the GUI)
         os.makedirs(self.data.mv_folder, exist_ok=True)
         template_file = os.path.join(self.data.mv_folder, "template.py")
-        
         with open(template_file, "w") as file:
-            file.write("# Template script containing the required data for multiverse analysis.\n")
-            file.write("# This file is used/overwritten by the GUI, users should usually directly interact with their own multiverse script.\n\n")
+            file.write("# Script for running the multiverse analysis.\n")
+            file.write("# This file is used/overwritten by the GUI, users should usually interact with their own multiverse script (located one folder above).\n\n")
             file.write(self.scriptDisplay.toPlainText())
 
         # Load the forking paths and the analysis template function
@@ -5687,8 +5691,10 @@ class App(QMainWindow):
         self.createMultiverseButton.setEnabled(True)
         self.runMultiverseButton.setEnabled(True)
         self.paralleliseMultiverseSpinbox.setEnabled(True)
-        self.multiverseFolderTextbox.setText("Results are saved in: " + self.data.mv_folder)
-        self.multiverseFolderTextbox.show()
+        self.multiverseFolderTextbox.setText("Multiverse created in " + self.data.mv_folder)
+        
+        # Save the current script for future checks
+        self.mv_script = self.scriptDisplay.toPlainText()
 
         return
 
@@ -5698,14 +5704,24 @@ class App(QMainWindow):
         self.mv_containers.clear()
 
         self.data.mv_forking_paths = {}
-        self.multiverseFolderTextbox.clear()
-        self.multiverseFolderTextbox.hide()
+        self.multiverseFolderTextbox.setText("No multiverse analysis created yet.")
         self.loadedScriptDisplay.clear()
-        self.multiverseFileName = "None"
-        self.data.mv_folder = "None"
-
+        self.multiverseFileName = "multiverse_analysis"
+        self.data.mv_folder = None
+        self.mv_init = True
+        
         self.generateMultiverseScript(init_template=True)
         self.updateMultiverseScript()
+        self.generateMultiverseScript(init_template=True)
+
+        # Clear the figures
+        self.multiverseFigure.clf()
+        self.plotLogo(self.multiverseFigure)
+        self.multiverseCanvas.draw()
+
+        self.specFigure.clf()
+        self.plotLogo(self.specFigure)
+        self.specCanvas.draw()
 
         return
 
@@ -5717,9 +5733,14 @@ class App(QMainWindow):
             exec(script_text, namespace)
             forking_paths = namespace.get('forking_paths', None)
             self.populateMultiverseContainers(forking_paths)
+
+            # If all containers were previously deleted, we add an empty one
+            if len(self.mv_containers) == 0:
+                self.addNewDecision(self.createMvContainerLayout, self.buttonLayoutWidget)
+
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to update the template: {str(e)}")
-        
+
         return
 
     def saveMultiverseScript(self):
@@ -5741,7 +5762,15 @@ class App(QMainWindow):
         Run the multiverse analysis from the generated/loaded script
         """
         os.makedirs(os.path.join(self.data.mv_folder, 'results'), exist_ok=True)
+        
+        # Check if the multiverse analysis is still up-to-date with the current script
+        current_script = self.scriptDisplay.toPlainText()
+        if self.mv_script != current_script:
+            QMessageBox.warning(self, "Warning", "The script has been modified, and the multiverse will be updated accordingly.")
+            self.mv_script = current_script
+            self.createMultiverse()
 
+        # Run the multivrse analysis
         self.createMultiverseButton.setEnabled(False)
         self.runMultiverseButton.setEnabled(False)
         self.paralleliseMultiverseSpinbox.setEnabled(False)

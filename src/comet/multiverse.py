@@ -194,7 +194,8 @@ class Multiverse:
             print(f"Starting analysis for universe {universe_number}...")
             file = f"universe_{universe_number}.py"
             execute_script(file)
-
+        
+        print("The multiverse analysis completed without any errors.")
         return
 
     def summary(self, universe=range(1,5), print_df=True):
@@ -488,9 +489,10 @@ class Multiverse:
             del forking_paths[param]
 
         # Setup variables for the bottom plot
+        composite_labels = []
+        display_labels = []
         flat_list = []
         yticks = []
-        yticklabels = []
         line_ends = []
         p_vals = []
         key_positions = {}
@@ -498,29 +500,31 @@ class Multiverse:
         space_between_groups = 1
         sig_color = "#018532"
 
-        # Build the y-tick labels as composite strings: "Decision: Option"
+        # Build the y-tick labels as composite strings for lookup but separate display labels.
         for decision, options in forking_paths.items():
             # Get custom label for the decision if provided
-            group_label = name_map[decision] if (name_map is not None and decision in name_map.keys()) else decision
+            group_label = name_map[decision] if (name_map is not None and decision in name_map) else decision
             key_position = y_max + len(options) / 2 - 0.5
             key_positions[group_label] = key_position
 
             for option in options:
-                composite = f"{group_label}: {option}"
+                composite = f"{group_label}: {option}"  # composite used for lookup
+                composite_labels.append(composite)
                 flat_list.append((decision, option))
                 yticks.append(y_max)
-                yticklabels.append(composite)
+                display_labels.append(option)  # only the option will be displayed
                 y_max += 1
 
             line_ends.append(y_max)
             y_max += space_between_groups
 
-        decision_info = (yticklabels, yticks, line_ends, list(forking_paths.keys()))
+        # Save your decision_info using the composite mapping list.
+        decision_info = (composite_labels, yticks, line_ends, list(forking_paths.keys()))
 
         # Setup bottom plot axes
         ax[1].set_yticks(yticks)
-        ax[1].set_yticklabels(yticklabels, fontsize=10)
-        ax[1].tick_params(axis='y', labelsize=10)
+        ax[1].set_yticklabels(display_labels, fontsize=fontsize)
+        ax[1].tick_params(axis='y', labelsize=fontsize)
         ax[1].set_ylim(-1, y_max)
         ax[1].xaxis.grid(False)
 
@@ -528,12 +532,21 @@ class Multiverse:
         fig.canvas.draw()
         trans1 = transforms.blended_transform_factory(ax[1].transAxes, ax[1].transData)
         renderer = fig.canvas.get_renderer()
+        
+        # Find the minimum x position of a y label
         tick_label_extents = [label.get_window_extent(renderer=renderer) for label in ax[1].get_yticklabels()]
         max_extent = max(tick_label_extents, key=lambda bbox: bbox.width)
         x_start_pixel = max_extent.x0  # leftmost edge of the bounding box
-        x_start_axes = ax[1].transAxes.inverted().transform((x_start_pixel, 0))[0]
-        padding = 0.01
-        line_offset = x_start_axes - padding
+        x_start_axes1 = ax[1].transAxes.inverted().transform((x_start_pixel, 0))[0]
+
+        tick_label_extents = [label.get_window_extent(renderer=renderer) for label in ax[0].get_yticklabels()]
+        max_extent = max(tick_label_extents, key=lambda bbox: bbox.width)
+        x_start_pixel = max_extent.x0  # leftmost edge of the bounding box
+        x_start_axes0 = ax[0].transAxes.inverted().transform((x_start_pixel, 0))[0]
+        
+        min_x_start_axes = min(x_start_axes1, x_start_axes0)
+        padding = -0.3 * min_x_start_axes
+        line_offset = min_x_start_axes - padding
 
         # Plot the key (decision group) labels on the left
         for key, pos in key_positions.items():
@@ -609,7 +622,7 @@ class Multiverse:
             # For each decision in the current universe, plot its marker using the composite label.
             for decision, option in formatted_decisions.items():
                 if decision in decision_info[3]:
-                    # Build the composite label using the mapped name if available.
+                    # Build the composite label for lookup
                     group_label = name_map[decision] if (name_map is not None and decision in name_map) else decision
                     composite = f"{group_label}: {option}"
                     if composite in decision_info[0]:
@@ -639,7 +652,9 @@ class Multiverse:
         ax[0].xaxis.grid(False)
         ax[0].set_xticks(np.arange(0, len(sorted_universes), 1))
         ax[0].set_xticklabels([])
-        ax[0].set_xlim(-1, len(sorted_universes) + 1)
+        ax[0].set_xlim(-1, len(sorted_universes))
+
+        ax[0].tick_params(axis='y', labelsize=fontsize)
 
         # Upper plot label for the measure
         ymin, ymax = ax[0].get_ylim()
