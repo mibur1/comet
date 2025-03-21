@@ -2,6 +2,7 @@ import os
 import re
 import mat73
 import pickle
+import inspect
 import numpy as np
 import pandas as pd
 import importlib_resources
@@ -102,7 +103,7 @@ def load_example(fname="time_series.txt"):
 
     return data
 
-def save_universe_results(data, universe=os.path.abspath(__file__)):
+def save_universe_results(data):
     """
     This saves the results of a universe.
 
@@ -113,15 +114,18 @@ def save_universe_results(data, universe=os.path.abspath(__file__)):
     ----------
     data : any
         Data to save as .pkl file
-    universe : str
-        File name of the calling script (universe)
     """
+
     if type(data) is not dict:
         raise ValueError("Data must be povided as a dictionary.")
-
-    calling_script_dir = os.path.dirname(universe)
-    match = re.search(r'universe_(\d+).py', universe) # get universe number
+    
+    caller_stack = inspect.stack()
+    universe_fname = caller_stack[1].filename
+    calling_script_dir = os.path.dirname(universe_fname)
+    match = re.search(r'universe_(\d+).py', universe_fname) # get universe number
     universe_number = int(match.group(1))
+
+    print("HI", calling_script_dir, universe_number)
 
     savedir = calling_script_dir + "/results"
     if not os.path.exists(savedir):

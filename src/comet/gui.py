@@ -5443,7 +5443,7 @@ class App(QMainWindow):
                 "    addition = {{number_1}} + {{number_2}}\n\n"
                 "    # Save results\n"
                 "    result = {\"addition\": addition}\n"
-                "    comet.utils.save_universe_results(result, universe=os.path.abspath(__file__))\n"
+                "    comet.utils.save_universe_results(result)\n"
             )
             
             # Initial population of the decision widget
