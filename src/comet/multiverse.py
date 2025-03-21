@@ -46,12 +46,12 @@ class Multiverse:
         self.forking_paths = None
 
         if path is not None:
-            # Use provide path, mainly used by the GUI
+            # Set the directories from the provided path (used by the GUI)
             self.multiverse_dir = path
             self.results_dir = os.path.join(self.multiverse_dir, "results")
         else:
-            # Automatically detect the path based on the calling script (TODO: might not work on Windows, have to check)
-            calling_script_dir = os.getcwd() if in_notebook() else os.path.abspath(sys.modules['__main__'].__file__).rsplit('/', 1)[0]
+            # Set the directories based on the calling script
+            calling_script_dir = os.getcwd() if in_notebook() else os.path.dirname(os.path.abspath(sys.modules['__main__'].__file__))
             self.multiverse_dir = os.path.join(calling_script_dir, self.name)
             self.results_dir = os.path.join(self.multiverse_dir, "results")
 
