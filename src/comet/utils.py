@@ -99,7 +99,16 @@ def load_example(fname="time_series.txt"):
 
     """
     with importlib_resources.path("comet.data", fname) as file_path:
-        data = np.loadtxt(file_path)
+        # Handle different file formats
+        if fname.endswith(".pkl"):
+            with open(file_path, 'rb') as file:
+                data = pickle.load(file)
+        elif fname.endswith(".npy"):
+            data = np.load(file_path)
+        elif fname.endswith(".txt"):
+            data = np.loadtxt(file_path)
+        else:
+            print("Error: Unsupported file format")
 
     return data
 

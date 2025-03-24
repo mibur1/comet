@@ -162,13 +162,13 @@ class Multiverse:
 
         return
 
-    def run(self, universe_number=None, parallel=1, folder=None):
+    def run(self, universe=None, parallel=1):
         """
         Run either an individual universe or the entire multiverse
 
         Parameters
         ----------
-        universe_number : int
+        universe : None, int, list, range
             Number of the universe to run. Default is None, which runs all universes
 
         parallel : int
@@ -185,18 +185,37 @@ class Multiverse:
         # Function for parallel processing, called by joblib.delayed
         def execute_script(file):
             print(f"Running {file}")
-            subprocess.run([sys.executable, os.path.join(self.multiverse_dir, file)], check=True, env=os.environ.copy())
+            subprocess.run([sys.executable, os.path.join(self.multiverse_dir, file)],
+                        check=True, env=os.environ.copy())
 
-        if universe_number is None:
+        if universe is None:
             print("Starting multiverse analysis for all universes...")
-            Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in sorted_files if file.endswith(".py") and not file.startswith("template"))
+            Parallel(n_jobs=parallel)(
+                delayed(execute_script)(file)
+                for file in sorted_files
+                if file.endswith(".py") and not file.startswith("template")
+            )
         else:
-            print(f"Starting analysis for universe {universe_number}...")
-            file = f"universe_{universe_number}.py"
-            execute_script(file)
-        
+            # Subset of universes was chosen
+            if isinstance(universe, int):
+                universe_numbers = [universe]
+            elif isinstance(universe, (list, tuple, range)):
+                universe_numbers = list(universe)
+            else:
+                raise ValueError("universe_number should be None, an int, a list, tuple, or a range.")
+
+            print(f"Starting analysis for universe(s): {universe_numbers}...")
+            if parallel > 1:
+                Parallel(n_jobs=parallel)(
+                    delayed(execute_script)(f"universe_{num}.py")
+                    for num in universe_numbers
+                )
+            else:
+                for num in universe_numbers:
+                    file = f"universe_{num}.py"
+                    execute_script(file)
+
         print("The multiverse analysis completed without any errors.")
-        return
 
     def summary(self, universe=range(1,5), print_df=True):
         """
@@ -225,6 +244,43 @@ class Multiverse:
                 print(multiverse_selection)
 
         return multiverse_summary
+
+    def combine_results(self):
+        """
+        Combines the results in a single dictionary and saves it as a pickle file
+        """
+        file_name = "multiverse_results.pkl"
+        file_paths = glob.glob(os.path.join(self.results_dir, 'universe_*.pkl'))
+        
+        if not file_paths:
+            raise ValueError("No results files found. Please run the multiverse analysis first.")
+        
+        combined_results = {}
+        
+        for file_path in sorted(file_paths):
+            universe_key = os.path.splitext(os.path.basename(file_path))[0]
+            with open(file_path, 'rb') as f:
+                result_dict = pickle.load(f)
+            combined_results[universe_key] = result_dict
+        
+        with open(os.path.join(self.results_dir, file_name), 'wb') as f:
+            pickle.dump(combined_results, f)
+
+        return
+
+    def get_results(self, universe=None):
+        """
+        Get the results of the multiverse (or a specific universe) as a dictionary
+        """
+        if universe is None:
+            path = f"{self.results_dir}/multiverse_results.pkl"
+        else:
+            path = f"{self.results_dir}/universe_{universe}.pkl"
+
+        with open(path, "rb") as file:
+            results = pickle.load(file)
+
+        return results
 
     def visualize(self, universe=None, cmap="Set2", node_size=1500, figsize=(8,5), label_offset=0.04, exclude_single=False):
         """
@@ -259,7 +315,7 @@ class Multiverse:
         multiverse_decision = multiverse_summary[decision_columns]
 
         # Recursive function to add decision nodes and connect them hierarchically.
-        def add_hierarchical_decision_nodes(G, root_node, parameters, level=0, exclude_single=False):
+        def add_hierarchical_decision_nodes(G, root_node, parameters, level=0, exclude_single=exclude_single):
             if level >= len(parameters):
                 return G  # No more parameters to process
 
@@ -286,7 +342,6 @@ class Multiverse:
         parameters = [
             (value_to_decision_map.get(col, col), multiverse_values[col].unique())
             for col in multiverse_values.columns[1:]
-            if len(multiverse_values[col].unique()) > 1
         ]
         # Remove any NaN values from the unique options.
         parameters = [(dec, options[pd.notna(options)]) for dec, options in parameters]
