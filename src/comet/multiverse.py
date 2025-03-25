@@ -215,7 +215,11 @@ class Multiverse:
                     file = f"universe_{num}.py"
                     execute_script(file)
 
+        # Save all results in a single dictionary
+        self._combine_results()
+
         print("The multiverse analysis completed without any errors.")
+        return
 
     def summary(self, universe=range(1,5), print_df=True):
         """
@@ -244,29 +248,6 @@ class Multiverse:
                 print(multiverse_selection)
 
         return multiverse_summary
-
-    def combine_results(self):
-        """
-        Combines the results in a single dictionary and saves it as a pickle file
-        """
-        file_name = "multiverse_results.pkl"
-        file_paths = glob.glob(os.path.join(self.results_dir, 'universe_*.pkl'))
-        
-        if not file_paths:
-            raise ValueError("No results files found. Please run the multiverse analysis first.")
-        
-        combined_results = {}
-        
-        for file_path in sorted(file_paths):
-            universe_key = os.path.splitext(os.path.basename(file_path))[0]
-            with open(file_path, 'rb') as f:
-                result_dict = pickle.load(f)
-            combined_results[universe_key] = result_dict
-        
-        with open(os.path.join(self.results_dir, file_name), 'wb') as f:
-            pickle.dump(combined_results, f)
-
-        return
 
     def get_results(self, universe=None):
         """
@@ -902,6 +883,30 @@ class Multiverse:
                     context[f"Value {j+1}"] = value
 
                 writer.writerow(context)
+
+    def _combine_results(self):
+        """
+        Internal function: Combines the results in a single dictionary and saves it as a pickle file
+        TODO: Remove the individual universe results after combining and update the plots to handle those changes
+        """
+        file_name = "multiverse_results.pkl"
+        file_paths = glob.glob(os.path.join(self.results_dir, 'universe_*.pkl'))
+        
+        if not file_paths:
+            raise ValueError("No results files found. Please run the multiverse analysis first.")
+        
+        combined_results = {}
+        
+        for file_path in sorted(file_paths):
+            universe_key = os.path.splitext(os.path.basename(file_path))[0]
+            with open(file_path, 'rb') as f:
+                result_dict = pickle.load(f)
+            combined_results[universe_key] = result_dict
+        
+        with open(os.path.join(self.results_dir, file_name), 'wb') as f:
+            pickle.dump(combined_results, f)
+
+        return
 
     def _load_and_prepare_data(self, measure=None, results_path=None):
         """
