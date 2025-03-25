@@ -1220,12 +1220,3 @@ def participation_coef_sign(W: np.ndarray,
     res = bct.participation_coef_sign(W, ci)
     return res
 
-"""
-def rich_club(CIJ: np.ndarray,
-                 weighted: bool=True,
-                 klevel: int = None) -> np.ndarray:
-    res = bct.rich_club_wu(CIJ, klevel) if weighted else bct.rich_club_bu(CIJ, klevel)
-    print("rich club", type(res))
-    print(res)
-    label = "Rich club coefficient vectors (weighted)" if weighted else "Rich club coefficient vectors (binary)"
-    return res, label"""
