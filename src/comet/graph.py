@@ -1118,8 +1118,7 @@ def gateway_coef_sign(W: np.ndarray,
     return bct.gateway_coef_sign(W, ci, centrality_type)
 
 def pagerank_centrality(A: np.ndarray,
-                        d: float = 0.85,
-                        falff: float = None) -> np.ndarray:
+                        d: float = 0.85) -> np.ndarray:
     '''
     This is a wrapper function for the pagerank_centrality() function
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
@@ -1157,10 +1156,10 @@ def pagerank_centrality(A: np.ndarray,
     Notes
     -----
     Note: The algorithm will work well for smaller matrices (number of
-    nodes around 1000 or less)
-    '''
+    nodes around 1000 or less). Support for flaff is currently not provided.
 
-    return bct.pagerank_centrality(A, d, falff)
+    '''
+    return bct.pagerank_centrality(A, d, None)
 
 def participation_coef(W: np.ndarray,
                        ci: Literal["louvain"] = "louvain",

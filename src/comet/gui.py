@@ -1426,6 +1426,13 @@ class App(QMainWindow):
         self.stateBasedCheckBox.setChecked(True)
         self.staticCheckBox.setChecked(True)
 
+        self.plotLogo(self.connectivityFigure)
+        self.connectivityCanvas.draw()
+        self.plotLogo(self.timeSeriesFigure)
+        self.timeSeriesCanvas.draw()
+        self.plotLogo(self.distributionFigure)
+        self.distributionCanvas.draw()
+
         return
 
     # Graph layouts
@@ -1876,9 +1883,6 @@ class App(QMainWindow):
         self.data.data_roi_names = None
         self.data.data_filepath = file_path
         self.data.data_filename = file_path.split('/')[-1]
-        
-        self.plotLogo(self.boldFigure)
-        self.boldCanvas.draw()
 
         self.fmriprep_layout = None
         self.data.data_sample_mask = None
@@ -1960,8 +1964,14 @@ class App(QMainWindow):
         self.backupSliderValueTab1 = 0
         self.slider.setValue(0)
         self.graphSlider.setValue(0)
-        self.connectivityFigure.clear()
+
+        # Clear the plots
+        self.plotLogo(self.connectivityFigure)
         self.connectivityCanvas.draw()
+        self.plotLogo(self.timeSeriesFigure)
+        self.timeSeriesCanvas.draw()
+        self.plotLogo(self.distributionFigure)
+        self.distributionCanvas.draw()
         
         # Reset and enable the GUI elements
         self.methodComboBox.setEnabled(True)
@@ -3906,10 +3916,14 @@ class App(QMainWindow):
             except:
                 data_dict = mat73.loadmat(file_path)
 
-            try:
-                self.data.graph_data = data_dict["dfc_data"] # Try to load dfc_data (saving connectivity estimates with Comet will create this field)
-            except:
-                self.data.graph_data = data_dict[list(data_dict.keys())[-1]] # Else get the last item in the file (which is the data if there is only one field)
+            if "dfc_data" in data_dict:
+                self.data.graph_data = data_dict["dfc_data"]
+            elif "graph_data" in data_dict:
+                self.data.graph_data = data_dict["graph_data"]
+            else:
+                # Fallback: use the value corresponding to the last key (which is the data if there is only one field)
+                last_key = list(data_dict.keys())[-1]
+                self.data.graph_data = data_dict[last_key]
 
         elif file_path.endswith('.txt'):
             self.data.graph_data = np.loadtxt(file_path)
@@ -4492,6 +4506,9 @@ class App(QMainWindow):
         
     def plotGraphMeasure(self, measure):
         self.graphFigure.clear()
+        self.graphCanvas.draw()
+        self.graphTextbox.clear()
+
         ax = self.graphFigure.add_subplot(111)
         plot_data = self.data.graph_results[measure]
 
@@ -4515,6 +4532,7 @@ class App(QMainWindow):
                 # For a 2D array, use imshow
                 vmax = np.max(np.abs(plot_data))
                 im = ax.imshow(plot_data, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+                self.graphTextbox.setText(f"{measure}")
 
                 # Create the colorbar
                 divider = make_axes_locatable(ax)
@@ -4582,13 +4600,23 @@ class App(QMainWindow):
                         cax = divider.append_axes("right", size="5%", pad=0.15)
                         cbar = self.graphFigure.colorbar(im, cax=cax)
                         cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
+                        self.graphTextbox.setText(f"{measure}")
 
                     else:
                         self.graphTextbox.setText("Graph output data is not in expected format.")
 
                     ax.set_title(label)
 
+        # We have a list if we have multiple graph estimates (dFC or slice)
         elif isinstance(plot_data, list):
+            
+            if type(plot_data[0]) == tuple:
+                # Graph output is a tuple, we take the first variable
+                plot_data_new = []
+                for estimate in plot_data:
+                    plot_data_new.append(estimate[0])
+                plot_data = plot_data_new
+                
             if np.ndim(plot_data[0]) == 0:
                 # If graph_out is a single value (0D array)
                 im = ax.plot(plot_data)
@@ -4610,7 +4638,7 @@ class App(QMainWindow):
                 # For a 2D array, use imshow
                 vmax = np.max(np.abs(plot_data[self.graphSlider.value()]))
                 im = ax.imshow(plot_data[self.graphSlider.value()], cmap='coolwarm', vmin=-vmax, vmax=vmax)
-
+                self.graphTextbox.setText(f"{measure}")
                 # Create the colorbar
                 divider = make_axes_locatable(ax)
                 cax = divider.append_axes("right", size="5%", pad=0.15)
