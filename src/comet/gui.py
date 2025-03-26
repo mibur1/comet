@@ -5668,7 +5668,7 @@ class App(QMainWindow):
         """
         scriptContent = "error"
         try:
-            scriptContent = multiverse.notebookToScript(notebook)
+            scriptContent = utils.notebookToScript(notebook)
         except KeyError as e:
             QMessageBox.critical(self, "Error", f"Invalid notebook format: {str(e)}")
         return scriptContent

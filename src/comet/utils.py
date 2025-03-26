@@ -135,7 +135,7 @@ def save_universe_results(data):
     match = re.search(r'universe_(\d+).py', universe_fname) # get universe number
     universe_number = int(match.group(1))
 
-    savedir = calling_script_dir + "/results"
+    savedir = os.path.join(calling_script_dir, "temp")
     if not os.path.exists(savedir):
         os.makedirs(savedir)
 
@@ -195,3 +195,17 @@ def clean(time_series, runs=None, detrend=False, confounds=None, standardize=Fal
 
     return signal.clean(time_series, detrend=detrend, confounds=confounds, standardize=standardize, standardize_confounds=standardize_confounds, \
                         filter=filter, low_pass=low_pass, high_pass=high_pass, t_r=t_r, ensure_finite=ensure_finite)
+
+def notebookToScript(notebook):
+    """
+    Convert a Jupyter notebook JSON to a Python script.
+    """
+    scriptContent = ""
+    try:
+        for cell in notebook['cells']:
+            if cell['cell_type'] == 'code':
+                scriptContent += ''.join(cell['source']) + '\n\n'
+    except KeyError as e:
+        print("Error", f"Invalid notebook format: {str(e)}")
+
+    return scriptContent

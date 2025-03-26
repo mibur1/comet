@@ -49,13 +49,16 @@ class Multiverse:
             # Set the directories from the provided path (used by the GUI)
             self.multiverse_dir = path
             self.results_dir = os.path.join(self.multiverse_dir, "results")
+            self.script_dir = os.path.join(self.multiverse_dir, "scripts")
         else:
             # Set the directories based on the calling script
-            calling_script_dir = os.getcwd() if in_notebook() else os.path.dirname(os.path.abspath(sys.modules['__main__'].__file__))
+            calling_script_dir = os.getcwd() if self._in_notebook() else os.path.dirname(os.path.abspath(sys.modules['__main__'].__file__))
             self.multiverse_dir = os.path.join(calling_script_dir, self.name)
             self.results_dir = os.path.join(self.multiverse_dir, "results")
+            self.script_dir = os.path.join(self.multiverse_dir, "scripts")
 
         os.makedirs(self.results_dir, exist_ok=True)
+        os.makedirs(self.script_dir, exist_ok=True)
 
     # Public methods
     def create(self, analysis_template, forking_paths, config={}):
@@ -75,9 +78,9 @@ class Multiverse:
         """
 
         # If multiverse directory exists, remove all Python files but keep folders and template
-        if os.path.exists(self.multiverse_dir):
-            for item in os.listdir(self.multiverse_dir):
-                item_path = os.path.join(self.multiverse_dir, item)
+        if os.path.exists(self.multiverse_dir) and os.path.exists(self.script_dir):
+            for item in os.listdir(self.script_dir):
+                item_path = os.path.join(self.script_dir, item)
                 if os.path.isfile(item_path) and item.endswith(".py") and item != "template.py":
                     os.remove(item_path)
         else:
@@ -145,12 +148,12 @@ class Multiverse:
                 rendered_content = forking_dict_str + rendered_content
 
             # Write to Python script
-            save_path = os.path.join(self.multiverse_dir, f"universe_{i}.py")
+            save_path = os.path.join(self.script_dir, f"universe_{i}.py")
             with open(save_path, "w") as file:
                 file.write(rendered_content)
 
         # Generate CSV file with the decisions of all universes
-        self._create_csv(self.results_dir, valid_universes, keys)
+        self._create_summary(valid_universes, keys)
 
         # Save forking paths
         with open(f"{self.results_dir}/forking_paths.pkl", "wb") as file:
@@ -174,7 +177,7 @@ class Multiverse:
         parallel : int
             Number of universes to run in parallel
         """
-        sorted_files = sorted(os.listdir(self.multiverse_dir))
+        sorted_files = sorted(os.listdir(self.script_dir))
 
         # Delete previous results (.pkl files)
         for item in os.listdir(self.results_dir):
@@ -185,7 +188,7 @@ class Multiverse:
         # Function for parallel processing, called by joblib.delayed
         def execute_script(file):
             print(f"Running {file}")
-            subprocess.run([sys.executable, os.path.join(self.multiverse_dir, file)],
+            subprocess.run([sys.executable, os.path.join(self.script_dir, file)],
                         check=True, env=os.environ.copy())
 
         if universe is None:
@@ -231,7 +234,7 @@ class Multiverse:
             The universe number(s) to display. Default is range(1,5)
         """
 
-        multiverse_summary = self._read_csv()
+        multiverse_summary = self._read_summary()
 
         if isinstance(universe, int):
             multiverse_selection = multiverse_summary.iloc[universe-1]
@@ -241,7 +244,7 @@ class Multiverse:
             multiverse_selection = multiverse_summary
 
         if print_df:
-            if in_notebook():
+            if self._in_notebook():
                 from IPython.display import display
                 display(multiverse_selection)
             else:
@@ -253,13 +256,13 @@ class Multiverse:
         """
         Get the results of the multiverse (or a specific universe) as a dictionary
         """
-        if universe is None:
-            path = f"{self.results_dir}/multiverse_results.pkl"
-        else:
-            path = f"{self.results_dir}/universe_{universe}.pkl"
+        path = f"{self.results_dir}/multiverse_results.pkl"
 
         with open(path, "rb") as file:
             results = pickle.load(file)
+
+        if universe is not None:
+            results = results[f"universe_{universe}"]            
 
         return results
 
@@ -285,7 +288,7 @@ class Multiverse:
             Whether to exclude parameters with only one unique option.
         """
         # Read the CSV summary into a DataFrame.
-        multiverse_summary = self._read_csv()
+        multiverse_summary = self._read_summary()
 
         # Identify value and decision columns.
         value_columns = [col for col in multiverse_summary.columns if col.startswith("Value") or col == "Universe"]
@@ -496,13 +499,8 @@ class Multiverse:
         dpi : int
             Dots per inch for the saved figure.
         """
-        # Check if the results directory exists
-        universe_files = [f for f in os.listdir(self.results_dir) if f.startswith('universe_') and f.endswith('.pkl')]
-        if not universe_files:
-            raise ValueError("No results found. Please run the multiverse analysis first.")
-
-        # Sort the universes based on the measure and get the forking paths
-        sorted_universes, forking_paths = self._load_and_prepare_data(measure, self.results_dir)
+        # Sort the universes based on an outcome measure and get the forking paths
+        sorted_universes, forking_paths = self._load_and_prepare_data(measure)
 
         # Try to automatically determine the figure size
         if figsize is None:
@@ -763,7 +761,7 @@ class Multiverse:
 
         return False
 
-    def _read_csv(self):
+    def _read_summary(self):
         """
         Internal function: Reads the multiverse_summary.csv file
 
@@ -772,9 +770,9 @@ class Multiverse:
         summary : pandas.DataFrame
             Pandas datframe containing the multiverse summary
         """
-        csv_path = os.path.join(self.results_dir, "multiverse_summary.csv")
+        summary_path = os.path.join(self.multiverse_dir, "multiverse_summary.csv")
 
-        return pd.read_csv(csv_path)
+        return pd.read_csv(summary_path)
 
     def _format_type(self, value):
         """
@@ -846,7 +844,7 @@ class Multiverse:
 
         return function_call
 
-    def _create_csv(self, csv_path, all_universes, keys):
+    def _create_summary(self, all_universes, keys):
         """
         Internal function: Create a CSV file with the parameters of all universes
 
@@ -870,7 +868,8 @@ class Multiverse:
             fieldnames.append(f"Value {i+1}")
 
         # Generate CSV file with the parameters of all universes
-        with open(f"{csv_path}/multiverse_summary.csv", "w", newline='') as csvfile:
+        file_path = os.path.join(self.multiverse_dir, "multiverse_summary.csv")
+        with open(file_path, "w", newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
 
@@ -887,10 +886,9 @@ class Multiverse:
     def _combine_results(self):
         """
         Internal function: Combines the results in a single dictionary and saves it as a pickle file
-        TODO: Remove the individual universe results after combining and update the plots to handle those changes
         """
         file_name = "multiverse_results.pkl"
-        file_paths = glob.glob(os.path.join(self.results_dir, 'universe_*.pkl'))
+        file_paths = glob.glob(os.path.join(self.script_dir, "temp", "universe_*.pkl"))
         
         if not file_paths:
             raise ValueError("No results files found. Please run the multiverse analysis first.")
@@ -903,83 +901,78 @@ class Multiverse:
                 result_dict = pickle.load(f)
             combined_results[universe_key] = result_dict
         
+        # Save combined results file
         with open(os.path.join(self.results_dir, file_name), 'wb') as f:
             pickle.dump(combined_results, f)
 
+        # Delete individual results files and folder
+        for file_path in file_paths:
+            os.remove(file_path)
+        os.rmdir(os.path.join(self.script_dir, "temp"))
+
         return
 
-    def _load_and_prepare_data(self, measure=None, results_path=None):
+    def _load_and_prepare_data(self, measure=None):
         """
-        Internal function: Load and prepare the data for the specification curve plotting
+        Internal function: Load and prepare the data for the specification curve plotting.
 
         Parameters
         ----------
-        measure : string
-            Name of the measure to plot. Default is None
-
-        results_path : string
-            Path to the results directory
+        measure : str
+            Name of the measure to plot.
 
         Returns
         -------
         sorted_universes : list
-            List of sorted universes with their summary
-
+            List of tuples (data, summary_row) sorted by the mean value of the measure.
         forking_paths : dict
-            Dictionary containing the forking paths
+            Dictionary containing the forking paths.
         """
-        summary_path = os.path.join(results_path, "multiverse_summary.csv")
+        # Load the summary CSV.
+        summary_path = os.path.join(self.multiverse_dir, "multiverse_summary.csv")
         multiverse_summary = pd.read_csv(summary_path)
 
-        with open(f"{results_path}/forking_paths.pkl", "rb") as file:
+        # Load the forking paths.
+        with open(os.path.join(self.results_dir, "forking_paths.pkl"), "rb") as file:
             forking_paths = pickle.load(file)
 
-        # Get the results files
-        pattern = os.path.join(results_path, "universe_*.pkl")
-        results_files = glob.glob(pattern)
+        # Load the combined results dictionary.
+        combined_results_path = os.path.join(self.results_dir, "multiverse_results.pkl")
+        if not os.path.exists(combined_results_path):
+            raise ValueError("Combined results file not found. Please run the multiverse analysis first.")
 
-        # Get the specified mesure from the .pkl files
+        with open(combined_results_path, "rb") as file:
+            combined_results = pickle.load(file)
+
+        # Extract the specified measure for each universe.
         universe_data = {}
-        for filename in results_files:
-            universe = os.path.basename(filename).split('.')[0]
+        for universe, result_dict in combined_results.items():
+            if measure not in result_dict:
+                raise ValueError(f"Measure '{measure}' not found in results for {universe}.")
+            universe_data[universe] = result_dict[measure]
 
-            with open(filename, "rb") as file:
-                universe_data[universe] = pickle.load(file)[measure]
-
-        # Create combined data structure and sort by the measure by mean
+        # Build a list of tuples pairing each universe's measure data with its summary row.
         universes_with_summary = []
         for universe, data in universe_data.items():
-            summary_row = multiverse_summary[multiverse_summary['Universe'].str.lower() == universe]
+            # Ensure matching is case-insensitive.
+            summary_row = multiverse_summary[multiverse_summary['Universe'].str.lower() == universe.lower()]
             if not summary_row.empty:
                 universes_with_summary.append((data, summary_row.iloc[0]))
 
+        # Sort the universes by the mean of the measure values.
         sorted_universes = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
 
         return sorted_universes, forking_paths
 
-# Helper function
-def in_notebook():
-    """
-    Helper function to check if the code is running in a Jupyter notebook
-    """
-    try:
-        from IPython import get_ipython
-        if 'IPKernelApp' not in get_ipython().config:
+    def _in_notebook(self):
+        """
+        Helper function to check if the code is running in a Jupyter notebook
+        """
+        try:
+            from IPython import get_ipython
+            if 'IPKernelApp' not in get_ipython().config:
+                return False
+        except Exception:
             return False
-    except Exception:
-        return False
-    return True
+        return True
 
-def notebookToScript(notebook):
-    """
-    Convert a Jupyter notebook JSON to a Python script.
-    """
-    scriptContent = ""
-    try:
-        for cell in notebook['cells']:
-            if cell['cell_type'] == 'code':
-                scriptContent += ''.join(cell['source']) + '\n\n'
-    except KeyError as e:
-        print("Error", f"Invalid notebook format: {str(e)}")
-
-    return scriptContent
