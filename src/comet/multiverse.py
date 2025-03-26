@@ -878,6 +878,9 @@ class Multiverse:
 
                 # Populate the decision and value columns
                 for j, (key, value) in enumerate(combination):
+                    if isinstance(value, dict):
+                        value = value.get('name')
+                        
                     context[f"Decision {j+1}"] = key
                     context[f"Value {j+1}"] = value
 
