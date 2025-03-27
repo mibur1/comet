@@ -4894,7 +4894,7 @@ class App(QMainWindow):
                 comboboxItem = self.graphOptions.get(func_name, None)
 
             if comboboxItem is None:
-                print(f"Warning: comboboxItem for function '{func_name}' not found in the provided type '{type}'.")
+                QMessageBox.warning(self, "Warning", f"Warning: comboboxItem for function '{func_name}' not found in the provided type '{type}'.")
                 continue  # Skip if combobox item is not found
 
             functionComboBox.setCurrentText(comboboxItem)
@@ -4904,7 +4904,7 @@ class App(QMainWindow):
             parameterContainer = decisionWidget.findChild(QWidget, comboboxItem)
 
             if parameterContainer is None:
-                print(f"Warning: parameterContainer '{comboboxItem}' not found.")
+                QMessageBox.warning(self, "Warning", f"Warning: parameterContainer '{comboboxItem}' not found.")
                 continue  # Skip if parameter container is not found
 
             # Set the name
@@ -4912,7 +4912,7 @@ class App(QMainWindow):
             if name_edit:
                 name_edit.setText(option['name'])
             else:
-                print(f"Warning: name_edit '{f'name_edit_{comboboxItem}'}' not found in parameterContainer.")
+                QMessageBox.warning(self, "Warning", f"Warning: name_edit '{f'name_edit_{comboboxItem}'}' not found in parameterContainer. You might have named your parameters incorrectly.")
 
             # Set the args
             args = option.get('args', {})
@@ -4929,7 +4929,7 @@ class App(QMainWindow):
                     elif isinstance(widget, QDoubleSpinBox):
                         widget.setValue(arg_value)
                 else:
-                    print(f"Warning: Widget '{arg_name}_{comboboxItem}' not found in parameterContainer.")
+                    QMessageBox.warning(self, "Warning", f"Warning: Widget '{arg_name}_{comboboxItem}' not found in parameterContainer. You might have named your parameters incorrectly.")
 
             # Add options and collapse the container
             addOptionButton.click()
@@ -4952,8 +4952,6 @@ class App(QMainWindow):
 
         # Insert the new decision widget before the buttonLayoutWidget
         layout.insertWidget(layout.indexOf(buttonLayoutWidget), newDecisionWidget)
-
-        return
 
     def onCategoryComboBoxChanged(self, categoryComboBox, functionComboBox, parameterContainer, addOptionButton, collapseButton, decisionNameInput, decisionOptionsInput):
         """
@@ -4992,8 +4990,6 @@ class App(QMainWindow):
             self.otherOptionCategory(parameterContainer)
 
         self.update()
-
-        return
 
     def getFunctionParameters(self, parameterContainer):
         """
@@ -5195,8 +5191,6 @@ class App(QMainWindow):
             type_widget.currentIndexChanged.connect(updateVisibility)
             updateVisibility()
 
-        return
-
     def otherOptionCategory(self, parameterContainer):
         """
         "Other" category for custom functions
@@ -5228,8 +5222,6 @@ class App(QMainWindow):
         param_layout.addWidget(param_label)
         param_layout.addWidget(param_edit)
         parameterContainer.layout().addLayout(param_layout)
-
-        return
 
     def addOption(self, functionComboBox, parameterContainer, nameInputField, optionsInputField):
         """
@@ -5294,8 +5286,6 @@ class App(QMainWindow):
         # Add to forking paths
         self.data.mv_forking_paths[currentName].append(option_dict)
 
-        return
-
     def collapseOption(self, collapseButton, parameterContainer):
         """
         Collapse the option layout
@@ -5309,8 +5299,6 @@ class App(QMainWindow):
             parameterContainer.show()
             collapseButton.setText(" \u25B2 ")
             return
-
-        return
 
     def includeDecision(self, categoryComboBox, nameInput, optionsInput):
         """
@@ -5334,7 +5322,6 @@ class App(QMainWindow):
             self.generateMultiverseScript()
         else:
             QMessageBox.warning(self, "Input Error", "Please ensure a name and at least one option are provided.")
-        return
 
     def setDtypeForOption(self, option):
         """
@@ -5403,8 +5390,6 @@ class App(QMainWindow):
             self.addNewDecision(self.createMvContainerLayout, self.buttonLayoutWidget)
         
         self.generateMultiverseScript()
-
-        return
 
     def clearLayout(self, layout):
         """
@@ -5538,8 +5523,6 @@ class App(QMainWindow):
         self.scriptDisplay.setText(script_content)
         self.scriptDisplay.update()
 
-        return
-
     def loadMultiverseScript(self):
         """
         Load a multiverse script and extract specific components.
@@ -5566,9 +5549,7 @@ class App(QMainWindow):
             self.figsizeInput_spec.setText("None")
 
             # Init multiverse workflow
-            self.onMultiverseFile()
-
-        return   
+            self.onMultiverseFile()   
 
     def onMultiverseFile(self):   
         try:
@@ -5622,8 +5603,6 @@ class App(QMainWindow):
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to read the file: {str(e)}")
-
-        return
 
     def extractScriptComponents(self, script_content):
         """
@@ -5684,6 +5663,9 @@ class App(QMainWindow):
             if folder:
                 self.multiverseFileName = "multiverse_analysis"
                 self.data.mv_folder = os.path.join(folder, "multiverse_analysis")
+            else:
+                self.createMultiverseButton.setEnabled(True)
+                return
 
         # Create a template script in the multiverse folder (the script content is taken from the GUI)
         os.makedirs(self.data.mv_folder, exist_ok=True)
@@ -5739,8 +5721,6 @@ class App(QMainWindow):
         # Save the current script for future checks
         self.mv_script = self.scriptDisplay.toPlainText()
 
-        return
-
     def resetMultiverseScript(self):
         for container in self.mv_containers:
             container.deleteLater()
@@ -5765,8 +5745,6 @@ class App(QMainWindow):
         self.plotLogo(self.specFigure)
         self.specCanvas.draw()
 
-        return
-
     def updateMultiverseScript(self):
         # Execute the script in a separate namespace and get the forking paths into the GUI
         try:
@@ -5783,8 +5761,6 @@ class App(QMainWindow):
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to update the template: {str(e)}")
-
-        return
 
     def saveMultiverseScript(self):
         """
@@ -5809,7 +5785,7 @@ class App(QMainWindow):
         # Check if the multiverse analysis is still up-to-date with the current script
         current_script = self.scriptDisplay.toPlainText()
         if self.mv_script != current_script:
-            QMessageBox.warning(self, "Warning", "The script has been modified, and the multiverse will be updated accordingly.")
+            QMessageBox.warning(self, "Warning", "The script has been modified by the user. The multiverse will be updated accordingly")
             self.mv_script = current_script
             self.createMultiverse()
 
@@ -5833,22 +5809,23 @@ class App(QMainWindow):
 
         self.mvThread.start()
 
-    def handleMultiverseResult(self, result):
+    def handleMultiverseResult(self):
         QMessageBox.information(self, "Multiverse Analysis", "Multiverse analysis completed successfully.")
         self.createMultiverseButton.setEnabled(True)
         self.runMultiverseButton.setEnabled(True)
         self.paralleliseMultiverseSpinbox.setEnabled(True)
         self.plotButton.setEnabled(True)
 
-        # Populate the measure input
-        results_file = os.path.join(self.mverse.results_dir, 'universe_1.pkl')
+        # Populate the measure input and plot an initial specification curve
+        results_file = os.path.join(self.mverse.results_dir, 'multiverse_results.pkl')
         if os.path.exists(results_file):
             with open(results_file, 'rb') as file:
                 universe_data = pickle.load(file)
 
-            variable_names = list(universe_data.keys())
+            variable_names = list(universe_data[next(iter(universe_data))].keys()) # keys of the first universe
             self.measureInput.clear()
             self.measureInput.addItems(variable_names)
+            self.plotSpecificationCurve()        
 
     def handleMultiverseError(self, error):
         QMessageBox.warning(self, "Multiverse Analysis", f"An error occurred during multiverse analysis: {error}")
@@ -6001,7 +5978,8 @@ class App(QMainWindow):
             ci = None if self.ciInput.value() == self.ciInput.minimum() else self.ciInput.value()
             smooth_ci = self.smoothCiCheckbox.isChecked()
 
-            figsize = tuple(map(int, self.figsizeInput_spec.text().split(','))) if self.figsizeInput_spec.text() != "None" else None
+            figsize = tuple(map(int, self.figsizeInput_spec.text().split(','))) if self.figsizeInput_spec.text() != "None" else None            
+            
             if figsize is None:
                 num_options = sum(len(values) for values in self.mverse.forking_paths.values())
                 figsize = (max(8, int(self.mverse.num_universes*0.07)), max(7, num_options))

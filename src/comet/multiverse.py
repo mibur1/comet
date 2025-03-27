@@ -761,6 +761,49 @@ class Multiverse:
 
         return False
 
+    def _create_summary(self, all_universes, keys):
+        """
+        Internal function: Create a CSV file with the parameters of all universes
+
+        Parameters
+        ----------
+        csv_path : string
+            Path to save the CSV file
+
+        all_universes : list
+            List of all universes (combinations of parameters)
+
+        keys : list
+            List of keys for the CSV file. Used when the order is consistent.
+
+        config : dict
+            Configuration dictionary. Used to check for the 'order' key.
+        """
+        fieldnames = ['Universe']
+        for i in range(len(keys)):
+            fieldnames.append(f"Decision {i+1}")
+            fieldnames.append(f"Value {i+1}")
+
+        # Generate CSV file with the parameters of all universes
+        file_path = os.path.join(self.multiverse_dir, "multiverse_summary.csv")
+        with open(file_path, "w", newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+
+            for i, combination in enumerate(all_universes, start=1):
+                context = {'Universe': f"Universe_{i}"}
+
+                # Populate the decision and value columns
+                for j, (key, value) in enumerate(combination):
+                    if isinstance(value, dict):
+                        value = value.get('name', '')
+
+                    context[f"Decision {j+1}"] = key
+                    context[f"Value {j+1}"] = value
+
+                writer.writerow(context)
+        return
+
     def _read_summary(self):
         """
         Internal function: Reads the multiverse_summary.csv file
@@ -843,48 +886,6 @@ class Multiverse:
             function_call = f"{func}({input_data}, **{args})"
 
         return function_call
-
-    def _create_summary(self, all_universes, keys):
-        """
-        Internal function: Create a CSV file with the parameters of all universes
-
-        Parameters
-        ----------
-        csv_path : string
-            Path to save the CSV file
-
-        all_universes : list
-            List of all universes (combinations of parameters)
-
-        keys : list
-            List of keys for the CSV file. Used when the order is consistent.
-
-        config : dict
-            Configuration dictionary. Used to check for the 'order' key.
-        """
-        fieldnames = ['Universe']
-        for i in range(len(keys)):
-            fieldnames.append(f"Decision {i+1}")
-            fieldnames.append(f"Value {i+1}")
-
-        # Generate CSV file with the parameters of all universes
-        file_path = os.path.join(self.multiverse_dir, "multiverse_summary.csv")
-        with open(file_path, "w", newline='') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-
-            for i, combination in enumerate(all_universes, start=1):
-                context = {'Universe': f"Universe_{i}"}
-
-                # Populate the decision and value columns
-                for j, (key, value) in enumerate(combination):
-                    if isinstance(value, dict):
-                        value = value.get('name')
-                        
-                    context[f"Decision {j+1}"] = key
-                    context[f"Value {j+1}"] = value
-
-                writer.writerow(context)
 
     def _combine_results(self):
         """
@@ -978,4 +979,3 @@ class Multiverse:
         except Exception:
             return False
         return True
-
