@@ -86,7 +86,7 @@ class ConnectivityMethod(metaclass=ABCMeta):
         else:
             raise ValueError("Input data must be either a 2D array, 3D array, or a list of 2D arrays.")
 
-        return 
+        return
 
     @abstractmethod
     def estimate(self):
@@ -1314,7 +1314,7 @@ class SlidingWindowClustering(ConnectivityMethod):
     def mat2vec(self, C_t):
         if C_t.ndim == 2:
             # 2D square matrix
-            return C_t[np.triu_indices_from(C_t, k=1)] 
+            return C_t[np.triu_indices_from(C_t, k=1)]
         elif C_t.ndim == 3:
             # 3D array, C_t is a stack of square matrices.
             idx = np.triu_indices_from(C_t[0], k=1)
@@ -1354,7 +1354,7 @@ class SlidingWindowClustering(ConnectivityMethod):
                 FCS_1st_level = FCS
             else:
                 FCS_1st_level = np.concatenate((FCS_1st_level, FCS), axis=0)
-            
+
             if SW_dFC is None:
                 SW_dFC = dfc
             else:
@@ -1536,7 +1536,7 @@ class ContinuousHMM(ConnectivityMethod):
 
         super().__init__(time_series, 0, False, False)
 
-        self.N_estimates = self.T * time_series.shape[-1] if type(time_series) == np.ndarray else self.T * len(time_series)
+        self.N_estimates = self.T * time_series.shape[-1] if isinstance(time_series, np.ndarray) else self.T * len(time_series)
         self.n_states = n_states
         self.hmm_iter = hmm_iter
 
@@ -1557,11 +1557,11 @@ class ContinuousHMM(ConnectivityMethod):
             model.fit(self.time_series)
             models.append(model)
 
-            score = model.score(self.time_series)  
+            score = model.score(self.time_series)
             scores.append(score)
 
         hmm_model = models[np.argmax(scores)]
-        self.states = hmm_model.covars_ 
+        self.states = hmm_model.covars_
         self.states = self.states.transpose(1, 2, 0)
 
         self.state_tc = hmm_model.predict(self.time_series)
@@ -1656,7 +1656,7 @@ class DiscreteHMM(ConnectivityMethod):
             model.fit(state_tc)
             models.append(model)
             
-            score = model.score(state_tc)  
+            score = model.score(state_tc)
             scores.append(score)
 
         # Select the best model and get the states/connectivity estimates
