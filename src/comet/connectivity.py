@@ -139,6 +139,7 @@ class ConnectivityMethod(metaclass=ABCMeta):
 
         return R_mat
 
+
 """
 SECTION: Continuous dFC methods
 """
@@ -1251,6 +1252,7 @@ class EdgeConnectivity(ConnectivityMethod):
         eFC = self.postproc(eFC)
         return eFC
 
+
 """
 SECTION: State based dFC methods
 """
@@ -1300,7 +1302,7 @@ class SlidingWindowClustering(ConnectivityMethod):
         self.stepsize = stepsize
         self.subject_clusters = subject_clusters
         self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1
-    
+
     def vec2mat(self, F, N):
         T = F.shape[0]
         C = np.zeros((T, N, N), dtype=F.dtype)
@@ -1308,7 +1310,7 @@ class SlidingWindowClustering(ConnectivityMethod):
         C[:, iu[0], iu[1]] = F # Assign vectorized values to upper triangles
         C = C + np.transpose(C, (0, 2, 1)) + np.eye(N) # Symmetrize and set main diagonal
         return C
-    
+
     def mat2vec(self, C_t):
         if C_t.ndim == 2:
             # 2D square matrix
@@ -1459,7 +1461,7 @@ class CoactivationPatterns(ConnectivityMethod):
 
         super().__init__(time_series, 0, False, False)
         
-        self.N_estimates = self.T * time_series.shape[-1] if type(time_series) == np.ndarray else self.T * len(time_series)
+        self.N_estimates = self.T * time_series.shape[-1] if isinstance(time_series, np.ndarray) else self.T * len(time_series)
         self.n_states = n_states
         self.subject_clusters = subject_clusters
        
@@ -1550,11 +1552,11 @@ class ContinuousHMM(ConnectivityMethod):
             Connectivity states (P x P x n_states)
         """
         models, scores = [], []
-        for i in tqdm(range(self.hmm_iter)):
+        for _ in tqdm(range(self.hmm_iter)):
             model = hmm.GaussianHMM(n_components=self.n_states, covariance_type="full")
             model.fit(self.time_series)
             models.append(model)
-            
+
             score = model.score(self.time_series)  
             scores.append(score)
 
@@ -1636,11 +1638,11 @@ class DiscreteHMM(ConnectivityMethod):
         """
         # Run sliding window clustering
         n_cluster_states = int(self.n_states * self.state_ratio)
-        state_tc, states = SlidingWindowClustering(self.time_series, 
-                                                   n_states=n_cluster_states, 
-                                                   subject_clusters=self.subject_clusters, 
-                                                   windowsize=self.windowsize, 
-                                                   shape=self.shape, 
+        state_tc, states = SlidingWindowClustering(self.time_series,
+                                                   n_states=n_cluster_states,
+                                                   subject_clusters=self.subject_clusters,
+                                                   windowsize=self.windowsize,
+                                                   shape=self.shape,
                                                    stepsize=self.stepsize).estimate()
         
         states = states.transpose(2, 0, 1)
@@ -1660,14 +1662,14 @@ class DiscreteHMM(ConnectivityMethod):
         # Select the best model and get the states/connectivity estimates
         hmm_model = models[np.argmax(scores)]
         self.state_tc = hmm_model.predict(state_tc)
-        
+
         self.states = np.full((self.P, self.P, self.n_states), np.nan)
         for i in range(self.n_states):
             ids = np.array([int(state == i) for state in self.state_tc])
             self.states[:,:,i] = np.average(SWC_dFC, weights=ids, axis=0)
 
         self.state_tc = self.state_tc.reshape(self.n_subjects, self.N_estimates)
-        
+
         return self.state_tc, self.states
 
 

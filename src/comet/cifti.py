@@ -357,7 +357,8 @@ class Hcp():
 
         # Detailed E-Prime data
         tables = self._get_filenames(subject).tables
-        columns = ["BlockType","TargetType", "StimType", "Procedure[Block]", "Stim.OnsetTime", "Cue2Back.OnsetTime", "CueTarget.OnsetTime", "Stim.RT", "Block", "Stim.ACC", "Stimulus[Block]"]
+        columns = ["BlockType","TargetType", "StimType", "Procedure[Block]", "Stim.OnsetTime", 
+                   "Cue2Back.OnsetTime", "CueTarget.OnsetTime", "Stim.RT", "Block", "Stim.ACC", "Stimulus[Block]"]
         expdata = [pd.read_csv(table, delimiter='\t')[columns] for table in tables]
         ####################### Columns: E-Prime key variables #######################
         # Trial related
@@ -435,11 +436,13 @@ class Hcp():
         returns: 3 TR indices and the labels for every trial
         """
         ### Behavioral data ###
-        # Time (in seconds) for the onset of all blocks/conditions and individual trials as dicts, read from the EVs .txt files (sorted in correct/incorrect responses)
+        # Time (in seconds) for the onset of all blocks/conditions and individual trials as dicts, 
+        # read from the EVs .txt files (sorted in correct/incorrect responses)
         conditionOnsets, trialOnsets, expData = self.get_experiment_data(subject)
 
         # Using the time stamps and labels, we get the corresponding indices for TRs during which the responses happened
-        # We get indices for 3 TRs after the response and also the corresponding label (correct -> 1, incorrect -> 0), this is the maximum amount of data without overlap
+        # We get indices for 3 TRs after the response and also the corresponding label (correct -> 1, incorrect -> 0), 
+        # this is the maximum amount of data without overlap.
         # The delay argument can shift the indices to the right to account for hemodynamic delay
         correct_segments, incorrect_segments, correct_blocks, incorrect_blocks = self.segment_experiment(conditionOnsets, trialOnsets, delay=delay)
 
@@ -468,13 +471,15 @@ class Hcp():
 
         return blocked_segments, blocked_labels
 
-    def clean(self, time_series, runs=None, detrend=False, confounds=None, standardize=False, standardize_confounds=True, filter='butterworth', low_pass=None, high_pass=None, t_r=0.72, ensure_finite=False):
+    def clean(self, time_series, runs=None, detrend=False, confounds=None, standardize=False, standardize_confounds=True, 
+              filter='butterworth', low_pass=None, high_pass=None, t_r=0.72, ensure_finite=False):
         """
         Standard nilearn cleaning of the time series
         """
         ts_clean = []
         for ts, conf in zip(time_series, confounds):
-            ts_clean.append(clean(ts, detrend=detrend, confounds=conf, standardize=standardize, standardize_confounds=standardize_confounds, filter=filter, low_pass=low_pass, high_pass=high_pass, t_r=t_r, ensure_finite=ensure_finite))
+            ts_clean.append(clean(ts, detrend=detrend, confounds=conf, standardize=standardize, standardize_confounds=standardize_confounds, 
+                                  filter=filter, low_pass=low_pass, high_pass=high_pass, t_r=t_r, ensure_finite=ensure_finite))
         return ts_clean
 
     def plot_experiment(self, subject):
@@ -574,9 +579,6 @@ class Hcp():
 
         return fig, ax
 
-    ##################
-    # Internal methods
-
     def _get_filenames(self, subject=None):
         """
         Get the path for the dtseries files for a specified subject
@@ -591,8 +593,10 @@ class Hcp():
 
         # event related files
         EVs = [f"{dir}EVs/" for dir in maindirs]
-        conditionFiles = ["2bk_tools.txt", "0bk_body.txt", "2bk_faces.txt", "0bk_tools.txt", "2bk_body.txt", "2bk_places.txt", "0bk_faces.txt", "0bk_places.txt"]
-        trialFiles = ["0bk_cor.txt", "0bk_err.txt", "0bk_nlr.txt", "2bk_cor.txt", "2bk_err.txt", "2bk_nlr.txt", "all_bk_cor.txt", "all_bk_err.txt"]
+        conditionFiles = ["2bk_tools.txt", "0bk_body.txt", "2bk_faces.txt", "0bk_tools.txt", 
+                          "2bk_body.txt", "2bk_places.txt", "0bk_faces.txt", "0bk_places.txt"]
+        trialFiles = ["0bk_cor.txt", "0bk_err.txt", "0bk_nlr.txt", "2bk_cor.txt", 
+                      "2bk_err.txt", "2bk_nlr.txt", "all_bk_cor.txt", "all_bk_err.txt"]
 
         conditions = [ev + conditionFile for ev in EVs for conditionFile in conditionFiles]
         trials = [ev + trialFile for ev in EVs for trialFile in trialFiles]
@@ -606,3 +610,4 @@ class Hcp():
         filenames = Data(filedir, dtseries, confounds, conditions, trials, tables)
 
         return filenames
+    

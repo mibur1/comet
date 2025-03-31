@@ -38,7 +38,8 @@ def load_timeseries(path=None):
     elif path.endswith(".mat"):
         try:
             data = loadmat(path)
-        except:
+        except Exception as e:
+            print("Error using scipy, using mat73 instead.", e)
             data = mat73.loadmat(path)
     elif path.endswith(".tsv"):
         data = pd.read_csv(path, sep='\t', header=None, na_values='n/a')
@@ -125,9 +126,9 @@ def save_universe_results(data):
         Data to save as .pkl file
     """
 
-    if type(data) is not dict:
+    if not isinstance(data, dict):
         raise ValueError("Data must be povided as a dictionary.")
-    
+
     # Get the directory and universe name of the calling script
     caller_stack = inspect.stack()
     universe_fname = caller_stack[1].filename
