@@ -269,7 +269,7 @@ class ParameterOptions:
         "participation_coef_sign":      "BCT Participation coef (sign)",
     }
 
-    # Reverse mappings
+    # Reversed dictionaries for easy lookup
     REVERSE_PARAM_NAMES = {v: k for k, v in PARAM_NAMES.items()}
     REVERSE_CONNECTIVITY_METHODS = {v: k for k, v in CONNECTIVITY_METHODS.items()}
     REVERSE_GRAPH_OPTIONS = {v: k for k, v in GRAPH_OPTIONS.items()}
@@ -402,6 +402,32 @@ class ParameterOptions:
             DVARS is the root mean squared intensity difference of volume N to volume N+1"
     }
 
+    MV_INIT_SCRIPT = (
+        "\"\"\"\n"
+        "Running Multiverse analysis\n"
+        "\n"
+        "Multiverse analysis requires a Python script to be created by the user.\n"
+        "An initial template for this can be created through the GUI, with forking paths being stored in a dict and later used through double curly braces in the template function.\n\n"
+        "This example shows how one would create and run a multiverse analysis which will generate 4 universes (2*2) which perform addition of two numbers, respectively.\n"
+        "Results of a universe can be passed to the `save_universe_results()` function as a dictionary.\n"
+        "\"\"\"\n"
+        "\n"
+        "from comet.multiverse import Multiverse\n"
+        "\n"
+        "forking_paths = {\n"
+        "    \"number_1\": [1, 2],\n"
+        "    \"number_2\": [3, 4]\n"
+        "}\n"
+        "\n"
+        "def analysis_template():\n"
+        "    import comet\n\n"
+        "    # The result of each universe is the addition of two numbers\n"
+        "    addition = {{number_1}} + {{number_2}}\n\n"
+        "    # Save results\n"
+        "    result = {\"addition\": addition}\n"
+        "    comet.utils.save_universe_results(result)\n"
+        )
+
     def __init__(self):
         self.param_names = self.PARAM_NAMES
         self.reverse_param_names = self.REVERSE_PARAM_NAMES
@@ -415,6 +441,7 @@ class ParameterOptions:
         self.info_options = self.INFO_OPTIONS
         self.confound_options = self.CONFOUND_OPTIONS
         self.cleaning_info = self.CLEANING_INFO
+        self.mv_init_script = self.MV_INIT_SCRIPT
 
 class PythonHighlighter(QSyntaxHighlighter):
     def __init__(self, parent=None):
@@ -611,7 +638,6 @@ class DataStorage:
                 return copy.deepcopy(data_obj) # IMPORTANT: deep copy
         return None
 
-
 """
 Main class of the GUI
 """
@@ -626,7 +652,7 @@ class App(QMainWindow):
         self.data_storage = DataStorage()
 
         # Parameter names
-        # TODO: integrate in entire script?
+        # TODO: Better implementation
         parameterNames = ParameterOptions()
         self.param_names = parameterNames.param_names
         self.reverse_param_names = parameterNames.reverse_param_names
@@ -640,6 +666,7 @@ class App(QMainWindow):
         self.info_options = parameterNames.info_options
         self.confound_options = parameterNames.confound_options
         self.cleaning_info = parameterNames.cleaning_info
+        self.mv_init_script = parameterNames.mv_init_script
 
         # Get all the dFC methods and names
         # TODO: Make better implementation
@@ -4824,7 +4851,7 @@ class App(QMainWindow):
 
         return decisionWidget
 
-    def populateMultiverseContainers(self, forking_paths):
+    def populateMultiverseContainers(self):
         """
         Populate multiverse containers with decisions and options from the forking paths dictionary.
         """
@@ -4834,7 +4861,7 @@ class App(QMainWindow):
         self.mv_containers.clear()
 
         # Loop through the forking_paths dictionary and create a container for each entry
-        for decision_name, options in forking_paths.items():
+        for decision_name, options in self.data.mv_forking_paths.items():
             # Create a new decision container
             decisionWidget = self.addDecisionContainer()
 
@@ -4850,6 +4877,7 @@ class App(QMainWindow):
                 if 'func' in first_dict:
                     # Check if the func key corresponds to comet.connectivity
                     func_value = first_dict['func']
+                    
                     if func_value.startswith("comet.connectivity"):
                         # Set the category to FC
                         categoryComboBox.setCurrentText("FC")
@@ -4877,47 +4905,64 @@ class App(QMainWindow):
     def populateFunctionParameters(self, decisionWidget, decisionName, options, type=None):
         """
         Populate the function parameter container with parameters from the given dictionary.
+        Supports multiple dictionary options.
         """
-        for option in options:
-            # Get the widgets
-            decisionNameInput = decisionWidget.findChild(QLineEdit, "decisionNameInput")
-            functionComboBox = decisionWidget.findChild(QComboBox, "functionComboBox")
-            addOptionButton = decisionWidget.findChild(QPushButton, "addOptionButton")
-            collapseButton = decisionWidget.findChild(QPushButton, "collapseButton")
+        # Lookup common widgets only once.
+        decisionNameInput = decisionWidget.findChild(QLineEdit, "decisionNameInput")
+        functionComboBox = decisionWidget.findChild(QComboBox, "functionComboBox")
+        addOptionButton = decisionWidget.findChild(QPushButton, "addOptionButton")
+        collapseButton = decisionWidget.findChild(QPushButton, "collapseButton")
+        
+        # If there are no options, nothing to do.
+        if not options:
+            QMessageBox.warning(self, "Warning", "No options provided.")
+            return
+        
+        # Use the first option to set common widgets.
+        first_option = options[0]
+        func_name = first_option['func'].split('.')[-1]
+        
+        if type == "FC":
+            comboboxItem = self.connectivityMethods.get(func_name, None)
+        elif type == "Graph":
+            comboboxItem = self.graphOptions.get(func_name, None)
+        else:
+            comboboxItem = None
 
-            # Get the func name and update the functionComboBox
-            func_name = option['func'].split('.')[-1]
+        if comboboxItem is None:
+            QMessageBox.warning(self, "Warning", f"comboboxItem for function '{func_name}' not found for type '{type}'.")
+            return
 
-            if type == "FC":
-                comboboxItem = self.connectivityMethods.get(func_name, None)
-            elif type == "Graph":
-                comboboxItem = self.graphOptions.get(func_name, None)
+        # Set the function combobox and decision name (common for all options).
+        functionComboBox.setCurrentText(comboboxItem)
+        decisionNameInput.setText(decisionName)
+        
+        # Process each option.
+        # For the first option, assume the container already exists.
+        for idx, option in enumerate(options):
+ 
+            # Retrieve the parameter container.
+            # Assume that the parameter containers share the same objectName (comboboxItem).
+            # If multiple exist, take the last one as the one just added.
+            parameterContainers = decisionWidget.findChildren(QWidget, comboboxItem)
+            if parameterContainers:
+                parameterContainer = parameterContainers[-1]
+            else:
+                parameterContainer = decisionWidget.findChild(QWidget, comboboxItem)
+                if parameterContainer is None:
+                    QMessageBox.warning(self, "Warning", f"Parameter container '{comboboxItem}' not found.")
+                    continue
 
-            if comboboxItem is None:
-                QMessageBox.warning(self, "Warning", f"Warning: comboboxItem for function '{func_name}' not found in the provided type '{type}'.")
-                continue  # Skip if combobox item is not found
-
-            functionComboBox.setCurrentText(comboboxItem)
-            decisionNameInput.setText(decisionName)
-
-            # Get the parameter container and update its widgets with the dict contents
-            parameterContainer = decisionWidget.findChild(QWidget, comboboxItem)
-
-            if parameterContainer is None:
-                QMessageBox.warning(self, "Warning", f"Warning: parameterContainer '{comboboxItem}' not found.")
-                continue  # Skip if parameter container is not found
-
-            # Set the name
+            # Set the option name in the container.
             name_edit = parameterContainer.findChild(QLineEdit, f"name_edit_{comboboxItem}")
             if name_edit:
                 name_edit.setText(option['name'])
             else:
-                QMessageBox.warning(self, "Warning", f"Warning: name_edit '{f'name_edit_{comboboxItem}'}' not found in parameterContainer. You might have named your parameters incorrectly.")
-
-            # Set the args
+                QMessageBox.warning(self, "Warning", f"name_edit 'name_edit_{comboboxItem}' not found in parameterContainer.")
+            
+            # Update argument widgets.
             args = option.get('args', {})
             for arg_name, arg_value in args.items():
-                # Ensure that when you created the widgets, the object name was set as arg_name
                 widget = parameterContainer.findChild(QWidget, f"{arg_name}_{comboboxItem}")
                 if widget:
                     if isinstance(widget, QLineEdit):
@@ -4929,11 +4974,12 @@ class App(QMainWindow):
                     elif isinstance(widget, QDoubleSpinBox):
                         widget.setValue(arg_value)
                 else:
-                    QMessageBox.warning(self, "Warning", f"Warning: Widget '{arg_name}_{comboboxItem}' not found in parameterContainer. You might have named your parameters incorrectly.")
-
-            # Add options and collapse the container
+                    QMessageBox.warning(self, "Warning", f"Widget '{arg_name}_{comboboxItem}' not found in parameterContainer.")
+            
+            # Add the option
             addOptionButton.click()
-
+                
+        # Collapse the container after processing all options.
         collapseButton.click()
 
     def addNewDecision(self, layout, buttonLayoutWidget):
@@ -5012,7 +5058,6 @@ class App(QMainWindow):
                     param_name_label = param_layout.itemAt(0).widget()
                     if isinstance(param_name_label, QLabel):
                         param_name = param_name_label.text().rstrip(':')  # Remove the colon at the end
-
                         # Extract the parameter value from the appropriate widget type
                         param_widget = param_layout.itemAt(1).widget()
                         if isinstance(param_widget, QLineEdit):
@@ -5030,7 +5075,7 @@ class App(QMainWindow):
 
                         # Add the parameter name and value to the dictionary
                         params_dict[param_name] = param_value
-
+        params_dict.pop("Option")
         return params_dict
 
     def updateFunctionParameters(self, functionComboBox, parameterContainer):
@@ -5156,7 +5201,6 @@ class App(QMainWindow):
                     # Fallback
                     else:
                         param_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
-
                 param_widget.setObjectName(f"{name}_{functionComboBox.currentText()}") # Set object name to allow us to find the widgets later when e.g. populating it from a template script
                 temp_widgets[name] = (param_label, param_widget)
                 param_layout.addWidget(param_widget)
@@ -5283,8 +5327,9 @@ class App(QMainWindow):
         if currentName not in self.data.mv_forking_paths:
             self.data.mv_forking_paths[currentName] = []
 
-        # Add to forking paths
-        self.data.mv_forking_paths[currentName].append(option_dict)
+        # Add to forking paths if not already present
+        if option_dict not in self.data.mv_forking_paths[currentName]:
+            self.data.mv_forking_paths[currentName].append(option_dict)
 
     def collapseOption(self, collapseButton, parameterContainer):
         """
@@ -5427,99 +5472,83 @@ class App(QMainWindow):
         self.toggleButton.move(self.scriptDisplay.width() - self.toggleButton.width() - 25, 5)
         QTextEdit.resizeEvent(self.scriptDisplay, event)
 
-    def generateMultiverseScript(self, init_template=False, reset_script=False):
+    def generateMultiverseScript(self, init_template=False):
         """
         Generates the multiverse script on the right side of the tab.
         """
         if init_template:
-            script_content = (
-                "\"\"\"\n"
-                "Running Multiverse analysis\n"
-                "\n"
-                "Multiverse analysis requires a Python script to be created by the user.\n"
-                "An initial template for this can be created through the GUI, with forking paths being stored in a dict and later used through double curly braces in the template function.\n\n"
-                "This example shows how one would create and run a multiverse analysis which will generate 4 universes (2*2) which perform addition of two numbers, respectively.\n"
-                "Results of a universe can be passed to the `save_universe_results()` function as a dictionary.\n"
-                "\"\"\"\n"
-                "\n"
-                "from comet.multiverse import Multiverse\n"
-                "\n"
-                "forking_paths = {\n"
-                "    \"number_1\": [1, 2],\n"
-                "    \"number_2\": [3, 4]\n"
-                "}\n"
-                "\n"
-                "def analysis_template():\n"
-                "    import os\n"
-                "    import comet\n\n"
-                "    # The result of each universe is the addition of two numbers\n"
-                "    addition = {{number_1}} + {{number_2}}\n\n"
-                "    # Save results\n"
-                "    result = {\"addition\": addition}\n"
-                "    comet.utils.save_universe_results(result)\n"
-            )
+            # Use the initialization script.
+            script_content = self.mv_init_script
             
-            # Initial population of the decision widget
-            self.mv_original_script = script_content
+            # Extract the forking_paths block (for container population).
             pattern = r"forking_paths\s*=\s*(\{.*?\})"
             match = re.search(pattern, script_content, flags=re.DOTALL)
             dict_str = match.group(1)
-            forking_paths = ast.literal_eval(dict_str)
-            self.populateMultiverseContainers(forking_paths)
-        
-        elif reset_script:
-            script_content = self.mv_original_script
-            
-            # Populate he decision widget
-            self.mv_original_script = script_content
-            pattern = r"forking_paths\s*=\s*(\{.*?\})"
-            match = re.search(pattern, script_content, flags=re.DOTALL)
-            dict_str = match.group(1)
-            forking_paths = ast.literal_eval(dict_str)
-            self.populateMultiverseContainers(forking_paths)
-        
+            self.data.mv_forking_paths = ast.literal_eval(dict_str)
+            self.populateMultiverseContainers()
+ 
         else:
-            # Get the current script content and remove the information string
+            # Get the current multiverse script contents
             script_content = self.scriptDisplay.toPlainText()
             
+            # If the multiverse script is empty, use the template
+            if not script_content.strip():
+                script_content = self.mv_init_script
+
+            # Remove the help string if we have a modified multiverse script
             if not self.mv_init: 
-                keyword = "from comet.multiverse import Multiverse"
-                start_index = script_content.find(keyword)
+                script_start = "from comet.multiverse import Multiverse"
+                start_index = script_content.find(script_start)
                 if start_index != -1:
                     script_content = script_content[start_index:]
+            
+            # Find the beginning of the forking_paths dict
+            fp_keyword = "forking_paths"
+            fp_index = script_content.find(fp_keyword)
+            if fp_index == -1:
+                raise ValueError("forking_paths dictionary not found in the script")
+            
+            # Find the first "{" after the forking_paths keyword.
+            brace_index = script_content.find("{", fp_index)
+            if brace_index == -1:
+                raise ValueError("Opening brace for forking_paths not found.")
+            
+            # Use a brace counter to find the matching closing brace, handling nested dictionaries.
+            count = 0
+            end_index = None
+            for i in range(brace_index, len(script_content)):
+                if script_content[i] == "{":
+                    count += 1
+                elif script_content[i] == "}":
+                    count -= 1
+                    if count == 0:
+                        end_index = i
+                        break
+            if end_index is None:
+                raise ValueError("Closing brace for forking_paths not found.")
+            
+            # Build a new forking_paths block using self.data.mv_forking_paths.
+            new_entries = ""
+            for name, options in self.data.mv_forking_paths.items():
+                if isinstance(options, list) and all(isinstance(item, dict) for item in options):
+                    formatted_options = json.dumps(options, indent=4)
+                    # Convert JSON booleans and null to Python style
+                    formatted_options = (
+                        formatted_options
+                        .replace('true', 'True')
+                        .replace('false', 'False')
+                        .replace('null', 'None')
+                    )
+                    new_entries += f'    "{name}": {formatted_options},\n'
+                else:
+                    new_entries += f'    "{name}": {options},\n'
+            new_block = "forking_paths = {\n" + new_entries + "}"
+            
+            # Reassemble the script: everything before forking_paths, then the new block, then everything after the old block.
+            new_script = script_content[:fp_index] + new_block + script_content[end_index+1:]
+            script_content = new_script
 
-            # Define a regex pattern that matches the entire forking_paths dictionary block.
-            # It captures:
-            #   Group 1: "forking_paths =" and the opening brace
-            #   Group 2: everything inside the braces (non-greedy)
-            #   Group 3: the closing brace
-            pattern = r'(forking_paths\s*=\s*\{)(.*?)(\})'
-
-            # Define a replacement function that builds the new dictionary content.
-            def repl(match):
-                start = match.group(1)
-                end = match.group(3)
-                new_entries = ""
-                for name, options in self.data.mv_forking_paths.items():
-                    if isinstance(options, list) and all(isinstance(item, dict) for item in options):
-                        formatted_options = json.dumps(options, indent=4)
-                        # Convert JSON booleans and null to Python style
-                        formatted_options = (
-                            formatted_options
-                            .replace('true', 'True')
-                            .replace('false', 'False')
-                            .replace('null', 'None')
-                        )
-                        new_entries += f'    "{name}": {formatted_options},\n'
-                    else:
-                        new_entries += f'    "{name}": {options},\n'
-                # Return the entire block with the new dictionary content.
-                return start + "\n" + new_entries + end
-
-            # Use re.sub to replace the content of the forking_paths block.
-            script_content = re.sub(pattern, repl, script_content, flags=re.DOTALL)
-    
-        # Set the new script text in the display.
+        # Update the script display.
         self.scriptDisplay.setText(script_content)
         self.scriptDisplay.update()
 
@@ -5582,7 +5611,7 @@ class App(QMainWindow):
                     for target in node.targets:
                         if isinstance(target, ast.Name) and target.id == 'forking_paths':
                             # Safely evaluate the forking_paths dictionary (node.value)
-                            forking_paths = ast.literal_eval(node.value)
+                            self.data.mv_forking_paths = ast.literal_eval(node.value)
 
             self.multiverseName = self.multiverseFileName.split('/')[-1].split('.')[0]
             self.runMultiverseButton.setEnabled(False)
@@ -5590,7 +5619,7 @@ class App(QMainWindow):
             self.plotButton.setEnabled(False)
             self.plotMvButton.setEnabled(False)
 
-            self.populateMultiverseContainers(forking_paths)
+            self.populateMultiverseContainers()
 
             # Clear the figures
             self.multiverseFigure.clf()
@@ -5612,15 +5641,15 @@ class App(QMainWindow):
         extracted_content = ["from comet.multiverse import Multiverse"]
 
         # Initialize placeholders for the extracted components
-        forking_paths = None
+        self.data.mv_forking_paths = {}
         analysis_template = None
 
         for node in tree.body:
             # Extract the forking_paths dictionary
             if isinstance(node, ast.Assign):
                 if isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'forking_paths':
-                    forking_paths = ast.get_source_segment(script_content, node)
-                    extracted_content.append(forking_paths)
+                    self.data.mv_forking_paths = ast.get_source_segment(script_content, node)
+                    extracted_content.append(self.data.mv_forking_paths)
 
             # Extract the analysis_template function
             if isinstance(node, ast.FunctionDef) and node.name == 'analysis_template':
@@ -5629,14 +5658,14 @@ class App(QMainWindow):
                 extracted_content.append(analysis_template)
 
         # Add empty forking_paths dictionary if missing
-        if not forking_paths:
+        if len(self.data.mv_forking_paths) == 0:
             extracted_content.append("forking_paths = {}")
 
         # Add empty analysis_template function if missing
         if not analysis_template:
             extracted_content.append("def analysis_template():\n    pass")
 
-        if not forking_paths or not analysis_template:
+        if len(self.data.mv_forking_paths) == 0 or not analysis_template:
             QMessageBox.warning(self, "Error", "Failed to extract the forking_paths dictionary and/or analysis_template function. Empty placeholders were added.")
 
         return "\n\n".join(extracted_content)
@@ -5681,14 +5710,14 @@ class App(QMainWindow):
         module = util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-        forking_paths = getattr(module, 'forking_paths', None)
+        self.data.mv_forking_paths = getattr(module, 'forking_paths', None)
         analysis_template = getattr(module, 'analysis_template', None)
         
         self.mverse = multiverse.Multiverse(name=self.multiverseFileName, path=self.data.mv_folder)
-        self.mverse.create(analysis_template, forking_paths)
+        self.mverse.create(analysis_template, self.data.mv_forking_paths)
 
         # Add forking paths to the left side of the GUI
-        self.populateMultiverseContainers(forking_paths)
+        self.populateMultiverseContainers()
 
         # If we already have results, we can populate the measure input
         results_file = os.path.join(self.mverse.results_dir, 'universe_1.pkl')
@@ -5733,7 +5762,7 @@ class App(QMainWindow):
         self.data.mv_folder = None
         self.mv_init = True
         
-        self.generateMultiverseScript(reset_script=True)
+        self.generateMultiverseScript(init_template=True)
         self.runMultiverseButton.setEnabled(False)
 
         # Clear the figures
@@ -5751,9 +5780,8 @@ class App(QMainWindow):
             script_text = self.scriptDisplay.toPlainText()
             namespace = {}
             exec(script_text, namespace)
-            forking_paths = namespace.get('forking_paths', None)
-            self.data.mv_forking_paths = forking_paths
-            self.populateMultiverseContainers(forking_paths)
+            self.data.mv_forking_paths = namespace.get('forking_paths', None)
+            self.populateMultiverseContainers()
             
             # If all containers were previously deleted, we add an empty one
             if len(self.mv_containers) == 0:
