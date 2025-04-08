@@ -1,4 +1,4 @@
-name: CI
+name: tests
 
 on: [push, pull_request]
 
@@ -8,7 +8,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Install system dependencies
       run: |
@@ -18,15 +18,13 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11'
+        python-version: '3.11.0'
 
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         pip install teneto coverage coveralls scipy==1.14.1
         pip install .
-
-        echo pip list
 
     - name: Run tests with coverage
       run: |
