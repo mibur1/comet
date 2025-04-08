@@ -1,5 +1,4 @@
 import pytest
-import sys
 import numpy as np
 from comet import graph, utils
 
