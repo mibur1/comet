@@ -1,19 +1,17 @@
 import pytest
 import sys
 import numpy as np
-from scipy.io import loadmat
-from comet import graph
+from comet import graph, utils
 
 # Fixture to load data once for all tests
 @pytest.fixture(scope="module")
 def data():
-    wd = sys.path[0]
     """
     Keys: 'W', 'W_abs', 'W_bin', 'W_fix', 'W_len', 'W_norm', 'W_prop',
         'avg_clustering_onella', 'avg_path_bin', 'avg_path_wei', 'dist_bin', 'dist_wei',
         'eff_bin', 'eff_wei', 'matching_ind', 'swp_bin', 'swp_wei', 'trans_und_bin', 'trans_und_wei'
     """
-    data = loadmat(f'{wd}/files/network_measures.mat')
+    data = utils._loadTestingData()
     data["W_prop"] = np.ascontiguousarray(data["W_prop"], dtype=np.float64)
     data["W_bin"] = np.ascontiguousarray(data["W_bin"], dtype=np.float64)
     data["W_len"] = np.ascontiguousarray(data["W_len"], dtype=np.float64)

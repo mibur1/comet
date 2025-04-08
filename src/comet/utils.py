@@ -147,7 +147,7 @@ def save_universe_results(data):
 
     return
 
-def clean(time_series, runs=None, detrend=False, confounds=None, standardize=False, standardize_confounds=True, \
+def clean(time_series, detrend=False, confounds=None, standardize=False, standardize_confounds=True, \
           filter='butterworth', low_pass=None, high_pass=None, t_r=None, ensure_finite=False):
     """
     Wrapper function for nilearn.clean() for cleaning time series data
@@ -156,10 +156,6 @@ def clean(time_series, runs=None, detrend=False, confounds=None, standardize=Fal
     ----------
     time_series : TxP np.ndarray
         time series data
-
-    runs : np.ndarray, optional
-        Add a run level to the cleaning process. Each run will be cleaned independently.
-        Must be a 1D array of n_samples elements.
 
     detrend : bool, optional
         Detrend the data. Default is False.
@@ -210,3 +206,12 @@ def notebookToScript(notebook):
         print("Error", f"Invalid notebook format: {str(e)}")
 
     return scriptContent
+
+def _loadTestingData():
+    """
+    Load testing data for unit tests.
+    """
+    fname = "network_measures.mat"
+    with importlib_resources.path("comet.data", fname) as file_path:
+        data = loadmat(file_path)
+    return data
