@@ -448,7 +448,7 @@ class Multiverse:
 
     def specification_curve(self, measure, baseline=None, p_value=None, ci=None, smooth_ci=True, 
                           title="Specification Curve", name_map=None, cmap="Set3", linewidth=2, figsize=None, 
-                          height_ratio=(2,1), fontsize=10, dotsize=50, ftype="png", dpi=72):
+                          height_ratio=(2,1), fontsize=10, dotsize=50, ftype="pdf", dpi=300):
         """
         Create and save a specification curve plot from multiverse results
 
