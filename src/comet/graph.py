@@ -9,7 +9,7 @@ SECTION: Graph processing functions
  - General functions to preprocess connectivity/adjacency matrices
    before graph analysis.
 """
-def handle_negative_weights(W: np.ndarray,
+def handle_negative_weights(G: np.ndarray,
                             type: Literal["absolute", "discard"] = "absolute",
                             copy: bool = True) -> np.ndarray:
     '''
@@ -19,7 +19,7 @@ def handle_negative_weights(W: np.ndarray,
 
     Parameters
     ----------
-    W : PxP np.ndarray
+    G : PxP np.ndarray
         adjacency/connectivity matrix
 
     type : string, optional
@@ -32,22 +32,22 @@ def handle_negative_weights(W: np.ndarray,
 
     Returns
     -------
-    W : PxP np.ndarray
+    G : PxP np.ndarray
         adjacency/connectivity matrix with only positive weights
     '''
 
     if copy:
-        W = W.copy()
+        G = G.copy()
 
     if type == "absolute":
-        W = np.abs(W)
+        G = np.abs(G)
     elif type == "discard":
-        W[W < 0] = 0
+        G[G < 0] = 0
     else:
         raise NotImplementedError("Options are: *absolute* or *discard*")
-    return W
+    return G
 
-def threshold(W: np.ndarray,
+def threshold(G: np.ndarray,
               type: Literal["density", "absolute"] = "density",
               threshold: float = None,
               density: float = None,
@@ -59,7 +59,7 @@ def threshold(W: np.ndarray,
 
     Parameters
     ----------
-    W : PxP np.ndarray
+    G : PxP np.ndarray
         adjacency/connectivity matrix
 
     type : string, optional
@@ -80,7 +80,7 @@ def threshold(W: np.ndarray,
 
     Returns
     -------
-    W : PxP np.ndarray
+    G : PxP np.ndarray
         thresholded adjacency/connectivity matrix
 
     Notes
@@ -90,36 +90,36 @@ def threshold(W: np.ndarray,
     '''
 
     if copy:
-        W = W.copy()
+        G = G.copy()
 
     if type == "absolute":
-        W[W < threshold] = 0
+        G[G < threshold] = 0
     elif type == "density":
         if not density >=0 and density <= 1:
             raise ValueError("Error: Density must be between 0 and 1")
-        if not np.allclose(W, W.T):
+        if not np.allclose(G, G.T):
             raise ValueError("Error: Matrix is not symmetrical")
 
-        W[np.tril_indices(len(W))] = 0 # set lower triangle to zero
-        triu_indices = np.triu_indices_from(W, k=1) # get upper triangle indices
-        sorted_indices = np.argsort(W[triu_indices])[::-1] # sort upper triangle by indices
+        G[np.tril_indices(len(G))] = 0 # set lower triangle to zero
+        triu_indices = np.triu_indices_from(G, k=1) # get upper triangle indices
+        sorted_indices = np.argsort(G[triu_indices])[::-1] # sort upper triangle by indices
         cutoff_idx = int(np.round((len(sorted_indices) * density) + 1e-10)) # find cutoff index, add small constant to round .5 to 1
-        keep_mask = np.zeros_like(W, dtype=bool)
+        keep_mask = np.zeros_like(G, dtype=bool)
         keep_mask[triu_indices[0][sorted_indices[:cutoff_idx]], triu_indices[1][sorted_indices[:cutoff_idx]]] = True # set values larger than cutoff to True
-        W[~keep_mask] = 0
-        W = W + W.T # restore symmetry
+        G[~keep_mask] = 0
+        G = G + G.T # restore symmetry
     else:
         raise NotImplementedError("Thresholding must be of type *absolute* or *density*")
-    return W
+    return G
 
-def binarise(W: np.ndarray,
+def binarise(G: np.ndarray,
              copy: bool = True) -> np.ndarray:
     '''
     Binarise connectivity/adjacency matrix
 
     Parameters
     ----------
-    W : PxP np.ndarray
+    G : PxP np.ndarray
         adjacency/connectivity matrix
 
     copy : bool, optional
@@ -128,24 +128,24 @@ def binarise(W: np.ndarray,
 
     Returns
     -------
-    W : PxP np.ndarray
+    G : PxP np.ndarray
         binarised adjacency/connectivity matrix
     '''
 
     if copy:
-        W = W.copy()
+        G = G.copy()
 
-    W[W != 0] = 1
-    return W
+    G[G != 0] = 1
+    return G
 
-def normalise(W: np.ndarray,
+def normalise(G: np.ndarray,
               copy: bool = True) -> np.ndarray:
     '''
     Normalise connectivity/adjacency matrix
 
     Parameters
     ----------
-    W : PxP np.ndarray
+    G : PxP np.ndarray
         adjacency/connectivity matrix
 
     copy : bool, optional
@@ -154,20 +154,20 @@ def normalise(W: np.ndarray,
 
     Returns
     -------
-    W : PxP np.ndarray
+    G : PxP np.ndarray
         normalised adjacency/connectivity matrix
     '''
 
     if copy:
         W = W.copy()
 
-    if not np.max(np.abs(W)) > 0:
+    if not np.max(np.abs(G)) > 0:
         raise ValueError("Error: Matrix contains only zeros")
 
-    W /= np.max(np.abs(W))
-    return W
+    G /= np.max(np.abs(G))
+    return G
 
-def invert(W: np.ndarray,
+def invert(G: np.ndarray,
            copy: bool = True) -> np.ndarray:
     '''
     Invert connectivity/adjacency matrix
@@ -176,7 +176,7 @@ def invert(W: np.ndarray,
 
     Parameters
     ----------
-    W : PxP np.ndarray
+    G : PxP np.ndarray
         adjacency/connectivity matrix
 
     copy : bool, optional
@@ -185,18 +185,18 @@ def invert(W: np.ndarray,
 
     Returns
     -------
-    W : PxP np.ndarray
+    G : PxP np.ndarray
         element wise inverted adjacency/connectivity matrix
     '''
 
     if copy:
-        W = W.copy()
+        G = G.copy()
 
-    W_safe = np.where(W == 0, np.inf, W)
-    W = 1 / W_safe
-    return W
+    G_safe = np.where(G == 0, np.inf, G)
+    G = 1 / G_safe
+    return G
 
-def logtransform(W: np.ndarray,
+def logtransform(G: np.ndarray,
                  epsilon: float = 1e-10,
                  copy: bool = True) -> np.ndarray:
     '''
@@ -206,7 +206,7 @@ def logtransform(W: np.ndarray,
 
     Parameters
     ----------
-    W : PxP np.ndarray
+    G : PxP np.ndarray
         adjacency/connectivity matrix
 
     epsilon : float, optional
@@ -219,29 +219,29 @@ def logtransform(W: np.ndarray,
 
     Returns
     -------
-    W : PxP np.ndarray
+    G : PxP np.ndarray
         element wise log transformed adjacency/connectivity matrix
     '''
 
     if copy:
-        W = W.copy()
+        G = G.copy()
 
-    if np.logical_or(W > 1, W <= 0).any():
+    if np.logical_or(G > 1, G <= 0).any():
         raise ValueError("Connections must be between (0,1] to use logtransform")
-    W_safe = np.clip(W, a_min=epsilon, a_max=None) # clip very small values for numeric stability
-    W = -np.log(W_safe)
-    return W
+    G_safe = np.clip(G, a_min=epsilon, a_max=None) # clip very small values for numeric stability
+    G = -np.log(G_safe)
+    return G
 
-def symmetrise(W: np.ndarray,
+def symmetrise(G: np.ndarray,
                copy: bool = True) -> np.ndarray:
     '''
     Symmetrise connectivity/adjacency matrix
 
-    Symmetrise W such that each value W[i,j] will be W[j,i].
+    Symmetrise G such that each value G[i,j] will be G[j,i].
 
     Parameters
     ----------
-    W : PxP np.ndarray
+    G : PxP np.ndarray
         adjacency/connectivity matrix
 
     copy : bool, optional
@@ -250,22 +250,22 @@ def symmetrise(W: np.ndarray,
 
     Returns
     -------
-    W : PxP np.ndarray
+    G : PxP np.ndarray
         symmetrised adjacency/connectivity matrix
     '''
 
     if copy:
-        W = W.copy()
+        G = G.copy()
 
-    is_binary = np.all(np.logical_or(np.isclose(W, 0), np.isclose(W, 1)))
+    is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
 
     if is_binary:
-        W = np.logical_or(W, W.T).astype(float)
+        G = np.logical_or(G, G.T).astype(float)
     else:
-        W_mean = (np.triu(W, k=1) + np.tril(W, k=-1)) / 2
-        W = W_mean + W_mean.T + np.diag(np.diag(W))
+        G_mean = (np.triu(G, k=1) + np.tril(G, k=-1)) / 2
+        G = G_mean + G_mean.T + np.diag(np.diag(G))
 
-    return W
+    return G
 
 def randomise(G: np.ndarray,
               copy: bool = True) -> np.ndarray:
@@ -352,17 +352,17 @@ def regular_matrix(G: np.ndarray, r: int) -> np.ndarray:
 
     return M
 
-def postproc(W: np.ndarray,
+def postproc(G: np.ndarray,
              diag: float = 0,
              copy: bool = True) -> np.ndarray:
     '''
     Postprocessing of connectivity/adjacency matrix
 
-    Ensures W is symmetric, sets diagonal to diag, removes NaNs and infinities, and ensures exact binarity
+    Ensures G is symmetric, sets diagonal to diag, removes NaNs and infinities, and ensures exact binarity
 
     Parameters
     ----------
-    W : PxP np.ndarray
+    G : PxP np.ndarray
         adjacency/connectivity matrix
 
     diag : int, optional
@@ -370,24 +370,24 @@ def postproc(W: np.ndarray,
         default is 0
 
     copy : bool, optional
-        if True, a copy of W is returned, otherwise W is modified in place
+        if True, a copy of G is returned, otherwise G is modified in place
         default is True
 
     Returns
     -------
-    W : PxP np.ndarray
+    G : PxP np.ndarray
         processed adjacency/connectivity matrix
     '''
     if copy:
-        W = W.copy()
+        G = G.copy()
 
-    if not np.allclose(W, W.T):
+    if not np.allclose(G, G.T):
         raise ValueError("Error: Matrix is not symmetrical")
 
-    np.fill_diagonal(W, diag)
-    np.nan_to_num(W, nan=0.0, posinf=0.0, neginf=0.0, copy=False)
-    W = np.round(W, decimals=6) # This should ensure exact binarity if floating point inaccuracies occur
-    return W
+    np.fill_diagonal(G, diag)
+    np.nan_to_num(G, nan=0.0, posinf=0.0, neginf=0.0, copy=False)
+    G = np.round(G, decimals=6) # This should ensure exact binarity if floating point inaccuracies occur
+    return G
 
 
 """
@@ -431,7 +431,7 @@ def avg_shortest_path(G: np.ndarray,
     Dv = D[~np.isnan(D)]
     return np.mean(Dv)
 
-def transitivity_und(A: np.ndarray) -> np.ndarray:
+def transitivity_und(G: np.ndarray) -> np.ndarray:
     '''
     Transitivity for undirected networks (binary and weighted), adapted from
     the bctpy implementation: https://github.com/aestrivex/bctpy
@@ -441,7 +441,7 @@ def transitivity_und(A: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    A : NxN np.ndarray
+    G : NxN np.ndarray
         binary undirected connection matrix
 
     Returns
@@ -450,26 +450,26 @@ def transitivity_und(A: np.ndarray) -> np.ndarray:
         transitivity scalar
     '''
 
-    is_binary = np.all(np.logical_or(np.isclose(A, 0), np.isclose(A, 1)))
+    is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
 
     if is_binary:
-        tri3 = np.trace(np.dot(A, np.dot(A, A)))
-        tri2 = np.sum(np.dot(A, A)) - np.trace(np.dot(A, A))
+        tri3 = np.trace(np.dot(G, np.dot(G, G)))
+        tri2 = np.sum(np.dot(G, G)) - np.trace(np.dot(G, G))
         return tri3 / tri2
     else:
-        K = np.sum(np.logical_not(A == 0), axis=1)
-        ws = np.cbrt(A)
+        K = np.sum(np.logical_not(G == 0), axis=1)
+        ws = np.cbrt(G)
         cyc3 = np.diag(np.dot(ws, np.dot(ws, ws)))
         return np.sum(cyc3, axis=0) / np.sum(K * (K - 1), axis=0)
 
-def avg_clustering_onella(W: np.ndarray) -> np.ndarray:
+def avg_clustering_onella(G: np.ndarray) -> np.ndarray:
     '''
     Average clustering coefficient as described by Onnela et al. (2005) and as implemented in
     https://kk1995.github.io/BauerLab/BauerLab/MATLAB/lib/+mouse/+graph/smallWorldPropensity.html
 
     Parameters
     ----------
-    W : NxN np.ndarray
+    G : NxN np.ndarray
         binary or weighted, undirected connection matrix
 
     Returns
@@ -484,9 +484,9 @@ def avg_clustering_onella(W: np.ndarray) -> np.ndarray:
     DOI: https://doi.org/10.1103/PhysRevE.71.065103
     '''
 
-    K = np.count_nonzero(W, axis=1) # count all non-zero values as in the MATLAB implementation
-    W2 = W / W.max()
-    cyc3 = np.diagonal(np.linalg.matrix_power(W2 ** (1/3), 3))
+    K = np.count_nonzero(G, axis=1) # count all non-zero values as in the MATLAB implementation
+    G2 = G / G.max()
+    cyc3 = np.diagonal(np.linalg.matrix_power(G2 ** (1/3), 3))
     K = np.where(cyc3 == 0, np.inf, K)
     C = cyc3 / (K * K-1)
 
@@ -894,7 +894,7 @@ SECTION: bctpy wrapper functions
  - The wrapper functions implement type hinting which is required for the GUI
  - For the scripting API, users can also directly use the bctpy functions
 """
-def backbone_wu(CIJ: np.ndarray,
+def backbone_wu(G: np.ndarray,
                 avgdeg: int = 0,
                 verbose: bool = False) -> tuple[np.ndarray, np.ndarray]:
     '''
@@ -903,12 +903,12 @@ def backbone_wu(CIJ: np.ndarray,
 
     The network backbone contains the dominant connections in the network
     and may be used to aid network visualization. This function computes
-    the backbone of a given weighted and undirected connection matrix CIJ,
+    the backbone of a given weighted and undirected connection matrix G,
     using a minimum-spanning-tree based algorithm.
 
     Parameters
     ----------
-    CIJ : NxN np.ndarray
+    G : NxN np.ndarray
         weighted undirected connection matrix
     avgdeg : float
         desired average degree of backbone
@@ -917,24 +917,24 @@ def backbone_wu(CIJ: np.ndarray,
 
     Returns
     -------
-    CIJtree : NxN np.ndarray
-        connection matrix of the minimum spanning tree of CIJ
-    CIJclus : NxN np.ndarray
+    Gtree : NxN np.ndarray
+        connection matrix of the minimum spanning tree of G
+    Gclus : NxN np.ndarray
         connection matrix of the minimum spanning tree plus strongest
-        connections up to some average degree 'avgdeg'. Identical to CIJtree
+        connections up to some average degree 'avgdeg'. Identical to Gtree
         if the degree requirement is already met.
 
     Notes
     -----
     Nodes with zero strength are discarded.
 
-    CIJclus will have a total average degree exactly equal to
+    Gclus will have a total average degree exactly equal to
         (or very close to) 'avgdeg'.
 
     'avgdeg' backfill is handled slightly differently than in Hagmann et al. (2008)
     '''
 
-    return bct.backbone_wu(CIJ, avgdeg, verbose)
+    return bct.backbone_wu(G, avgdeg, verbose)
 
 def betweenness(G: np.ndarray) -> np.ndarray:
     '''
@@ -975,7 +975,7 @@ def betweenness(G: np.ndarray) -> np.ndarray:
     res = bct.betweenness_bin(G) if is_binary else bct.betweenness_wei(G)
     return res
 
-def clustering_coef(W: np.ndarray) -> np.ndarray:
+def clustering_coef(G: np.ndarray) -> np.ndarray:
     '''
     This is a wrapper function for the clustering_coef_*() functions
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
@@ -988,7 +988,7 @@ def clustering_coef(W: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    W : NxN np.ndarray
+    G : NxN np.ndarray
         weighted undirected connection matrix
 
     Returns
@@ -997,11 +997,11 @@ def clustering_coef(W: np.ndarray) -> np.ndarray:
         clustering coefficient vector
     '''
 
-    is_binary = np.all(np.logical_or(np.isclose(W, 0), np.isclose(W, 1)))
-    res = bct.clustering_coef_bu(W) if is_binary else bct.clustering_coef_wu(W)
+    is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
+    res = bct.clustering_coef_bu(G) if is_binary else bct.clustering_coef_wu(G)
     return res
 
-def degrees_und(CIJ: np.ndarray) -> np.ndarray:
+def degrees_und(G: np.ndarray) -> np.ndarray:
     '''
     This is a wrapper function for the degrees_und() function
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
@@ -1010,7 +1010,7 @@ def degrees_und(CIJ: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    CIJ : NxN np.ndarray
+    G : NxN np.ndarray
         undirected binary/weighted connection matrix
 
     Returns
@@ -1023,9 +1023,9 @@ def degrees_und(CIJ: np.ndarray) -> np.ndarray:
     Weight information is discarded.
     '''
 
-    return bct.degrees_und(CIJ)
+    return bct.degrees_und(G)
 
-def density_und(CIJ: np.ndarray) -> tuple[float, int, int]:
+def density_und(G: np.ndarray) -> tuple[float, int, int]:
     '''
     This is a wrapper function for the density_und() function
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
@@ -1034,7 +1034,7 @@ def density_und(CIJ: np.ndarray) -> tuple[float, int, int]:
 
     Parameters
     ----------
-    CIJ : NxN np.ndarray
+    G : NxN np.ndarray
         directed weighted/binary connection matrix
 
     Returns
@@ -1048,13 +1048,13 @@ def density_und(CIJ: np.ndarray) -> tuple[float, int, int]:
 
     Notes
     -----
-    Assumes CIJ is directed and has no self-connections.
+    Assumes G is directed and has no self-connections.
     Weight information is discarded.
     '''
 
-    return bct.density_und(CIJ)
+    return bct.density_und(G)
 
-def eigenvector_centrality_und(CIJ: np.ndarray) -> np.ndarray:
+def eigenvector_centrality_und(G: np.ndarray) -> np.ndarray:
     '''
     This is a wrapper function for the eigenvector_centrality_*() functions
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
@@ -1067,7 +1067,7 @@ def eigenvector_centrality_und(CIJ: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    CIJ : NxN np.ndarray
+    G : NxN np.ndarray
         Binary/weighted undirected adjacency matrix
 
     Returns
@@ -1076,9 +1076,9 @@ def eigenvector_centrality_und(CIJ: np.ndarray) -> np.ndarray:
         Eigenvector associated with the largest eigenvalue of the matrix
     '''
 
-    return bct.eigenvector_centrality_und(CIJ)
+    return bct.eigenvector_centrality_und(G)
 
-def gateway_coef_sign(W: np.ndarray,
+def gateway_coef_sign(G: np.ndarray,
                       ci: Literal["louvain"] = "louvain",
                       centrality_type: Literal["degree", "betweenness"] = "degree", ) \
                                         -> tuple[np.ndarray, np.ndarray]:
@@ -1094,7 +1094,7 @@ def gateway_coef_sign(W: np.ndarray,
 
     Parameters
     ----------
-    W : NxN np.ndarray
+    G : NxN np.ndarray
         undirected signed connection matrix
     ci : Nx1 np.ndarray
         community affiliation vector
@@ -1114,10 +1114,10 @@ def gateway_coef_sign(W: np.ndarray,
     Vargas ER, Wahl LM, Eur Phys J B (2014) 87:1-10
     '''
 
-    ci, _ = bct.community_louvain(W)
-    return bct.gateway_coef_sign(W, ci, centrality_type)
+    ci, _ = bct.community_louvain(G)
+    return bct.gateway_coef_sign(G, ci, centrality_type)
 
-def pagerank_centrality(A: np.ndarray,
+def pagerank_centrality(G: np.ndarray,
                         d: float = 0.85) -> np.ndarray:
     '''
     This is a wrapper function for the pagerank_centrality() function
@@ -1140,7 +1140,7 @@ def pagerank_centrality(A: np.ndarray,
 
     Parameters
     ----------
-    A : NxN np.narray
+    G : NxN np.narray
         adjacency matrix
     d : float
         damping factor (see description)
@@ -1159,9 +1159,9 @@ def pagerank_centrality(A: np.ndarray,
     nodes around 1000 or less). Support for flaff is currently not provided.
 
     '''
-    return bct.pagerank_centrality(A, d, None)
+    return bct.pagerank_centrality(G, d, None)
 
-def participation_coef(W: np.ndarray,
+def participation_coef(G: np.ndarray,
                        ci: Literal["louvain"] = "louvain",
                        degree: Literal["undirected"] = "undirected") -> np.ndarray:
     '''
@@ -1173,7 +1173,7 @@ def participation_coef(W: np.ndarray,
 
     Parameters
     ----------
-    W : NxN np.ndarray or scipy.sparse.csr_matrix
+    G : NxN np.ndarray or scipy.sparse.csr_matrix
         binary/weighted directed/undirected connection matrix
     ci : Nx1 np.ndarray
         community affiliation vector (just for the GUI, will always use bct.community_louvain())
@@ -1188,11 +1188,11 @@ def participation_coef(W: np.ndarray,
         participation coefficient
     '''
 
-    ci, _ = bct.community_louvain(W)
-    res = bct.participation_coef_sparse(W, ci, degree) if isinstance(W, scipy.sparse.csr_matrix) else bct.participation_coef(W, ci, degree)
+    ci, _ = bct.community_louvain(G)
+    res = bct.participation_coef_sparse(G, ci, degree) if isinstance(G, scipy.sparse.csr_matrix) else bct.participation_coef(G, ci, degree)
     return res
 
-def participation_coef_sign(W: np.ndarray,
+def participation_coef_sign(G: np.ndarray,
                             ci: Literal["louvain"] = "louvain",) -> tuple[np.ndarray, np.ndarray]:
     '''
     This is a wrapper function for the participation_coef_sign() function
@@ -1203,7 +1203,7 @@ def participation_coef_sign(W: np.ndarray,
 
     Parameters
     ----------
-    W : NxN np.ndarray
+    G : NxN np.ndarray
         undirected connection matrix with positive and negative weights
     ci : Nx1 np.ndarray
         community affiliation vector (just for the GUI, will always use bct.community_louvain())
@@ -1216,7 +1216,7 @@ def participation_coef_sign(W: np.ndarray,
         participation coefficient from negative weights
     '''
 
-    ci, _ = bct.community_louvain(W)
-    res = bct.participation_coef_sign(W, ci)
+    ci, _ = bct.community_louvain(G)
+    res = bct.participation_coef_sign(G, ci)
     return res
 

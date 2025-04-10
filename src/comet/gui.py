@@ -4872,11 +4872,11 @@ class App(QMainWindow):
 
             # Check if the options list contains dictionaries
             if isinstance(options, list) and len(options) > 0 and isinstance(options[0], dict):
-                first_dict = options[0]
+                last_dict = options[-1]
 
-                if 'func' in first_dict:
+                if 'func' in last_dict:
                     # Check if the func key corresponds to comet.connectivity
-                    func_value = first_dict['func']
+                    func_value = last_dict['func']
                     
                     if func_value.startswith("comet.connectivity"):
                         # Set the category to FC
@@ -4909,8 +4909,8 @@ class App(QMainWindow):
         """
         # Lookup common widgets only once.
         decisionNameInput = decisionWidget.findChild(QLineEdit, "decisionNameInput")
+        decisionOptionsInput = decisionWidget.findChild(QLineEdit, "decisionOptionsInput")
         functionComboBox = decisionWidget.findChild(QComboBox, "functionComboBox")
-        addOptionButton = decisionWidget.findChild(QPushButton, "addOptionButton")
         collapseButton = decisionWidget.findChild(QPushButton, "collapseButton")
         
         # If there are no options, nothing to do.
@@ -4918,9 +4918,10 @@ class App(QMainWindow):
             QMessageBox.warning(self, "Warning", "No options provided.")
             return
         
-        # Use the first option to set common widgets.
-        first_option = options[0]
-        func_name = first_option['func'].split('.')[-1]
+        decisionNameInput.setText(decisionName)
+        # Use the last option to set
+        last_option = options[-1]
+        func_name = last_option['func'].split('.')[-1]
         
         if type == "FC":
             comboboxItem = self.connectivityMethods.get(func_name, None)
@@ -4936,50 +4937,9 @@ class App(QMainWindow):
         # Set the function combobox and decision name (common for all options).
         functionComboBox.setCurrentText(comboboxItem)
         decisionNameInput.setText(decisionName)
-        
-        # Process each option.
-        # For the first option, assume the container already exists.
-        for idx, option in enumerate(options):
- 
-            # Retrieve the parameter container.
-            # Assume that the parameter containers share the same objectName (comboboxItem).
-            # If multiple exist, take the last one as the one just added.
-            parameterContainers = decisionWidget.findChildren(QWidget, comboboxItem)
-            if parameterContainers:
-                parameterContainer = parameterContainers[-1]
-            else:
-                parameterContainer = decisionWidget.findChild(QWidget, comboboxItem)
-                if parameterContainer is None:
-                    QMessageBox.warning(self, "Warning", f"Parameter container '{comboboxItem}' not found.")
-                    continue
 
-            # Set the option name in the container.
-            name_edit = parameterContainer.findChild(QLineEdit, f"name_edit_{comboboxItem}")
-            if name_edit:
-                name_edit.setText(option['name'])
-            else:
-                QMessageBox.warning(self, "Warning", f"name_edit 'name_edit_{comboboxItem}' not found in parameterContainer.")
-            
-            # Update argument widgets.
-            args = option.get('args', {})
-            for arg_name, arg_value in args.items():
-                widget = parameterContainer.findChild(QWidget, f"{arg_name}_{comboboxItem}")
-                if widget:
-                    if isinstance(widget, QLineEdit):
-                        widget.setText(str(arg_value))
-                    elif isinstance(widget, QComboBox):
-                        widget.setCurrentText(str(arg_value))
-                    elif isinstance(widget, QSpinBox):
-                        widget.setValue(arg_value)
-                    elif isinstance(widget, QDoubleSpinBox):
-                        widget.setValue(arg_value)
-                else:
-                    QMessageBox.warning(self, "Warning", f"Widget '{arg_name}_{comboboxItem}' not found in parameterContainer.")
-            
-            # Add the option
-            addOptionButton.click()
-                
-        # Collapse the container after processing all options.
+        text = ", ".join(option['name'] for option in options)
+        decisionOptionsInput.setText(text)
         collapseButton.click()
 
     def addNewDecision(self, layout, buttonLayoutWidget):
@@ -5312,8 +5272,16 @@ class App(QMainWindow):
         currentName = nameInputField.text().strip()
         currentOptions = optionsInputField.text().strip()
 
-        # Prepare the new options string by appending the new option name
-        newOptions = f"{currentOptions}, {option_name}" if currentOptions else option_name
+        # If the current options are empty, set the new option name
+        if currentOptions == "":
+            newOptions = option_name
+        # If the new option name is not already in the current options, append it
+        elif option_name not in currentOptions:
+            newOptions = f"{currentOptions}, {option_name}"
+        # If the new option name is already in the current options, quit the function
+        else:
+            return
+
         optionsInputField.setText(newOptions)
 
         # Construct the dict for the new option
@@ -5330,6 +5298,8 @@ class App(QMainWindow):
         # Add to forking paths if not already present
         if option_dict not in self.data.mv_forking_paths[currentName]:
             self.data.mv_forking_paths[currentName].append(option_dict)
+
+        self.generateMultiverseScript()
 
     def collapseOption(self, collapseButton, parameterContainer):
         """
