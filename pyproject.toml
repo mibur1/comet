@@ -30,8 +30,6 @@ dependencies = [
   "jinja2 >=3.1.2",
   "tqdm >=4.66.1",
   "numba >=0.58.1",
-  "PyQt6-tools >=6.4.2",
-  "qdarkstyle >=3.2.3",
   "importlib_resources >= 6.4.0",
   "seaborn >=0.13.0",
   "networkx >=3.2.1",
@@ -41,6 +39,8 @@ dependencies = [
   "ipykernel >=6.29.3",
   "notebook >=7.0.6",
   "pytest >= 8.2.2"
+  "pyqt6-tools >=6.4.2",
+  "qdarkstyle >=3.2.3",
 ]
 
 [project.optional-dependencies]
