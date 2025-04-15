@@ -5,17 +5,16 @@ import ast
 import sys
 import copy
 import json
+import mat73
 import pickle
 import inspect
-import tempfile
 import numpy as np
 import pandas as pd
-
-import mat73
 import importlib_resources
+
+from importlib import util
 from scipy.io import loadmat, savemat
 from dataclasses import dataclass, field
-from importlib import util
 from typing import Any, Dict, get_type_hints, get_origin, Literal, Optional
 
 # fMRI data related imports
@@ -25,13 +24,13 @@ from nilearn import datasets, maskers
 from nilearn.interfaces.fmriprep import load_confounds
 
 # Plotting imports
-from matplotlib import pyplot as plt
+import matplotlib.gridspec as gridspec
 from matplotlib.image import imread
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
-import matplotlib.gridspec as gridspec
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
 # Qt imports
 import qdarkstyle
@@ -1930,46 +1929,26 @@ class App(QMainWindow):
         except:
             pass
 
+        # Load data and handle result 
+        data = utils.load_timeseries(file_path)
+
         if file_path.endswith('.mat'):
-            try:
-                data_dict = loadmat(file_path)
-            except:
-                data_dict = mat73.loadmat(file_path)
-            print("Loaded mat file with keys:", data_dict.keys())
-            print(f"Using data from key: {list(data_dict.keys())[-1]}")
-            self.data.data_filedata = data_dict[list(data_dict.keys())[-1]] # always get data for the last key
+            print(f"Using data from key: {list(data.keys())[-1]}")
+            self.data.data_filedata = data[list(data.keys())[-1]] # get data for the last key
 
         elif file_path.endswith('.txt'):
-            self.data.data_filedata = np.loadtxt(file_path)
+            self.data.data_filedata = data
 
         elif file_path.endswith('.npy'):
-            self.data.data_filedata = np.load(file_path)
+            self.data.data_filedata = data
 
             if not np.ndim(self.data.data_filedata) == 3:
                 QMessageBox.warning(self, "Error", ".npy files must contain a single 3D array.")
                 return
 
         elif file_path.endswith(".tsv"):
-            data = pd.read_csv(file_path, sep='\t', header=None, na_values='n/a')
-
-            if data.iloc[0].apply(lambda x: np.isscalar(x) and np.isreal(x)).all():
-                rois = None  # No rois found, the first row is part of the data
-            else:
-                rois = data.iloc[0]  # The first row is rois
-                data = data.iloc[1:]  # Remove the header row from the data
-
-            # Identify empty columns and remove rois
-            data = data.apply(pd.to_numeric, errors='coerce') # Convert all data to numeric so 'n/a' and other non-numerics are treated as NaN
-            empty_columns = data.columns[data.isna().all()]
-
-            if rois is not None:
-                removed_rois = rois[empty_columns].to_list()
-                print("The following regions were empty and thus removed:", removed_rois)
-                rois = rois.drop(empty_columns)
-            data = data.dropna(axis=1, how='all').dropna(axis=0, how='all')
-
-            self.data.data_filedata = data.to_numpy()
-            self.data.data_roi_names = np.array(rois, dtype=object)
+            self.data.data_filedata = data[0].to_numpy()
+            self.data.data_roi_names = np.array(data[1], dtype=object)
         
         elif file_path.endswith(".nii") or file_path.endswith(".nii.gz"):
             self.parcellationDropdown.currentIndexChanged.disconnect(self.onAtlasChanged)
@@ -1979,7 +1958,7 @@ class App(QMainWindow):
             self.time_series_textbox.setText("Unsupported file format")
             self.data.data_filedata = None
 
-        # Copy file_data into ts_data for further processing
+        # Done loading data. Copy file_data into ts_data for further processing
         if self.data.data_filedata is not None:
             self.data.data_ts_data = self.data.data_filedata.copy()
 

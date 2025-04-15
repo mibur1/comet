@@ -10,7 +10,7 @@ def data():
         'avg_clustering_onella', 'avg_path_bin', 'avg_path_wei', 'dist_bin', 'dist_wei',
         'eff_bin', 'eff_wei', 'matching_ind', 'swp_bin', 'swp_wei', 'trans_und_bin', 'trans_und_wei'
     """
-    data = utils._loadTestingData()
+    data = utils.load_testdata()
     data["W_prop"] = np.ascontiguousarray(data["W_prop"], dtype=np.float64)
     data["W_bin"] = np.ascontiguousarray(data["W_bin"], dtype=np.float64)
     data["W_len"] = np.ascontiguousarray(data["W_len"], dtype=np.float64)

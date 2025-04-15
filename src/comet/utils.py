@@ -113,6 +113,15 @@ def load_example(fname="time_series.txt"):
 
     return data
 
+def load_testdata():
+    """
+    Load test data for unit tests.
+    """
+    fname = "network_measures.mat"
+    with importlib_resources.path("comet.data", fname) as file_path:
+        data = loadmat(file_path)
+    return data
+
 def save_universe_results(data):
     """
     This saves the results of a universe.
@@ -206,12 +215,3 @@ def notebookToScript(notebook):
         print("Error", f"Invalid notebook format: {str(e)}")
 
     return scriptContent
-
-def _loadTestingData():
-    """
-    Load testing data for unit tests.
-    """
-    fname = "network_measures.mat"
-    with importlib_resources.path("comet.data", fname) as file_path:
-        data = loadmat(file_path)
-    return data
