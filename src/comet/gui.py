@@ -1916,6 +1916,9 @@ class App(QMainWindow):
         self.detrendCheckbox.setChecked(True)
         self.standardizeCheckbox.setChecked(True)
 
+        self.plotLogo(self.boldFigure)
+        self.boldCanvas.draw()
+
         # Disable/enable containers
         self.tsExtractionContainer.show() # main container
         self.fmriprepContainer.hide() # fMRIprep container
@@ -1947,8 +1950,8 @@ class App(QMainWindow):
                 return
 
         elif file_path.endswith(".tsv"):
-            self.data.data_filedata = data[0].to_numpy()
-            self.data.data_roi_names = np.array(data[1], dtype=object)
+            self.data.data_filedata = data[0]
+            self.data.data_roi_names = data[1]
         
         elif file_path.endswith(".nii") or file_path.endswith(".nii.gz"):
             self.parcellationDropdown.currentIndexChanged.disconnect(self.onAtlasChanged)
@@ -2000,7 +2003,7 @@ class App(QMainWindow):
                 self.connectivityFileNameLabel.setText(f"Time series data with shape {fshape} is available for state-based analysis.")
                 self.saveTimeSeriesButton.show()
             elif file_path.endswith(".mat"):
-                self.fileNameLabel.setText(f"Loaded data from {fname} (key: {list(data_dict.keys())[-1]}) with shape {fshape}.")
+                self.fileNameLabel.setText(f"Loaded data from {fname} (key: {list(data.keys())[-1]}) with shape {fshape}.")
                 self.connectivityFileNameLabel.setText(f"Time series data with shape {fshape} is available for connectivity analysis.")
             else:
                 self.fileNameLabel.setText(f"Loaded {fname} with shape {fshape}.")

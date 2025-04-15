@@ -70,14 +70,15 @@ def load_timeseries(path=None):
 
         # Update header_list if rois exist
         rois = rois.to_list() if rois is not None else None
+        return data, rois
+    
+    elif path.endswith(".nii") or path.endswith(".nii.gz"):
+        data = None # For compatibility with the GUI
 
     else:
         raise ValueError("Unsupported file format")
 
-    if rois is not None:
-        return data, rois
-    else:
-        return data
+    return data
 
 def load_example(fname="time_series.txt"):
     """
