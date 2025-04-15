@@ -159,7 +159,7 @@ def normalise(G: np.ndarray,
     '''
 
     if copy:
-        W = W.copy()
+        G = G.copy()
 
     if not np.max(np.abs(G)) > 0:
         raise ValueError("Error: Matrix contains only zeros")
