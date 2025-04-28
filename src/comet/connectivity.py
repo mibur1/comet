@@ -1218,11 +1218,14 @@ class EdgeConnectivity(ConnectivityMethod):
                  time_series: np.ndarray,
                  method: Literal["eTS", "eFC"] = "eTS",
                  standardizeData: bool = True,
+                 labels: list = None,
                  vlim: float = 3):
 
         super().__init__(time_series, 0, False, False)
         self.method = method
         self.standardizeData = standardizeData
+        self.labels = labels
+        self.edge_labels = None
         self.u = None # Row indices of the upper triangle of the connectivity matrix
         self.v = None # Column indices of the upper triangle of the connectivity matrix
 
@@ -1240,6 +1243,10 @@ class EdgeConnectivity(ConnectivityMethod):
         z = zscore(self.time_series, axis=0, ddof=1) if self.standardizeData else self.time_series
         self.u, self.v = np.triu_indices(self.time_series.shape[1], k=1)
         a = np.multiply(z[:, self.u], z[:, self.v]) # edge time series
+
+        # If labels are provided we can create edge names
+        if isinstance(self.labels, list):
+            self.edge_labels = [f"{self.labels[i]}–{self.labels[j]}" for i, j in zip(self.u, self.v)]
 
         if self.method == "eTS":
             return a
