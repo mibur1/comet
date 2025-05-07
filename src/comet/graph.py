@@ -1,4 +1,5 @@
 import bct
+import warnings
 import numpy as np
 import scipy.sparse
 from numba import jit
@@ -279,6 +280,7 @@ def symmetrise(G: np.ndarray,
         G = G.copy()
 
     def _symmetrise(A):
+        """Symmetrise a single 2D matrix."""
         is_binary = np.all(np.isclose(A, 0) | np.isclose(A, 1))
         if is_binary:
             return np.logical_or(A, A.T).astype(float)
@@ -314,6 +316,7 @@ def randomise(G: np.ndarray,
         G = G.copy()
 
     def _randomise(A):
+        """Randomisation for a single 2D matrix."""
         n = A.shape[0]
         mask = np.triu(np.ones((n, n)), 1).astype(bool)
         i, j = np.where(mask)
@@ -351,6 +354,7 @@ def regular_matrix(G: np.ndarray, r: int) -> np.ndarray:
         Regularised adjacency matrix (same shape as input).
     '''
     def _regularise(G2D, r):
+        """Regularisation for a single 2D matrix."""
         n = G2D.shape[0]
         G_upper = np.triu(G2D)  # Keep only the upper triangular part
         B = np.sort(G_upper.flatten(order="F"))[::-1]  # Flatten and sort including zeros
@@ -414,6 +418,7 @@ def postproc(G: np.ndarray,
         G = G.copy()
 
     def _postproc(A):
+        """Postprocessing for a single 2D matrix."""
         A = np.nan_to_num(A, nan=0.0, posinf=0.0, neginf=0.0)
         if not np.allclose(A, A.T):
             raise ValueError("Error: Matrix is not symmetrical")
@@ -436,84 +441,115 @@ SECTION: Graph analysis functions
 """
 def avg_shortest_path(G: np.ndarray,
                       include_diagonal: bool = False,
-                      include_infinite: bool = False) -> float:
+                      include_infinite: bool = False) -> np.ndarray:
     '''
-    Average shortest path length calculated from a connection length matrix.
+    Compute the average shortest path length for a 2D or 3D connectivity matrix.
 
-    For binary matrices the connection length matrix is identical to the connectiivty matrix,
-    for weighted connectivity matrices it can be obtained though e.g. graph.invert().
+    For binary matrices, the connection length matrix is identical to the connectivity matrix.
+    For weighted matrices, the connection length matrix can be obtained via `invert()`.
 
     Parameters
     ----------
-    G : NxN np.ndarray
-        undirected connection matrix (binary or weighted)
+    G : np.ndarray
+        2D (NxN) or 3D (NxN x T) undirected connection matrix (binary or weighted).
+
+    include_diagonal : bool, optional
+        If False, diagonal values are ignored when computing the average.
+        Default is False.
+
+    include_infinite : bool, optional
+        If False, infinite path lengths are ignored when computing the average.
+        Default is False.
 
     Returns
     -------
-    D : float
-        average shortest path length
+    np.ndarray
+        Average shortest path length(s). If 2D, a single float is returned; if 3D, a 1D array
+        of average path lengths is returned, one for each time slice.
     '''
+    def _avg_shortest_path(D):
+        """Average shortest path for a single 2D matrix."""
+        if np.isinf(D).any():
+            warnings.warn("The graph is not fully connected; infinite path lengths were set to NaN.")
+        if not include_diagonal:
+            np.fill_diagonal(D, np.nan)
+        if not include_infinite:
+            D[np.isinf(D)] = np.nan
+        Dv = D[~np.isnan(D)]
+        return np.mean(Dv) if len(Dv) > 0 else np.nan
 
     is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
-    D = distance_bin(G) if is_binary else distance_wei(G)
 
-    if np.isinf(D).any():
-        import warnings
-        issue = "The graph is not fully connected and infinite path lenghts were set to NaN"
-        warnings.warn(issue)
-    if not include_diagonal:
-        np.fill_diagonal(D, np.nan)
-    if not include_infinite:
-        D[np.isinf(D)] = np.nan
-
-    Dv = D[~np.isnan(D)]
-    return np.mean(Dv)
+    if G.ndim == 2:
+        D = distance_bin(G) if is_binary else distance_wei(G)
+        return _avg_shortest_path(D)
+    
+    elif G.ndim == 3:
+        avg_paths = []
+        for t in range(G.shape[2]):
+            D = distance_bin(G[:, :, t]) if is_binary else distance_wei(G[:, :, t])
+            avg_paths.append(_avg_shortest_path(D))
+        return np.array(avg_paths)
+    
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")
 
 def transitivity_und(G: np.ndarray) -> np.ndarray:
     '''
-    Transitivity for undirected networks (binary and weighted), adapted from
-    the bctpy implementation: https://github.com/aestrivex/bctpy
+    Compute transitivity for undirected networks (binary and weighted),
+    adapted from the bctpy implementation: https://github.com/aestrivex/bctpy
 
     Transitivity is the ratio of triangles to triplets in the network and is
     a classical version of the clustering coefficient.
 
     Parameters
     ----------
-    G : NxN np.ndarray
-        binary undirected connection matrix
+    G : np.ndarray
+        2D (NxN) or 3D (NxN x T) undirected connection matrix (binary or weighted).
 
     Returns
     -------
-    T : float
-        transitivity scalar
+    np.ndarray
+        Transitivity scalar(s). If 2D, a single float is returned; if 3D, a 1D array
+        of transitivity values is returned, one for each time slice.
     '''
 
-    is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
+    def _transitivity(A):
+        """Transitivity for a single 2D matrix."""
+        is_binary = np.all(np.logical_or(np.isclose(A, 0), np.isclose(A, 1)))
 
-    if is_binary:
-        tri3 = np.trace(np.dot(G, np.dot(G, G)))
-        tri2 = np.sum(np.dot(G, G)) - np.trace(np.dot(G, G))
-        return tri3 / tri2
+        if is_binary:
+            tri3 = np.trace(A @ (A @ A))
+            tri2 = np.sum(A @ A) - np.trace(A @ A)
+            return tri3 / tri2 if tri2 > 0 else 0
+        else:
+            K = np.sum(A > 0, axis=1)
+            ws = np.cbrt(A)
+            cyc3 = np.diag(ws @ (ws @ ws))
+            denominator = np.sum(K * (K - 1))
+            return np.sum(cyc3) / denominator if denominator > 0 else 0
+
+    if G.ndim == 2:
+        return _transitivity(G)
+    elif G.ndim == 3:
+        return np.array([_transitivity(G[:, :, t]) for t in range(G.shape[2])])
     else:
-        K = np.sum(np.logical_not(G == 0), axis=1)
-        ws = np.cbrt(G)
-        cyc3 = np.diag(np.dot(ws, np.dot(ws, ws)))
-        return np.sum(cyc3, axis=0) / np.sum(K * (K - 1), axis=0)
+        raise ValueError("Input must be a 2D or 3D matrix.")
 
 def avg_clustering_onella(G: np.ndarray) -> np.ndarray:
     '''
-    Average clustering coefficient as described by Onnela et al. (2005) and as implemented in
-    https://kk1995.github.io/BauerLab/BauerLab/MATLAB/lib/+mouse/+graph/smallWorldPropensity.html
+    Compute the average clustering coefficient as described by Onnela et al. (2005).
 
     Parameters
     ----------
-    G : NxN np.ndarray
-        binary or weighted, undirected connection matrix
+    G : np.ndarray
+        2D (NxN) or 3D (NxN x T) undirected connection matrix (binary or weighted).
 
     Returns
     -------
-    C : float
-        average clustering coefficient
+    np.ndarray
+        Average clustering coefficient. If 2D, a single float is returned; 
+        if 3D, a 1D array of clustering coefficients is returned, one for each time slice.
 
     References
     ----------
@@ -522,13 +558,28 @@ def avg_clustering_onella(G: np.ndarray) -> np.ndarray:
     DOI: https://doi.org/10.1103/PhysRevE.71.065103
     '''
 
-    K = np.count_nonzero(G, axis=1) # count all non-zero values as in the MATLAB implementation
-    G2 = G / G.max()
-    cyc3 = np.diagonal(np.linalg.matrix_power(G2 ** (1/3), 3))
-    K = np.where(cyc3 == 0, np.inf, K)
-    C = cyc3 / (K * K-1)
+    def _clustering(A):
+        """Average clustering for a single 2D matrix."""
+        K = np.count_nonzero(A, axis=1)
+        if np.max(A) > 0:
+            G2 = A / np.max(A)  # Normalise
+        else:
+            G2 = A
+        cyc3 = np.diagonal(np.linalg.matrix_power(G2 ** (1/3), 3))
+        
+        # Prevent division by zero
+        valid = K > 1
+        C = np.zeros_like(K, dtype=float)
+        C[valid] = cyc3[valid] / (K[valid] * (K[valid] - 1))
 
-    return C.mean()
+        return np.nanmean(C)  # Average over non-zero entries
+
+    if G.ndim == 2:
+        return _clustering(G)
+    elif G.ndim == 3:
+        return np.array([_clustering(G[:, :, t]) for t in range(G.shape[2])])
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")
 
 def efficiency(G: np.ndarray,
                local: bool = False) -> np.ndarray:
@@ -542,8 +593,8 @@ def efficiency(G: np.ndarray,
 
     Parameters
     ----------
-    Gw : PxP np.ndarray
-        adjacency/connectivity matrix (binary or weighted, directed or undirected)
+    G : np.ndarray
+        2D (NxN) or 3D (NxNxT) undirected connection matrix (binary or weighted).
 
     local : bool, optional
         if True, local efficiency is computed. Default is False (global efficiency)
@@ -575,108 +626,114 @@ def efficiency(G: np.ndarray,
     and local efficiency for weighted undirected graphs. Neural computation, 29(2), 313-331. DOI: https://doi.org/10.1162/NECO_a_00914
     '''
 
-    n = len(G)
-    is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
+    def _efficiency(G2D, local):
+        """Efficiency for a single 2D matrix."""
+        n = len(G2D)
+        is_binary = np.all(np.logical_or(np.isclose(G2D, 0), np.isclose(G2D, 1)))
 
-    # Efficiency for binary networks
-    if is_binary:
-        # Local efficiency
-        if local:
-            E = np.zeros((n,))
+        # Efficiency for binary networks
+        if is_binary:
+            if local:
+                E = np.zeros((n,))
+                for u in range(n):
+                    V, = np.where(np.logical_or(G2D[u, :], G2D[:, u].T))
+                    e = distance_bin(G2D[np.ix_(V, V)], inv=True)
+                    se = e + e.T
+                    sa = G2D[u, V] + G2D[V, u].T
+                    numer = np.sum(np.outer(sa.T, sa) * se) / 2
+                    if numer != 0:
+                        denom = np.sum(sa) ** 2 - np.sum(sa * sa)
+                        E[u] = numer / denom
+            else:
+                e = distance_bin(G2D, inv=True)
+                E = np.sum(e) / (n * n - n)
 
-            for u in range(n):
-                # find pairs of neighbors
-                V, = np.where(np.logical_or(G[u, :], G[u, :].T))
-                # inverse distance matrix
-                e = distance_bin(G[np.ix_(V, V)], inv=True)
-                # symmetrized inverse distance matrix
-                se = e + e.T
-
-                # symmetrized adjacency vector
-                sa = G[u, V] + G[V, u].T
-                numer = np.sum(np.outer(sa.T, sa) * se) / 2
-                if numer != 0:
-                    denom = np.sum(sa)**2 - np.sum(sa * sa)
-                    E[u] = numer / denom
-
-        # Global efficiency
+        # Efficiency for weighted networks
         else:
-            e = distance_bin(G, inv=True)
-            E = np.sum(e) / (n * n - n)
+            Gl = invert(G2D, copy=True)
+            A = (G2D != 0).astype(int)
+            if local:
+                E = np.zeros((n,))
+                for u in range(n):
+                    V, = np.where(np.logical_or(G2D[u, :], G2D[:, u].T))
+                    sw = np.cbrt(G2D[u, V]) + np.cbrt(G2D[V, u].T)
+                    e = distance_wei(np.cbrt(Gl)[np.ix_(V, V)], inv=True)
+                    se = e + e.T
+                    numer = np.sum(np.outer(sw.T, sw) * se) / 2
+                    if numer != 0:
+                        sa = A[u, V] + A[V, u].T
+                        denom = np.sum(sa) ** 2 - np.sum(sa * sa)
+                        E[u] = numer / denom
+            else:
+                e = distance_wei(Gl, inv=True)
+                E = np.sum(e) / (n * n - n)
 
-    # Efficiency for weighted networks
+        return E
+
+    if G.ndim == 2:
+        return _efficiency(G, local)
+    elif G.ndim == 3:
+        if local:
+            return np.stack([_efficiency(G[:, :, t], local) for t in range(G.shape[2])], axis=1)
+        else:
+            return np.array([_efficiency(G[:, :, t], local) for t in range(G.shape[2])])
     else:
-        n = len(G)
-        Gl = invert(G, copy=True) # invert to get connection length matrix
-        A = np.array((G != 0), dtype=int)
-
-        # Local efficiency as described by Wang et al 2016
-        if local:
-            E = np.zeros((n,))
-            for u in range(n):
-                V, = np.where(np.logical_or(G[u, :], G[:, u].T))
-                sw = np.cbrt(G[u, V]) + np.cbrt(G[V, u].T)
-                e = distance_wei(np.cbrt(Gl)[np.ix_(V, V)], inv=True)
-                se = e+e.T
-
-                numer = np.sum(np.outer(sw.T, sw) * se) / 2
-                if numer != 0:
-                    # symmetrized adjacency vector
-                    sa = A[u, V] + A[V, u].T
-                    denom = np.sum(sa)**2 - np.sum(sa * sa)
-
-                    E[u] = numer / denom  # local efficiency
-
-        # Global efficiency
-        else:
-            e = distance_wei(Gl, inv=True)
-            E = np.sum(e) / (n * n - n)
-
-    return E
+        raise ValueError("Input must be a 2D or 3D matrix.")
 
 def small_world_sigma(G: np.ndarray,
                       nrand: int = 10) -> np.ndarray:
     '''
-    Small-worldness sigma for undirected networks (binary or weighted)
+    Compute the small-worldness sigma for undirected networks (binary or weighted).
 
-    Small worldness sigma is calculated as the ratio of the clustering coefficient and the characteristic path length
-    of the real network to the average clustering coefficient and characteristic path length of the random networks.
+    Small-worldness sigma is calculated as the ratio of the clustering coefficient
+    and the characteristic path length of the real network to the average clustering 
+    coefficient and characteristic path length of the random networks.
 
     Parameters
     ----------
-    G : PxP np.ndarray
-        undireted adjacency/connectivity matrix
+    G : np.ndarray
+        2D (PxP) or 3D (PxPxT) undirected adjacency/connectivity matrix.
 
     nrand : int, optional
-        number of random networks to generate (and average over). Default is 10.
+        Number of random networks to generate (and average over).
+        Default is 10.
 
     Returns
     -------
-    sigms : float
-        small-worldness sigma
+    float or np.ndarray
+        Small-worldness sigma. If 2D, a single float is returned.
+        If 3D, a 1D array of sigma values is returned, one for each time slice.
 
     Notes
     -----
-    This implementation of small worldness relies on matrix operations and is *drastically* faster than the
-    Networkx implementation. However, it uses a different approch for rewiring edges, so the results will differ.
-
-    It automatically detects if the input matrix is binary or weighted.
+    This implementation of small worldness relies on matrix operations and is 
+    *drastically* faster than the Networkx implementation. However, it uses a 
+    different approach for rewiring edges, so the results may differ.
     '''
 
-    randMetrics = {"C": [], "L": []}
-    for _ in range(nrand):
-        Gr = randomise(G)
-        randMetrics["C"].append(transitivity_und(Gr))
-        randMetrics["L"].append(avg_shortest_path(Gr))
+    def _small_world_sigma(G2D, nrand):
+        """Small-worldness sigma for a single 2D matrix."""
+        randMetrics = {"C": [], "L": []}
+        
+        for _ in range(nrand):
+            Gr = randomise(G2D)
+            randMetrics["C"].append(transitivity_und(Gr))
+            randMetrics["L"].append(avg_shortest_path(Gr))
 
-    C = transitivity_und(G)
-    L = avg_shortest_path(G)
+        C = transitivity_und(G2D)
+        L = avg_shortest_path(G2D)
 
-    Cr = np.mean(randMetrics["C"])
-    Lr = np.mean(randMetrics["L"])
+        Cr = np.mean(randMetrics["C"])
+        Lr = np.mean(randMetrics["L"])
 
-    sigma = (C / Cr) / (L / Lr)
-    return sigma
+        return (C / Cr) / (L / Lr)
+
+    if G.ndim == 2:
+        return _small_world_sigma(G, nrand)
+    elif G.ndim == 3:
+        return np.array([_small_world_sigma(G[:, :, t], nrand) for t in range(G.shape[2])])
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")
 
 def small_world_propensity(G: np.ndarray) -> np.ndarray:
     '''
@@ -714,56 +771,64 @@ def small_world_propensity(G: np.ndarray) -> np.ndarray:
     coherence of motifs in weighted complex networks. Physical Review E, 71(6), 065103.
     DOI: https://doi.org/10.1103/PhysRevE.71.065103
     '''
+    def _small_world_propensity(G2D):
+        if not np.allclose(G2D, G2D.T):
+            raise ValueError("Error: Matrix is not symmetrical")
 
-    if not np.allclose(G, G.T):
-        raise ValueError("Error: Matrix is not symmetrical")
+        n = G2D.shape[0]  # Number of nodes
 
-    n = G.shape[0]  # Number of nodes
+        # Compute the average degree of the unweighted network (approximate radius)
+        num_connections = np.count_nonzero(G2D)
+        avg_deg_unw = num_connections / n
+        avg_rad_unw = avg_deg_unw / 2
+        avg_rad_eff = np.ceil(avg_rad_unw).astype(int)
+        # Compute the regular and random matrix for the network
+        G2D_reg = regular_matrix(G2D, avg_rad_eff)
+        G2D_rand = randomise(G2D)
 
-    # Compute the average degree of the unweighted network (approximate radius)
-    num_connections = np.count_nonzero(G)
-    avg_deg_unw = num_connections / n
-    avg_rad_unw = avg_deg_unw / 2
-    avg_rad_eff = np.ceil(avg_rad_unw).astype(int)
-    # Compute the regular and random matrix for the network
-    G_reg = regular_matrix(G, avg_rad_eff)
-    G_rand = randomise(G)
+        # Path length calculations for the network, ignore divide by zero warnings
+        with np.errstate(divide='ignore'):
+            G2D_reg_inv = np.divide(1.0, G2D_reg)
+            G2D_rand_inv = np.divide(1.0, G2D_rand)
+            G2D_inv = np.divide(1.0, G2D)
 
-    # Path length calculations for the network, ignore divide by zero warnings
-    with np.errstate(divide='ignore'):
-        G_reg_inv = np.divide(1.0, G_reg)
-        G_rand_inv = np.divide(1.0, G_rand)
-        G_inv = np.divide(1.0, G)
+        reg_path = avg_shortest_path(G2D_reg_inv)
+        rand_path = avg_shortest_path(G2D_rand_inv)
+        net_path = avg_shortest_path(G2D_inv)
 
-    reg_path = avg_shortest_path(G_reg_inv)
-    rand_path = avg_shortest_path(G_rand_inv)
-    net_path = avg_shortest_path(G_inv)
+        # Compute the normalized difference in path lengths
+        A = max(net_path - rand_path, 0)  # Ensure A is non-negative
+        diff_path = A / (reg_path - rand_path) if (reg_path != float('inf') and rand_path != float('inf') and net_path != float('inf')) else 1
+        diff_path = min(diff_path, 1)  # Ensure diff_path does not exceed 1
 
-    # Compute the normalized difference in path lengths
-    A = max(net_path - rand_path, 0)  # Ensure A is non-negative
-    diff_path = A / (reg_path - rand_path) if (reg_path != float('inf') and rand_path != float('inf') and net_path != float('inf')) else 1
-    diff_path = min(diff_path, 1)  # Ensure diff_path does not exceed 1
+        # Compute all clustering calculations for the network
+        reg_clus = avg_clustering_onella(G2D_reg)
+        rand_clus = avg_clustering_onella(G2D_rand)
+        net_clus = avg_clustering_onella(G2D)
 
-    # Compute all clustering calculations for the network
-    reg_clus = avg_clustering_onella(G_reg)
-    rand_clus = avg_clustering_onella(G_rand)
-    net_clus = avg_clustering_onella(G)
+        B = max(reg_clus - net_clus, 0)
+        diff_clus = B / (reg_clus - rand_clus) if (not np.isnan(reg_clus) and not np.isnan(rand_clus) and not np.isnan(net_clus)) else 1
+        diff_clus = min(diff_clus, 1)
 
-    B = max(reg_clus - net_clus, 0)
-    diff_clus = B / (reg_clus - rand_clus) if (not np.isnan(reg_clus) and not np.isnan(rand_clus) and not np.isnan(net_clus)) else 1
-    diff_clus = min(diff_clus, 1)
+        # Assuming diff_path is calculated elsewhere
+        SWP = 1 - (np.sqrt(diff_clus**2 + diff_path**2) / np.sqrt(2))
+        delta_C = diff_clus
+        delta_L = diff_path
 
-    # Assuming diff_path is calculated elsewhere
-    SWP = 1 - (np.sqrt(diff_clus**2 + diff_path**2) / np.sqrt(2))
-    delta_C = diff_clus
-    delta_L = diff_path
+        # We ignore divide by zero warnings here as arctan(inf) is pi/2
+        with np.errstate(divide='ignore'):
+            alpha = np.arctan(delta_L / delta_C)
+            delta = (4 * alpha / np.pi) - 1
 
-    # We ignore divide by zero warnings here as arctan(inf) is pi/2
-    with np.errstate(divide='ignore'):
-        alpha = np.arctan(delta_L / delta_C)
-        delta = (4 * alpha / np.pi) - 1
+        return SWP, delta_C, delta_L, alpha, delta
 
-    return SWP, delta_C, delta_L, alpha, delta
+    if G.ndim == 2:
+        return _small_world_propensity(G)
+    elif G.ndim == 3:
+        results = [np.array(x) for x in zip(*[_small_world_propensity(G[:, :, t]) for t in range(G.shape[2])])]
+        return tuple(results)
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")
 
 @jit(nopython=True)
 def matching_ind_und(G: np.ndarray) -> np.ndarray:
@@ -778,8 +843,8 @@ def matching_ind_und(G: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    W : PxP np.ndarray
-        undirected adjacency/connectivity matrix, will be binarised
+    G : np.ndarray
+        2D (PxP) or 3D (PxP x T) undirected adjacency/connectivity matrix.
 
     Returns
     -------
@@ -805,21 +870,29 @@ def matching_ind_und(G: np.ndarray) -> np.ndarray:
 
     This bug is irrelevant here due to the opimized implementation.
     '''
+    def _matching_ind(G2D):
+        "Compute the matching index for a single 2D adjacency matrix."
+        G2D = (G2D > 0).astype(np.float64) # binarise the adjacency matrix
+        n = G2D.shape[0]
 
-    G = (G > 0).astype(np.float64) # binarise the adjacency matrix
-    n = G.shape[0]
+        nei = np.dot(G2D, G2D)
+        deg = np.sum(G2D, axis=1)
+        degsum = deg[:, np.newaxis] + deg
 
-    nei = np.dot(G, G)
-    deg = np.sum(G, axis=1)
-    degsum = deg[:, np.newaxis] + deg
+        denominator = np.where((degsum <= 2) & (nei != 1), 1.0, degsum - 2 * G2D)
+        M = np.where(denominator != 0, (nei * 2) / denominator, 0.0)
 
-    denominator = np.where((degsum <= 2) & (nei != 1), 1.0, degsum - 2 * G)
-    M = np.where(denominator != 0, (nei * 2) / denominator, 0.0)
+        for i in range(n):
+            M[i, i] = 0.0
 
-    for i in range(n):
-        M[i, i] = 0.0
+        return M
 
-    return M
+    if G.ndim == 2:
+            return _matching_ind(G)
+    elif G.ndim == 3:
+        return np.stack([_matching_ind(G[:, :, t]) for t in range(G.shape[2])], axis=2)
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")
 
 @jit(nopython=True)
 def distance_wei(G: np.ndarray, inv: bool = False) -> np.ndarray:
@@ -936,9 +1009,8 @@ def backbone_wu(G: np.ndarray,
                 avgdeg: int = 0,
                 verbose: bool = False) -> tuple[np.ndarray, np.ndarray]:
     '''
-    This is a wrapper function for the backbone_wu() function
-    of the bctpy toolbox: https://github.com/aestrivex/bctpy.
-
+    Wrapper for `bct.backbone_wu()` from the Brain Connectivity Toolbox.
+    
     The network backbone contains the dominant connections in the network
     and may be used to aid network visualization. This function computes
     the backbone of a given weighted and undirected connection matrix G,
@@ -946,37 +1018,46 @@ def backbone_wu(G: np.ndarray,
 
     Parameters
     ----------
-    G : NxN np.ndarray
-        weighted undirected connection matrix
-    avgdeg : float
-        desired average degree of backbone
-    verbose : bool
-        print out edges whilst building spanning tree. Default False.
+    G : np.ndarray
+        2D (NxN) or 3D (NxN x T) weighted undirected connection matrix.
+    avgdeg : int, optional
+        Desired average degree of the backbone. Default is 0.
+    verbose : bool, optional
+        If True, prints out edges while building the spanning tree.
 
     Returns
     -------
-    Gtree : NxN np.ndarray
-        connection matrix of the minimum spanning tree of G
-    Gclus : NxN np.ndarray
-        connection matrix of the minimum spanning tree plus strongest
-        connections up to some average degree 'avgdeg'. Identical to Gtree
-        if the degree requirement is already met.
-
-    Notes
-    -----
-    Nodes with zero strength are discarded.
-
-    Gclus will have a total average degree exactly equal to
-        (or very close to) 'avgdeg'.
-
-    'avgdeg' backfill is handled slightly differently than in Hagmann et al. (2008)
+    tuple[np.ndarray, np.ndarray]
+        Gtree : NxN (or NxN x T) np.ndarray
+            Connection matrix of the minimum spanning tree of G.
+        Gclus : NxN (or NxN x T) np.ndarray
+            Connection matrix of the minimum spanning tree plus strongest
+            connections up to the specified average degree.
     '''
 
-    return bct.backbone_wu(G, avgdeg, verbose)
+    if G.ndim == 2:
+        # Single timepoint, just call bct
+        return bct.backbone_wu(G, avgdeg, verbose)
+
+    elif G.ndim == 3:
+        # Multiple timepoints, process each slice independently
+        n, _, t = G.shape
+        Gtree_stack = np.zeros((n, n, t))
+        Gclus_stack = np.zeros((n, n, t))
+
+        for i in range(t):
+            if verbose:
+                print(f"Processing time slice {i + 1} of {t}")
+            Gtree_stack[:, :, i], Gclus_stack[:, :, i] = bct.backbone_wu(G[:, :, i], avgdeg, verbose)
+
+        return Gtree_stack, Gclus_stack
+    
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")
 
 def betweenness(G: np.ndarray) -> np.ndarray:
     '''
-    This is a wrapper function for the betweenness_*() functions
+    This is a wrapper function for the `betweenness_bin()` and `betweenness_wei()` functions
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
 
     Node betweenness centrality is the fraction of all shortest paths in
@@ -985,37 +1066,43 @@ def betweenness(G: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    G : NxN np.ndarray
-        binary/weighted directed/undirected connection matrix
+    G : np.ndarray
+        2D (NxN) or 3D (NxN x T) binary/weighted directed/undirected connection matrix.
 
     Returns
     -------
-    BC : Nx1 np.ndarray
-        node betweenness centrality vector
+    np.ndarray
+        Node betweenness centrality vector. If G is 2D, the output is Nx1.
+        If G is 3D, the output is NxT.
 
     Notes
     -----
-    Binary:
-    Betweenness centrality may be normalised to the range [0,1] as
-    BC/[(N-1)(N-2)], where N is the number of nodes in the network.
-
-    Weighted:
-    The input matrix must be a connection-length matrix, typically
-    obtained via a mapping from weight to length. For instance, in a
-    weighted correlation network higher correlations are more naturally
-    interpreted as shorter distances and the input matrix should
-    consequently be some inverse of the connectivity matrix.
-    Betweenness centrality may be normalised to the range [0,1] as
-    BC/[(N-1)(N-2)], where N is the number of nodes in the network.
+    - For binary graphs, betweenness is normalized as BC/[(N-1)(N-2)].
+    - For weighted graphs, it is based on connection lengths and similarly normalized.
+    - If the input is 3D, each time slice is computed independently.
     '''
-
     is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
-    res = bct.betweenness_bin(G) if is_binary else bct.betweenness_wei(G)
-    return res
+
+    if G.ndim == 2:
+        # Single timepoint, just call bct
+        return bct.betweenness_bin(G) if is_binary else bct.betweenness_wei(G)
+
+    elif G.ndim == 3:
+        # Multiple timepoints, process each slice independently
+        n, _, t = G.shape
+        BC_stack = np.zeros((n, t))
+
+        for i in range(t):
+            BC_stack[:, i] = bct.betweenness_bin(G[:, :, i]) if is_binary else bct.betweenness_wei(G[:, :, i])
+
+        return BC_stack
+    
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")
 
 def clustering_coef(G: np.ndarray) -> np.ndarray:
     '''
-    This is a wrapper function for the clustering_coef_*() functions
+    This is a wrapper function for the `clustering_coef_*()` functions
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
 
     The binary clustering coefficient is the fraction of triangles around a node
@@ -1026,78 +1113,128 @@ def clustering_coef(G: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    G : NxN np.ndarray
-        weighted undirected connection matrix
+    G : np.ndarray
+        2D (NxN) or 3D (NxN x T) weighted undirected connection matrix.
 
     Returns
     -------
-    C : Nx1 np.ndarray
-        clustering coefficient vector
+    np.ndarray
+        Clustering coefficient vector. If G is 2D, the output is Nx1.
+        If G is 3D, the output is NxT.
     '''
-
     is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
-    res = bct.clustering_coef_bu(G) if is_binary else bct.clustering_coef_wu(G)
-    return res
+
+    if G.ndim == 2:
+        # Single timepoint, just call bct
+        return bct.clustering_coef_bu(G) if is_binary else bct.clustering_coef_wu(G)
+
+    elif G.ndim == 3:
+        # Multiple timepoints, process each slice independently
+        n, _, t = G.shape
+        C_stack = np.zeros((n, t))
+
+        for i in range(t):
+            if is_binary:
+                C_stack[:, i] = bct.clustering_coef_bu(G[:, :, i])
+            else:
+                C_stack[:, i] = bct.clustering_coef_wu(G[:, :, i])
+
+        return C_stack
+    
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")
 
 def degrees_und(G: np.ndarray) -> np.ndarray:
     '''
-    This is a wrapper function for the degrees_und() function
+    This is a wrapper function for the `degrees_und()` function
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
 
     Node degree is the number of links connected to the node.
 
     Parameters
     ----------
-    G : NxN np.ndarray
-        undirected binary/weighted connection matrix
+    G : np.ndarray
+        2D (NxN) or 3D (NxN x T) undirected binary/weighted connection matrix.
 
     Returns
     -------
-    deg : Nx1 np.ndarray
-        node degree
+    np.ndarray
+        Node degree vector. If G is 2D, the output is Nx1.
+        If G is 3D, the output is NxT.
 
     Notes
     -----
-    Weight information is discarded.
+    - If the graph is 3D (NxN x T), each slice is processed independently.
+    - Weight information is discarded.
     '''
 
-    return bct.degrees_und(G)
+    if G.ndim == 2:
+        # Single timepoint, just call bct
+        return bct.degrees_und(G)
 
-def density_und(G: np.ndarray) -> tuple[float, int, int]:
+    elif G.ndim == 3:
+        # Multiple timepoints, process each slice independently
+        n, _, t = G.shape
+        deg_stack = np.zeros((n, t))
+
+        for i in range(t):
+            deg_stack[:, i] = bct.degrees_und(G[:, :, i])
+
+        return deg_stack
+    
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")
+
+def density_und(G: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
-    This is a wrapper function for the density_und() function
+    This is a wrapper function for the `density_und()` function
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
 
     Density is the fraction of present connections to possible connections.
 
     Parameters
     ----------
-    G : NxN np.ndarray
-        directed weighted/binary connection matrix
+    G : np.ndarray
+        2D (NxN) or 3D (NxN x T) undirected weighted/binary connection matrix.
 
     Returns
     -------
-    kden : float
-        density
-    N : int
-        number of vertices
-    k : int
-        number of edges
+    tuple[np.ndarray, np.ndarray, np.ndarray]
+        - `kden`: Density of the graph. If G is 2D, returns a float, if G is 3D, returns a 1D array.
+        - `N`: Number of vertices. If G is 2D, returns an integer, if G is 3D, returns a 1D array.
+        - `k`: Number of edges. If G is 2D, returns an integer, if G is 3D, returns a 1D array.
 
     Notes
     -----
-    Assumes G is directed and has no self-connections.
-    Weight information is discarded.
+    - Assumes G is undirected and has no self-connections.
+    - Weight information is discarded.
+    - If G is 3D (NxN x T), each slice is processed independently.
     '''
+    if G.ndim == 2:
+        # Single timepoint, just call bct
+        return bct.density_und(G)
 
-    return bct.density_und(G)
+    elif G.ndim == 3:
+        # Multiple timepoints, process each slice independently
+        t = G.shape[2]
+        kden_stack = np.zeros(t)
+        N_stack = np.zeros(t, dtype=int)
+        k_stack = np.zeros(t, dtype=int)
+
+        for i in range(t):
+            kden_stack[i], N_stack[i], k_stack[i] = bct.density_und(G[:, :, i])
+
+        return kden_stack, N_stack, k_stack
+    
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")
 
 def eigenvector_centrality_und(G: np.ndarray) -> np.ndarray:
     '''
-    This is a wrapper function for the eigenvector_centrality_*() functions
+    This is a wrapper function for the `eigenvector_centrality_und()` function
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
 
-    Eigenector centrality is a self-referential measure of centrality:
+    Eigenvector centrality is a self-referential measure of centrality:
     nodes have high eigenvector centrality if they connect to other nodes
     that have high eigenvector centrality. The eigenvector centrality of
     node i is equivalent to the ith element in the eigenvector
@@ -1105,23 +1242,40 @@ def eigenvector_centrality_und(G: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    G : NxN np.ndarray
-        Binary/weighted undirected adjacency matrix
+    G : np.ndarray
+        2D (NxN) or 3D (NxN x T) binary/weighted undirected adjacency matrix.
 
     Returns
     ----------
-    v : Nx1 np.ndarray
-        Eigenvector associated with the largest eigenvalue of the matrix
+    np.ndarray
+        Eigenvector associated with the largest eigenvalue of the matrix.
+        If G is 2D, the output is Nx1.
+        If G is 3D, the output is NxT.
     '''
 
-    return bct.eigenvector_centrality_und(G)
+    if G.ndim == 2:
+        # Single timepoint, just call bct
+        return bct.eigenvector_centrality_und(G)
+
+    elif G.ndim == 3:
+        # Multiple timepoints, process each slice independently
+        n, _, t = G.shape
+        eig_centrality_stack = np.zeros((n, t))
+
+        for i in range(t):
+            eig_centrality_stack[:, i] = bct.eigenvector_centrality_und(G[:, :, i])
+
+        return eig_centrality_stack
+    
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")
 
 def gateway_coef_sign(G: np.ndarray,
                       ci: Literal["louvain"] = "louvain",
                       centrality_type: Literal["degree", "betweenness"] = "degree", ) \
                                         -> tuple[np.ndarray, np.ndarray]:
     '''
-    This is a wrapper function for the gateway_coef_sign() function
+    This is a wrapper function for the `gateway_coef_sign()` function
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
 
     The gateway coefficient is a variant of participation coefficient.
@@ -1132,129 +1286,232 @@ def gateway_coef_sign(G: np.ndarray,
 
     Parameters
     ----------
-    G : NxN np.ndarray
-        undirected signed connection matrix
-    ci : Nx1 np.ndarray
-        community affiliation vector
-    centrality_type : enum
-        'degree' - uses the weighted degree (i.e, node strength)
-        'betweenness' - uses the betweenness centrality
+    G : np.ndarray
+        2D (NxN) or 3D (NxN x T) undirected signed connection matrix.
+
+    ci : str, optional
+        Community detection method. Default is "louvain".
+        If "louvain", community detection is performed with `bct.community_louvain`.
+
+    centrality_type : str, optional
+        Method to measure node importance. Options are:
+        - 'degree': uses the weighted degree (i.e., node strength).
+        - 'betweenness': uses the betweenness centrality.
+        Default is "degree".
 
     Returns
     -------
-    Gpos : N x nr_mod np.ndarray
-        gateway coefficient for positive weights
-    Gneg : N x nr_mod np.ndarray
-        gateway coefficient for negative weights
+    tuple[np.ndarray, np.ndarray]
+        - `Gpos`: Gateway coefficient for positive weights.
+        - `Gneg`: Gateway coefficient for negative weights.
 
-    References
-    ----------
-    Vargas ER, Wahl LM, Eur Phys J B (2014) 87:1-10
+        If G is 2D, each is NxM. If G is 3D, each is NxM x T.
     '''
 
-    ci, _ = bct.community_louvain(G)
-    return bct.gateway_coef_sign(G, ci, centrality_type)
+    def _compute_communities(G2D):
+        """Compute communities for a single time slice."""
+        if ci == "louvain":
+            communities, _ = bct.community_louvain(G2D)
+        else:
+            raise ValueError("Only 'louvain' is supported for now.")
+        return communities
+
+    if G.ndim == 2:
+        # Single timepoint, compute communities and gateway coefficient
+        communities = _compute_communities(G)
+        Gpos, Gneg = bct.gateway_coef_sign(G, communities, centrality_type)
+        return Gpos, Gneg
+
+    elif G.ndim == 3:
+        # Multiple timepoints, process each slice independently
+        n, _, t = G.shape
+        Gpos_stack = []
+        Gneg_stack = []
+
+        for i in range(t):
+            communities = _compute_communities(G[:, :, i])
+            Gpos, Gneg = bct.gateway_coef_sign(G[:, :, i], communities, centrality_type)
+            Gpos_stack.append(Gpos)
+            Gneg_stack.append(Gneg)
+
+        # Stack results along the third dimension
+        Gpos_final = np.stack(Gpos_stack, axis=2)
+        Gneg_final = np.stack(Gneg_stack, axis=2)
+
+        return Gpos_final, Gneg_final
+
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")
 
 def pagerank_centrality(G: np.ndarray,
                         d: float = 0.85) -> np.ndarray:
     '''
-    This is a wrapper function for the pagerank_centrality() function
+    This is a wrapper function for the `pagerank_centrality()` function
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
 
     The PageRank centrality is a variant of eigenvector centrality. This
     function computes the PageRank centrality of each vertex in a graph.
 
-    Formally, PageRank is defined as the stationary distribution achieved
-    by instantiating a Markov chain on a graph. The PageRank centrality of
-    a given vertex, then, is proportional to the number of steps (or amount
-    of time) spent at that vertex as a result of such a process.
-
-    The PageRank index gets modified by the addition of a damping factor,
-    d. In terms of a Markov chain, the damping factor specifies the
-    fraction of the time that a random walker will transition to one of its
-    current state's neighbors. The remaining fraction of the time the
-    walker is restarted at a random vertex. A common value for the damping
-    factor is d = 0.85.
-
     Parameters
     ----------
-    G : NxN np.narray
-        adjacency matrix
-    d : float
-        damping factor (see description)
-    falff : Nx1 np.ndarray | None
-        Initial page rank probability, non-negative values. Default value is
-        None. If not specified, a naive bayesian prior is used.
+    G : np.ndarray
+        2D (NxN) or 3D (NxN x T) adjacency matrix.
+
+    d : float, optional
+        Damping factor (default is 0.85). Specifies the fraction of the time
+        that a random walker will transition to one of its current state's neighbors.
 
     Returns
     -------
-    r : Nx1 np.ndarray
-        vectors of page rankings
+    np.ndarray
+        Vectors of page rankings.
+        If G is 2D, the output is Nx1.
+        If G is 3D, the output is NxT.
 
     Notes
     -----
-    Note: The algorithm will work well for smaller matrices (number of
-    nodes around 1000 or less). Support for flaff is currently not provided.
-
+    - This function does not currently support the `falff` parameter from bctpy.
+    - If G is 3D, each time slice is processed independently.
     '''
-    return bct.pagerank_centrality(G, d, None)
 
+    if G.ndim == 2:
+        # Single timepoint, just call bct
+        return bct.pagerank_centrality(G, d, None)
+
+    elif G.ndim == 3:
+        # Multiple timepoints, process each slice independently
+        n, _, t = G.shape
+        pagerank_stack = np.zeros((n, t))
+
+        for i in range(t):
+            pagerank_stack[:, i] = bct.pagerank_centrality(G[:, :, i], d, None)
+
+        return pagerank_stack
+    
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")
+    
 def participation_coef(G: np.ndarray,
                        ci: Literal["louvain"] = "louvain",
-                       degree: Literal["undirected"] = "undirected") -> np.ndarray:
+                       degree: Literal["undirected", "in", "out"] = "undirected") -> np.ndarray:
     '''
-    This is a wrapper function for the participation_coef functions
-    of the bctpy toolbox: https://github.com/aestrivex/bctpy.
+    This is a wrapper function for the `participation_coef` and `participation_coef_sparse`
+    functions of the bctpy toolbox: https://github.com/aestrivex/bctpy.
 
     The participation coefficient is a measure of diversity of intermodular
     connections of individual nodes.
 
     Parameters
     ----------
-    G : NxN np.ndarray or scipy.sparse.csr_matrix
-        binary/weighted directed/undirected connection matrix
-    ci : Nx1 np.ndarray
-        community affiliation vector (just for the GUI, will always use bct.community_louvain())
-    degree : str
-        Flag to describe nature of graph 'undirected': For undirected graphs
-                                         'in': Uses the in-degree
-                                         'out': Uses the out-degree
+    G : np.ndarray or scipy.sparse.csr_matrix
+        2D (NxN) or 3D (NxN x T) binary/weighted directed/undirected connection matrix.
+
+    ci : str, optional
+        Community detection method. Default is "louvain".
+        If "louvain", community detection is performed with `bct.community_louvain`.
+
+    degree : str, optional
+        Flag to describe nature of graph:
+        - 'undirected': For undirected graphs
+        - 'in': Uses the in-degree
+        - 'out': Uses the out-degree
+        Default is "undirected".
 
     Returns
     -------
-    P : Nx1 np.ndarray
-        participation coefficient
+    np.ndarray
+        Participation coefficient vector. 
+        If G is 2D, the output is Nx1.
+        If G is 3D, the output is NxT.
     '''
 
-    ci, _ = bct.community_louvain(G)
-    res = bct.participation_coef_sparse(G, ci, degree) if isinstance(G, scipy.sparse.csr_matrix) else bct.participation_coef(G, ci, degree)
-    return res
+    def _compute_communities(G2D):
+        """Compute communities for a single time slice."""
+        if ci == "louvain":
+            communities, _ = bct.community_louvain(G2D)
+        else:
+            raise ValueError("Only 'louvain' is supported for now.")
+        return communities
+
+    if G.ndim == 2:
+        # Single timepoint, compute communities and participation coefficient
+        communities = _compute_communities(G)
+        if isinstance(G, scipy.sparse.csr_matrix):
+            return bct.participation_coef_sparse(G, communities, degree)
+        else:
+            return bct.participation_coef(G, communities, degree)
+
+    elif G.ndim == 3:
+        # Multiple timepoints, process each slice independently
+        n, _, t = G.shape
+        P_stack = np.zeros((n, t))
+
+        for i in range(t):
+            communities = _compute_communities(G[:, :, i])
+            if isinstance(G[:, :, i], scipy.sparse.csr_matrix):
+                P_stack[:, i] = bct.participation_coef_sparse(G[:, :, i], communities, degree)
+            else:
+                P_stack[:, i] = bct.participation_coef(G[:, :, i], communities, degree)
+
+        return P_stack
+
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")
 
 def participation_coef_sign(G: np.ndarray,
-                            ci: Literal["louvain"] = "louvain",) -> tuple[np.ndarray, np.ndarray]:
+                            ci: Literal["louvain"] = "louvain") -> tuple[np.ndarray, np.ndarray]:
     '''
-    This is a wrapper function for the participation_coef_sign() function
+    This is a wrapper function for the `participation_coef_sign()` function
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
 
     The participation coefficient is a measure of diversity of intermodular
-    connections of individual nodes.
+    connections of individual nodes, considering both positive and negative weights.
 
     Parameters
     ----------
-    G : NxN np.ndarray
-        undirected connection matrix with positive and negative weights
-    ci : Nx1 np.ndarray
-        community affiliation vector (just for the GUI, will always use bct.community_louvain())
+    G : np.ndarray
+        2D (NxN) or 3D (NxN x T) undirected connection matrix with positive and negative weights.
+
+    ci : str, optional
+        Community detection method. Default is "louvain".
+        If "louvain", community detection is performed with `bct.community_louvain`.
 
     Returns
     -------
-    Ppos : Nx1 np.ndarray
-        participation coefficient from positive weights
-    Pneg : Nx1 np.ndarray
-        participation coefficient from negative weights
+    tuple[np.ndarray, np.ndarray]
+        - `Ppos`: Participation coefficient from positive weights.
+        - `Pneg`: Participation coefficient from negative weights.
+        
+        If G is 2D, each is Nx1. If G is 3D, each is NxT.
     '''
 
-    ci, _ = bct.community_louvain(G)
-    res = bct.participation_coef_sign(G, ci)
-    return res
+    def _compute_communities(G2D):
+        """Compute communities for a single time slice."""
+        if ci == "louvain":
+            communities, _ = bct.community_louvain(G2D)
+        else:
+            raise ValueError("Only 'louvain' is supported for now.")
+        return communities
 
+    if G.ndim == 2:
+        # Single timepoint, compute communities and participation coefficients
+        communities = _compute_communities(G)
+        Ppos, Pneg = bct.participation_coef_sign(G, communities)
+        return Ppos, Pneg
+
+    elif G.ndim == 3:
+        # Multiple timepoints, process each slice independently
+        n, _, t = G.shape
+        Ppos_stack = np.zeros((n, t))
+        Pneg_stack = np.zeros((n, t))
+
+        for i in range(t):
+            communities = _compute_communities(G[:, :, i])
+            Ppos, Pneg = bct.participation_coef_sign(G[:, :, i], communities)
+            Ppos_stack[:, i] = Ppos
+            Pneg_stack[:, i] = Pneg
+
+        return Ppos_stack, Pneg_stack
+
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")

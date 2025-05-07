@@ -4176,14 +4176,7 @@ class App(QMainWindow):
         graph_params.update({k: v for k, v in params.items() if k != first_param})
 
         # Calculate graph measure
-        if np.ndim(self.data.graph_data) == 3:
-            graph_data = []
-            for estimate in range(self.data.graph_data.shape[2]):
-                graph_params[first_param] = self.data.graph_data[:, :, estimate]
-                graph_data.append(func(**graph_params))
-        else:
-            graph_data = func(**graph_params)
-
+        graph_data = func(**graph_params)
         return f'graph_{option.split()[0].lower()}', graph_data, option_name, graph_params
 
     def handleGraphResult(self, result):
