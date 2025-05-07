@@ -19,8 +19,8 @@ def handle_negative_weights(G: np.ndarray,
 
     Parameters
     ----------
-    G : PxP np.ndarray
-        adjacency/connectivity matrix
+    G : np.ndarray
+        2D (PxP) or 3D (PxPxT) adjacency/connectivity matrix
 
     type : string, optional
         type of handling, can be *absolute* or *discard*
@@ -59,8 +59,8 @@ def threshold(G: np.ndarray,
 
     Parameters
     ----------
-    G : PxP np.ndarray
-        adjacency/connectivity matrix
+    G : np.ndarray
+        2D (PxP) or 3D (PxPxT) adjacency/connectivity matrix
 
     type : string, optional
         type of thresholding, can be *absolute* or *density*
@@ -95,19 +95,30 @@ def threshold(G: np.ndarray,
     if type == "absolute":
         G[G < threshold] = 0
     elif type == "density":
-        if not density >=0 and density <= 1:
-            raise ValueError("Error: Density must be between 0 and 1")
-        if not np.allclose(G, G.T):
-            raise ValueError("Error: Matrix is not symmetrical")
+        if density is None or not (0 <= density <= 1):
+            raise ValueError("Density must be between 0 and 1.")
 
-        G[np.tril_indices(len(G))] = 0 # set lower triangle to zero
-        triu_indices = np.triu_indices_from(G, k=1) # get upper triangle indices
-        sorted_indices = np.argsort(G[triu_indices])[::-1] # sort upper triangle by indices
-        cutoff_idx = int(np.round((len(sorted_indices) * density) + 1e-10)) # find cutoff index, add small constant to round .5 to 1
-        keep_mask = np.zeros_like(G, dtype=bool)
-        keep_mask[triu_indices[0][sorted_indices[:cutoff_idx]], triu_indices[1][sorted_indices[:cutoff_idx]]] = True # set values larger than cutoff to True
-        G[~keep_mask] = 0
-        G = G + G.T # restore symmetry
+        def _threshold(A):
+            if not np.allclose(A, A.T):
+                raise ValueError("Matrix is not symmetrical")
+
+            A = A.copy()
+            A[np.tril_indices(len(A))] = 0
+            triu = np.triu_indices_from(A, k=1)
+            sorted_idx = np.argsort(A[triu])[::-1]
+            cutoff = int(np.round(len(sorted_idx) * density + 1e-10))
+            mask = np.zeros_like(A, dtype=bool)
+            mask[triu[0][sorted_idx[:cutoff]], triu[1][sorted_idx[:cutoff]]] = True
+            A[~mask] = 0
+            A = A + A.T
+            return A
+
+        if G.ndim == 2:
+            return _threshold(G)
+        elif G.ndim == 3:
+            return np.stack([_threshold(G[:, :, t]) for t in range(G.shape[2])], axis=2)
+        else:
+            raise ValueError("G must be a 2D or 3D array.")
     else:
         raise NotImplementedError("Thresholding must be of type *absolute* or *density*")
     return G
@@ -119,8 +130,8 @@ def binarise(G: np.ndarray,
 
     Parameters
     ----------
-    G : PxP np.ndarray
-        adjacency/connectivity matrix
+    G : np.ndarray
+        2D (PxP) or 3D (PxPxT) adjacency/connectivity matrix
 
     copy : bool, optional
         if True, a copy of W is returned, otherwise W is modified in place
@@ -145,8 +156,8 @@ def normalise(G: np.ndarray,
 
     Parameters
     ----------
-    G : PxP np.ndarray
-        adjacency/connectivity matrix
+    G : np.ndarray
+        2D (PxP) or 3D (PxPxT) adjacency/connectivity matrix
 
     copy : bool, optional
         if True, a copy of W is returned, otherwise W is modified in place
@@ -161,10 +172,21 @@ def normalise(G: np.ndarray,
     if copy:
         G = G.copy()
 
-    if not np.max(np.abs(G)) > 0:
-        raise ValueError("Error: Matrix contains only zeros")
+    if G.ndim == 2:
+        max_val = np.max(np.abs(G))
+        if max_val == 0:
+            raise ValueError("Error: Matrix contains only zeros")
+        G /= max_val
 
-    G /= np.max(np.abs(G))
+    elif G.ndim == 3:
+        for t in range(G.shape[2]):
+            max_val = np.max(np.abs(G[:, :, t]))
+            if max_val == 0:
+                raise ValueError(f"Error: Matrix at time index {t} contains only zeros")
+            G[:, :, t] /= max_val
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")
+
     return G
 
 def invert(G: np.ndarray,
@@ -176,8 +198,8 @@ def invert(G: np.ndarray,
 
     Parameters
     ----------
-    G : PxP np.ndarray
-        adjacency/connectivity matrix
+    G : np.ndarray
+        2D (PxP) or 3D (PxPxT) adjacency/connectivity matrix
 
     copy : bool, optional
         if True, a copy of W is returned, otherwise W is modified in place
@@ -192,9 +214,8 @@ def invert(G: np.ndarray,
     if copy:
         G = G.copy()
 
-    G_safe = np.where(G == 0, np.inf, G)
-    G = 1 / G_safe
-    return G
+    G[G == 0] = np.inf
+    return 1 / G
 
 def logtransform(G: np.ndarray,
                  epsilon: float = 1e-10,
@@ -206,8 +227,8 @@ def logtransform(G: np.ndarray,
 
     Parameters
     ----------
-    G : PxP np.ndarray
-        adjacency/connectivity matrix
+    G : np.ndarray
+        2D (PxP) or 3D (PxPxT) adjacency/connectivity matrix
 
     epsilon : float, optional
         clipping value for numeric stability,
@@ -226,11 +247,11 @@ def logtransform(G: np.ndarray,
     if copy:
         G = G.copy()
 
-    if np.logical_or(G > 1, G <= 0).any():
-        raise ValueError("Connections must be between (0,1] to use logtransform")
+    if (G > 1).any() or (G <= 0).any():
+        raise ValueError("All connections must be in the range (0, 1] to apply logtransform.")
+
     G_safe = np.clip(G, a_min=epsilon, a_max=None) # clip very small values for numeric stability
-    G = -np.log(G_safe)
-    return G
+    return -np.log(G_safe)
 
 def symmetrise(G: np.ndarray,
                copy: bool = True) -> np.ndarray:
@@ -241,8 +262,8 @@ def symmetrise(G: np.ndarray,
 
     Parameters
     ----------
-    G : PxP np.ndarray
-        adjacency/connectivity matrix
+    G : np.ndarray
+        2D (PxP) or 3D (PxPxT) adjacency/connectivity matrix
 
     copy : bool, optional
         if True, a copy of W is returned, otherwise W is modified in place
@@ -257,15 +278,19 @@ def symmetrise(G: np.ndarray,
     if copy:
         G = G.copy()
 
-    is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
+    def _symmetrise(A):
+        is_binary = np.all(np.isclose(A, 0) | np.isclose(A, 1))
+        if is_binary:
+            return np.logical_or(A, A.T).astype(float)
+        else:
+            return 0.5 * (A + A.T)
 
-    if is_binary:
-        G = np.logical_or(G, G.T).astype(float)
+    if G.ndim == 2:
+        return _symmetrise(G)
+    elif G.ndim == 3:
+        return np.stack([_symmetrise(G[:, :, t]) for t in range(G.shape[2])], axis=2)
     else:
-        G_mean = (np.triu(G, k=1) + np.tril(G, k=-1)) / 2
-        G = G_mean + G_mean.T + np.diag(np.diag(G))
-
-    return G
+        raise ValueError("Input must be a 2D or 3D array.")
 
 def randomise(G: np.ndarray,
               copy: bool = True) -> np.ndarray:
@@ -276,8 +301,8 @@ def randomise(G: np.ndarray,
 
     Parameters
     ----------
-    G : PxP np.ndarray
-        adjacency/connectivity matrix
+    G : np.ndarray
+        2D (PxP) or 3D (PxPxT) adjacency/connectivity matrix
 
     Returns
     -------
@@ -288,69 +313,76 @@ def randomise(G: np.ndarray,
     if copy:
         G = G.copy()
 
-    num_nodes = G.shape[0]
-    G_rand = np.zeros((num_nodes, num_nodes))
-    mask = np.triu(np.ones((num_nodes, num_nodes)), 1)
+    def _randomise(A):
+        n = A.shape[0]
+        mask = np.triu(np.ones((n, n)), 1).astype(bool)
+        i, j = np.where(mask)
+        edges = A[i, j]
+        np.random.shuffle(edges)
+        A_rand = np.zeros_like(A)
+        A_rand[i, j] = edges
+        A_rand[j, i] = edges  # ensure symmetry
+        np.fill_diagonal(A_rand, np.diag(A))  # preserve diagonal
+        return A_rand
 
-    grab_indices = np.column_stack(np.nonzero(mask.T)) # Find the indices where mask > 0
-
-    orig_edges = G[grab_indices[:, 0], grab_indices[:, 1]]
-    num_edges = len(orig_edges)
-    rand_index = np.random.choice(num_edges, num_edges, replace=False)
-    randomized_edges = orig_edges[rand_index]
-    edge = 0
-    for i in range(num_nodes - 1):
-        for j in range(i + 1, num_nodes):
-            G_rand[i, j] = randomized_edges[edge]
-            G_rand[j, i] = randomized_edges[edge]
-            edge += 1
-
-    return G_rand
+    if G.ndim == 2:
+        return _randomise(G)
+    elif G.ndim == 3:
+        return np.stack([_randomise(G[:, :, t]) for t in range(G.shape[2])], axis=2)
+    else:
+        raise ValueError("Input must be a 2D or 3D array.")
 
 def regular_matrix(G: np.ndarray, r: int) -> np.ndarray:
     '''
-    Create a regular matrix
+    Create a regular matrix.
 
     Adapted from https://github.com/rkdan/small_world_propensity
 
     Parameters
     ----------
-    G : PxP np.ndarray
-        adjacency/connectivity matrix
+    G : np.ndarray
+        2D (PxP) or 3D (PxPxT) adjacency/connectivity matrix.
     r : int
-        average effective radius of the network
+        Average effective radius of the network.
 
     Returns
     -------
-    M : PxP np.ndarray
-        adjacency matric of the regularised matrix
+    M : np.ndarray
+        Regularised adjacency matrix (same shape as input).
     '''
+    def _regularise(G2D, r):
+        n = G2D.shape[0]
+        G_upper = np.triu(G2D)  # Keep only the upper triangular part
+        B = np.sort(G_upper.flatten(order="F"))[::-1]  # Flatten and sort including zeros
 
-    n = G.shape[0]
-    G_upper = np.triu(G)  # Keep only the upper triangular part
-    B = np.sort(G_upper.flatten(order="F"))[::-1]  # Flatten and sort including zeros
+        # Calculate padding and reshape B to match the second function
+        num_els = np.ceil(len(B) / (2 * n))
+        num_zeros = int(2 * n * num_els - n * n)
+        B_extended = np.concatenate((B, np.zeros(num_zeros)))
+        B_matrix = B_extended.reshape((n, -1), order="F")
 
-    # Calculate padding and reshape B to match the second function
-    num_els = np.ceil(len(B) / (2 * n))
-    num_zeros = int(2 * n * num_els - n * n)
-    B_extended = np.concatenate((B, np.zeros(num_zeros)))
-    B_matrix = B_extended.reshape((n, -1), order="F")
-
-    M = np.zeros((n, n))
-    for i in range(n):
-        for z in range(r):
-            a = np.random.randint(0, n)
-            # Adjust the condition for selecting a non-zero weight
-            while (B_matrix[a, z] == 0 and z != r - 1) or \
-                  (B_matrix[a, z] == 0 and z == r - 1 and np.any(B_matrix[:, r - 1] != 0)):
+        M = np.zeros((n, n))
+        for i in range(n):
+            for z in range(r):
                 a = np.random.randint(0, n)
+                # Adjust the condition for selecting a non-zero weight
+                while (B_matrix[a, z] == 0 and z != r - 1) or \
+                      (B_matrix[a, z] == 0 and z == r - 1 and np.any(B_matrix[:, r - 1] != 0)):
+                    a = np.random.randint(0, n)
 
-            y_coord = (i + z + 1) % n
-            M[i, y_coord] = B_matrix[a, z]
-            M[y_coord, i] = B_matrix[a, z]
-            B_matrix[a, z] = 0  # Remove the used weight
+                y_coord = (i + z + 1) % n
+                M[i, y_coord] = B_matrix[a, z]
+                M[y_coord, i] = B_matrix[a, z]
+                B_matrix[a, z] = 0  # Remove the used weight
 
-    return M
+        return M
+
+    if G.ndim == 2:
+        return _regularise(G, r)
+    elif G.ndim == 3:
+        return np.stack([_regularise(G[:, :, t], r) for t in range(G.shape[2])], axis=2)
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")
 
 def postproc(G: np.ndarray,
              diag: float = 0,
@@ -362,8 +394,8 @@ def postproc(G: np.ndarray,
 
     Parameters
     ----------
-    G : PxP np.ndarray
-        adjacency/connectivity matrix
+    G : np.ndarray
+        2D (PxP) or 3D (PxPxT) adjacency/connectivity matrix
 
     diag : int, optional
         set diagonal to this value
@@ -381,13 +413,19 @@ def postproc(G: np.ndarray,
     if copy:
         G = G.copy()
 
-    if not np.allclose(G, G.T):
-        raise ValueError("Error: Matrix is not symmetrical")
+    def _postproc(A):
+        A = np.nan_to_num(A, nan=0.0, posinf=0.0, neginf=0.0)
+        if not np.allclose(A, A.T):
+            raise ValueError("Error: Matrix is not symmetrical")
+        np.fill_diagonal(A, diag)
+        return np.round(A, decimals=6)
 
-    np.fill_diagonal(G, diag)
-    np.nan_to_num(G, nan=0.0, posinf=0.0, neginf=0.0, copy=False)
-    G = np.round(G, decimals=6) # This should ensure exact binarity if floating point inaccuracies occur
-    return G
+    if G.ndim == 2:
+        return _postproc(G)
+    elif G.ndim == 3:
+        return np.stack([_postproc(G[:, :, t]) for t in range(G.shape[2])], axis=2)
+    else:
+        raise ValueError("G must be a 2D or 3D array.")
 
 
 """
