@@ -4187,7 +4187,7 @@ class App(QMainWindow):
 
         # Update self.data.graph_data based on the result
         if output == 'graph_prep':
-            self.data.graph_data = np.asarray(data).T
+            self.data.graph_data = data
             self.plotGraphMatrix()
 
             # Output step and options to textbox, remove unused parameters
@@ -4512,13 +4512,32 @@ class App(QMainWindow):
         self.graphTextbox.clear()
 
         ax = self.graphFigure.add_subplot(111)
-        plot_data = self.data.graph_results[measure]
+        plot_data_full = self.data.graph_results[measure]
+        slider_value = self.graphSlider.value()
 
+        print(plot_data_full)
+
+        # plot_data is the "current" data at each time point
+        if len(plot_data_full.shape) > 0 and not isinstance(plot_data_full, tuple):
+            plot_data = plot_data_full[...,slider_value]
+        else:
+            plot_data = plot_data_full
+            
         # Check type of the graph output data
         if isinstance(plot_data, (np.ndarray, np.float64)):
             if np.ndim(plot_data) == 0:
-                # If graph_out is a single value (0D array)
-                self.graphTextbox.setText(f"{measure}: {plot_data.item()}")
+                self.graphTextbox.setText(f"{measure} (t={slider_value}): {plot_data.item()}")
+                
+                if len(plot_data_full.shape) > 0:
+                    ax.plot(plot_data_full)
+                    ax.scatter(slider_value, plot_data_full[slider_value], s=40, zorder=3)
+                    ax.set_xlabel("t")
+                    ax.set_ylabel(measure)
+                else:
+                    # Single value, plot the logo
+                    self.plotLogo(self.graphFigure)
+                    self.graphCanvas.draw()
+
             elif np.ndim(plot_data) == 1:
                 # For a 1D array, plot a vertical lollipop plot
                 ax.stem(plot_data, linefmt="#19232d", markerfmt='o', basefmt=" ")
@@ -4624,22 +4643,22 @@ class App(QMainWindow):
                 im = ax.plot(plot_data)
                 ax.set_xlabel("t")
                 ax.set_ylabel(measure)
-                self.graphTextbox.setText(f"{measure}: {plot_data[self.graphSlider.value()]}")
+                self.graphTextbox.setText(f"{measure}: {plot_data[slider_value]}")
             elif np.ndim(plot_data[0]) == 1:
                 # For a 1D array, plot a vertical lollipop plot
-                ax.stem(plot_data[self.graphSlider.value()], linefmt="#19232d", markerfmt='o', basefmt=" ")
+                ax.stem(plot_data[slider_value], linefmt="#19232d", markerfmt='o', basefmt=" ")
                 ax.set_xlabel("ROI")
                 ax.set_ylabel(measure)
 
                 # Calculate mean and std, and update the textbox
-                mean_val = np.mean(plot_data[self.graphSlider.value()])
-                std_val = np.std(plot_data[self.graphSlider.value()])
+                mean_val = np.mean(plot_data[slider_value])
+                std_val = np.std(plot_data[slider_value])
                 self.graphTextbox.setText(f"{measure} (mean: {mean_val:.2f}, std: {std_val:.2f})")
 
             elif np.ndim(plot_data[0]) == 2:
                 # For a 2D array, use imshow
-                vmax = np.max(np.abs(plot_data[self.graphSlider.value()]))
-                im = ax.imshow(plot_data[self.graphSlider.value()], cmap='coolwarm', vmin=-vmax, vmax=vmax)
+                vmax = np.max(np.abs(plot_data[slider_value]))
+                im = ax.imshow(plot_data[slider_value], cmap='coolwarm', vmin=-vmax, vmax=vmax)
                 self.graphTextbox.setText(f"{measure}")
                 # Create the colorbar
                 divider = make_axes_locatable(ax)
@@ -4659,8 +4678,6 @@ class App(QMainWindow):
         self.graphFigure.tight_layout()
         self.graphCanvas.draw()
 
-        return
-
     def onGraphResultMeasureSelected(self):
         # Update the graph measure plot based on the selected measure in the dropdown
         self.currentGraphOption = self.graphResultMeasureDropdown.currentText()
@@ -4668,8 +4685,6 @@ class App(QMainWindow):
         if self.currentGraphOption in self.data.graph_results:
             self.plotGraphMeasure(self.currentGraphOption)
         
-        return
-
     def onGraphTabChanged(self):
         self.currentGraphTabIndex = self.graphTabWidget.currentIndex()
         # index 0: Graph matrix plot
@@ -4707,7 +4722,7 @@ class App(QMainWindow):
             self.matrixCanvas.draw()
 
         # Measure plot
-        if self.currentGraphOption:
+        if self.currentGraphOption and len(self.data.graph_results):
             self.plotGraphMeasure(self.currentGraphOption)
 
         total_length = self.data.graph_data.shape[2] if len(self.data.graph_data.shape) == 3 else 0

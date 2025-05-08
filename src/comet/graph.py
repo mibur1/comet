@@ -51,7 +51,7 @@ def handle_negative_weights(G: np.ndarray,
 def threshold(G: np.ndarray,
               type: Literal["density", "absolute"] = "density",
               threshold: float = None,
-              density: float = None,
+              density: float = 0.2,
               copy: bool = True) -> np.ndarray:
     '''
     Thresholding of connectivity/adjacency matrix
@@ -73,7 +73,7 @@ def threshold(G: np.ndarray,
 
     density : float, optional
         density value for density-based thresholding, has to be between 0 and 1 (keep x% of strongest connections)
-        default is None
+        default is 0.2 (20%)
 
     copy : bool, optional
         if True, a copy of W is returned, otherwise W is modified in place
@@ -830,7 +830,6 @@ def small_world_propensity(G: np.ndarray) -> np.ndarray:
     else:
         raise ValueError("Input must be a 2D or 3D matrix.")
 
-@jit(nopython=True)
 def matching_ind_und(G: np.ndarray) -> np.ndarray:
     '''
     Matching index for undirected networks
@@ -870,23 +869,6 @@ def matching_ind_und(G: np.ndarray) -> np.ndarray:
 
     This bug is irrelevant here due to the opimized implementation.
     '''
-    def _matching_ind(G2D):
-        "Compute the matching index for a single 2D adjacency matrix."
-        G2D = (G2D > 0).astype(np.float64) # binarise the adjacency matrix
-        n = G2D.shape[0]
-
-        nei = np.dot(G2D, G2D)
-        deg = np.sum(G2D, axis=1)
-        degsum = deg[:, np.newaxis] + deg
-
-        denominator = np.where((degsum <= 2) & (nei != 1), 1.0, degsum - 2 * G2D)
-        M = np.where(denominator != 0, (nei * 2) / denominator, 0.0)
-
-        for i in range(n):
-            M[i, i] = 0.0
-
-        return M
-
     if G.ndim == 2:
             return _matching_ind(G)
     elif G.ndim == 3:
@@ -998,6 +980,24 @@ def distance_bin(G: np.ndarray, inv: bool = False) -> np.ndarray:
     np.fill_diagonal(D, 0)
 
     return D
+
+@jit(nopython=True)
+def _matching_ind(G2D: np.ndarray) -> np.ndarray:
+    "Compute the matching index for a single 2D adjacency matrix."
+    G2D = (G2D > 0).astype(np.float64) # binarise the adjacency matrix
+    n = G2D.shape[0]
+
+    nei = np.dot(G2D, G2D)
+    deg = np.sum(G2D, axis=1)
+    degsum = deg[:, np.newaxis] + deg
+
+    denominator = np.where((degsum <= 2) & (nei != 1), 1.0, degsum - 2 * G2D)
+    M = np.where(denominator != 0, (nei * 2) / denominator, 0.0)
+
+    for i in range(n):
+        M[i, i] = 0.0
+
+    return M
 
 
 """
