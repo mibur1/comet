@@ -13,6 +13,7 @@ import networkx as nx
 from scipy import stats
 from jinja2 import Template
 from matplotlib import transforms
+from collections import defaultdict
 from matplotlib import pyplot as plt
 from matplotlib import lines as mlines
 from matplotlib import patches as mpatches
@@ -106,48 +107,96 @@ class Multiverse:
         # Generate all unique combinations of forking paths
         keys, values = zip(*forking_paths.items())
 
+        # Order and exclusion rules
+        all_universes = []
+        exclude_rules = config.get("exclude", [])
+        excluded_key_counter = defaultdict(int)
+
         if config.get("order"):
-            all_universes = []
             for order in config["order"]:
                 reordered_values = [forking_paths[key] for key in order]
                 unused_keys = [key for key in keys if key not in order]
 
-                # Generate all unique combinations for the reordered values
-                reordered_universes = list(itertools.product(*reordered_values))
+                for combination in itertools.product(*reordered_values):
+                    universe = list(zip(order, combination)) + [(k, "unused") for k in unused_keys]
 
-                # Format each combination as (key, value) tuples and include None for remaining keys
-                formatted_universes = [
-                    tuple((key, value) for key, value in zip(order, combination)) +
-                    tuple((key, "unused") for key in unused_keys)
-                    for combination in reordered_universes
-                ]
-                all_universes.extend(formatted_universes)
+                    if exclude_rules:
+                        original_keys = set(k for k, _ in universe)
+                        universe = self._apply_exclude_rules(universe, exclude_rules)
+                        new_keys = set(k for k, _ in universe)
+
+                        for k in original_keys - new_keys:
+                            excluded_key_counter[k] += 1
+
+                    all_universes.append(tuple(universe))
         else:
-            # Default behavior: Only provided order
-            all_universes = [
-                tuple((key, value) for key, value in zip(keys, combination))
-                for combination in itertools.product(*values)
-            ]
-                
+            for combination in itertools.product(*values):
+                universe = list(zip(keys, combination))
+
+                if exclude_rules:
+                    original_keys = set(k for k, _ in universe)
+                    universe = self._apply_exclude_rules(universe, exclude_rules)
+                    new_keys = set(k for k, _ in universe)
+
+                    for k in original_keys - new_keys:
+                        excluded_key_counter[k] += 1
+
+                all_universes.append(tuple(universe))
+
+        # Print summary
+        if excluded_key_counter:
+            print("🔧 Exclusion summary")
+            print("--------------------")
+            for key, count in excluded_key_counter.items():
+                print(f"   ❌ Excluded key '{key}' from {count} universes")
+
         # Remove universes that contain invalid paths
         if config.get("invalid_paths"):
-            valid_universes = [combination for combination in all_universes if not self._check_paths(combination, config["invalid_paths"])]
+            valid_universes = []
+            removed_universes = []
+
+            for combination in all_universes:
+                is_invalid, matched_rule = self._check_paths(combination, config["invalid_paths"])
+                if is_invalid:
+                    removed_universes.append((combination, matched_rule))
+                else:
+                    valid_universes.append(combination)
+
+            # Group removed universes by rule
+            rule_to_universes = defaultdict(list)
+            for universe, rule in removed_universes:
+                rule_to_universes[str(rule)].append(dict(universe))
+
+            print(f"   ❌ Removed {len(removed_universes)} out of {len(all_universes)} total universes.")
+
+            for i, (rule, universes) in enumerate(rule_to_universes.items(), 1):
+                print(f"      - Rule {rule} excluded {len(universes)} universes:")
+                for u in universes:
+                    print(f"         {u}")
+                print()
+
         else:
             valid_universes = all_universes
 
         # Create Python scripts for each combination
         for i, combination in enumerate(valid_universes, start=1):            
-            context = {key: self._format_type(value) for key, value in combination}
+            combination_dict = dict(combination)
+
+            # Smart formatting: only format dicts, pass raw types for strings/numbers
+            context = {}
+            for key in forking_paths.keys():
+                val = combination_dict.get(key, None)
+                context[key] = self._format_type(val) if isinstance(val, dict) else val
+
             rendered_content = jinja_template.render(**context)
-            
-            # Convert combination to a dictionary
-            forking_dict = {key: value for key, value in combination}
-            
+
             if config.get("order"):
-                forking_dict_str = f"# Ordering information was provided. The ordered decisions for this universe are:\nforking_paths = {forking_dict}\n\n"
+                forking_dict_str = (
+                    "# Ordering information was provided. The ordered decisions for this universe are:\n"
+                    f"forking_paths = {combination_dict}\n\n"
+                )
                 rendered_content = forking_dict_str + rendered_content
 
-            # Write to Python script
             save_path = os.path.join(self.script_dir, f"universe_{i}.py")
             with open(save_path, "w") as file:
                 file.write(rendered_content)
@@ -726,40 +775,78 @@ class Multiverse:
 
     # Internal methods
     def _check_paths(self, universe_path, invalid_paths):
+        def get_value(x):
+            return x["name"] if isinstance(x, dict) and "name" in x else x
+
+        path_dict = {k: get_value(v) for k, v in universe_path}
+
+        for rule in invalid_paths:
+            if not isinstance(rule, list):
+                continue
+
+            matches = True
+            for condition in rule:
+                if isinstance(condition, dict):
+                    for key, val in condition.items():
+                        if path_dict.get(key) != val:
+                            matches = False
+                            break
+                elif isinstance(condition, str):
+                    if condition not in path_dict:
+                        matches = False
+                        break
+                else:
+                    matches = False
+                    break
+
+            if matches:
+                return True, rule
+
+        return False, None
+
+    def _apply_exclude_rules(self, universe_path, exclude_rules):
         """
-        Internal function: Check if a universe contains a specific path
+        Modify a universe path by removing keys based on exclude rules.
 
         Parameters
         ----------
-        universe_path : list
-            The "decision path" of a universe
+        universe_path : list of (key, value) tuples
 
-        invalid_paths : list
-            List of invalid paths that should be excluded from the multiverse
+        exclude_rules : list of list[dict or str]
+            Rules like [["A"], {"B": "x"}] → if all match, exclude "A" from the universe.
 
         Returns
         -------
-        result : bool
-            Returns True if the universe contains an invalid path, else False
+        filtered_path : list of (key, value) tuples
         """
+        def get_value(v):
+            return v["name"] if isinstance(v, dict) and "name" in v else v
 
-        def get_decision(decision):
-            if isinstance(decision, dict) and "name" in decision:
-                return decision["name"]
-            return decision
+        path_dict = {k: get_value(v) for k, v in universe_path}
+        to_exclude = set()
 
-        # Standardize the universe_path
-        standardized_universe_path = [get_decision(decision) for decision in universe_path]
+        for rule in exclude_rules:
+            matches = True
+            keys_to_remove = []
 
-        for invalid_path in invalid_paths:
-            standardized_invalid_path = [get_decision(decision) for decision in invalid_path]
+            for condition in rule:
+                if isinstance(condition, dict):
+                    for key, val in condition.items():
+                        if path_dict.get(key) != val:
+                            matches = False
+                            break
+                elif isinstance(condition, str):
+                    # This is the key to exclude
+                    keys_to_remove.append(condition)
+                else:
+                    matches = False
+                    break
 
-            # Check if standardized_invalid_path is a subsequence of standardized_universe_path
-            iter_universe = iter(standardized_universe_path)
-            if all(decision in iter_universe for decision in standardized_invalid_path):
-                return True  # Found an invalid path, return
+            if matches:
+                to_exclude.update(keys_to_remove)
 
-        return False
+        # Return a filtered universe without the excluded keys
+        return [(k, v) for k, v in universe_path if k not in to_exclude]
 
     def _create_summary(self, all_universes, keys):
         """
