@@ -1,0 +1,13 @@
+Universe,Decision 1,Value 1,Decision 2,Value 2,Decision 3,Value 3
+Universe_1,dfc_measures,LeiDA,graph_measures,efficiency,,
+Universe_2,dfc_measures,LeiDA,graph_measures,clustering,,
+Universe_3,dfc_measures,LeiDA,graph_measures,efficiency,,
+Universe_4,dfc_measures,LeiDA,graph_measures,clustering,,
+Universe_5,dfc_measures,LeiDA,graph_measures,efficiency,,
+Universe_6,dfc_measures,LeiDA,graph_measures,clustering,,
+Universe_7,dfc_measures,LeiDA,graph_measures,efficiency,,
+Universe_8,dfc_measures,LeiDA,graph_measures,clustering,,
+Universe_9,dfc_measures,Jackknife,window_size,11,graph_measures,efficiency
+Universe_10,dfc_measures,Jackknife,window_size,22,graph_measures,efficiency
+Universe_11,dfc_measures,Jackknife,window_size,33,graph_measures,efficiency
+Universe_12,dfc_measures,Jackknife,window_size,44,graph_measures,efficiency

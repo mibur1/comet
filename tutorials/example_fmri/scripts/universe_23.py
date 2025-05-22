@@ -63,10 +63,10 @@ behaviour = np.asarray(behaviour)
 ####################################################################
 # 4. CALCULATE GRAPH MEASURES (DECISIONS: DENSITY, BINARISATION)
 def compute_graph_measures(t, features, index, density, binarise):
-    W = np.asarray(features[t, :, :]).copy()
-    W = comet.graph.handle_negative_weights(W, type="absolute")
-    W = comet.graph.threshold(W, type="density", density=density)
-    W = comet.graph.postproc(W)
+    G = np.asarray(features[t, :, :]).copy()
+    G = comet.graph.handle_negative_weights(G, type="absolute")
+    G = comet.graph.threshold(G, type="density", density=density)
+    G = comet.graph.postproc(G)
 
     graph_results = comet.graph.efficiency(W, **{'local': True})
 
@@ -85,7 +85,7 @@ features = np.asarray(features)
 labels = behaviour
 
 # Initialize the SVC
-svc = SVC(kernel='linear')
+svc = SVC(kernel=linear)
 
 # Perform 5-fold cross-validation
 accuracy = []
