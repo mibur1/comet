@@ -1289,9 +1289,9 @@ def gateway_coef_sign(G: np.ndarray,
     G : np.ndarray
         2D (NxN) or 3D (NxN x T) undirected signed connection matrix.
 
-    ci : str, optional
-        Community detection method. Default is "louvain".
-        If "louvain", community detection is performed with `bct.community_louvain`.
+    ci : str or array-like
+        Community detection method. If "louvain", uses bct.community_louvain.
+        Otherwise, `ci` itself is treated as an array of community labels.
 
     centrality_type : str, optional
         Method to measure node importance. Options are:
@@ -1309,11 +1309,10 @@ def gateway_coef_sign(G: np.ndarray,
     '''
 
     def _compute_communities(G2D):
-        """Compute communities for a single time slice."""
-        if ci == "louvain":
+        if isinstance(ci, str) and ci.lower() == "louvain":
             communities, _ = bct.community_louvain(G2D)
         else:
-            raise ValueError("Only 'louvain' is supported for now.")
+            communities = np.asarray(ci)
         return communities
 
     if G.ndim == 2:
@@ -1406,9 +1405,9 @@ def participation_coef(G: np.ndarray,
     G : np.ndarray or scipy.sparse.csr_matrix
         2D (NxN) or 3D (NxN x T) binary/weighted directed/undirected connection matrix.
 
-    ci : str, optional
-        Community detection method. Default is "louvain".
-        If "louvain", community detection is performed with `bct.community_louvain`.
+    ci : str or array-like
+        Community detection method. If "louvain", uses bct.community_louvain.
+        Otherwise, `ci` itself is treated as an array of community labels.
 
     degree : str, optional
         Flag to describe nature of graph:
@@ -1426,11 +1425,10 @@ def participation_coef(G: np.ndarray,
     '''
 
     def _compute_communities(G2D):
-        """Compute communities for a single time slice."""
-        if ci == "louvain":
+        if isinstance(ci, str) and ci.lower() == "louvain":
             communities, _ = bct.community_louvain(G2D)
         else:
-            raise ValueError("Only 'louvain' is supported for now.")
+            communities = np.asarray(ci)
         return communities
 
     if G.ndim == 2:
@@ -1472,9 +1470,9 @@ def participation_coef_sign(G: np.ndarray,
     G : np.ndarray
         2D (NxN) or 3D (NxN x T) undirected connection matrix with positive and negative weights.
 
-    ci : str, optional
-        Community detection method. Default is "louvain".
-        If "louvain", community detection is performed with `bct.community_louvain`.
+    ci : str or array-like
+        Community detection method. If "louvain", uses bct.community_louvain.
+        Otherwise, `ci` itself is treated as an array of community labels.
 
     Returns
     -------
@@ -1486,11 +1484,10 @@ def participation_coef_sign(G: np.ndarray,
     '''
 
     def _compute_communities(G2D):
-        """Compute communities for a single time slice."""
-        if ci == "louvain":
+        if isinstance(ci, str) and ci.lower() == "louvain":
             communities, _ = bct.community_louvain(G2D)
         else:
-            raise ValueError("Only 'louvain' is supported for now.")
+            communities = np.asarray(ci)
         return communities
 
     if G.ndim == 2:

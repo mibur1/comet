@@ -15,6 +15,8 @@ from scipy.linalg import eigh, solve, det, inv, pinv
 from scipy.optimize import minimize
 
 from sklearn.metrics import mutual_info_score
+from sklearn.covariance import LedoitWolf
+
 from statsmodels.stats.weightstats import DescrStatsW
 from pycwt import cwt, Morlet
 from hmmlearn import hmm
@@ -894,7 +896,7 @@ class WaveletCoherence(ConnectivityMethod):
             W_list.append(W)
             S_list.append(S)
 
-        y_normal = (self.time_series[:,0] - self.time_series[:,0].mean()) / self.time_series[:,i].std()
+        y_normal = (self.time_series[:,0] - self.time_series[:,0].mean()) / self.time_series[:,0].std()
         _, s1, _, _, _, _ = cwt(y_normal, dt, dj=dj, s0=s0, J=J, wavelet=mother_wavelet)
         scales = np.ones([1, y_normal.size]) * s1[:, None]
 
@@ -1118,7 +1120,7 @@ class DCC(ConnectivityMethod):
         constraints = {'type': 'ineq', 'fun': lambda x: np.array([1 - x[0] - x[1] - x[2], x[0], x[1], x[2]])}
         bounds = ((0, 1), (0, 1), (0, 1))
         theta0 = (0.25, 0.25, 0.25)
-        res = minimize(self._loglikelihood_garch11, theta0, args=(ts_n), constraints=constraints, bounds=bounds)
+        res = minimize(self._loglikelihood_garch11, theta0, args=(ts_n,), constraints=constraints, bounds=bounds)
 
         ep, d = self._rToEpsilon(ts_n, res.x)
         return res.x, ep, d
@@ -1691,6 +1693,8 @@ class Static_Pearson(ConnectivityMethod):
     ----------
     time_series : np.ndarray
         The input time series data.
+    cov_estimator : str, optional
+        Method to estimate covariance. If "LedoitWolf", it uses Ledoit-Wolf shrinkage. Default is None
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
     fisher_z : bool, optional
@@ -1702,10 +1706,12 @@ class Static_Pearson(ConnectivityMethod):
 
     def __init__(self,
                  time_series: np.ndarray,
+                 cov_estimator: Literal[None, "LedoitWolf"] = None,
                  diagonal: int = 0,
                  fisher_z: bool = False,
                  tril: bool = False):
 
+        self.cov_estimator = cov_estimator
         super().__init__(time_series, diagonal, fisher_z, tril)
 
     def estimate(self):
@@ -1717,7 +1723,14 @@ class Static_Pearson(ConnectivityMethod):
         np.ndarray
             Static functional connectivity matrix.
         """
-        fc = np.corrcoef(self.time_series.T)
+        if self.cov_estimator == "LedoitWolf":
+            C = LedoitWolf().fit(self.time_series).covariance_
+        else:
+            C = np.cov(self.time_series.T)
+        
+        D = np.diag(1/np.sqrt(np.diag(C)))
+        fc = D @ C @ D
+    
         fc = self.postproc(fc)
         return fc
 
@@ -1729,6 +1742,8 @@ class Static_Partial(ConnectivityMethod):
     ----------
     time_series : np.ndarray
         The input time series data.
+    cov_estimator : str, optional
+        Method to estimate covariance. If "LedoitWolf", it uses Ledoit-Wolf shrinkage. Default is LedoitWolf.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
     fisher_z : bool, optional
@@ -1740,10 +1755,12 @@ class Static_Partial(ConnectivityMethod):
 
     def __init__(self,
                  time_series: np.ndarray,
+                 cov_estimator: Literal["LedoitWolf", None] = "LedoitWolf",
                  diagonal: int = 0,
                  fisher_z: bool = False,
                  tril: bool = False):
 
+        self.cov_estimator = cov_estimator
         super().__init__(time_series, diagonal, fisher_z, tril)
 
     def estimate(self):
@@ -1755,11 +1772,16 @@ class Static_Partial(ConnectivityMethod):
         np.ndarray
             Static functional connectivity matrix.
         """
-        corr = np.corrcoef(self.time_series.T)
-        precision = pinv(corr)
-        fc = -precision / np.sqrt(np.outer(np.diag(precision), np.diag(precision)))
-        fc = self.postproc(fc)
+        if self.cov_estimator == "LedoitWolf":
+            C = LedoitWolf().fit(self.time_series).covariance_
+        else:
+            C = np.cov(self.time_series.T)
+        
+        P = np.linalg.inv(C)
+        D = np.diag(1/np.sqrt(np.diag(P)))
+        fc = -D @ P @ D
 
+        fc = self.postproc(fc)
         return fc
 
 class Static_Mutual_Info(ConnectivityMethod):
@@ -1779,7 +1801,6 @@ class Static_Mutual_Info(ConnectivityMethod):
     tril : bool, optional
         Whether to return only the lower triangle of the matrices. Default is False.
     """
-
     name = "STATIC Mutual Information"
 
     def __init__(self,
@@ -1819,5 +1840,35 @@ class Static_Mutual_Info(ConnectivityMethod):
                 fc[i, j] = mi
                 fc[j, i] = mi
 
+        fc = self.postproc(fc)
+        return fc
+
+class Static_Covariance(ConnectivityMethod):
+    name = "STATIC Covariance"
+
+    def __init__(self,
+                 time_series: np.ndarray,
+                 cov_estimator: Literal["LedoitWolf", None] = "LedoitWolf",
+                 diagonal: int = 0,
+                 fisher_z: bool = False,
+                 tril: bool = False):
+
+        self.cov_estimator = cov_estimator
+        super().__init__(time_series, diagonal, fisher_z, tril)
+
+    def estimate(self):
+        """
+        Estimate the functional connectivity.
+
+        Returns
+        -------
+        np.ndarray
+            Static functional connectivity matrix.
+        """
+        if self.cov_estimator == "LedoitWolf":
+            fc = LedoitWolf().fit(self.time_series).covariance_
+        else:
+            fc = np.cov(self.time_series.T)
+        
         fc = self.postproc(fc)
         return fc
