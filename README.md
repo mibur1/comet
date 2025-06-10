@@ -37,14 +37,7 @@ or through the scripting API:
 from comet import connectivity, graph, multiverse
 ```
 
-For this, **[demo scripts](https://github.com/mibur1/dfc-multiverse/tree/main/tutorials)** are provided as starting points:
-
-* **[Dynamic functional connectivity (dFC)](tutorials/example_dfc.ipynb)**
-* **[State-based dFC](tutorials/example_state.ipynb)**
-* **[Graph analysis](tutorials/example_graph.ipynb)**
-* **[Multiverse analysis (general introduction)](tutorials/example_multiverse.ipynb)**
-* **[Multiverse analysis example from the preprint](tutorials/example_fmri.ipynb)**
-* **[Multiverse analysis example with simulated EEG data](tutorials/example_eeg.ipynb)**
+For this, **[demo scripts](https://github.com/mibur1/dfc-multiverse/tree/main/tutorials)** are provided as starting points.
 
 ### Current features
 
@@ -132,3 +125,23 @@ For this, **[demo scripts](https://github.com/mibur1/dfc-multiverse/tree/main/tu
         </td>
     </tr>
 </table>
+
+
+### Code structure
+
+```{code}   
+/
+├─ src/comet/         ← primary package
+│  ├─ connectivity.py ← dFC estimation classes
+│  ├─ graph.py        ← graph/network analysis utilities
+│  ├─ multiverse.py   ← manage multiverse runs and visualization
+│  ├─ gui.py          ← PyQt6 GUI application
+│  ├─ utils.py        ← helpers for data loading/cleaning
+│  ├─ cifti.py        ← CIFTI/atlas utilities
+│  └─ bids.py         ← BIDS functions (draft)
+├─ docs/              ← Sphinx documentation sources
+├─ tutorials/         ← example notebooks
+├─ tests/             ← unit tests
+├─ pyproject.toml     ← packaging & dependencies
+└─ README.md          ← project overview
+```
