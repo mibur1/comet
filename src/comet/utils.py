@@ -88,10 +88,10 @@ def load_example(fname="time_series.txt"):
     ----------
     fname : str, optional
         File name for any of the included data
-            - 'time_series.txt':          Parcellated BOLD time series data for one subject
-            - 'time_series_multiple.npy': Parcellated BOLD time series data for 5 subjects
-            - 'simulation.txt':           Simulated time series data from the preprint
-            - 'simulation.pkl':           Simulated time series data from the preprint + parameters
+        - 'time_series.txt':          Parcellated BOLD time series data for one subject
+        - 'time_series_multiple.npy': Parcellated BOLD time series data for 5 subjects
+        - 'simulation.txt':           Simulated time series data from the preprint
+        - 'simulation.pkl':           Simulated time series data from the preprint + parameters
         Default is 'time_series.txt'.
 
     Returns

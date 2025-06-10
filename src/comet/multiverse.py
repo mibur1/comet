@@ -187,7 +187,6 @@ class Multiverse:
             for key in forking_paths.keys():
                 val = combination_dict.get(key, None)
                 context[key] = self._format_type(val) if isinstance(val, dict) else val
-
             rendered_content = jinja_template.render(**context)
 
             if config.get("order"):
@@ -497,7 +496,7 @@ class Multiverse:
 
     def specification_curve(self, measure, baseline=None, p_value=None, ci=None, smooth_ci=True, 
                           title="Specification Curve", name_map=None, cmap="Set3", linewidth=2, figsize=None, 
-                          height_ratio=(2,1), fontsize=10, dotsize=50, ftype="pdf", dpi=300):
+                          height_ratio=(2,1), fontsize=10, dotsize=50, line_pad=0.3, ftype="pdf", dpi=300):
         """
         Create and save a specification curve plot from multiverse results
 
@@ -541,6 +540,9 @@ class Multiverse:
 
         dotsize : int
             Size of the dots. Default is 50
+
+        line_pad : float
+            Padding for the vertical lines on the left side of the plot. Default is 0.3
 
         ftype : string
             File type to save the plot. Default is "png"
@@ -628,7 +630,7 @@ class Multiverse:
         x_start_axes0 = ax[0].transAxes.inverted().transform((x_start_pixel, 0))[0]
         
         min_x_start_axes = min(x_start_axes1, x_start_axes0)
-        padding = -0.3 * min_x_start_axes
+        padding = -line_pad * min_x_start_axes
         line_offset = min_x_start_axes - padding
 
         # Plot the key (decision group) labels on the left
@@ -919,7 +921,6 @@ class Multiverse:
         formatted_value : string
             The formatted value
         """
-    
         if isinstance(value, str):
             return f"'{value}'"  # Strings are wrapped in quotes
         elif isinstance(value, int):
@@ -928,6 +929,8 @@ class Multiverse:
             return str(value)  # Floats are converted directly
         elif isinstance(value, bool):
             return "True" if value else "False" # Booleans are converted to their literal representations
+        elif isinstance(value, list) or isinstance(value, tuple):
+            return value
         elif isinstance(value, dict):
             return self._handle_dict(value) # Dictionaries are handeled in a separate function
         elif isinstance(value, type):
