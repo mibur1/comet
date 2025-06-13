@@ -147,8 +147,7 @@ def save_universe_results(data):
     universe_number = int(match.group(1))
 
     savedir = os.path.join(calling_script_dir, "temp")
-    if not os.path.exists(savedir):
-        os.makedirs(savedir)
+    os.makedirs(savedir, exist_ok=True)
 
     # Save the data as a .pkl file
     file = savedir + f"/universe_{universe_number}.pkl"

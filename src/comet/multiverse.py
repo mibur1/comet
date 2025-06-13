@@ -19,6 +19,8 @@ from matplotlib import lines as mlines
 from matplotlib import patches as mpatches
 from scipy.interpolate import make_interp_spline
 from joblib import Parallel, delayed
+from tqdm.auto import tqdm
+from tqdm_joblib import tqdm_joblib
 
 class Multiverse:
     """
@@ -225,7 +227,9 @@ class Multiverse:
         parallel : int
             Number of universes to run in parallel
         """
-        sorted_files = sorted(os.listdir(self.script_dir))
+        # Get all universe scripts
+        scripts = [f for f in sorted(os.listdir(self.script_dir))
+                     if f.endswith(".py") and not f.startswith("template")]
 
         # Delete previous results (.pkl files)
         for item in os.listdir(self.results_dir):
@@ -235,17 +239,13 @@ class Multiverse:
 
         # Function for parallel processing, called by joblib.delayed
         def execute_script(file):
-            print(f"Running {file}")
             subprocess.run([sys.executable, os.path.join(self.script_dir, file)],
                         check=True, env=os.environ.copy())
-
+        
         if universe is None:
             print("Starting multiverse analysis for all universes...")
-            Parallel(n_jobs=parallel)(
-                delayed(execute_script)(file)
-                for file in sorted_files
-                if file.endswith(".py") and not file.startswith("template")
-            )
+            with tqdm_joblib(total=len(scripts)) as progress:
+                Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in scripts)
         else:
             # Subset of universes was chosen
             if isinstance(universe, int):
@@ -256,15 +256,8 @@ class Multiverse:
                 raise ValueError("universe_number should be None, an int, a list, tuple, or a range.")
 
             print(f"Starting analysis for universe(s): {universe_numbers}...")
-            if parallel > 1:
-                Parallel(n_jobs=parallel)(
-                    delayed(execute_script)(f"universe_{num}.py")
-                    for num in universe_numbers
-                )
-            else:
-                for num in universe_numbers:
-                    file = f"universe_{num}.py"
-                    execute_script(file)
+            with tqdm_joblib(total=len(scripts)) as progress:
+                Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in scripts)
 
         # Save all results in a single dictionary
         self._combine_results()
@@ -772,7 +765,9 @@ class Multiverse:
             ax[0].legend(handles=legend_items, loc='upper left', fontsize=fontsize)
 
         # Save the plot with tight layout to avoid clipping
+        print("HI", self.results_dir)
         plt.savefig(f"{self.results_dir}/specification_curve.{ftype}", bbox_inches='tight', dpi=dpi)
+        sns.reset_orig()
         return fig
 
     # Internal methods

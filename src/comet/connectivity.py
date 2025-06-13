@@ -1694,7 +1694,7 @@ class Static_Pearson(ConnectivityMethod):
     time_series : np.ndarray
         The input time series data.
     cov_estimator : str, optional
-        Method to estimate covariance. If "LedoitWolf", it uses Ledoit-Wolf shrinkage. Default is None
+        Method to estimate covariance. Default is Ledoit-Wolf shrinkage.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
     fisher_z : bool, optional
@@ -1706,7 +1706,7 @@ class Static_Pearson(ConnectivityMethod):
 
     def __init__(self,
                  time_series: np.ndarray,
-                 cov_estimator: Literal[None, "LedoitWolf"] = None,
+                 cov_estimator: Literal[None, "LedoitWolf"] = "LedoitWolf",
                  diagonal: int = 0,
                  fisher_z: bool = False,
                  tril: bool = False):
