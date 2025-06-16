@@ -244,8 +244,13 @@ class Multiverse:
         
         if universe is None:
             print("Starting multiverse analysis for all universes...")
-            with tqdm_joblib(total=len(scripts)) as progress:
-                Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in scripts)
+            
+            if parallel == 1:
+                for file in tqdm(scripts):
+                    execute_script(file)
+            else:
+                with tqdm_joblib(total=len(scripts)) as progress:
+                    Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in scripts)
         else:
             # Subset of universes was chosen
             if isinstance(universe, int):
@@ -254,10 +259,16 @@ class Multiverse:
                 universe_numbers = list(universe)
             else:
                 raise ValueError("universe_number should be None, an int, a list, tuple, or a range.")
-
+            
+            selected_universes = [f for f in scripts if any(f.endswith(f"{u}.py") for u in universe_numbers)]
             print(f"Starting analysis for universe(s): {universe_numbers}...")
-            with tqdm_joblib(total=len(scripts)) as progress:
-                Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in scripts)
+            
+            if parallel == 1:
+                for file in tqdm(selected_universes):
+                    execute_script(file)
+            else:
+                with tqdm_joblib(total=len(scripts)) as progress:
+                    Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in selected_universes)
 
         # Save all results in a single dictionary
         self._combine_results()
@@ -265,14 +276,14 @@ class Multiverse:
         print("The multiverse analysis completed without any errors.")
         return
 
-    def summary(self, universe=range(1,5), print_df=True):
+    def summary(self, universe=None, print_df=True):
         """
         Print the multiverse summary to the terminal/notebook
 
         Parameters
         ----------
-        universe : int or range
-            The universe number(s) to display. Default is range(1,5)
+        universe : int, range, or None
+            The universe number(s) to display. Default is None (prints the head)
         """
 
         multiverse_summary = self._read_summary()
@@ -765,7 +776,6 @@ class Multiverse:
             ax[0].legend(handles=legend_items, loc='upper left', fontsize=fontsize)
 
         # Save the plot with tight layout to avoid clipping
-        print("HI", self.results_dir)
         plt.savefig(f"{self.results_dir}/specification_curve.{ftype}", bbox_inches='tight', dpi=dpi)
         sns.reset_orig()
         return fig
@@ -927,7 +937,7 @@ class Multiverse:
         elif isinstance(value, list) or isinstance(value, tuple):
             return value
         elif isinstance(value, dict):
-            return self._handle_dict(value) # Dictionaries are handeled in a separate function
+            return value["func"] # Function key in the dict is expected to be the function call with args
         elif isinstance(value, type):
             return value.__name__  # If the forking path is a class, we return the name of the class
         elif callable(value):
@@ -937,41 +947,6 @@ class Multiverse:
         else:
             raise TypeError(f"Unsupported type for {value} which is of type {type(value)}")
 
-    def _handle_dict(self, value):
-        """
-        Internal function: Handle the decision points that dicts.
-        These are the decision points which require class/function imports.
-
-        Parameters
-        ----------
-        value : dict
-            The dictionary to be formatted
-
-        Returns
-        -------
-        function_call : string
-            The formatted function call
-        """
-
-        function_call = ""
-
-        func = value["func"]
-        args = value["args"].copy()
-
-        if "Option" in args:
-            del args["Option"]
-
-        first_arg = next(iter(args))
-        input_data = args[first_arg]
-        del args[first_arg]
-
-        if value["func"].startswith("comet.connectivity"):
-            function_call = f"{func}({input_data}, **{args}).estimate()"
-        else:
-            function_call = f"{func}({input_data}, **{args})"
-
-        return function_call
-
     def _combine_results(self):
         """
         Internal function: Combines the results in a single dictionary and saves it as a pickle file
@@ -980,7 +955,7 @@ class Multiverse:
         file_paths = glob.glob(os.path.join(self.script_dir, "temp", "universe_*.pkl"))
         
         if not file_paths:
-            raise ValueError("No results files found. Please run the multiverse analysis first.")
+            return
         
         combined_results = {}
         
