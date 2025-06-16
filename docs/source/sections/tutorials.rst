@@ -1,7 +1,11 @@
 Tutorials
 =========
 
-If you intend to use the toolbox in a standard Python script, tutorials are provided as a starting point:
+The following notebooks provide examples of how to use the Comet library for various analyses.
+
+.. note::
+
+    This section is currently under construction. More tutorials will be added soon.
 
 
 Functional Connectivity
