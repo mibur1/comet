@@ -23,7 +23,7 @@ ts_hp = comet.utils.clean(ts_sim, confounds=None, t_r=0.72, detrend=True, standa
                          high_pass=0.01)                # high pass (for amplitude based methods)
 
 # Estimate dFC
-dfc_ts = comet.connectivity.SlidingWindow(ts_hp, **{'windowsize': 21, 'shape': 'gaussian', 'std': 7}).estimate()
+dfc_ts = 
 
 #######################################
 # 3. SEGMENT DATA (DECISION: DELAY)
@@ -68,7 +68,7 @@ def compute_graph_measures(t, features, index, density, binarise):
     G = comet.graph.threshold(G, type="density", density=density)
     G = comet.graph.postproc(G)
 
-    graph_results = comet.graph.participation_coef(W, **{'ci': 'louvain'})
+    graph_results = 
 
     return graph_results
 

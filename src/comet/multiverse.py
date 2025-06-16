@@ -260,14 +260,14 @@ class Multiverse:
             else:
                 raise ValueError("universe_number should be None, an int, a list, tuple, or a range.")
             
-            selected_universes = [f for f in scripts if any(f.endswith(f"{u}.py") for u in universe_numbers)]
+            selected_universes = [f for f in scripts if any(f.endswith(f"universe_{u}.py") for u in universe_numbers)]
             print(f"Starting analysis for universe(s): {universe_numbers}...")
             
             if parallel == 1:
                 for file in tqdm(selected_universes):
                     execute_script(file)
             else:
-                with tqdm_joblib(total=len(scripts)) as progress:
+                with tqdm_joblib(total=len(selected_universes)) as progress:
                     Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in selected_universes)
 
         # Save all results in a single dictionary
