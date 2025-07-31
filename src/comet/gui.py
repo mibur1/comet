@@ -262,7 +262,6 @@ class ParameterOptions:
         "degrees_und":                  "BCT Degrees",
         "density_und":                  "BCT Density",
         "eigenvector_centrality_und":   "BCT Eigenvector centrality",
-        "gateway_coef_sign":            "BCT Gateway coefficient (sign)",
         "pagerank_centrality":          "BCT Pagerank centrality",
         "participation_coef":           "BCT Participation coef",
         "participation_coef_sign":      "BCT Participation coef (sign)",
@@ -4070,6 +4069,10 @@ class App(QMainWindow):
             self.graphUseSpecificTextbox.setEnabled(False)
 
     def onGraphAmountSelected(self):
+        # Clear previous results
+        self.data.graph_results = {}
+        self.graphResultMeasureDropdown.clear()
+
         # Handle the graph slice selection
         if not isinstance(self.data.graph_raw, np.ndarray):
             return
@@ -4124,8 +4127,9 @@ class App(QMainWindow):
         self.clearAllButton.setEnabled(False)
         self.graphSaveButton.setEnabled(False)
 
-        self.graphFigure.clear()
+        self.plotLogo(self.graphFigure)
         self.graphCanvas.draw()
+        self.update()
 
         self.addOptionButton.setEnabled(True)
         self.currentGraphOption = None
@@ -4442,6 +4446,7 @@ class App(QMainWindow):
     def onClearAllGraphOptions(self):
         self.data.graph_data = self.data.graph_raw
         self.data.graph_results = {}
+        self.graphSlider.setValue(0)
 
         self.plotGraphMatrix()
         self.optionsTextbox.clear()
@@ -4453,7 +4458,6 @@ class App(QMainWindow):
         self.graphResultMeasureDropdown.setPlaceholderText("No graph measure calculated yet")
 
         self.graphAnalysisComboBox.setCurrentIndex(0)
-
 
         self.plotLogo(self.graphFigure)
         self.graphCanvas.draw()
@@ -4505,173 +4509,144 @@ class App(QMainWindow):
         self.matrixFigure.set_facecolor('#f3f1f5')
         self.matrixFigure.tight_layout()
         self.matrixCanvas.draw()
-        
+    
     def plotGraphMeasure(self, measure):
         self.graphFigure.clear()
         self.graphCanvas.draw()
         self.graphTextbox.clear()
 
+        # Clear figure if input data is empty
+        if len(self.data.graph_results) == 0:
+            self.plotLogo(self.graphFigure)
+            self.graphFigure.set_facecolor('#f3f1f5')
+            self.graphFigure.tight_layout()
+            self.graphCanvas.draw()
+            return
+
         ax = self.graphFigure.add_subplot(111)
-        plot_data_full = self.data.graph_results[measure]
+        plot_data = self.data.graph_results[measure]
         slider_value = self.graphSlider.value()
 
-        print(plot_data_full)
-
-        # plot_data is the "current" data at each time point
-        if len(plot_data_full.shape) > 0 and not isinstance(plot_data_full, tuple):
-            plot_data = plot_data_full[...,slider_value]
-        else:
-            plot_data = plot_data_full
-            
-        # Check type of the graph output data
-        if isinstance(plot_data, (np.ndarray, np.float64)):
-            if np.ndim(plot_data) == 0:
-                self.graphTextbox.setText(f"{measure} (t={slider_value}): {plot_data.item()}")
-                
-                if len(plot_data_full.shape) > 0:
-                    ax.plot(plot_data_full)
-                    ax.scatter(slider_value, plot_data_full[slider_value], s=40, zorder=3)
-                    ax.set_xlabel("t")
-                    ax.set_ylabel(measure)
-                else:
-                    # Single value, plot the logo
-                    self.plotLogo(self.graphFigure)
-                    self.graphCanvas.draw()
-
-            elif np.ndim(plot_data) == 1:
-                # For a 1D array, plot a vertical lollipop plot
-                ax.stem(plot_data, linefmt="#19232d", markerfmt='o', basefmt=" ")
-                ax.set_xlabel("ROI")
-                ax.set_ylabel(measure)
-
-                # Calculate mean and std, and update the textbox
-                mean_val = np.mean(plot_data)
-                std_val = np.std(plot_data)
-                self.graphTextbox.setText(f"{measure} (mean: {mean_val:.2f}, std: {std_val:.2f})")
-
-            elif np.ndim(plot_data) == 2:
-                # For a 2D array, use imshow
-                vmax = np.max(np.abs(plot_data))
-                im = ax.imshow(plot_data, cmap='coolwarm', vmin=-vmax, vmax=vmax)
-                self.graphTextbox.setText(f"{measure}")
-
-                # Create the colorbar
-                divider = make_axes_locatable(ax)
-                cax = divider.append_axes("right", size="5%", pad=0.15)
-                self.graphFigure.colorbar(im, cax=cax).ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
-            else:
-                self.graphTextbox.setText("3D graph data not currently supported for plotting.")
-
-        elif isinstance(plot_data, tuple):
-            # Setup data for output
-            output_string = f""
-            output_arrays = []
-
-            data = plot_data[0]
-            label = self.graphAnalysisComboBox.currentText()
-
-            if isinstance(data, (int, float)):
-                output_string += f"{label}: {data:.2f}, "
-                self.plotLogo(self.graphFigure)
-
-            elif isinstance(data, np.ndarray):
-                output_arrays.append((label, data))
-
-            elif isinstance(data, tuple):
-                for i, dat in enumerate(data):
-                    if isinstance(dat, (int, float)):
-                        output_string += f"{label[i]}: {dat:.2f}, "
-                        self.plotLogo(self.graphFigure)
-
-                    elif isinstance(dat, np.ndarray):
-                        output_arrays.append((label[i], dat))
-
-            else:
-                self.graphTextbox.setText("Graph output data is not in expected format.")
-                return
-
-            # Print the output string
-            self.graphTextbox.setText(output_string.strip(', '))  # Remove the trailing comma
-
-            # Plot the output arrays
-            if output_arrays:
-                self.graphFigure.clear()
-                n_subplots = len(output_arrays)
-
-                for i, (key, value) in enumerate(output_arrays):
-                    ax = self.graphFigure.add_subplot(1, n_subplots, i + 1)
-                    vmax = np.max(np.abs(value))
-                    if value.ndim == 1:
-                        # For a 1D vector, plot a vertical lollipop plot
-                        ax.stem(value, linefmt="#19232d", markerfmt='o', basefmt=" ")
-                        ax.set_xlabel("ROI")
-                        ax.set_ylabel(measure)
-
-                        # Calculate mean and std, and update the textbox
-                        mean_val = np.mean(value)
-                        std_val = np.std(value)
-                        self.graphTextbox.setText(f"{measure} (mean: {mean_val:.2f}, variance: {std_val:.2f})")
-
-                    elif value.ndim == 2:
-                        # For a 2D array, use imshow
-                        im = ax.imshow(value, cmap='coolwarm', vmin=-vmax, vmax=vmax)
-
-                        # Create the colorbar
-                        divider = make_axes_locatable(ax)
-                        cax = divider.append_axes("right", size="5%", pad=0.15)
-                        cbar = self.graphFigure.colorbar(im, cax=cax)
-                        cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
-                        self.graphTextbox.setText(f"{measure}")
-
-                    else:
-                        self.graphTextbox.setText("Graph output data is not in expected format.")
-
-                    ax.set_title(label)
-
-        # We have a list if we have multiple graph estimates (dFC or slice)
-        elif isinstance(plot_data, list):
-            
-            if type(plot_data[0]) == tuple:
-                # Graph output is a tuple, we take the first variable
-                plot_data_new = []
-                for estimate in plot_data:
-                    plot_data_new.append(estimate[0])
-                plot_data = plot_data_new
-                
-            if np.ndim(plot_data[0]) == 0:
-                # If graph_out is a single value (0D array)
-                im = ax.plot(plot_data)
+        def single_value_plot(ax, slider_value, measure, data):
+            if isinstance(data, (list, np.ndarray)):
+                ax.plot(data)
+                ax.scatter(slider_value, data[slider_value], s=40, zorder=3)
                 ax.set_xlabel("t")
                 ax.set_ylabel(measure)
-                self.graphTextbox.setText(f"{measure}: {plot_data[slider_value]}")
-            elif np.ndim(plot_data[0]) == 1:
-                # For a 1D array, plot a vertical lollipop plot
-                ax.stem(plot_data[slider_value], linefmt="#19232d", markerfmt='o', basefmt=" ")
-                ax.set_xlabel("ROI")
-                ax.set_ylabel(measure)
-
-                # Calculate mean and std, and update the textbox
-                mean_val = np.mean(plot_data[slider_value])
-                std_val = np.std(plot_data[slider_value])
-                self.graphTextbox.setText(f"{measure} (mean: {mean_val:.2f}, std: {std_val:.2f})")
-
-            elif np.ndim(plot_data[0]) == 2:
-                # For a 2D array, use imshow
-                vmax = np.max(np.abs(plot_data[slider_value]))
-                im = ax.imshow(plot_data[slider_value], cmap='coolwarm', vmin=-vmax, vmax=vmax)
-                self.graphTextbox.setText(f"{measure}")
-                # Create the colorbar
-                divider = make_axes_locatable(ax)
-                cax = divider.append_axes("right", size="5%", pad=0.15)
-                self.graphFigure.colorbar(im, cax=cax).ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
+                self.graphTextbox.setText(f"{measure}: {data[slider_value]}")
             else:
-                self.graphTextbox.setText("3D graph data not currently supported for plotting.")  
+                # Single value, plot the logo
+                self.graphTextbox.setText(f"{measure}: {data}")
+                self.plotLogo(self.graphFigure)
+                self.graphCanvas.draw()
+
+        def lollipop_plot(ax, measure, data):
+            ax.stem(data, linefmt="#19232d", markerfmt='o', basefmt=" ")
+            ax.set_xlabel("ROI")
+            ax.set_ylabel(measure)
+
+            # Calculate mean and std, and update the textbox
+            mean_val = np.mean(data)
+            std_val = np.std(data)
+            self.graphTextbox.setText(f"{measure} (mean: {mean_val:.2f}, std: {std_val:.2f})")
+
+        def matrix_plot(ax, measure, data):
+            vmax = np.max(np.abs(data))
+            im = ax.imshow(data, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+            self.graphTextbox.setText(f"{measure}")
+
+            # Create the colorbar
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.15)
+            self.graphFigure.colorbar(im, cax=cax).ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
+
+        def double_lollipop_plot(ax, measure, data_pos, data_neg):
+
+            ax.stem(data_pos, linefmt="#c34f4f", markerfmt="#c34f4f", basefmt=" ", label="Positive")
+            ax.stem(data_neg, linefmt="#7596e9", markerfmt="#7596e9", basefmt=" ", label="Negative")
+
+            ax.set_xlabel("ROI")
+            ax.set_ylabel(measure)
+            ax.legend()
+
+            mean1, std1 = np.mean(data_pos), np.std(data_pos)
+            mean2, std2 = np.mean(data_neg), np.std(data_neg)
+
+            self.graphTextbox.setText(
+                f"{measure}:\nPositive - mean: {mean1:.2f}, std: {std1:.2f}\n"
+                f"Negative - mean: {mean2:.2f}, std: {std2:.2f}"
+            )
+
+        def double_matrix_plot(ax, measure, data1, data2):
+            vmax = max(np.max(np.abs(data1)), np.max(np.abs(data2)))
+
+            # Two subplots side-by-side
+            self.graphFigure.clear()
+            ax1 = self.graphFigure.add_subplot(1, 2, 1)
+            ax2 = self.graphFigure.add_subplot(1, 2, 2)
+
+            im1 = ax1.imshow(data1, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+            ax1.set_title("Condition 1")
+            im2 = ax2.imshow(data2, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+            ax2.set_title("Condition 2")
+
+            self.graphTextbox.setText(measure)
         
-        elif plot_data == None:
-            pass
+        # Check if we have multiple estimates
+        if np.ndim(self.data.graph_data) == 3:
+            multiple_estimates = True
+        else:
+            multiple_estimates = False
+
+        if measure == "Efficiency":
+            if multiple_estimates and np.ndim(plot_data) == 1:
+                single_value_plot(ax, slider_value, measure, plot_data)
+            elif multiple_estimates and np.ndim(plot_data) == 2:
+                plot_data = plot_data[..., slider_value]
+                lollipop_plot(ax, measure, plot_data)
+            elif not multiple_estimates and np.ndim(plot_data) == 0:
+                single_value_plot(ax, slider_value, measure, plot_data)
+            elif not multiple_estimates and np.ndim(plot_data) == 1:
+                lollipop_plot(ax, measure, plot_data)
+            else:
+                QMessageBox.warning(self, "Warning", "Something went wrong. Please check the input data and try again.")
+
+        elif measure == "Matching index":
+            if multiple_estimates:
+                plot_data = plot_data[...,slider_value]
+            matrix_plot(ax, measure, plot_data)
+
+        elif measure in ("Small world propensity", "Density"):
+            plot_data = plot_data[0]
+            single_value_plot(ax, slider_value, measure, plot_data)
+        
+        elif measure in ("Betweenness centrality", "Eigenvector centrality", "Pagerank centrality", "Participation coef", "Clustering coefficient", "Degrees"):
+            if multiple_estimates:
+                plot_data = plot_data[...,slider_value]
+            lollipop_plot(ax, measure, plot_data)
+
+        elif measure == "Backbone (weighted)":
+            plot_data1 = plot_data[0]
+            plot_data2 = plot_data[1]
+
+            if multiple_estimates:
+                plot_data1 = plot_data1[...,slider_value]
+                plot_data2 = plot_data2[...,slider_value]
+
+            double_matrix_plot(ax, measure, plot_data1, plot_data2)
+
+        elif measure == "Participation coef (sign)":
+            plot_data_pos = plot_data[0]
+            plot_data_neg = plot_data[1]
+  
+            if multiple_estimates:
+                plot_data_pos = plot_data_pos[...,slider_value]
+                plot_data_neg = plot_data_neg[...,slider_value]
+
+            double_lollipop_plot(ax, measure, plot_data_pos, plot_data_neg)
         
         else:
-            self.graphTextbox.append("Graph output data is not in expected format.")
+            QMessageBox.warning(self, "Warning", "No plotting implemented for this measure yet.")
 
         # Draw the plot
         self.graphFigure.set_facecolor('#f3f1f5')
