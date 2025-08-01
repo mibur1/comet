@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      # Optional but helps: cache pip downloads
+      # Cache pip downloads
       - name: Cache pip
         uses: actions/cache@v4
         with:
@@ -25,13 +25,8 @@ jobs:
       - name: Install deps (pinned scientific stack)
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          # Avoid namespace clash with PyPI "comet"
           pip uninstall -y comet comet-ml || true
-          # Pin compatible wheels to avoid ABI issues on runners
-          pip install "numpy==2.0.*" "scipy==1.14.*" "matplotlib==3.9.*" "seaborn==0.13.*"
           pip install teneto coverage
-          # If you have dev requirements, prefer:
-          # pip install -r requirements-dev.txt
           pip install -e .
 
       - name: Run tests with coverage

@@ -79,6 +79,7 @@ def test_distance_wei(data):
     dist_wei_expected = data['dist_wei']
     dist_wei_actual = graph.distance_wei(W_len)
     assert np.array_equal(dist_wei_actual, dist_wei_expected)
+
 def test_distance_bin(data):
     W_bin = data['W_bin']
     dist_bin_expected = data['dist_bin']
