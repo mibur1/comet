@@ -26,6 +26,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip uninstall -y comet comet-ml || true
+          # Force-reinstall to avoid mixing preinstalled wheels
+          pip install --upgrade --force-reinstall "numpy==2.0.*" "scipy==1.14.*"
+          pip install --upgrade --force-reinstall "matplotlib==3.9.*" "seaborn==0.13.*"
           pip install teneto coverage
           pip install -e .
 
