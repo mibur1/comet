@@ -131,17 +131,17 @@ For this, **[demo scripts](https://github.com/mibur1/dfc-multiverse/tree/main/tu
 
 ```{code}   
 /
-├─ src/comet/         ← primary package
-│  ├─ connectivity.py ← dFC estimation classes
-│  ├─ graph.py        ← graph/network analysis utilities
-│  ├─ multiverse.py   ← manage multiverse runs and visualization
-│  ├─ gui.py          ← PyQt6 GUI application
-│  ├─ utils.py        ← helpers for data loading/cleaning
-│  ├─ cifti.py        ← CIFTI/atlas utilities
-│  └─ bids.py         ← BIDS functions (draft)
-├─ docs/              ← Sphinx documentation sources
-├─ tutorials/         ← example notebooks
-├─ tests/             ← unit tests
-├─ pyproject.toml     ← packaging & dependencies
-└─ README.md          ← project overview
+├─ src/comet/         ← Parent directory
+│  ├─ connectivity.py ← Functional connectivity module
+│  ├─ graph.py        ← Graph analysis module
+│  ├─ multiverse.py   ← Multiverse analysis module
+│  ├─ gui.py          ← Graphical user interface
+│  ├─ utils.py        ← Miscellaneous helper functions
+│  ├─ cifti.py        ← CIFTI related functions
+│  └─ bids.py         ← BIDS related functions (placeholder)
+├─ docs/              ← Documentation
+├─ tutorials/         ← Example jupyter notebooks
+├─ tests/             ← Unit tests
+├─ pyproject.toml     ← Packaging & dependencies
+└─ README.md          ← Project overview
 ```
