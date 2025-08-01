@@ -4586,9 +4586,9 @@ class App(QMainWindow):
             ax2 = self.graphFigure.add_subplot(1, 2, 2)
 
             im1 = ax1.imshow(data1, cmap='coolwarm', vmin=-vmax, vmax=vmax)
-            ax1.set_title("Condition 1")
+            ax1.set_title("Minimum spanning tree")
             im2 = ax2.imshow(data2, cmap='coolwarm', vmin=-vmax, vmax=vmax)
-            ax2.set_title("Condition 2")
+            ax2.set_title("Minimum spanning tree\n+ strongest up to avdeg")
 
             self.graphTextbox.setText(measure)
         
