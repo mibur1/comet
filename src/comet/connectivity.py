@@ -765,7 +765,7 @@ class LeiDA(ConnectivityMethod):
         self.N_estimates = self.T
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
         self.flip_eigenvectors = flip_eigenvectors
-        self.V1 = None
+        self.V1 = np.full((self.N_estimates, self.P), np.nan)
 
     def estimate(self):
         """
@@ -793,9 +793,9 @@ class LeiDA(ConnectivityMethod):
                     V1 = -V1
 
             self.R_mat[:, :, n] = np.outer(V1, V1)
+            self.V1[n, :] = V1
 
         self.R_mat = self.postproc(self.R_mat)
-        self.V1 = V1
         return self.R_mat
 
 class WaveletCoherence(ConnectivityMethod):
