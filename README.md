@@ -96,7 +96,7 @@ For this, **[demo scripts](https://github.com/mibur1/dfc-multiverse/tree/main/tu
             </ul>
             <strong>BCT Integration</strong>
             <ul>
-                <li>All BCT functions can be<br>used seamlessly fory<br>multiverse analysis</li>
+                <li>All BCT functions can be<br>used seamlessly for<br>multiverse analysis</li>
                 <li>Many BCT functions are available in the GUI</li>
             </ul>
         </td>
