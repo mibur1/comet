@@ -1,7 +1,7 @@
 import random
 import numpy as np
 from tqdm import tqdm
-from typing import Literal, Union
+from typing import Dict, Any, Literal, Union, Optional
 from abc import ABCMeta, abstractmethod
 
 from joblib import Parallel, delayed
@@ -140,6 +140,110 @@ class ConnectivityMethod(metaclass=ABCMeta):
                 R_mat = R_mat[mask]
 
         return R_mat
+    
+    # Generic state-analysis utilities (used for state-based subclasses)
+    @staticmethod
+    def dwell_times(labels: np.ndarray, K: int) -> np.ndarray:
+        """
+        Calculate the dwell times (fraction of time spent) in each state.
+
+        Parameters
+        ----------
+        labels : (T,) integer array in [0..K-1].
+        K : int
+            Number of states.
+
+        Returns
+        -------
+        (K,) float array
+            Dwell times for each state.
+        """
+        return np.array([(labels == k).sum() / labels.size for k in range(K)], dtype=float)
+
+    @staticmethod
+    def transition_matrix(labels: np.ndarray, K: int) -> np.ndarray:
+        """
+        Row-stochastic transition matrix P(next | current).
+
+        Parameters
+        ----------
+        labels : (T,) integer array in [0..K-1]
+        K : int
+
+        Returns
+        -------
+        (K, K) float array
+            Transition matrix.
+        """
+        # Count the transitions
+        labels = labels.astype(int)
+        a, b = labels[:-1], labels[1:]
+        M = np.zeros((K, K), dtype=float)
+        np.add.at(M, (a, b), 1)
+        
+        # Get row sums and normalize the probabilities
+        row_sums = M.sum(axis=1, keepdims=True)
+        P = np.zeros_like(M)
+        np.divide(M, row_sums, out=P, where=row_sums > 0)
+        return P
+
+    @staticmethod
+    def summarise_states(state_tc: np.ndarray, K: int) -> Dict[str, Any]:
+        """
+        Summarise dwell times & transition matrices across subjects.
+
+        Parameters
+        ----------
+        state_tc : (n_subjects, T) integer array of labels per subject.
+        K : int
+            Number of states.
+
+        Returns
+        -------
+        dict with:
+            'dwell_per_subj' : (S, K)
+            'dwell_mean'     : (K,)
+            'dwell_std'      : (K,)
+            'trans_per_subj' : (S, K, K)
+            'trans_mean'     : (K, K)
+        """
+        state_tc = np.asarray(state_tc)
+        if state_tc.ndim != 2:
+            raise ValueError("state_tc must be a 2D array of shape (n_subjects, T).")
+        
+        S, _ = state_tc.shape
+        dwell = np.zeros((S, K), dtype=float)
+        trans = np.zeros((S, K, K), dtype=float)
+        
+        for s in range(S):
+            stc = state_tc[s]
+            dwell[s] = ConnectivityMethod.dwell_times(stc, K)
+            trans[s] = ConnectivityMethod.transition_matrix(stc, K)
+        
+        return {
+            "dwell_per_subj": dwell,
+            "dwell_mean": dwell.mean(axis=0),
+            "dwell_std": dwell.std(axis=0),
+            "trans_per_subj": trans,
+            "trans_mean": trans.mean(axis=0),
+        }
+
+    def summarise(self) -> Dict[str, Any]:
+        """
+        Instance-friendly wrapper that uses attributes set by subclasses.
+
+        Works for subclasses that define BOTH:
+            self.state_tc : (n_subjects, T) integer labels
+            self.states   : (P, P, K) connectivity patterns
+
+        Returns
+        -------
+        dict as defined in ConnectivityMethod.summarise_states()
+        """
+        if not hasattr(self, "state_tc") or not hasattr(self, "states"):
+            raise AttributeError("Use a state-producing method and/or call .estimate() first.")
+        K = int(self.states.shape[-1])
+        return ConnectivityMethod.summarise_states(self.state_tc, K)
 
 
 """
