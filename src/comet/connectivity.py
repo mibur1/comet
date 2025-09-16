@@ -657,6 +657,7 @@ class FlexibleLeastSquares(ConnectivityMethod):
                  standardizeData: bool = True,
                  mu: float = 100,
                  num_cores: int = 16,
+                 progress_bar: bool = True,
                  diagonal: int = 0,
                  fisher_z: bool = False,
                  tril: bool = False):
@@ -667,6 +668,7 @@ class FlexibleLeastSquares(ConnectivityMethod):
         self.standardizeData = standardizeData
         self.mu = mu
         self.num_cores = num_cores
+        self.progress_bar = progress_bar
 
     def _calculateBetas(self, X, y):
         """
@@ -749,15 +751,13 @@ class FlexibleLeastSquares(ConnectivityMethod):
         beta = np.zeros((P,P,T))
 
         # FLS beta estimation
-        results = Parallel(n_jobs=self.num_cores)(delayed(self._calculateBetasForPair)(i) for i in tqdm(range(self.P)))
+        results = Parallel(n_jobs=self.num_cores)(delayed(self._calculateBetasForPair)(i) for i in tqdm(range(self.P), disable=not self.progress_bar, desc="FLS", dynamic_ncols=True))
 
         for i, beta_i in results:
             beta[i, :, :] = beta_i
 
         # Symmetrize and return the resulting 3D array
-        for i in range(T):
-            beta[:, :, i] = (beta[:, :, i] + beta[:, :, i].T) / 2
-
+        beta = 0.5 * (beta + beta.transpose(1, 0, 2))
         beta = self.postproc(beta)
 
         return beta
@@ -799,27 +799,26 @@ class PhaseSynchrony(ConnectivityMethod):
         self.method = method
 
     def estimate(self):
-        """
-        Calculate instantaneous phase synchrony.
-        CARE: Hilbert transform needs narrowband signal to produce meaningful results.
+        analytic = hilbert(self.time_series, axis=0)
+        phi = np.angle(np.asarray(analytic))                 # (N, P)
+        N, P = phi.shape
 
-        Returns
-        -------
-        np.ndarray
-            Dynamic functional connectivity as a PxPxN array.
-        """
-        analytic_signal = hilbert(self.time_series.transpose())
-        instantaneous_phase = np.angle(analytic_signal)
+        # All pairwise phase diffs for all times in one shot: (N, P, P)
+        dphi = phi[:, :, None] - phi[:, None, :]
 
-        ips = np.full((self.P,self.P, self.N_estimates), np.nan)
-        for i in range(self.P):
-            for j in range(self.P):
-                if self.method == "crp":
-                    ips[i, j, :] = np.cos(instantaneous_phase[i] - instantaneous_phase[j]) # cosine of the relative phase
-                if self.method == "phcoh":
-                    ips[i, j, :] = 1 - np.abs(np.sin(instantaneous_phase[i] - instantaneous_phase[j])) # phase coherence
-                if self.method == "teneto":
-                    ips[i, j, :] = 1 - np.sin(np.abs(instantaneous_phase[i] - instantaneous_phase[j])/2) # teneto implementation
+        if self.method == "crp":
+            M = np.cos(dphi)                                  # (N, P, P)
+        elif self.method == "phcoh":
+            M = 1 - np.abs(np.sin(dphi))
+        elif self.method == "teneto":
+            M = 1 - np.sin(np.abs(dphi) / 2)
+        else:
+            raise ValueError(f"Unknown estimation method: {self.method}")
+
+        ips = np.moveaxis(M, 0, 2)                            # -> (P, P, N)
+
+        # Enforce symmetry (in case of tiny fp asymmetries)
+        ips = 0.5 * (ips + ips.transpose(1, 0, 2))
 
         self.R_mat = self.postproc(ips)
         return self.R_mat
@@ -882,8 +881,8 @@ class LeiDA(ConnectivityMethod):
         np.ndarray
             Leading eigenvectors.
         """
-        # Compute BOLD phases using Hilbert Transform
-        instantaneous_phase = np.angle(hilbert(self.time_series.transpose())).transpose()
+        analytic_signal = hilbert(self.time_series, axis=0)
+        instantaneous_phase = np.angle(np.asarray(analytic_signal))
 
         # Compute the leading eigenvector for each time point
         for n in range(self.N_estimates):
@@ -948,6 +947,7 @@ class WaveletCoherence(ConnectivityMethod):
                  n_scales: int = 15,
                  drop_scales: int = 2,
                  drop_timepoints: int = 50,
+                 progress_bar: bool = True,
                  diagonal: int = 0,
                  fisher_z: bool = False,
                  tril: bool = False):
@@ -963,6 +963,7 @@ class WaveletCoherence(ConnectivityMethod):
         self.n_scales = n_scales
         self.drop_scales = drop_scales
         self.drop_timepoints = drop_timepoints
+        self.progress_bar = progress_bar
         self.iwc = None
 
     def estimate(self):
@@ -1004,31 +1005,32 @@ class WaveletCoherence(ConnectivityMethod):
         _, s1, _, _, _, _ = cwt(y_normal, dt, dj=dj, s0=s0, J=J, wavelet=mother_wavelet)
         scales = np.ones([1, y_normal.size]) * s1[:, None]
 
-        for i in tqdm(range(P)):
-            for j in range(i, P):
-                W1 = W_list[i]
-                W2 = W_list[j]
-                S1 = S_list[i]
-                S2 = S_list[j]
+        total_pairs = P * (P + 1) // 2
+        pair_iter = ((i, j) for i in range(P) for j in range(i, P))
+        for i, j in tqdm(pair_iter, total=total_pairs, disable=not self.progress_bar, desc="Wavelet coherence", dynamic_ncols=True):
+            W1 = W_list[i]; W2 = W_list[j]
+            S1 = S_list[i]; S2 = S_list[j]
 
-                # Calculate wavelet coherence
-                W12 = W1 * np.conj(W2)
-                S12 = mother_wavelet.smooth(W12 / scales, dt, dj, s1)
-                WCT = np.abs(S12) ** 2 / (S1 * S2)
-                iwc[i,j,:,:] = WCT
-                iwc[j,i,:,:] = WCT
+            # Calculate wavelet coherence
+            W12 = W1 * np.conj(W2)
+            S12 = mother_wavelet.smooth(W12 / scales, dt, dj, s1)
+            WCT = np.abs(S12) ** 2 / (S1 * S2)
+            iwc[i, j, :, :] = WCT
+            iwc[j, i, :, :] = WCT
 
-                if self.method == "weighted":
-                    # Calculate DFC as weighted average using cross wavelet power
-                    CWP = np.abs(W1 * np.conj(W2)) # cross wavelet power
-                    CWP = CWP[self.drop_scales:-self.drop_scales, self.drop_timepoints:-self.drop_timepoints] # drop outer scales and outer time points
-                    WCT = WCT[self.drop_scales:-self.drop_scales, self.drop_timepoints:-self.drop_timepoints] # drop outer scales and outer time points
-                    cross_power = CWP / np.sum(CWP, axis=0) # normalize
+            if self.method == "weighted":
+                CWP = np.abs(W1 * np.conj(W2))
+                CWP = CWP[self.drop_scales:-self.drop_scales,
+                        self.drop_timepoints:-self.drop_timepoints]
+                WCT2 = WCT[self.drop_scales:-self.drop_scales,
+                        self.drop_timepoints:-self.drop_timepoints]
+                cross_power = CWP / np.sum(CWP, axis=0)
 
-                    dfc[i, j, self.drop_timepoints:-self.drop_timepoints] = 1 - (cross_power * WCT).sum(axis=0) # dfc as in eq. 1
-                    dfc[j, i, self.drop_timepoints:-self.drop_timepoints] = 1 - (cross_power * WCT).sum(axis=0) # dfc as in eq. 1
-                else:
-                    raise NotImplementedError("Other methods not yet implemented")
+                vals = 1 - (cross_power * WCT2).sum(axis=0)
+                dfc[i, j, self.drop_timepoints:-self.drop_timepoints] = vals
+                dfc[j, i, self.drop_timepoints:-self.drop_timepoints] = vals
+            else:
+                raise NotImplementedError("Other methods not yet implemented")
 
         # Get rid of empty time points
         dfc = dfc[:,:, self.drop_timepoints:-self.drop_timepoints]
@@ -1068,6 +1070,7 @@ class DCC(ConnectivityMethod):
                  time_series: np.ndarray,
                  num_cores: int = 16,
                  standardizeData: bool = True,
+                 progress_bar: bool = True,
                  diagonal: int = 0,
                  fisher_z: bool = False,
                  tril: bool = False):
@@ -1077,6 +1080,7 @@ class DCC(ConnectivityMethod):
         self.N_estimates = self.T
         self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
         self.standardizeData = standardizeData
+        self.progress_bar = progress_bar
         self.num_cores = num_cores
 
         self.H = None # dynamic conditional covariance tensor
@@ -1256,7 +1260,7 @@ class DCC(ConnectivityMethod):
         D = np.zeros_like(ts)
 
         # Fit a univariate GARCH process for each n
-        results = Parallel(n_jobs=self.num_cores)(delayed(self._compute_garch)(n) for n in tqdm(range(N)))
+        results = Parallel(n_jobs=self.num_cores)(delayed(self._compute_garch)(n) for n in tqdm(range(N), disable=not self.progress_bar, desc="DCC GARCH", dynamic_ncols=True))
 
         for n, (theta, ep, d) in enumerate(results):
             Theta[n, :] = theta
@@ -1284,7 +1288,7 @@ class DCC(ConnectivityMethod):
         R = self._epsilonToR(epsilon, X)
 
         # Time-varying conditional covariance matrices
-        for t in tqdm(range(T)):
+        for t in tqdm(range(T),  disable=not self.progress_bar, desc="Conditional covariance matrices", dynamic_ncols=True):
             H[:,:,t] = np.diag(np.sqrt(D[t,:])) @ R[:,:,t] @ np.diag(np.sqrt(D[t,:]))
 
         R = self.postproc(R)
@@ -1405,7 +1409,8 @@ class SlidingWindowClustering(ConnectivityMethod):
                  windowsize: int = 29,
                  shape: Literal["rectangular", "gaussian", "hamming"] = "gaussian",
                  std: float = 10,
-                 stepsize: int = 15):
+                 stepsize: int = 15,
+                 progress_bar: bool = True):
 
         super().__init__(time_series, 0, False, False)
         self.n_states = n_states
@@ -1413,6 +1418,7 @@ class SlidingWindowClustering(ConnectivityMethod):
         self.shape = shape
         self.std = std
         self.stepsize = stepsize
+        self.progress_bar = progress_bar
         self.subject_clusters = subject_clusters
         self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1
 
@@ -1449,7 +1455,7 @@ class SlidingWindowClustering(ConnectivityMethod):
         FCS_1st_level = None
         SW_dFC = None
 
-        for i in tqdm(range(self.n_subjects)):
+        for i in tqdm(range(self.n_subjects), disable=not self.progress_bar, desc="Sliding Window Clustering", dynamic_ncols=True):
             # Sliding window
             subject_ts = self.time_series3D[i, :, :]
             sw = SlidingWindow(time_series=subject_ts, windowsize=self.windowsize, stepsize=self.stepsize, shape=self.shape, std=self.std, diagonal=1)
@@ -1532,17 +1538,15 @@ class KSVD(ConnectivityMethod):
         """
         # Estimate states
         aksvd = ApproximateKSVD(n_components=self.n_states, transform_n_nonzero_coefs=1)
-        dictionary = aksvd.fit(self.time_series).components_
+        dictionary = np.asarray(aksvd.fit(self.time_series).components_)
         gamma = aksvd.transform(self.time_series)
 
-        # State array
-        for i in range(self.n_states):
-            self.states[:,:,i] = np.multiply(np.expand_dims(dictionary[i,:], axis=0).T, np.expand_dims(dictionary[i,:], axis=0))
-        
-        # State time course
-        for i in range(self.N_estimates):
-            self.state_tc[i] = np.argwhere(gamma[i, :] != 0)[0,0]
-        self.state_tc = self.state_tc.reshape(self.n_subjects, self.T)
+        # Build state matrices: v_k v_k^T for each atom k (P x P x K)
+        self.states = np.einsum('kp,kq->pqk', dictionary, dictionary)
+
+        # Assign each time sample to a state and reshape to (n_subjects, T)
+        idx = np.argmax(np.abs(gamma), axis=1)  # (N,)
+        self.state_tc = idx.reshape(self.n_subjects, self.T)
 
         return self.state_tc, self.states
 
@@ -1570,13 +1574,15 @@ class CoactivationPatterns(ConnectivityMethod):
     def __init__(self,
                  time_series: Union[np.ndarray, list],
                  n_states: int = 5,
-                 subject_clusters: int = 5):
+                 subject_clusters: int = 5,
+                 progress_bar: bool = True):
 
         super().__init__(time_series, 0, False, False)
         
         self.N_estimates = self.T * time_series.shape[-1] if isinstance(time_series, np.ndarray) else self.T * len(time_series)
         self.n_states = n_states
         self.subject_clusters = subject_clusters
+        self.progress_bar = progress_bar
        
     def cluster_ts(self, act, n_clusters):
         kmeans = KMeans(n_clusters=n_clusters, n_init=500).fit(act)
@@ -1596,7 +1602,7 @@ class CoactivationPatterns(ConnectivityMethod):
             Connectivity states (P x P x n_states)
         """
         center_1st_level = None
-        for subject in tqdm(range(self.n_subjects)):
+        for subject in tqdm(range(self.n_subjects), disable=not self.progress_bar, desc="CAP", dynamic_ncols=True):
             ts = self.time_series3D[subject, :,:]
 
             if ts.shape[0] < self.subject_clusters:
@@ -1645,13 +1651,15 @@ class ContinuousHMM(ConnectivityMethod):
     def __init__(self,
                  time_series: Union[np.ndarray, list],
                  n_states: int = 5,
-                 hmm_iter: int = 20):
+                 hmm_iter: int = 20,
+                 progress_bar: bool = True):
 
         super().__init__(time_series, 0, False, False)
 
         self.N_estimates = self.T * time_series.shape[-1] if isinstance(time_series, np.ndarray) else self.T * len(time_series)
         self.n_states = n_states
         self.hmm_iter = hmm_iter
+        self.progress_bar = progress_bar
 
     def estimate(self):
         """
@@ -1665,7 +1673,7 @@ class ContinuousHMM(ConnectivityMethod):
             Connectivity states (P x P x n_states)
         """
         models, scores = [], []
-        for _ in tqdm(range(self.hmm_iter)):
+        for _ in tqdm(range(self.hmm_iter), disable=not self.progress_bar, desc="Continuous HMM", dynamic_ncols=True):
             model = hmm.GaussianHMM(n_components=self.n_states, covariance_type="full")
             model.fit(self.time_series)
             models.append(model)
@@ -1724,7 +1732,8 @@ class DiscreteHMM(ConnectivityMethod):
                  shape: Literal["rectangular", "gaussian", "hamming"] = "gaussian",
                  std: float = 10,
                  stepsize: int = 15,
-                 hmm_iter: int = 20):
+                 hmm_iter: int = 20,
+                 progress_bar: bool = True):
 
         super().__init__(time_series, 0, False, False)
         self.time_series = self.time_series3D
@@ -1736,6 +1745,7 @@ class DiscreteHMM(ConnectivityMethod):
         self.std = std
         self.stepsize = stepsize
         self.hmm_iter = hmm_iter
+        self.progress_bar = progress_bar
         self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1
 
     def estimate(self):
@@ -1764,7 +1774,7 @@ class DiscreteHMM(ConnectivityMethod):
 
         # Fit the categorical HMM
         models, scores = [], []
-        for i in tqdm(range(self.hmm_iter)):
+        for i in tqdm(range(self.hmm_iter), disable=not self.progress_bar, desc="Discrete HMM", dynamic_ncols=True):
             model = hmm.CategoricalHMM(n_components=self.n_states)
             model.fit(state_tc)
             models.append(model)
