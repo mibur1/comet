@@ -5,6 +5,10 @@ import scipy.sparse
 from numba import jit
 from typing import Literal
 
+# Ignore warnings from bctpy about NaNs in centrality calculations
+warnings.filterwarnings("ignore", message=r"invalid value encountered in divide",
+                        category=RuntimeWarning, module=r".*bct\.algorithms\.centrality")
+
 """
 SECTION: Graph processing functions
  - General functions to preprocess connectivity/adjacency matrices
