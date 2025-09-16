@@ -1,11 +1,10 @@
 import comet
 import numpy as np
-from tqdm import tqdm
 from sklearn.svm import SVC
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import accuracy_score
 from joblib import Parallel, delayed
-
+    
 #####################################
 # 1. LOAD DATA AND EXTRACT PARAMETERS
 data_sim = comet.utils.load_example("simulation.pkl")
@@ -23,7 +22,7 @@ ts_hp = comet.utils.clean(ts_sim, confounds=None, t_r=0.72, detrend=True, standa
                          high_pass=0.01)                # high pass (for amplitude based methods)
 
 # Estimate dFC
-dfc_ts = 
+dfc_ts = comet.connectivity.SpatialDistance(time_series=ts_hp, dist='euclidean').estimate()
 
 #######################################
 # 3. SEGMENT DATA (DECISION: DELAY)
@@ -68,11 +67,11 @@ def compute_graph_measures(t, features, index, density, binarise):
     G = comet.graph.threshold(G, type="density", density=density)
     G = comet.graph.postproc(G)
 
-    graph_results = 
+    graph_results = comet.graph.clustering_coef(G)
 
     return graph_results
 
-graph_results = Parallel(n_jobs=4)(delayed(compute_graph_measures)(t, features, index, 0.5, True) for t in tqdm(range(features.shape[0])))
+graph_results = Parallel(n_jobs=4)(delayed(compute_graph_measures)(t, features, index, 0.5, True) for t in range(features.shape[0]))
 
 # Unpack the results
 features = []
@@ -85,7 +84,7 @@ features = np.asarray(features)
 labels = behaviour
 
 # Initialize the SVC
-svc = SVC(kernel=rbf)
+svc = SVC(kernel='rbf')
 
 # Perform 5-fold cross-validation
 accuracy = []
