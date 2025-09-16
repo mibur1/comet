@@ -694,12 +694,8 @@ class App(QMainWindow):
         centralWidget.setLayout(topLayout)
         self.setCentralWidget(centralWidget)
 
-        # Ignore specific warning from bctpy
-        warnings.filterwarnings(
-            "ignore",
-            category=SyntaxWarning,
-            module=r"^bct\.algorithms\.modularity$"
-        )
+        # Ignore irrelevant syntax warning from bctpy
+        warnings.filterwarnings("ignore", category=SyntaxWarning, module=r"^bct\.algorithms\.modularity$")
 
         return
 

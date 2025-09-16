@@ -1,7 +1,13 @@
 import pytest
 import numpy as np
+
 from comet import connectivity
 import teneto
+import pydfc
+from pydfc.data_loader import TIME_SERIES
+from pydfc.dfc_methods import WINDOWLESS
+
+np.random.seed(0)
 
 # Fixture to load data once for all tests
 @pytest.fixture(scope="module")
@@ -71,3 +77,23 @@ def test_EdgeTimeSeries(ts):
     dfc_comet = connectivity.EdgeTimeSeries(ts).estimate()[0,1,:]
     dfc_teneto =
     assert np.allclose(dfc_comet, dfc_teneto, atol=1e-6)"""
+
+def test_KSVD(ts):
+
+    ts= 
+    state_tc, states = connectivity.KSVD(ts, n_states=5).estimate()
+    
+
+    locs = np.zeros((ts.shape[0], 3))
+    labels = list(np.zeros(ts.shape[0])) if labels is None else labels
+
+    dataobj = TIME_SERIES(data=ts, subj_id=["0"], Fs=1/tr, locs=locs, node_labels=labels)
+    
+    windowless = WINDOWLESS(n_states=5, random_state=0)
+    windowless_obj = windowless.estimate_dFC(time_series=dataobj.get_subj_ts(subjs_id=["0"])) 
+
+    # Extract dFC information
+    dfc_data = np.transpose(windowless.get_dFC_mat(), (1, 2, 0))  # 3D dFC matrix (roi x roi x state_estimates)
+    dfc_states = dfc_obj.FCSs_                                 # Dict with state matrices. Keys: "FCS1", FC2S", etc.
+    dfc_state_tc = dfc_obj.state_TC()                          # State time courses
+
