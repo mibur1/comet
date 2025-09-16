@@ -8,6 +8,7 @@ import json
 import mat73
 import pickle
 import inspect
+import warnings
 import numpy as np
 import pandas as pd
 import importlib_resources
@@ -692,6 +693,13 @@ class App(QMainWindow):
         centralWidget = QWidget()
         centralWidget.setLayout(topLayout)
         self.setCentralWidget(centralWidget)
+
+        # Ignore specific warning from bctpy
+        warnings.filterwarnings(
+            "ignore",
+            category=SyntaxWarning,
+            module=r"^bct\.algorithms\.modularity$"
+        )
 
         return
 
