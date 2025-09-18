@@ -11,19 +11,32 @@ The following notebooks provide examples of how to use the Comet library for var
 Functional Connectivity
 -----------------------
 
-* :doc:`notebooks/example_dfc`
-* :doc:`notebooks/example_state`
+* :doc:`notebooks/example_dfc_cont`
+* :doc:`notebooks/example_dfc_state`
 
 Graph Analysis
 --------------
 
-* :doc:`notebooks/example_graph`
-
+* :doc:`notebooks/example_graph_eff`
 
 Multiverse Analysis
 -------------------
 
-* :doc:`notebooks/example_multiverse`
-* :doc:`notebooks/example_fmri`
-* :doc:`notebooks/example_eeg`
-* :doc:`notebooks/example_multiverse_advanced`
+Toolbox Features
+""""""""""""""""
+
+* :doc:`notebooks/example_mv_basics`
+* :doc:`notebooks/example_mv_structure`
+* :doc:`notebooks/example_mv_recipes`
+
+Applications
+""""""""""""
+
+* :doc:`notebooks/example_mv_abide`
+* :doc:`notebooks/example_mv_fmri_sim`
+* :doc:`notebooks/example_mv_eeg_sim`
+
+Graphical User Interface
+------------------------
+
+* :doc:`notebooks/example_gui`
