@@ -1,9 +1,11 @@
 # Custom files and folders
 testing_stuff/
+tutorials/abide_data/
 universe_*.py
 .conda/
-# Never add the src/comet/data folder here, as this will 
-# prevent it from being included in the build
+
+# NOTE: Never add the src/comet/data folder here, 
+# as this will prevent it from being included in the build...
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
