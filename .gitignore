@@ -1,6 +1,12 @@
 # Custom files and folders
 testing_stuff/
+tutorials/MATLAB/
+
 tutorials/abide_data/
+tutorials/adhd/
+tutorials/ds004489/
+tutorials/README.md
+
 universe_*.py
 .conda/
 

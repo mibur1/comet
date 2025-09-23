@@ -114,11 +114,21 @@ def load_example(fname="time_series.txt"):
 
     return data
 
-def load_testdata():
+def load_testdata(data=None):
     """
     Load test data for unit tests.
     """
-    fname = "network_measures.mat"
+    if data == "data":
+        pass
+    elif data == "connectivity":
+        fname = "testdata_connectivity.mat"
+    elif data == "graph":
+        fname = "testdata_graph.mat"
+    elif data == "multiverse":
+        pass
+    else:
+        raise ValueError("Valid test names are: 'graph', 'connectivity', 'multiverse', or 'data'.")
+    
     with importlib_resources.path("comet.data", fname) as file_path:
         data = loadmat(file_path)
     return data

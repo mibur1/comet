@@ -655,10 +655,13 @@ class Multiverse:
         ci_upper_values = []
         x_values = np.arange(len(sorted_universes))
 
-        # Warn if few samples are available for t-test and CI
+        # Warn if few samples are available for the CI
         result, decisions = sorted_universes[0]
         if hasattr(result, '__len__') and len(result) < 30:
-            print(f"Warning: Only {len(result)} samples were available for the t-test and CI.")
+            if ci is not None:
+                print(f"Warning: Only {len(result)} samples were available for the CI.")
+            if p_value is not None:
+                print(f"Warning: Only {len(result)} samples were available for the t-tests.")
 
         # Plot dots and confidence intervals for each universe in the top panel,
         # and the forking path markers in the bottom panel.
