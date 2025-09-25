@@ -5062,33 +5062,40 @@ class App(QMainWindow):
         functionComboBox = decisionWidget.findChild(QComboBox, "functionComboBox")
         collapseButton = decisionWidget.findChild(QPushButton, "collapseButton")
         
-        # If there are no options, nothing to do.
         if not options:
             QMessageBox.warning(self, "Warning", "No options provided.")
             return
-        
+
         decisionNameInput.setText(decisionName)
-        # Use the last option to set
+
         last_option = options[-1]
-        func_name = last_option['func'].split('.')[-1]
-        
+        func_str = last_option.get('func', '')
+
+        # Extract the callable/class name right after the known prefixes, ignoring any arguments or chained calls like ".estimate()".
+        m = re.search(r'(?:comet\.connectivity|comet\.graph|bct)\.([A-Za-z_][A-Za-z0-9_]*)', func_str)
+        if m:
+            func_name = m.group(1)
+        else:
+            # Fallback: strip trailing call syntax if present
+            func_name = func_str.split('.')[-1].split('(')[0]
+
         if type == "FC":
-            comboboxItem = self.connectivityMethods.get(func_name, None)
+            comboboxItem = self.connectivityMethods.get(func_name)
         elif type == "Graph":
-            comboboxItem = self.graphOptions.get(func_name, None)
+            comboboxItem = self.graphOptions.get(func_name)
         else:
             comboboxItem = None
 
         if comboboxItem is None:
-            QMessageBox.warning(self, "Warning", f"comboboxItem for function '{func_name}' not found for type '{type}'.")
+            QMessageBox.warning(self, "Warning",
+                                f"comboboxItem for function '{func_name}' not found for type '{type}'.")
             return
 
-        # Set the function combobox and decision name (common for all options).
+        # Set widgets
         functionComboBox.setCurrentText(comboboxItem)
         decisionNameInput.setText(decisionName)
-
-        text = ", ".join(option['name'] for option in options)
-        decisionOptionsInput.setText(text)
+        decisionOptionsInput.setText(", ".join(option.get('name', str(i))
+                                            for i, option in enumerate(options, 1)))
         collapseButton.click()
 
     def addNewDecision(self, layout, buttonLayoutWidget):
