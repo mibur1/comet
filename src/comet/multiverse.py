@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import csv
 import glob
@@ -18,6 +19,7 @@ from matplotlib import pyplot as plt
 from matplotlib import lines as mlines
 from matplotlib import patches as mpatches
 from scipy.interpolate import make_interp_spline
+from IPython.display import display as ipy_display
 from joblib import Parallel, delayed
 from tqdm.auto import tqdm
 from tqdm_joblib import tqdm_joblib
@@ -147,10 +149,10 @@ class Multiverse:
 
         # Print summary
         if excluded_key_counter:
-            print("🔧 Exclusion summary")
-            print("--------------------")
+            print("Exclusion summary")
+            print("-----------------")
             for key, count in excluded_key_counter.items():
-                print(f"   ❌ Excluded key '{key}' from {count} universes")
+                print(f"  - Excluded key '{key}' from {count} universes.")
 
         # Remove universes that contain invalid paths
         if config.get("invalid_paths"):
@@ -169,12 +171,12 @@ class Multiverse:
             for universe, rule in removed_universes:
                 rule_to_universes[str(rule)].append(dict(universe))
 
-            print(f"   ❌ Removed {len(removed_universes)} out of {len(all_universes)} total universes.")
+            print(f"  - Removed {len(removed_universes)} out of {len(all_universes)} total universes.")
 
             for i, (rule, universes) in enumerate(rule_to_universes.items(), 1):
-                print(f"      - Rule {rule} excluded {len(universes)} universes:")
+                print(f"     Rule {rule} excluded {len(universes)} universes:")
                 for u in universes:
-                    print(f"         {u}")
+                    print(f"       {u}")
                 print()
 
         else:
@@ -188,7 +190,7 @@ class Multiverse:
             context = {}
             for key in forking_paths.keys():
                 val = combination_dict.get(key, None)
-                context[key] = self._format_type(val) if isinstance(val, dict) else val
+                context[key] = self._format_type(val)
             rendered_content = jinja_template.render(**context)
 
             if config.get("order"):
@@ -301,8 +303,8 @@ class Multiverse:
                 display(multiverse_selection)
             else:
                 print(multiverse_selection)
-
-        return multiverse_summary
+        
+        return
 
     def get_results(self, universe=None):
         """
@@ -496,7 +498,8 @@ class Multiverse:
 
         # Save the figure to the results directory.
         plt.savefig(f"{self.results_dir}/multiverse.png", bbox_inches="tight")
-        return fig
+
+        return self._handle_figure_returns(fig)
 
     def specification_curve(self, measure, baseline=None, p_value=None, ci=None, smooth_ci=True, 
                           title="Specification Curve", name_map=None, cmap="Set3", linewidth=2, figsize=None, 
@@ -781,7 +784,8 @@ class Multiverse:
         # Save the plot with tight layout to avoid clipping
         plt.savefig(f"{self.results_dir}/specification_curve.{ftype}", bbox_inches='tight', dpi=dpi)
         sns.reset_orig()
-        return fig
+
+        return self._handle_figure_returns(fig)
 
     # Internal methods
     def _check_paths(self, universe_path, invalid_paths):
@@ -914,41 +918,71 @@ class Multiverse:
 
         return pd.read_csv(summary_path)
 
+    def _render_val(self, v):
+        """Render decision value. `$...` → literal inject, else double-quoted string."""
+        if isinstance(v, bool):
+            return "True" if v else "False"
+        if isinstance(v, (int, float)) or v is None:
+            return repr(v)
+        if isinstance(v, str):
+            if v.startswith("$"):
+                return v[1:]  # literal inject (variable, code, collection, call...)
+            return f"\"{self._escape_double_quotes(v)}\""  # always double-quoted string
+        if isinstance(v, list):
+            return "[" + ", ".join(self._render_val(x) for x in v) + "]"
+        if isinstance(v, tuple):
+            return "(" + ", ".join(self._render_val(x) for x in v) + ")"
+        if isinstance(v, dict):
+            # If it's a function spec, _handle_dict will be used by _format_type.
+            # If it's a plain dict value, render a Python dict literal.
+            items = ", ".join(f"{self._render_val(k)}: {self._render_val(val)}" for k, val in v.items())
+            return "{" + items + "}"
+        return repr(v)
+
+    def _handle_dict(self, value):
+        """
+        Turn a dict spec into a Python call string.
+        Supports:
+        {"func": "comet.connectivity.Static_Pearson(ts).estimate()"}
+        {"func": "comet.connectivity.Static_Partial", "args": {...}}
+        {"func": "bct.clustering_coef_bu", "args": {"G": "$G"}}
+        Optional: {"positional": ["$ts", 123]} for explicit positional args.
+        """
+        func = value.get("func", "")
+        args = value.get("args", {}) or {}
+        positional = value.get("positional", []) or []
+
+        # If func already looks like a full call string, pass it through untouched.
+        # (Convention: if you need variables here, prefer using "args" with "$var")
+        if "(" in func:
+            return func
+
+        # Build argument list
+        parts = []
+        parts += [self._render_val(p) for p in positional]
+        parts += [f"{k}={self._render_val(v)}" for k, v in args.items()]
+        arg_str = ", ".join(parts)
+
+        call_expr = f"{func}({arg_str})" if parts else f"{func}()"
+
+        # comet.connectivity classes require .estimate()
+        if func.startswith("comet.connectivity."):
+            call_expr += ".estimate()"
+
+        return call_expr
+
     def _format_type(self, value):
         """
-        Internal function: Converts the different data types of decision points
-        to strings, which is necessary to create the template script
-
-        Parameters
-        ----------
-        value : any
-            The value to be formatted
-
-        Returns
-        -------
-        formatted_value : string
-            The formatted value
+        Convert decision values into Python code strings for template injection.
         """
-        if isinstance(value, str):
-            return f"'{value}'"  # Strings are wrapped in quotes
-        elif isinstance(value, int):
-            return str(value)  # Integers are converted directly
-        elif isinstance(value, float):
-            return str(value)  # Floats are converted directly
-        elif isinstance(value, bool):
-            return "True" if value else "False" # Booleans are converted to their literal representations
-        elif isinstance(value, list) or isinstance(value, tuple):
-            return value
-        elif isinstance(value, dict):
-            return value["func"] # Function key in the dict is expected to be the function call with args
-        elif isinstance(value, type):
-            return value.__name__  # If the forking path is a class, we return the name of the class
-        elif callable(value):
-            return value.__name__ # If the forking path is a function, we return the name of the function
-        elif value is None:
-            return 'None'
-        else:
-            raise TypeError(f"Unsupported type for {value} which is of type {type(value)}")
+        # Function spec dicts go through _handle_dict; everything else through _render_val.
+        if isinstance(value, dict) and "func" in value:
+            return self._handle_dict(value)
+        return self._render_val(value)
+
+    def _escape_double_quotes(self, s: str) -> str:
+        # Keep things robust if the literal happens to contain quotes/backslashes
+        return s.replace("\\", "\\\\").replace('"', '\\"')
 
     def _combine_results(self):
         """
@@ -1042,3 +1076,15 @@ class Multiverse:
         except Exception:
             return False
         return True
+
+    def _handle_figure_returns(self, fig):
+        """
+        Helper function to handle plotting
+        """
+        if self._in_notebook():
+            ipy_display(fig)
+            plt.close(fig)
+            return None
+        else:
+            return fig
+        
