@@ -22,9 +22,6 @@ Graph Analysis
 Multiverse Analysis
 -------------------
 
-Toolbox Features
-""""""""""""""""
-
 * :doc:`notebooks/example_mv_basics`
 * :doc:`notebooks/example_mv_structure`
 * :doc:`notebooks/example_mv_recipes`
