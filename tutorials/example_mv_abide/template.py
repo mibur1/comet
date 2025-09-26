@@ -33,10 +33,11 @@ def analysis_template():
     # List of subjects
     SUB_IDS = [50012, 50014, 50015, 50016, 50020, 50022, 50023, 50024, 50025, 50027, # controls
                50030, 50031, 50032, 50033, 50034, 50035, 50036, 50037, 50038, 50040] # autism
-    #SUB_IDS = None # Use all subjects
 
     # Get data (if available, it will be loaded from disk)
-    data = datasets.fetch_abide_pcp(SUB_ID=SUB_IDS, data_dir="/home/mibur/comet/tutorials/abide_data", verbose=0, 
+    data = datasets.fetch_abide_pcp(
+                                    SUB_ID=SUB_IDS, 
+	         data_dir="/home/mibur/comet/tutorials/abide_data", verbose=0, 
                                     pipeline={{pipeline}},
                                     derivatives={{parcellation}},
                                     band_pass_filtering={{band_pass}},
