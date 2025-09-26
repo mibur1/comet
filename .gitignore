@@ -1,3 +1,6 @@
+# NOTE: Never add the src/comet/data folder here, 
+# as this will prevent it from being included in the build...
+
 # Custom files and folders
 testing_stuff/
 tests/MATLAB/
@@ -9,9 +12,6 @@ tutorials/README.md
 
 universe_*.py
 .conda/
-
-# NOTE: Never add the src/comet/data folder here, 
-# as this will prevent it from being included in the build...
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
