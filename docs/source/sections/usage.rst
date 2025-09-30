@@ -18,11 +18,7 @@ After installation, graphical user interface can be accessed through the termina
 
     comet-gui
 
-For exploration with example data, data included in the ``src/comet/data/`` folder can be loaded:
-
-* ``simulation.txt``           Simulated BOLD data for 10 brain regions with 2 changing brain states (as used in the preprint).
-* ``time_series.txt``          Parcellated BOLD data for a single subject.
-* ``time_series_multiple.npy`` Parcellated BOLD data for 5 subjects.
+A brief introduction to the GUI with real data is provided in the :doc:`tutorials`.
 
 
 Scripting
