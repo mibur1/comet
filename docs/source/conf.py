@@ -1,6 +1,5 @@
 import os
 import sys
-import sphinx_rtd_theme
 
 # Add the project's root directory to sys.path
 sys.path.insert(0, os.path.abspath('../..'))
@@ -24,7 +23,6 @@ exclude_patterns = []
 
 # -- Options for HTML output -------------------------------------------------
 html_theme = 'sphinx_rtd_theme'
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 html_static_path = ['_static']
 
 html_theme_options = {

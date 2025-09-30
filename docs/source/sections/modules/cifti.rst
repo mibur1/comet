@@ -1,5 +1,5 @@
 comet.cifti
-----------
+-----------
 
 .. toctree::
    :maxdepth: 4

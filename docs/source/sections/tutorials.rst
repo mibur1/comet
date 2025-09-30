@@ -7,33 +7,50 @@ The following notebooks provide examples of how to use the Comet library for var
 
     This section is currently under construction. More tutorials will be added soon.
 
-
 Functional Connectivity
 -----------------------
 
-* :doc:`notebooks/example_dfc_cont`
-* :doc:`notebooks/example_dfc_state`
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/example_dfc_cont
+   notebooks/example_dfc_state
 
 Graph Analysis
 --------------
 
-* :doc:`notebooks/example_graph_eff`
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/example_graph_eff
 
 Multiverse Analysis
 -------------------
 
-* :doc:`notebooks/example_mv_basics`
-* :doc:`notebooks/example_mv_structure`
-* :doc:`notebooks/example_mv_recipes`
+General Introduction
+^^^^^^^^^^^^^^^^^^^^
+
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/example_mv_basics
+   notebooks/example_mv_structure
+   notebooks/example_mv_recipes
 
 Applications
-""""""""""""
+^^^^^^^^^^^^
 
-* :doc:`notebooks/example_mv_abide`
-* :doc:`notebooks/example_mv_fmri_sim`
-* :doc:`notebooks/example_mv_eeg_sim`
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/example_mv_abide
+   notebooks/example_mv_fmri_sim
+   notebooks/example_mv_eeg_sim
 
 Graphical User Interface
 ------------------------
 
-* :doc:`notebooks/example_gui`
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/example_gui
