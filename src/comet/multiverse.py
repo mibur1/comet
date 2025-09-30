@@ -317,7 +317,8 @@ class Multiverse:
             valid_universes = all_universes
         
         # Final number of universes
-        print(f"\n{len(valid_universes)} universes remain for analysis.")
+        if rule_context_counts:
+            print(f"\n{len(valid_universes)} universes remain for analysis.")
 
         # Create Python scripts for each combination
         for i, combination in enumerate(valid_universes, start=1):
