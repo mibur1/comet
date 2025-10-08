@@ -394,7 +394,7 @@ class Multiverse:
                 for file in tqdm(scripts):
                     execute_script(file)
             else:
-                with tqdm_joblib(total=len(scripts)) as progress:
+                with tqdm_joblib(total=len(scripts), desc="Performing multiverse analysis:") as progress:
                     Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in scripts)
         else:
             # Subset of universes was chosen
@@ -412,7 +412,7 @@ class Multiverse:
                 for file in tqdm(selected_universes):
                     execute_script(file)
             else:
-                with tqdm_joblib(total=len(selected_universes)) as progress:
+                with tqdm_joblib(total=len(selected_universes), desc="Performing multiverse analysis:") as progress:
                     Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in selected_universes)
 
         # Save all results in a single dictionary
