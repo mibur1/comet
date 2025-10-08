@@ -31,10 +31,12 @@ Dynamic functional connectivity can be estimated through the ``connectivity`` mo
     from comet import connectivity, utils
 
     ts = utils.load_example()
-    dFC = connectivity.SlidingWindow(ts, windowsize=30, shape="gaussian").estimate()
+
+    sw = connectivity.SlidingWindow(ts, windowsize=30, shape="gaussian").estimate()
+    dfc = sw.estimate()
 
 
-Graph measures can be calculated through the graph module. An example for global efficiency (using the dFC data calculated in the previous example):
+Graph measures can be calculated through the graph module. An example for the clustering coefficient derived from sliding window estimates:
 
 .. code-block:: python
 
@@ -45,8 +47,9 @@ Graph measures can be calculated through the graph module. An example for global
     sw = connectivity.SlidingWindow(ts, windowsize=30, shape="gaussian")
     dFC = sw.estimate()
 
-    adj = dFC[:,:,0]
-    global_eff = graph.efficiency(adj, local=False)
+    adj = graph.threshold(dFC, type="density", threshold=0.2)
+    clustering_coef = graph.clustering_coef(adj)
+
 
 Multiverse analysis can be conducted through the multiverse module.
 This exaple will create and run a multiverse analysis with two decisions (6 possible combinations):
