@@ -225,3 +225,170 @@ def notebookToScript(notebook):
         print("Error", f"Invalid notebook format: {str(e)}")
 
     return scriptContent
+
+# State-analysis utilities
+def kmeans_cluster(self, dfc, num_states: int = 5):
+    from sklearn.cluster import KMeans
+    
+    if not len(dfc.shape) in [3,4]:
+        raise ValueError("Connectivity estimates must be a 3D array with shape (P, P, T) or a 4D array with shape (S,P,P,T).")
+    
+    # Extract lower triangle and reshape to (T, M)
+    mask = np.tril(self.dfc[:, :, 0], k=-1) != 0
+    dfc_triu = np.array([matrix_2d[mask] for matrix_2d in self.dfc.transpose(2, 0, 1)])
+
+    # Perform K-means clustering
+    kmeans = KMeans(n_clusters=num_states, random_state=42)
+    state_tc = kmeans.fit_predict(dfc_triu)
+    centers = kmeans.cluster_centers_  # shape: (K, M)
+    
+    # Convert vectorized centroids back to full symmetric matrices
+    def vec_to_sym(vec, P, mask):
+        mat = np.zeros((P, P), dtype=vec.dtype)
+        mat[mask] = vec
+        mat = mat + mat.T 
+        return mat
+    
+    states = np.array([vec_to_sym(c, self.P, mask) for c in centers])  # (K, P, P)
+    
+    # Get inertia for elbow method
+    inertia = kmeans.inertia_
+
+    # Set class attributes
+    state_tc = state_tc[np.newaxis, :]
+    states = np.transpose(states, (1, 2, 0))
+
+    return state_tc, states, inertia
+    
+def summarise_state_tc(state_tc):
+    """
+    Summarise dwell times & transition matrices across subjects.
+
+    Parameters
+    ----------
+    state_tc : (n_subjects, T) integer array of labels per subject..
+
+    Returns
+    -------
+    dict with:
+        'dwell_per_subj' : (S, K)
+        'dwell_mean'     : (K,)
+        'dwell_std'      : (K,)
+        'trans_per_subj' : (S, K, K)
+        'trans_mean'     : (K, K)
+    """
+    state_tc = np.asarray(state_tc)
+    if state_tc.ndim != 2:
+        raise ValueError("state_tc must be a 2D array of shape (n_subjects, T).")
+    
+    S, _ = state_tc.shape
+    K = state_tc.max() + 1
+
+    dwell = np.zeros((S, K), dtype=float)
+    trans = np.zeros((S, K, K), dtype=float)
+    
+    for s in range(S):
+        stc = state_tc[s]
+        dwell[s] = dwell_times(stc, K)
+        trans[s] = transition_matrix(stc, K)
+    
+    return {
+        "dwell_per_subj": dwell,
+        "dwell_mean": dwell.mean(axis=0),
+        "dwell_std": dwell.std(axis=0),
+        "trans_per_subj": trans,
+        "trans_mean": trans.mean(axis=0),
+    }
+
+def dwell_times(labels: np.ndarray, K: int) -> np.ndarray:
+    """
+    Calculate the dwell times (fraction of time spent) in each state.
+
+    Parameters
+    ----------
+    labels : (T,) integer array in [0..K-1].
+    K : int
+        Number of states.
+
+    Returns
+    -------
+    (K,) float array
+        Dwell times for each state.
+    """
+    return np.array([(labels == k).sum() / labels.size for k in range(K)], dtype=float)
+
+def transition_matrix(labels: np.ndarray, K: int) -> np.ndarray:
+    """
+    Row-stochastic transition matrix P(next | current).
+
+    Parameters
+    ----------
+    labels : (T,) integer array in [0..K-1]
+    K : int
+
+    Returns
+    -------
+    (K, K) float array
+        Transition matrix.
+    """
+    # Count the transitions
+    labels = labels.astype(int)
+    a, b = labels[:-1], labels[1:]
+    M = np.zeros((K, K), dtype=float)
+    np.add.at(M, (a, b), 1)
+    
+    # Get row sums and normalize the probabilities
+    row_sums = M.sum(axis=1, keepdims=True)
+    P = np.zeros_like(M)
+    np.divide(M, row_sums, out=P, where=row_sums > 0)
+    return P
+
+def state_plots(states=None, state_tc=None, summary=None, sub_ids=None, figsize=None):
+    from matplotlib import pyplot as plt
+
+    if states is not None:
+        # Plot states
+        fig, ax = plt.subplots(1, states.shape[2], figsize=figsize)
+        for i in range(states.shape[2]):
+            ax[i].imshow(states[:,:,i])
+            ax[i].set_title(f"State {i+1}")
+            ax[i].axis("off")
+
+    elif state_tc is not None:
+        # Plot state time courses
+        fig, ax = plt.subplots(state_tc.shape[0], 1, figsize=figsize)
+        for i in range(state_tc.shape[0]):
+            ax[i].plot(state_tc[i,:])
+            
+            if sub_ids is not None:
+                ax[i].set(title=f"Time course for sub {sub_ids[i]}", xlabel="Timepoint", ylabel="State")
+            else:
+                ax[i].set(title=f"Time course for sub {i+1}", xlabel="Timepoint", ylabel="State")
+            
+            K = int(state_tc.max() + 1)
+            ax[i].set_yticks(range(K))
+            ax[i].set_yticklabels([str(k + 1) for k in range(K)])
+    
+    elif summary is not None:
+        dwell_mean = summary["dwell_mean"]
+        dwell_std = summary["dwell_std"]
+        trans_mean = summary["trans_mean"]
+        K = summary["dwell_per_subj"].shape[-1]
+
+        fig, ax = plt.subplots(1,2, figsize=figsize)
+
+        # Group dwell times (mean ± sd)
+        ax[0].bar(range(K), dwell_mean, yerr=dwell_std, capsize=3)
+        ax[0].set_xticks(range(K), [f"S{k}" for k in range(1,K+1)])
+        ax[0].set_ylabel("Dwell time (fraction)")
+        ax[0].set_title("Dwell times (group mean ± sd)")
+
+        # Mean transition matrix
+        im = ax[1].imshow(trans_mean, interpolation='nearest', aspect='auto')
+        fig.colorbar(im, ax=ax[1], label="P(next | current)")
+        ax[1].set_xticks(range(K), [f"S{k}" for k in range(1,K+1)])
+        ax[1].set_yticks(range(K), [f"S{k}" for k in range(1,K+1)])
+        ax[1].set_title("Transition matrix (group mean)")
+
+    plt.tight_layout()
+    return fig, ax

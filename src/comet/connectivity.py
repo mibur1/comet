@@ -1,27 +1,23 @@
 import random
 import numpy as np
 from tqdm import tqdm
-from typing import Dict, Any, Literal, Union, Optional
+from tqdm_joblib import tqdm_joblib
+from typing import Literal, Union
 from abc import ABCMeta, abstractmethod
-
 from joblib import Parallel, delayed
-#os.environ["OPENBLAS_NUM_THREADS"] = "1"
-#os.environ["OMP_NUM_THREADS"] = "1"
-
-from scipy.stats import zscore
-from scipy.spatial import distance
-from scipy.signal import windows, hilbert
-from scipy.linalg import eigh, solve, det, inv, pinv
-from scipy.optimize import minimize
-
-from sklearn.metrics import mutual_info_score
-from sklearn.covariance import LedoitWolf
-
+from threadpoolctl import threadpool_limits
 from statsmodels.stats.weightstats import DescrStatsW
 from pycwt import cwt, Morlet
 from hmmlearn import hmm
 from ksvd import ApproximateKSVD
 from sklearn.cluster import KMeans
+from sklearn.metrics import mutual_info_score
+from sklearn.covariance import LedoitWolf
+from scipy.stats import zscore
+from scipy.spatial import distance
+from scipy.signal import windows, hilbert
+from scipy.linalg import eigh, solve, det, inv
+from scipy.optimize import minimize
 
 """
 SECTION: Class template for all dynamic functional connectivity methods.
@@ -66,9 +62,24 @@ class ConnectivityMethod(metaclass=ABCMeta):
         self.fisher_z = fisher_z
         self.tril = tril
 
-        # Convert the list to a 3D array if necessary
-        if isinstance(self.time_series, list):
-            self.time_series = np.stack(self.time_series, axis=0)
+        # Shape checks and conversion to array
+        if isinstance(self.time_series, list) or (isinstance(self.time_series, np.ndarray) and self.time_series.dtype == object):
+            if len(self.time_series) == 0:
+                raise ValueError("time_series is empty.")
+            seq = [np.asarray(x, dtype="float32") for x in self.time_series]
+            shapes = {a.shape for a in seq}
+            if not all(a.ndim == 2 for a in seq):
+                raise ValueError("All subject time series must be 2D arrays (T, P).")
+            if len(shapes) != 1:
+                raise ValueError(f"All subject time series must have the same shape (T, P); got {shapes}.")
+            self.time_series = np.stack(seq, axis=0)  # (S, T, P)
+
+        # Case B: proper ndarray → just ensure float32
+        elif isinstance(self.time_series, np.ndarray):
+            self.time_series = self.time_series.astype("float32", copy=False)
+
+        else:
+            raise ValueError("time_series must be a 2D ndarray, 3D ndarray, or a list of 2D ndarrays.")
 
         # Prepare the data and create some variables
         self.time_series = self.time_series.astype("float32")
@@ -90,6 +101,7 @@ class ConnectivityMethod(metaclass=ABCMeta):
 
         return
 
+    # All subclasses must implement an estimate() method and should use postproc() for simple post-processing
     @abstractmethod
     def estimate(self):
         """
@@ -103,148 +115,46 @@ class ConnectivityMethod(metaclass=ABCMeta):
         """
         raise NotImplementedError("This method should be implemented in each child class.")
 
-    def postproc(self, R_mat):
+    def postproc(self):
         """
         Post-process the connectivity matrix with optional Fisher z-transformation,
         z-standardization, diagonal setting, and lower triangle extraction.
-
-        Parameters
-        ----------
-        R_mat : np.ndarray
-            The connectivity matrix to be post-processed.
 
         Returns
         -------
         np.ndarray
             The post-processed connectivity matrix.
         """
+        if hasattr(self, "dfc"):
+            dfc = self.dfc
+        elif hasattr(self, "fc"):
+            dfc = self.fc
+        else:
+            raise AttributeError("No connectivity estimates available.")
+
         # Fisher z-transformation
         if self.fisher_z:
-            R_mat = np.clip(R_mat, -1 + np.finfo(float).eps, 1 - np.finfo(float).eps)
-            R_mat = np.arctanh(R_mat)
+            dfc = np.clip(dfc, -1 + np.finfo(float).eps, 1 - np.finfo(float).eps)
+            dfc = np.arctanh(dfc)
 
         # Set main diagonal
-        if len(R_mat.shape) == 3:
-            for estimate in range(R_mat.shape[2]):
-                np.fill_diagonal(R_mat[:,:, estimate], self.diagonal)
+        if len(dfc.shape) == 3:
+            for estimate in range(dfc.shape[2]):
+                np.fill_diagonal(dfc[:,:, estimate], self.diagonal)
         else:
-            np.fill_diagonal(R_mat, self.diagonal)
+            np.fill_diagonal(dfc, self.diagonal)
 
         # Get lower triangle to save space
         if self.tril:
-            if len(R_mat.shape) == 3:
-                mask = np.tril(R_mat[:, :, 0], k=-1) != 0
-                R_mat = np.array([matrix_2d[mask] for matrix_2d in R_mat.transpose(2, 0, 1)])
+            if len(dfc.shape) == 3:
+                mask = np.tril(dfc[:, :, 0], k=-1) != 0
+                dfc = np.array([matrix_2d[mask] for matrix_2d in dfc.transpose(2, 0, 1)])
             else:
-                mask = np.tril(R_mat, k=-1) != 0
-                R_mat = R_mat[mask]
+                mask = np.tril(dfc, k=-1) != 0
+                dfc = dfc[mask]
 
-        return R_mat
+        return dfc
     
-    # Generic state-analysis utilities (used for state-based subclasses)
-    @staticmethod
-    def dwell_times(labels: np.ndarray, K: int) -> np.ndarray:
-        """
-        Calculate the dwell times (fraction of time spent) in each state.
-
-        Parameters
-        ----------
-        labels : (T,) integer array in [0..K-1].
-        K : int
-            Number of states.
-
-        Returns
-        -------
-        (K,) float array
-            Dwell times for each state.
-        """
-        return np.array([(labels == k).sum() / labels.size for k in range(K)], dtype=float)
-
-    @staticmethod
-    def transition_matrix(labels: np.ndarray, K: int) -> np.ndarray:
-        """
-        Row-stochastic transition matrix P(next | current).
-
-        Parameters
-        ----------
-        labels : (T,) integer array in [0..K-1]
-        K : int
-
-        Returns
-        -------
-        (K, K) float array
-            Transition matrix.
-        """
-        # Count the transitions
-        labels = labels.astype(int)
-        a, b = labels[:-1], labels[1:]
-        M = np.zeros((K, K), dtype=float)
-        np.add.at(M, (a, b), 1)
-        
-        # Get row sums and normalize the probabilities
-        row_sums = M.sum(axis=1, keepdims=True)
-        P = np.zeros_like(M)
-        np.divide(M, row_sums, out=P, where=row_sums > 0)
-        return P
-
-    @staticmethod
-    def summarise_states(state_tc: np.ndarray, K: int) -> Dict[str, Any]:
-        """
-        Summarise dwell times & transition matrices across subjects.
-
-        Parameters
-        ----------
-        state_tc : (n_subjects, T) integer array of labels per subject.
-        K : int
-            Number of states.
-
-        Returns
-        -------
-        dict with:
-            'dwell_per_subj' : (S, K)
-            'dwell_mean'     : (K,)
-            'dwell_std'      : (K,)
-            'trans_per_subj' : (S, K, K)
-            'trans_mean'     : (K, K)
-        """
-        state_tc = np.asarray(state_tc)
-        if state_tc.ndim != 2:
-            raise ValueError("state_tc must be a 2D array of shape (n_subjects, T).")
-        
-        S, _ = state_tc.shape
-        dwell = np.zeros((S, K), dtype=float)
-        trans = np.zeros((S, K, K), dtype=float)
-        
-        for s in range(S):
-            stc = state_tc[s]
-            dwell[s] = ConnectivityMethod.dwell_times(stc, K)
-            trans[s] = ConnectivityMethod.transition_matrix(stc, K)
-        
-        return {
-            "dwell_per_subj": dwell,
-            "dwell_mean": dwell.mean(axis=0),
-            "dwell_std": dwell.std(axis=0),
-            "trans_per_subj": trans,
-            "trans_mean": trans.mean(axis=0),
-        }
-
-    def summarise(self) -> Dict[str, Any]:
-        """
-        Instance-friendly wrapper that uses attributes set by subclasses.
-
-        Works for subclasses that define BOTH:
-            self.state_tc : (n_subjects, T) integer labels
-            self.states   : (P, P, K) connectivity patterns
-
-        Returns
-        -------
-        dict as defined in ConnectivityMethod.summarise_states()
-        """
-        if not hasattr(self, "state_tc") or not hasattr(self, "states"):
-            raise AttributeError("Use a state-producing method and/or call .estimate() first.")
-        K = int(self.states.shape[-1])
-        return ConnectivityMethod.summarise_states(self.state_tc, K)
-
 
 """
 SECTION: Continuous dFC methods
@@ -294,7 +204,7 @@ class SlidingWindow(ConnectivityMethod):
         self.std = std
 
         self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1 # N possible estimates given the window and step size
-        self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
+        self.dfc = np.full((self.P,self.P, self.N_estimates), np.nan)
 
         if not self.windowsize <= self.T:
             raise ValueError("windowsize is larger than time series")
@@ -349,14 +259,12 @@ class SlidingWindow(ConnectivityMethod):
             Dynamic functional connectivity as a PxPxN array.
         """
         weights = self._weights()
-        self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
 
         for estimate in range(self.N_estimates):
-            self.R_mat[:,:,estimate] = DescrStatsW(self.time_series, weights[estimate, :]).corrcoef
+            self.dfc[:,:,estimate] = DescrStatsW(self.time_series, weights[estimate, :]).corrcoef
 
-        self.R_mat = self.postproc(self.R_mat)
-
-        return self.R_mat
+        self.dfc = self.postproc()
+        return self.dfc
 
 class Jackknife(ConnectivityMethod):
     """
@@ -398,7 +306,7 @@ class Jackknife(ConnectivityMethod):
         self.stepsize = stepsize
 
         self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1 # N possible estimates given the window size
-        self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
+        self.dfc = np.full((self.P,self.P, self.N_estimates), np.nan)
 
         if not self.windowsize <= self.T:
             raise ValueError("windowsize is larger than time series")
@@ -446,12 +354,12 @@ class Jackknife(ConnectivityMethod):
 
         for estimate in range(self.N_estimates):
             ts_jackknife = self.time_series[weights[estimate,:],:]
-            self.R_mat[:,:,estimate] = np.corrcoef(ts_jackknife.T) * -1 # correlation estimation and sign inversion
+            self.dfc[:,:,estimate] = np.corrcoef(ts_jackknife.T) * -1 # correlation estimation and sign inversion
 
-        self.R_mat = self.postproc(self.R_mat)
+        self.dfc = self.postproc()
 
-        return self.R_mat
-
+        return self.dfc
+    
 class SpatialDistance(ConnectivityMethod):
     """
     Spatial Distance connectivity method.
@@ -488,7 +396,7 @@ class SpatialDistance(ConnectivityMethod):
         self.distance = self._distance_functions(dist)
 
         self.N_estimates = self.T
-        self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
+        self.dfc = np.full((self.P,self.P, self.N_estimates), np.nan)
 
     def _distance_functions(self, dist):
         """
@@ -538,12 +446,12 @@ class SpatialDistance(ConnectivityMethod):
         weights = self._weights() # in this case this is the distance matrix
 
         for estimate in range(self.N_estimates):
-            self.R_mat[:,:,estimate] = DescrStatsW(self.time_series, weights[estimate, :]).corrcoef
+            self.dfc[:,:,estimate] = DescrStatsW(self.time_series, weights[estimate, :]).corrcoef
 
-        self.R_mat = self.postproc(self.R_mat)
+        self.dfc = self.postproc()
 
-        return self.R_mat
-
+        return self.dfc
+    
 class TemporalDerivatives(ConnectivityMethod):
     """
     Multiplication of Temporal Derivatives connectivity method.
@@ -580,7 +488,7 @@ class TemporalDerivatives(ConnectivityMethod):
         self.windowsize = windowsize
 
         self.N_estimates = self.T - self.windowsize
-        self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
+        self.dfc = np.full((self.P,self.P, self.N_estimates), np.nan)
 
         if not self.windowsize <= self.T:
             raise ValueError("windowsize is larger than time series")
@@ -618,149 +526,207 @@ class TemporalDerivatives(ConnectivityMethod):
         for i in range(self.P * self.P):
             smooth_coupling[i,:] = np.convolve(coupling[i,:], kernel, mode='valid')
 
-        smooth_coupling = np.reshape(smooth_coupling, [self.P, self.P, self.N_estimates]) #reshape into PxPxN connectivity matrix
-        self.R_mat = self.postproc(smooth_coupling)
+        self.dfc = np.reshape(smooth_coupling, [self.P, self.P, self.N_estimates]) #reshape into PxPxN connectivity matrix
+        self.dfc = self.postproc()
 
-        return self.R_mat
+        return self.dfc
 
 class FlexibleLeastSquares(ConnectivityMethod):
     """
     Flexible Least Squares connectivity method.
 
+    This implementation estimates dynamic functional connectivity using the
+    Flexible Least Squares (FLS) algorithm as described in the DynamicBC toolbox.
+
+    For each source region i, the FLS linear system is built once and solved
+    against all target time series simultaneously. Parallel execution across
+    regions is supported via joblib.
+
     Parameters
     ----------
     time_series : np.ndarray
-        The input time series data.
+        The input time series data of shape (T, P), where T is the number
+        of time points and P the number of regions.
     standardizeData : bool, optional
-        Whether to standardize the time series data. Default is True.
+        Whether to standardize the time series column-wise before estimation.
+        Default is True.
     mu : float, optional
-        Regularization parameter for the flexible least squares algorithm. Default is 100.
+        Regularization parameter controlling the smoothness of betas.
+        Default is 100.0.
     num_cores : int, optional
-        Number of CPU cores to use for parallel processing. Default is 16.
+        Number of CPU cores to use for parallel processing.
+        Set to 1 for single-core execution. Default is 4.
+    progress_bar : bool, optional
+        Whether to display a progress bar during estimation. Default is True.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
     fisher_z : bool, optional
-        Whether to apply Fisher z-transformation. Default is False.
+        Whether to apply Fisher z-transformation in post-processing.
+        Default is False.
     tril : bool, optional
-        Whether to return only the lower triangle of the matrices. Default is False.
+        Whether to return only the lower triangle of the matrices.
+        Default is False.
+
+    Attributes
+    ----------
+    dfc : np.ndarray
+        The dynamic connectivity estimates of shape (P, P, T).
+    N_estimates : int
+        Number of estimates (equals the number of time points T).
 
     References
     ----------
     Liao, W., Wu, G. R., Xu, Q., Ji, G. J., Zhang, Z., Zang, Y. F., & Lu, G. (2014).
-    DynamicBC: a MATLAB toolbox for dynamic brain connectome analysis. Brain connectivity, 4(10), 780-790.
+    DynamicBC: a MATLAB toolbox for dynamic brain connectome analysis.
+    Brain Connectivity, 4(10), 780–790.
     https://doi.org/10.1089/brain.2014.0253
     """
+
     name = "CONT Flexible Least Squares"
 
-    def __init__(self,
-                 time_series: np.ndarray,
-                 standardizeData: bool = True,
-                 mu: float = 100,
-                 num_cores: int = 16,
-                 progress_bar: bool = True,
-                 diagonal: int = 0,
-                 fisher_z: bool = False,
-                 tril: bool = False):
-
+    def __init__(self, time_series: np.ndarray, standardizeData: bool = True, mu: float = 100.0,
+                 num_cores: int = 4, progress_bar: bool = True, diagonal: int = 0,
+                 fisher_z: bool = False, tril: bool = False):
         super().__init__(time_series, diagonal, fisher_z, tril)
+        self.standardizeData = bool(standardizeData)
+        self.mu = float(mu)
+        self.num_cores = int(num_cores)
+        self.progress_bar = bool(progress_bar)
         self.N_estimates = self.T
-        self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
-        self.standardizeData = standardizeData
-        self.mu = mu
-        self.num_cores = num_cores
-        self.progress_bar = progress_bar
+        self.dfc = np.full((self.P, self.P, self.N_estimates), np.nan)
 
-    def _calculateBetas(self, X, y):
+    def _betas(self, X: np.ndarray, Y: np.ndarray) -> np.ndarray:
         """
-        Calculate betas for the flexible least squares algorithm.
+        Compute FLS betas for one predictor X against all targets Y.
 
         Parameters
         ----------
         X : np.ndarray
-            Input data matrix.
-        y : np.ndarray
-            Response variable vector.
+            Predictor column of shape (T, 1) for a fixed source region i.
+        Y : np.ndarray
+            Full time series of shape (T, P), all target regions.
 
         Returns
         -------
         np.ndarray
-            Calculated betas.
+            Betas of shape (P, T) for the given source i to all targets.
         """
         N, K = X.shape
-        G = np.zeros((N*K, N))
-        A = np.zeros((N*K, N*K))
+        G = np.zeros((N * K, N))
+        A = np.zeros((N * K, N * K))
         mui = self.mu * np.eye(K)
         ind = np.arange(K)
 
-        for i in range(N):
-            G[ind, i] = X[i, :]
-            if i == 0:
-                Ai = X[i, :].T @ X[i, :] + mui
+        for t in range(N):
+            G[ind, t] = X[t, :]
+            if t == 0:
+                Ai = X[t, :].T @ X[t, :] + mui
                 A[ind, ind] = Ai
-                A[ind, ind + K] = -mui
-            elif i != N - 1:
-                Ai = X[i, :].T @ X[i, :] + 2 * mui
+                if N > 1:
+                    A[ind, ind + K] = -mui
+            elif t != N - 1:
+                Ai = X[t, :].T @ X[t, :] + 2 * mui
                 A[ind, ind] = Ai
                 A[ind, ind + K] = -mui
                 A[ind, ind - K] = -mui
             else:
-                Ai = X[i, :].T @ X[i, :] + mui
+                Ai = X[t, :].T @ X[t, :] + mui
                 A[ind, ind] = Ai
                 A[ind, ind - K] = -mui
             ind += K
 
-        betas = solve(A, G.T @ y)
-        betas = np.reshape(betas, (K, N)).T
+        RHS = G.T @ Y
+        with threadpool_limits(limits=1):
+            betas = solve(A, RHS, assume_a='sym')  # (T, P)
+        return betas.T  # (P, T)
 
-        return betas.squeeze()
-
-    def _calculateBetasForPair(self, i):
+    @staticmethod
+    def _compute_i(i: int, ts: np.ndarray, mu: float):
         """
-        Calculate betas for each pair of time series.
+        Worker function to compute betas for a single source region i.
 
         Parameters
         ----------
         i : int
-            Index of the time series pair.
+            Source region index.
+        ts : np.ndarray
+            Standardized time series, shape (T, P).
+        mu : float
+            Regularization parameter.
 
         Returns
         -------
         tuple
-            Index and calculated betas for the pair.
+            (i, beta_i) where beta_i has shape (P, T).
         """
-        beta_i = np.zeros((self.P, self.T))
-        for j in range(self.P):
-            beta_i[j, :] = self._calculateBetas(self.time_series[:, i].reshape(-1,1), self.time_series[:, j].reshape(-1,1))
-        return i, beta_i
+        N = ts.shape[0]
+        X = ts[:, i].reshape(N, 1)
+        K = 1
+        G = np.zeros((N * K, N))
+        A = np.zeros((N * K, N * K))
+        mui = mu * np.eye(K)
+        ind = np.arange(K)
 
-    def estimate(self):
+        for t in range(N):
+            G[ind, t] = X[t, :]
+            if t == 0:
+                Ai = X[t, :].T @ X[t, :] + mui
+                A[ind, ind] = Ai
+                if N > 1:
+                    A[ind, ind + K] = -mui
+            elif t != N - 1:
+                Ai = X[t, :].T @ X[t, :] + 2 * mui
+                A[ind, ind] = Ai
+                A[ind, ind + K] = -mui
+                A[ind, ind - K] = -mui
+            else:
+                Ai = X[t, :].T @ X[t, :] + mui
+                A[ind, ind] = Ai
+                A[ind, ind - K] = -mui
+            ind += K
+
+        RHS = G.T @ ts
+        with threadpool_limits(limits=1):
+            betas = solve(A, RHS, assume_a='sym')
+        return i, betas.T
+
+    def estimate(self) -> np.ndarray:
         """
-        Calculate flexible least squares connectivity as implemented in the DynamicBC toolbox
+        Estimate dynamic functional connectivity using FLS.
 
         Returns
         -------
         np.ndarray
-            Dynamic functional connectivity as a PxPxN array.
+            Dynamic connectivity as a (P, P, T) array, symmetrized
+            and post-processed according to class settings.
         """
-        # Standardize time series
+        # Standardize if requested
         if self.standardizeData:
-            self.time_series = (self.time_series - np.mean(self.time_series, axis=0)) / np.std(self.time_series, axis=0)
+            mu = np.mean(self.time_series, axis=0, keepdims=True)
+            sd = np.std(self.time_series, axis=0, keepdims=True)
+            sd = np.where(sd == 0, 1.0, sd)
+            self.time_series = (self.time_series - mu) / sd
 
-        # Calculate functional connectivity
         T, P = self.time_series.shape
-        beta = np.zeros((P,P,T))
+        beta = np.zeros((P, P, T), dtype=float)
 
-        # FLS beta estimation
-        results = Parallel(n_jobs=self.num_cores)(delayed(self._calculateBetasForPair)(i) for i in tqdm(range(self.P), disable=not self.progress_bar, desc="FLS", dynamic_ncols=True))
+        if self.num_cores == 1:
+            rng = tqdm(range(P), desc="FLS (single core)") if self.progress_bar else range(P)
+            for i in rng:
+                beta[i, :, :] = self._betas(self.time_series[:, i].reshape(T, 1), self.time_series)
+        else:
+            cm = tqdm_joblib(total=P, desc=f"FLS ({self.num_cores} cores)") if self.progress_bar else None
+            with cm:
+                results = Parallel(n_jobs=self.num_cores, prefer="processes", batch_size=1)(
+                    delayed(FlexibleLeastSquares._compute_i)(i, self.time_series, self.mu) for i in range(P))
+          
+            for i, beta_i in results:
+                beta[i, :, :] = beta_i
 
-        for i, beta_i in results:
-            beta[i, :, :] = beta_i
-
-        # Symmetrize and return the resulting 3D array
-        beta = 0.5 * (beta + beta.transpose(1, 0, 2))
-        beta = self.postproc(beta)
-
-        return beta
+        self.dfc = 0.5 * (beta + beta.transpose(1, 0, 2))
+        self.dfc = self.postproc()
+        
+        return self.dfc
 
 class PhaseSynchrony(ConnectivityMethod):
     """
@@ -795,7 +761,7 @@ class PhaseSynchrony(ConnectivityMethod):
 
         super().__init__(time_series, diagonal, fisher_z, tril)
         self.N_estimates = self.T
-        self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
+        self.dfc = np.full((self.P,self.P, self.N_estimates), np.nan)
         self.method = method
 
     def estimate(self):
@@ -818,10 +784,10 @@ class PhaseSynchrony(ConnectivityMethod):
         ips = np.moveaxis(M, 0, 2)                            # -> (P, P, N)
 
         # Enforce symmetry (in case of tiny fp asymmetries)
-        ips = 0.5 * (ips + ips.transpose(1, 0, 2))
+        self.dfc = 0.5 * (ips + ips.transpose(1, 0, 2))
 
-        self.R_mat = self.postproc(ips)
-        return self.R_mat
+        self.dfc = self.postproc()
+        return self.dfc
 
 class LeiDA(ConnectivityMethod):
     """
@@ -866,7 +832,7 @@ class LeiDA(ConnectivityMethod):
         super().__init__(time_series, diagonal, fisher_z, tril)
 
         self.N_estimates = self.T
-        self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
+        self.dfc = np.full((self.P,self.P, self.N_estimates), np.nan)
         self.flip_eigenvectors = flip_eigenvectors
         self.V1 = np.full((self.N_estimates, self.P), np.nan)
 
@@ -895,11 +861,11 @@ class LeiDA(ConnectivityMethod):
                 if np.mean(V1 > 0) > 0.5:
                     V1 = -V1
 
-            self.R_mat[:, :, n] = np.outer(V1, V1)
+            self.dfc[:, :, n] = np.outer(V1, V1)
             self.V1[n, :] = V1
 
-        self.R_mat = self.postproc(self.R_mat)
-        return self.R_mat
+        self.dfc = self.postproc()
+        return self.dfc
 
 class WaveletCoherence(ConnectivityMethod):
     """
@@ -955,7 +921,7 @@ class WaveletCoherence(ConnectivityMethod):
         super().__init__(time_series, diagonal, fisher_z, tril)
 
         self.N_estimates = self.T
-        self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
+        self.dfc = np.full((self.P,self.P, self.N_estimates), np.nan)
         self.method = method
         self.TR = TR
         self.fmin = fmin
@@ -985,9 +951,7 @@ class WaveletCoherence(ConnectivityMethod):
         J = self.n_scales - 1 # Scales range from s0 up to s0 * 2**(J * dj), which gives a total of (J + 1) scales
         dj = np.log2(self.fmax / self.fmin) / J  # Spacing between discrete scales to achieve the desired frequency range
         mother_wavelet = Morlet(6) # Morlet wavelet with omega_0 = 6
-
-        iwc = np.full((P, P, J+1, T), np.nan) # resulting wavelet coherence matrices
-        dfc = np.full((P, P, T), np.nan) # resulting dfc matrices (weighted average of iwc across scales)
+        self.iwc = np.full((P, P, J+1, T), np.nan) # resulting wavelet coherence matrices
 
         W_list = []
         S_list = []
@@ -1015,8 +979,8 @@ class WaveletCoherence(ConnectivityMethod):
             W12 = W1 * np.conj(W2)
             S12 = mother_wavelet.smooth(W12 / scales, dt, dj, s1)
             WCT = np.abs(S12) ** 2 / (S1 * S2)
-            iwc[i, j, :, :] = WCT
-            iwc[j, i, :, :] = WCT
+            self.iwc[i, j, :, :] = WCT
+            self.iwc[j, i, :, :] = WCT
 
             if self.method == "weighted":
                 CWP = np.abs(W1 * np.conj(W2))
@@ -1027,17 +991,16 @@ class WaveletCoherence(ConnectivityMethod):
                 cross_power = CWP / np.sum(CWP, axis=0)
 
                 vals = 1 - (cross_power * WCT2).sum(axis=0)
-                dfc[i, j, self.drop_timepoints:-self.drop_timepoints] = vals
-                dfc[j, i, self.drop_timepoints:-self.drop_timepoints] = vals
+                self.dfc[i, j, self.drop_timepoints:-self.drop_timepoints] = vals
+                self.dfc[j, i, self.drop_timepoints:-self.drop_timepoints] = vals
             else:
                 raise NotImplementedError("Other methods not yet implemented")
 
         # Get rid of empty time points
-        dfc = dfc[:,:, self.drop_timepoints:-self.drop_timepoints]
-        dfc = self.postproc(dfc)
-        self.iwc = iwc
+        self.dfc = self.dfc[:,:, self.drop_timepoints:-self.drop_timepoints]
+        self.dfc = self.postproc()
 
-        return dfc
+        return self.dfc
 
 class DCC(ConnectivityMethod):
     """
@@ -1078,7 +1041,7 @@ class DCC(ConnectivityMethod):
         super().__init__(time_series, diagonal, fisher_z, tril)
 
         self.N_estimates = self.T
-        self.R_mat = np.full((self.P,self.P, self.N_estimates), np.nan)
+        self.dfc = np.full((self.P,self.P, self.N_estimates), np.nan)
         self.standardizeData = standardizeData
         self.progress_bar = progress_bar
         self.num_cores = num_cores
@@ -1291,13 +1254,13 @@ class DCC(ConnectivityMethod):
         for t in tqdm(range(T),  disable=not self.progress_bar, desc="Conditional covariance matrices", dynamic_ncols=True):
             H[:,:,t] = np.diag(np.sqrt(D[t,:])) @ R[:,:,t] @ np.diag(np.sqrt(D[t,:]))
 
-        R = self.postproc(R)
+        self.dfc = self.postproc()
 
         self.H = H
         self.Theta = Theta
         self.X = X
 
-        return R
+        return self.dfc
 
 class EdgeConnectivity(ConnectivityMethod):
     """
@@ -1366,8 +1329,10 @@ class EdgeConnectivity(ConnectivityMethod):
         d = np.outer(c, c) # Normalization matrix
         eFC = b / d # Element-wise division to get the correlation matrix
 
-        eFC = self.postproc(eFC)
-        return eFC
+        eFC = self.postproc()
+        self.dfc = eFC
+
+        return self.dfc
 
 
 """
@@ -1825,6 +1790,7 @@ class Static_Pearson(ConnectivityMethod):
                  fisher_z: bool = False,
                  tril: bool = False):
 
+        self.fc = None
         self.cov_estimator = cov_estimator
         super().__init__(time_series, diagonal, fisher_z, tril)
 
@@ -1843,10 +1809,10 @@ class Static_Pearson(ConnectivityMethod):
             C = np.cov(self.time_series.T)
         
         D = np.diag(1/np.sqrt(np.diag(C)))
-        fc = D @ C @ D
+        self.fc = D @ C @ D
     
-        fc = self.postproc(fc)
-        return fc
+        self.fc = self.postproc()
+        return self.fc
 
 class Static_Partial(ConnectivityMethod):
     """
@@ -1874,6 +1840,7 @@ class Static_Partial(ConnectivityMethod):
                  fisher_z: bool = False,
                  tril: bool = False):
 
+        self.fc = None
         self.cov_estimator = cov_estimator
         super().__init__(time_series, diagonal, fisher_z, tril)
 
@@ -1893,10 +1860,10 @@ class Static_Partial(ConnectivityMethod):
         
         P = np.linalg.inv(C)
         D = np.diag(1/np.sqrt(np.diag(P)))
-        fc = -D @ P @ D
+        self.fc = -D @ P @ D
 
-        fc = self.postproc(fc)
-        return fc
+        self.fc = self.postproc()
+        return self.fc
 
 class Static_Mutual_Info(ConnectivityMethod):
     """
@@ -1923,9 +1890,10 @@ class Static_Mutual_Info(ConnectivityMethod):
                  diagonal: int = 0,
                  fisher_z: bool = False,
                  tril: bool = False):
-
-        super().__init__(time_series, diagonal, fisher_z, tril)
+        
+        self.fc = None
         self.num_bins = num_bins
+        super().__init__(time_series, diagonal, fisher_z, tril)
 
     def estimate(self):
         """
@@ -1946,16 +1914,16 @@ class Static_Mutual_Info(ConnectivityMethod):
             bin_edges = np.histogram_bin_edges(self.time_series[:, i], bins=self.num_bins)
             binned_data[:, i] = np.digitize(self.time_series[:, i], bins=bin_edges, right=False)
 
-        fc = np.zeros((self.P, self.P))
+        self.fc = np.zeros((self.P, self.P))
 
         for i in range(self.P):
             for j in range(i + 1, self.P):
                 mi = mutual_info_score(binned_data[:, i], binned_data[:, j])
-                fc[i, j] = mi
-                fc[j, i] = mi
+                self.fc[i, j] = mi
+                self.fc[j, i] = mi
 
-        fc = self.postproc(fc)
-        return fc
+        self.fc = self.postproc()
+        return self.fc
 
 class Static_Covariance(ConnectivityMethod):
     name = "STATIC Covariance"
@@ -1967,6 +1935,7 @@ class Static_Covariance(ConnectivityMethod):
                  fisher_z: bool = False,
                  tril: bool = False):
 
+        self.fc = None
         self.cov_estimator = cov_estimator
         super().__init__(time_series, diagonal, fisher_z, tril)
 
@@ -1980,9 +1949,9 @@ class Static_Covariance(ConnectivityMethod):
             Static functional connectivity matrix.
         """
         if self.cov_estimator == "LedoitWolf":
-            fc = LedoitWolf().fit(self.time_series).covariance_
+            self.fc = LedoitWolf().fit(self.time_series).covariance_
         else:
-            fc = np.cov(self.time_series.T)
+            self.fc = np.cov(self.time_series.T)
         
-        fc = self.postproc(fc)
-        return fc
+        self.fc = self.postproc()
+        return self.fc
