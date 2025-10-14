@@ -8,6 +8,7 @@ import pandas as pd
 import importlib_resources
 from nilearn import signal
 from scipy.io import loadmat
+from sklearn.cluster import KMeans
 
 def load_timeseries(path=None):
     """
@@ -227,121 +228,297 @@ def notebookToScript(notebook):
     return scriptContent
 
 # State-analysis utilities
-def kmeans_cluster(self, dfc, num_states: int = 5):
-    from sklearn.cluster import KMeans
-    
-    if not len(dfc.shape) in [3,4]:
-        raise ValueError("Connectivity estimates must be a 3D array with shape (P, P, T) or a 4D array with shape (S,P,P,T).")
-    
-    # Extract lower triangle and reshape to (T, M)
-    mask = np.tril(self.dfc[:, :, 0], k=-1) != 0
-    dfc_triu = np.array([matrix_2d[mask] for matrix_2d in self.dfc.transpose(2, 0, 1)])
+def kmeans_cluster_old(dfc, num_states=5, standardise_features=False, random_state=None):
+    dfc = np.asarray(dfc)
+    if dfc.ndim not in (3, 4):
+        raise ValueError("dfc must be (P,P,T) or (S,P,P,T).")
 
-    # Perform K-means clustering
-    kmeans = KMeans(n_clusters=num_states, random_state=42)
-    state_tc = kmeans.fit_predict(dfc_triu)
-    centers = kmeans.cluster_centers_  # shape: (K, M)
-    
-    # Convert vectorized centroids back to full symmetric matrices
-    def vec_to_sym(vec, P, mask):
-        mat = np.zeros((P, P), dtype=vec.dtype)
-        mat[mask] = vec
-        mat = mat + mat.T 
-        return mat
-    
-    states = np.array([vec_to_sym(c, self.P, mask) for c in centers])  # (K, P, P)
-    
-    # Get inertia for elbow method
-    inertia = kmeans.inertia_
+    if dfc.ndim == 3:
+        P, _, T = dfc.shape
+        S = 1
+        iu = np.tril_indices(P, k=-1)
+        X = dfc.transpose(2, 0, 1)[:, iu[0], iu[1]]       # (T, M)
+    else:
+        S, P, _, T = dfc.shape
+        iu = np.tril_indices(P, k=-1)
+        X = dfc.transpose(0, 3, 1, 2)[:, :, iu[0], iu[1]].reshape(S * T, -1)  # (S*T, M)
 
-    # Set class attributes
-    state_tc = state_tc[np.newaxis, :]
-    states = np.transpose(states, (1, 2, 0))
+    # Standardise features across time to balance edges
+    if standardise_features:
+        X = (X - X.mean(axis=0)) / (X.std(axis=0) + 1e-8)
+
+    kmeans = KMeans(n_clusters=num_states, n_init=50, random_state=random_state)
+    labels_flat = kmeans.fit_predict(X)                    # (T) or (S*T,)
+    centers = kmeans.cluster_centers_                      # (K, M)
+    inertia = float(kmeans.inertia_)
+
+    # Rebuild state matrices (P,P,K)
+    states = np.zeros((P, P, num_states), dtype=centers.dtype)
+    for k in range(num_states):
+        m = np.zeros((P, P), dtype=centers.dtype)
+        m[iu] = centers[k]
+        m = m + m.T
+        states[:, :, k] = m
+
+    state_tc = labels_flat.reshape(S, -1) # (S, T) or (1, T)
 
     return state_tc, states, inertia
-    
-def summarise_state_tc(state_tc):
+
+def kmeans_cluster(
+    dfc,
+    num_states: int = 5,
+    strategy: str = "pooled",          # "pooled" or "two_level"
+    subject_clusters: int = 5,         # only used for "two_level"
+    standardise_features: bool = False,
+    diag_value: float | None = None,   # e.g., 1.0 for correlations, None to leave zeros
+    random_state=None):
     """
-    Summarise dwell times & transition matrices across subjects.
+    Cluster continuously varying dFC into K discrete states using k-means.
 
     Parameters
     ----------
-    state_tc : (n_subjects, T) integer array of labels per subject..
+    dfc : np.ndarray
+        (P,P,T) single-subject or (S,P,P,T) multi-subject dynamic FC.
+    num_states : int
+        Number of group states (K).
+    strategy : {"pooled", "two_level"}
+        - "pooled": cluster all timepoints across subjects together.
+        - "two_level": per-subject k-means to obtain subject-level centroids,
+          then cluster all centroids to define group states; finally assign each
+          time point to the nearest group state.
+    subject_clusters : int
+        First-level k for "two_level".
+    standardise_features : bool
+        Z-score each edge across all samples before k-means.
+    diag_value : float or None
+        If not None, fill diagonal of returned state matrices with this value
+        (use 1.0 for correlation states if you want unit diagonals).
+    random_state : int or None
+        Reproducibility for KMeans.
+
+    Returns
+    -------
+    state_tc : (S,T) int array
+        State label per time point per subject (S=1 for single-subject).
+    states : (P,P,K) float array
+        State connectivity matrices reconstructed from centroids (same units as input).
+    inertia : float
+        Inertia of the final (group) k-means.
+    """
+    X_dfc = np.asarray(dfc)
+    if X_dfc.ndim == 3:
+        # (P,P,T) -> (T,P,P)
+        P, P2, T = X_dfc.shape
+        if P != P2 or T == 0:
+            raise ValueError("For (P,P,T), P must match and T>0.")
+        S = 1
+        iu = np.tril_indices(P, k=-1)
+        # (T, M)
+        X_all = X_dfc.transpose(2, 0, 1)[:, iu[0], iu[1]]
+        # (S,T,M)
+        X_all = X_all[None, ...]
+    elif X_dfc.ndim == 4:
+        # (S,P,P,T) -> (S,T,P,P)
+        S, P, P2, T = X_dfc.shape
+        if P != P2 or T == 0:
+            raise ValueError("For (S,P,P,T), P must match and T>0.")
+        iu = np.tril_indices(P, k=-1)
+        # (S,T,M)
+        X_all = X_dfc.transpose(0, 3, 1, 2)[:, :, iu[0], iu[1]]
+    else:
+        raise ValueError("dfc must be (P,P,T) or (S,P,P,T).")
+
+    # Flatten subjects×time to samples: (S*T, M)
+    X = X_all.reshape(S * T, -1)
+
+    # Optional standardisation across all samples (global)
+    if standardise_features:
+        mu = X.mean(axis=0, keepdims=True)
+        sd = X.std(axis=0, keepdims=True) + 1e-8
+        Xs = (X - mu) / sd
+    else:
+        Xs = X
+
+    def rebuild_states(centres_vec):
+        """Rebuild (P,P,K) from lower-tri vectors using the same iu ordering as above."""
+        K = centres_vec.shape[0]
+        states = np.zeros((P, P, K), dtype=centres_vec.dtype)
+        for k in range(K):
+            m = np.zeros((P, P), dtype=centres_vec.dtype)
+            m[iu] = centres_vec[k]
+            m = m + m.T
+            if diag_value is not None:
+                np.fill_diagonal(m, diag_value)
+            states[:, :, k] = m
+        return states
+
+    if strategy == "pooled":
+        km = KMeans(n_clusters=num_states, n_init=50, random_state=random_state)
+        labels_flat = km.fit_predict(Xs)                  # (S*T,)
+        states = rebuild_states(km.cluster_centers_)      # (P,P,K)
+        inertia = float(km.inertia_)
+        state_tc = labels_flat.reshape(S, T)
+
+    elif strategy == "two_level":
+        # First-level per-subject clustering on (T,M) slices from Xs_all
+        if Xs.shape[0] != S * T:
+            raise ValueError("Internal shape error: samples != S*T.")
+        centroids_list = []
+        for s in range(S):
+            Xs_s = Xs[s*T:(s+1)*T, :]                     # (T,M)
+            if subject_clusters > T:
+                raise ValueError(f"subject_clusters ({subject_clusters}) > T ({T}) for subject {s}.")
+            km1 = KMeans(n_clusters=subject_clusters, n_init=50, random_state=random_state)
+            km1.fit(Xs_s)
+            centroids_list.append(km1.cluster_centers_)   # (k1,M)
+        C = np.vstack(centroids_list)                     # (S*subject_clusters, M)
+
+        # Group-level clustering on centroids
+        km2 = KMeans(n_clusters=num_states, n_init=50, random_state=random_state)
+        km2.fit(C)
+        states = rebuild_states(km2.cluster_centers_)     # (P,P,K)
+        inertia = float(km2.inertia_)
+
+        # Assign each sample to nearest group centroid
+        labels_flat = km2.predict(Xs)                     # (S*T,)
+        state_tc = labels_flat.reshape(S, T)
+
+    else:
+        raise ValueError("strategy must be 'pooled' or 'two_level'.")
+
+    return state_tc, states, inertia
+
+def summarise_state_tc(state_tc: np.ndarray) -> dict:
+    """
+    Summarise dwell times, occupancies, transitions, and switching behaviour across subjects.
+
+    Parameters
+    ----------
+    state_tc : (S, T) int array
+        State time courses for S subjects, each of length T.
+        Each entry represents the active state label at a given time point.
 
     Returns
     -------
     dict with:
-        'dwell_per_subj' : (S, K)
-        'dwell_mean'     : (K,)
-        'dwell_std'      : (K,)
-        'trans_per_subj' : (S, K, K)
-        'trans_mean'     : (K, K)
+        'dwell_times'        : (S, K)
+            Mean contiguous dwell length per state and subject (in time points).
+        'fractional_occupancy' : (S, K)
+            Fraction of total time spent in each state per subject.
+        'transitions'        : (S, K, K)
+            Row-stochastic transition probability matrices per subject (P[j|i]).
+        'transition_counts'  : (S, K, K)
+            Raw transition count matrices per subject.
+        'transitions_sum'    : (S,)
+            Total number of state changes (switches) per subject.
+        'switch_rate'        : (S,)
+            Fraction of time points involving a switch, i.e. transitions_sum / (T-1).
     """
     state_tc = np.asarray(state_tc)
     if state_tc.ndim != 2:
-        raise ValueError("state_tc must be a 2D array of shape (n_subjects, T).")
-    
-    S, _ = state_tc.shape
-    K = state_tc.max() + 1
+        raise ValueError("state_tc must be a 2D array of shape (S, T).")
+
+    S, T = state_tc.shape
+    K = int(state_tc.max()) + 1 if state_tc.size else 0
 
     dwell = np.zeros((S, K), dtype=float)
-    trans = np.zeros((S, K, K), dtype=float)
-    
+    fo = np.zeros((S, K), dtype=float)
+    trans_P = np.zeros((S, K, K), dtype=float)
+    trans_C = np.zeros((S, K, K), dtype=int)
+    ntrans = np.zeros(S, dtype=int)
+    srate = np.zeros(S, dtype=float)
+
     for s in range(S):
-        stc = state_tc[s]
-        dwell[s] = dwell_times(stc, K)
-        trans[s] = transition_matrix(stc, K)
-    
-    return {
-        "dwell_per_subj": dwell,
-        "dwell_mean": dwell.mean(axis=0),
-        "dwell_std": dwell.std(axis=0),
-        "trans_per_subj": trans,
-        "trans_mean": trans.mean(axis=0),
+        labels = state_tc[s]
+        dwell[s] = dwell_times(labels, K)
+        fo[s] = fractional_occupancy(labels, K)
+        trans_C[s] = transition_counts(labels, K)
+        trans_P[s] = transition_matrix(labels, K)
+        ntrans[s] = num_transitions(labels)
+        srate[s] = switch_rate(labels)
+
+    summary = {
+        "dwell_times": dwell,
+        "fractional_occupancy": fo,
+        "transitions": trans_P,
+        "transition_counts": trans_C,
+        "transitions_sum": ntrans,
+        "switch_rate": srate,
     }
+
+    return summary
+
+def fractional_occupancy(labels: np.ndarray, K: int) -> np.ndarray:
+    """
+    Fraction of time spent in each state.
+    """
+    labels = np.asarray(labels, dtype=int)
+    T = labels.size
+    fo = np.bincount(labels, minlength=K) / max(T, 1)
+    return fo.astype(float)
 
 def dwell_times(labels: np.ndarray, K: int) -> np.ndarray:
     """
-    Calculate the dwell times (fraction of time spent) in each state.
-
-    Parameters
-    ----------
-    labels : (T,) integer array in [0..K-1].
-    K : int
-        Number of states.
-
-    Returns
-    -------
-    (K,) float array
-        Dwell times for each state.
+    Mean dwell time (average contiguous run length) per state.
+    Returns 0 for states never visited.
     """
-    return np.array([(labels == k).sum() / labels.size for k in range(K)], dtype=float)
+    labels = np.asarray(labels, dtype=int)
+    runs = [[] for _ in range(K)]
+    if labels.size == 0:
+        return np.zeros(K, dtype=float)
+
+    run_len = 1
+    for t in range(1, labels.size):
+        if labels[t] == labels[t - 1]:
+            run_len += 1
+        else:
+            runs[labels[t - 1]].append(run_len)
+            run_len = 1
+    runs[labels[-1]].append(run_len)
+
+    out = np.zeros(K, dtype=float)
+    for k in range(K):
+        out[k] = np.mean(runs[k]) if runs[k] else 0.0
+    return out
+
+def transition_counts(labels: np.ndarray, K: int) -> np.ndarray:
+    """
+    Raw transition counts C[i,j] = number of i→j transitions.
+    """
+    labels = np.asarray(labels, dtype=int)
+    C = np.zeros((K, K), dtype=int)
+    if labels.size < 2:
+        return C
+    a, b = labels[:-1], labels[1:]
+    np.add.at(C, (a, b), 1)
+    return C
 
 def transition_matrix(labels: np.ndarray, K: int) -> np.ndarray:
     """
-    Row-stochastic transition matrix P(next | current).
-
-    Parameters
-    ----------
-    labels : (T,) integer array in [0..K-1]
-    K : int
-
-    Returns
-    -------
-    (K, K) float array
-        Transition matrix.
+    Row-stochastic transition matrix P(j | i).
     """
-    # Count the transitions
-    labels = labels.astype(int)
-    a, b = labels[:-1], labels[1:]
-    M = np.zeros((K, K), dtype=float)
-    np.add.at(M, (a, b), 1)
-    
-    # Get row sums and normalize the probabilities
-    row_sums = M.sum(axis=1, keepdims=True)
-    P = np.zeros_like(M)
-    np.divide(M, row_sums, out=P, where=row_sums > 0)
+    C = transition_counts(labels, K).astype(float)
+    row_sums = C.sum(axis=1, keepdims=True)
+    P = np.zeros_like(C, dtype=float)
+    np.divide(C, row_sums, out=P, where=row_sums > 0)
     return P
+
+def num_transitions(labels: np.ndarray) -> int:
+    """
+    Number of state changes (i.e., i_t != i_{t-1}).
+    """
+    labels = np.asarray(labels, dtype=int)
+    if labels.size < 2:
+        return 0
+    return int(np.count_nonzero(np.diff(labels) != 0))
+
+def switch_rate(labels: np.ndarray) -> float:
+    """
+    Proportion of steps that are transitions: num_transitions / (T-1).
+    """
+    labels = np.asarray(labels, dtype=int)
+    T = labels.size
+    return num_transitions(labels) / max(T - 1, 1)
 
 def state_plots(states=None, state_tc=None, summary=None, sub_ids=None, figsize=None):
     from matplotlib import pyplot as plt
@@ -357,31 +534,35 @@ def state_plots(states=None, state_tc=None, summary=None, sub_ids=None, figsize=
     elif state_tc is not None:
         # Plot state time courses
         fig, ax = plt.subplots(state_tc.shape[0], 1, figsize=figsize)
+        
+        if state_tc.shape[0] == 1:
+            ax = [ax]
+
         for i in range(state_tc.shape[0]):
             ax[i].plot(state_tc[i,:])
             
             if sub_ids is not None:
-                ax[i].set(title=f"Time course for sub {sub_ids[i]}", xlabel="Timepoint", ylabel="State")
+                ax[i].set(title=f"Time course for sub {sub_ids[i]}", xlabel="Time", ylabel="State")
             else:
-                ax[i].set(title=f"Time course for sub {i+1}", xlabel="Timepoint", ylabel="State")
+                ax[i].set(title=f"Time course for sub {i+1}", xlabel="Time", ylabel="State")
             
             K = int(state_tc.max() + 1)
             ax[i].set_yticks(range(K))
             ax[i].set_yticklabels([str(k + 1) for k in range(K)])
     
     elif summary is not None:
-        dwell_mean = summary["dwell_mean"]
-        dwell_std = summary["dwell_std"]
-        trans_mean = summary["trans_mean"]
-        K = summary["dwell_per_subj"].shape[-1]
+        dwell_mean = summary["fractional_occupancy"].mean(axis=0)
+        dwell_std = summary["fractional_occupancy"].std(axis=0)
+        trans_mean = summary["transitions"].mean(axis=0)
+        K = summary["fractional_occupancy"].shape[-1]
 
         fig, ax = plt.subplots(1,2, figsize=figsize)
 
         # Group dwell times (mean ± sd)
         ax[0].bar(range(K), dwell_mean, yerr=dwell_std, capsize=3)
         ax[0].set_xticks(range(K), [f"S{k}" for k in range(1,K+1)])
-        ax[0].set_ylabel("Dwell time (fraction)")
-        ax[0].set_title("Dwell times (group mean ± sd)")
+        ax[0].set_ylabel("Fractional occupancy")
+        ax[0].set_title("Fractional occupancy (group mean ± sd)")
 
         # Mean transition matrix
         im = ax[1].imshow(trans_mean, interpolation='nearest', aspect='auto')

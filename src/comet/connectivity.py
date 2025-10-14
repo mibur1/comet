@@ -1223,7 +1223,17 @@ class DCC(ConnectivityMethod):
         D = np.zeros_like(ts)
 
         # Fit a univariate GARCH process for each n
-        results = Parallel(n_jobs=self.num_cores)(delayed(self._compute_garch)(n) for n in tqdm(range(N), disable=not self.progress_bar, desc="DCC GARCH", dynamic_ncols=True))
+        if getattr(self, "num_cores", 1) == 1:
+            it = tqdm(range(N), desc="DCC GARCH (1 core)") if getattr(self, "progress_bar", True) else range(N)
+            results = [self._compute_garch(n) for n in it]
+        else:
+            cm = tqdm_joblib(total=N, desc=f"DCC GARCH ({self.num_cores} cores)") if getattr(self, "progress_bar", True) else None
+            gen = (delayed(self._compute_garch)(n) for n in range(N))
+            if cm:
+                with cm:
+                    results = Parallel(n_jobs=self.num_cores, prefer="processes", batch_size=1)(gen)
+            else:
+                results = Parallel(n_jobs=self.num_cores, prefer="processes", batch_size=1)(gen)
 
         for n, (theta, ep, d) in enumerate(results):
             Theta[n, :] = theta
@@ -1251,9 +1261,10 @@ class DCC(ConnectivityMethod):
         R = self._epsilonToR(epsilon, X)
 
         # Time-varying conditional covariance matrices
-        for t in tqdm(range(T),  disable=not self.progress_bar, desc="Conditional covariance matrices", dynamic_ncols=True):
+        for t in tqdm(range(T), disable=not self.progress_bar, desc="Conditional covariance matrices", dynamic_ncols=True):
             H[:,:,t] = np.diag(np.sqrt(D[t,:])) @ R[:,:,t] @ np.diag(np.sqrt(D[t,:]))
-
+        
+        self.dfc = R 
         self.dfc = self.postproc()
 
         self.H = H
