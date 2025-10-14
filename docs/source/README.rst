@@ -18,15 +18,15 @@
    :alt: PyPI Badge
 
 .. image:: https://app.codacy.com/project/badge/Grade/2e766745c5c04d4786ea28f7135c193e
-   :target: https://app.codacy.com/gh/mibur1/dfc-multiverse/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade
+   :target: https://app.codacy.com/gh/mibur1/comet/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade
    :alt: Codacy Badge
 
 .. image:: https://readthedocs.org/projects/comet-toolbox/badge/?version=latest
    :target: https://comet-toolbox.readthedocs.io/en/latest
    :alt: Documentation Status
 
-.. image:: https://coveralls.io/repos/github/mibur1/dfc-multiverse/badge.svg?branch=main
-   :target: https://coveralls.io/github/mibur1/dfc-multiverse?branch=main
+.. image:: https://coveralls.io/repos/github/mibur1/comet/badge.svg?branch=main
+   :target: https://coveralls.io/github/mibur1/comet?branch=main
    :alt: Coverage Status
 
 .. raw:: html
@@ -39,7 +39,7 @@ Yet another toolbox?
 You might ask yourself, "Why do I need yet another toolbox for dynamic functional connectivity (dFC) analysis and network neuroscience?"
 The answer is simple: the reproducibility crisis, driven in part by the maze of arbitrary yet defensible decisions in our analyses.
 
-To address this, we introduce the Comet toolbox — a tool that helps ensure your findings don't get lost in the Bermuda Triangle of irreproducible results.
+To address this, we introduce the Comet Toolbox: A tool that helps ensure your findings don't get lost in the Bermuda Triangle of irreproducible results.
 Whether you want to take full advantage of multiverse analysis or stick with traditional analyses, Comet lets you explore a broad range of methodological decisions, making your research more robust and transparent.
 
 From dFC estimation to graph analyses, Comet offers a wide range of methods. Plus, with an easy-to-use graphical user interface and comprehensive demo scripts, even the most Python-phobic among us can dive in and
@@ -47,7 +47,7 @@ start exploring brain dynamics like never before. So, buckle up, and let's bring
 
 .. note::
 
- The Comet toolbox is under active development. If you have any questions, suggestions, or want to contribute, please don't hesitate to reach out on GitHub or via email.
+ The Toolbox is under active development. If you have any questions, suggestions, or want to contribute, please don't hesitate to reach out on GitHub or via Email.
 
 
 Current features
