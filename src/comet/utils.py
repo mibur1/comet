@@ -527,7 +527,7 @@ def state_plots(states=None, state_tc=None, summary=None, sub_ids=None, figsize=
         # Plot states
         fig, ax = plt.subplots(1, states.shape[2], figsize=figsize)
         for i in range(states.shape[2]):
-            ax[i].imshow(states[:,:,i])
+            ax[i].imshow(states[:,:,i], cmap="coolwarm")
             ax[i].set_title(f"State {i+1}")
             ax[i].axis("off")
 
@@ -551,18 +551,29 @@ def state_plots(states=None, state_tc=None, summary=None, sub_ids=None, figsize=
             ax[i].set_yticklabels([str(k + 1) for k in range(K)])
     
     elif summary is not None:
-        dwell_mean = summary["fractional_occupancy"].mean(axis=0)
-        dwell_std = summary["fractional_occupancy"].std(axis=0)
+        fo_mean = summary["fractional_occupancy"].mean(axis=0)
+        fo_std = summary["fractional_occupancy"].std(axis=0)
         trans_mean = summary["transitions"].mean(axis=0)
         K = summary["fractional_occupancy"].shape[-1]
 
         fig, ax = plt.subplots(1,2, figsize=figsize)
 
-        # Group dwell times (mean ± sd)
-        ax[0].bar(range(K), dwell_mean, yerr=dwell_std, capsize=3)
+        # Group fo (mean ± sd)
+        has_std = fo_std is not None and np.any(fo_std != 0)
+        if has_std:
+            yerr_lower = np.minimum(fo_std, fo_mean)
+            yerr_upper = fo_std
+            yerr = [yerr_lower, yerr_upper]
+            title_suffix = "(group mean ± sd)"
+        else:
+            yerr = None
+            title_suffix = ""
+                
+        ax[0].bar(range(K), fo_mean, yerr=yerr, capsize=3)
         ax[0].set_xticks(range(K), [f"S{k}" for k in range(1,K+1)])
-        ax[0].set_ylabel("Fractional occupancy")
-        ax[0].set_title("Fractional occupancy (group mean ± sd)")
+        ax[0].set_ylabel("%")
+        ax[0].set_title(f"Fractional occupancy {title_suffix}")
+        ax[0].set_ylim(bottom=0)
 
         # Mean transition matrix
         im = ax[1].imshow(trans_mean, interpolation='nearest', aspect='auto')
