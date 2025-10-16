@@ -66,3 +66,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/comet"]
+
+[tool.hatch.build]
+exclude = [
+  "tutorials/**",
+  "docs/**"]
