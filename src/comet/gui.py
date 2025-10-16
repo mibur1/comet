@@ -220,7 +220,8 @@ class ParameterOptions:
         "state_ratio":          "State ratio",
         "vlim":                 "Color axis limit",
         "hmm_iter":             "HMM iterations",
-        "parcellation":         "Parcellation"
+        "parcellation":         "Parcellation",
+        "cov_estimator":        "Covariance estimator"
     }
 
     CONNECTIVITY_METHODS = {
@@ -240,6 +241,7 @@ class ParameterOptions:
         'DiscreteHMM':                  'STATE Discrete Hidden Markov Model',
         'ContinuousHMM':                'STATE Continuous Hidden Markov Model',
         'Static_Pearson':               'STATIC Pearson Correlation',
+        'Static_Covariance':            'STATIC Covariance',
         'Static_Partial':               'STATIC Partial Correlation',
         'Static_Mutual_Info':           'STATIC Mutual Information'
     }
@@ -351,7 +353,8 @@ class ParameterOptions:
         "Iterations":               "Number of iterations",
         "Sliding window":           "Sliding window method",
         "State ratio":              "Observation/state ratio for the DHMM",
-        "vlim":                     "Limit for color axis (for eTS visualization only)"
+        "vlim":                     "Limit for color axis (for eTS visualization only)",
+        "cov_estimator":            "Covariance estimator"
     }
 
     CONFOUND_OPTIONS = {
