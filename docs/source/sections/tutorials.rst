@@ -17,6 +17,8 @@ Functional Connectivity
 
    notebooks/example_dfc_cont
    notebooks/example_dfc_state
+   notebooks/example_dfc_state2
+
 
 Graph Analysis
 --------------
