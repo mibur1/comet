@@ -1386,6 +1386,8 @@ class SlidingWindowClustering(ConnectivityMethod):
                  shape: Literal["rectangular", "gaussian", "hamming"] = "gaussian",
                  std: float = 10,
                  stepsize: int = 15,
+                 random_state: int | None = None,
+                 n_init: int = 50,
                  progress_bar: bool = True):
 
         super().__init__(time_series, 0, False, False)
@@ -1394,6 +1396,8 @@ class SlidingWindowClustering(ConnectivityMethod):
         self.shape = shape
         self.std = std
         self.stepsize = stepsize
+        self.random_state = random_state
+        self.n_init = n_init
         self.progress_bar = progress_bar
         self.subject_clusters = subject_clusters
         self.N_estimates = (self.T - self.windowsize) // self.stepsize + 1
@@ -1440,7 +1444,7 @@ class SlidingWindowClustering(ConnectivityMethod):
             F = self.mat2vec(dfc)
 
             # First level clustering
-            kmeans_ = KMeans(n_clusters=self.subject_clusters, n_init=500).fit(F)
+            kmeans_ = KMeans(n_clusters=self.subject_clusters, random_state=self.random_state, n_init=self.n_init).fit(F)
             F_cent = kmeans_.cluster_centers_
 
             FCS = self.vec2mat(F_cent, N=self.P)
@@ -1457,7 +1461,7 @@ class SlidingWindowClustering(ConnectivityMethod):
 
         # Second level clustering
         F = self.mat2vec(FCS_1st_level)
-        kmeans_ = KMeans(n_clusters=self.n_states, n_init=500).fit(F)
+        kmeans_ = KMeans(n_clusters=self.n_states, n_init=self.n_init, random_state=self.random_state).fit(F)
         F_cent = kmeans_.cluster_centers_
 
         self.states = self.vec2mat(F_cent, N=self.P)

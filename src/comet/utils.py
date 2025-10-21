@@ -228,50 +228,15 @@ def notebookToScript(notebook):
     return scriptContent
 
 # State-analysis utilities
-def kmeans_cluster_old(dfc, num_states=5, standardise_features=False, random_state=None):
-    dfc = np.asarray(dfc)
-    if dfc.ndim not in (3, 4):
-        raise ValueError("dfc must be (P,P,T) or (S,P,P,T).")
-
-    if dfc.ndim == 3:
-        P, _, T = dfc.shape
-        S = 1
-        iu = np.tril_indices(P, k=-1)
-        X = dfc.transpose(2, 0, 1)[:, iu[0], iu[1]]       # (T, M)
-    else:
-        S, P, _, T = dfc.shape
-        iu = np.tril_indices(P, k=-1)
-        X = dfc.transpose(0, 3, 1, 2)[:, :, iu[0], iu[1]].reshape(S * T, -1)  # (S*T, M)
-
-    # Standardise features across time to balance edges
-    if standardise_features:
-        X = (X - X.mean(axis=0)) / (X.std(axis=0) + 1e-8)
-
-    kmeans = KMeans(n_clusters=num_states, n_init=50, random_state=random_state)
-    labels_flat = kmeans.fit_predict(X)                    # (T) or (S*T,)
-    centers = kmeans.cluster_centers_                      # (K, M)
-    inertia = float(kmeans.inertia_)
-
-    # Rebuild state matrices (P,P,K)
-    states = np.zeros((P, P, num_states), dtype=centers.dtype)
-    for k in range(num_states):
-        m = np.zeros((P, P), dtype=centers.dtype)
-        m[iu] = centers[k]
-        m = m + m.T
-        states[:, :, k] = m
-
-    state_tc = labels_flat.reshape(S, -1) # (S, T) or (1, T)
-
-    return state_tc, states, inertia
-
 def kmeans_cluster(
     dfc,
     num_states: int = 5,
-    strategy: str = "pooled",          # "pooled" or "two_level"
-    subject_clusters: int = 5,         # only used for "two_level"
+    strategy: str = "pooled",   # "pooled" or "two_level"
+    subject_clusters: int = 5,  # only used for "two_level"
     standardise_features: bool = False,
-    diag_value: float | None = None,   # e.g., 1.0 for correlations, None to leave zeros
-    random_state=None):
+    diag_value: float = 0.0,
+    random_state: int | None = None,
+    n_init: int = 50):
     """
     Cluster continuously varying dFC into K discrete states using k-means.
 
@@ -290,9 +255,8 @@ def kmeans_cluster(
         First-level k for "two_level".
     standardise_features : bool
         Z-score each edge across all samples before k-means.
-    diag_value : float or None
-        If not None, fill diagonal of returned state matrices with this value
-        (use 1.0 for correlation states if you want unit diagonals).
+    diag_value : float
+        Main diagonal values for state connectivity matrices.
     random_state : int or None
         Reproducibility for KMeans.
 
@@ -347,13 +311,13 @@ def kmeans_cluster(
             m = np.zeros((P, P), dtype=centres_vec.dtype)
             m[iu] = centres_vec[k]
             m = m + m.T
-            if diag_value is not None:
-                np.fill_diagonal(m, diag_value)
+
+            np.fill_diagonal(m, diag_value)
             states[:, :, k] = m
         return states
 
     if strategy == "pooled":
-        km = KMeans(n_clusters=num_states, n_init=50, random_state=random_state)
+        km = KMeans(n_clusters=num_states, n_init=n_init, random_state=random_state)
         labels_flat = km.fit_predict(Xs)                  # (S*T,)
         states = rebuild_states(km.cluster_centers_)      # (P,P,K)
         inertia = float(km.inertia_)
@@ -368,7 +332,7 @@ def kmeans_cluster(
             Xs_s = Xs[s*T:(s+1)*T, :]                     # (T,M)
             if subject_clusters > T:
                 raise ValueError(f"subject_clusters ({subject_clusters}) > T ({T}) for subject {s}.")
-            km1 = KMeans(n_clusters=subject_clusters, n_init=50, random_state=random_state)
+            km1 = KMeans(n_clusters=subject_clusters, n_init=n_init, random_state=random_state)
             km1.fit(Xs_s)
             centroids_list.append(km1.cluster_centers_)   # (k1,M)
         C = np.vstack(centroids_list)                     # (S*subject_clusters, M)
