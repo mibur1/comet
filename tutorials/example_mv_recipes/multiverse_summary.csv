@@ -1,9 +1,3 @@
-Universe,Decision 1,Value 1,Decision 2,Value 2,Decision 3,Value 3
-Universe_1,method,SW,windowsize,29,mu,nan
-Universe_2,method,SW,windowsize,29,mu,nan
-Universe_3,method,SW,windowsize,39,mu,nan
-Universe_4,method,SW,windowsize,39,mu,nan
-Universe_5,method,FLS,windowsize,nan,mu,50
-Universe_6,method,FLS,windowsize,nan,mu,100
-Universe_7,method,FLS,windowsize,nan,mu,50
-Universe_8,method,FLS,windowsize,nan,mu,100
+Universe,Decision 1,Value 1
+Universe_1,dfc,SW29
+Universe_2,dfc,SW49
