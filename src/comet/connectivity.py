@@ -715,11 +715,16 @@ class FlexibleLeastSquares(ConnectivityMethod):
             for i in rng:
                 beta[i, :, :] = self._betas(self.time_series[:, i].reshape(T, 1), self.time_series)
         else:
-            cm = tqdm_joblib(total=P, desc=f"FLS ({self.num_cores} cores)") if self.progress_bar else None
-            with cm:
+            if self.progress_bar:
+                with tqdm_joblib(total=P, desc=f"FLS ({self.num_cores} cores)"):
+                    results = Parallel(n_jobs=self.num_cores, prefer="processes", batch_size=1)(
+                        delayed(FlexibleLeastSquares._compute_i)(i, self.time_series, self.mu) for i in range(P)
+                    )
+            else:
                 results = Parallel(n_jobs=self.num_cores, prefer="processes", batch_size=1)(
-                    delayed(FlexibleLeastSquares._compute_i)(i, self.time_series, self.mu) for i in range(P))
-          
+                    delayed(FlexibleLeastSquares._compute_i)(i, self.time_series, self.mu) for i in range(P)
+                )
+            
             for i, beta_i in results:
                 beta[i, :, :] = beta_i
 

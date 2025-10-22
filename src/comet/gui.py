@@ -268,6 +268,7 @@ class ParameterOptions:
         "pagerank_centrality":          "BCT Pagerank centrality",
         "participation_coef":           "BCT Participation coef",
         "participation_coef_sign":      "BCT Participation coef (sign)",
+        "avg_clustering_onella":        "BCT Average clustering (Onella)",
     }
 
     # Reversed dictionaries for easy lookup

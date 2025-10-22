@@ -2,7 +2,7 @@ import bct
 import warnings
 import numpy as np
 import scipy.sparse
-from numba import jit
+from numba import njit
 from typing import Literal
 
 # Ignore warnings from bctpy about NaNs in centrality calculations
@@ -880,7 +880,7 @@ def matching_ind_und(G: np.ndarray) -> np.ndarray:
     else:
         raise ValueError("Input must be a 2D or 3D matrix.")
 
-@jit(nopython=True)
+@njit(fastmath=True, cache=True)
 def distance_wei(G: np.ndarray, inv: bool = False) -> np.ndarray:
     '''
     (Inverse) distance matrix for weighted networks with significantly
@@ -941,7 +941,7 @@ def distance_wei(G: np.ndarray, inv: bool = False) -> np.ndarray:
 
     return D
 
-@jit(nopython=True)
+@njit(fastmath=True, cache=True)
 def distance_bin(G: np.ndarray, inv: bool = False) -> np.ndarray:
     '''
     Distance matrix calculation for binary networks with significantly
@@ -985,7 +985,7 @@ def distance_bin(G: np.ndarray, inv: bool = False) -> np.ndarray:
 
     return D
 
-@jit(nopython=True)
+@njit(fastmath=True, cache=True)
 def _matching_ind(G2D: np.ndarray) -> np.ndarray:
     "Compute the matching index for a single 2D adjacency matrix."
     G2D = (G2D > 0).astype(np.float64) # binarise the adjacency matrix

@@ -1109,7 +1109,7 @@ class Multiverse:
         # Load the combined results dictionary.
         combined_results_path = os.path.join(self.results_dir, "multiverse_results.pkl")
         if not os.path.exists(combined_results_path):
-            raise ValueError("Combined results file not found. Please run the multiverse analysis first.")
+            raise ValueError("Results file not found. Please run the multiverse analysis first.")
 
         with open(combined_results_path, "rb") as file:
             combined_results = pickle.load(file)
