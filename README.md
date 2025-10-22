@@ -12,7 +12,8 @@
 
 Please refer to the **[documentation](https://comet-toolbox.readthedocs.io/en/latest/)** for detailed information about the toolbox and the current features. The following README will only provide a very brief overview.
 
-Please also note that the package is under active development. If you have any questions, suggestions, or want to contribute, please don't hesitate to reach out on GitHub or via the email address in the [`pyproject.toml`](https://github.com/mibur1/dfc-multiverse/blob/main/pyproject.toml) file. Some features are also not yet tested, so there will be bugs (the question is just how many).
+> [!NOTE]
+> This package is under active development. If you have any questions, suggestions, or want to contribute, please do not hesitate to reach out on GitHub or via the email address in the [`pyproject.toml`](https://github.com/mibur1/dfc-multiverse/blob/main/pyproject.toml) file. Some features are also not yet tested, so there will be bugs (the question is just how many).
 
 
 ### Installation and usage
@@ -57,3 +58,8 @@ A comprehensive set of usage examples are provided in the **[documentation](http
 ├─ pyproject.toml     ← Packaging & dependencies
 └─ README.md          ← Project overview
 ```
+
+### Contributing
+
+We warmly welcome contributions and suggestions for new features! Comet is an open and collaborative project, and your input helps make it better for the entire community.
+More detailed contribution guidelines will follow soon. For now, before submitting a pull request, please open an [issue](https://github.com/mibur1/comet/issues) on GitHub to start a discussion or share ideas.
