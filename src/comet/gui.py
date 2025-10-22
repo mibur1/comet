@@ -6210,7 +6210,7 @@ def run():
         created_app = True
 
     # Fix macOS layout issues (centering, small comboBoxes)
-    if sys.platform == "darwin":  # macOS
+    if sys.platform == "darwin":
         app.setStyle("Fusion")
 
     # Locale & global stylesheet
