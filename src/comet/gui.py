@@ -6209,6 +6209,10 @@ def run():
         app = QApplication(sys.argv)
         created_app = True
 
+    # Fix macOS layout issues (centering, small comboBoxes)
+    if sys.platform == "darwin":  # macOS
+        app.setStyle("Fusion")
+
     # Locale & global stylesheet
     QLocale.setDefault(QLocale(QLocale.Language.English, QLocale.Country.UnitedStates))
     app.setStyleSheet("""
