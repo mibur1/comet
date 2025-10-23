@@ -18,11 +18,11 @@ Please refer to the **[documentation](https://comet-toolbox.readthedocs.io/en/la
 
 ### Installation and usage
 
-As Comet contains a fair amount of dependencies, it should be installed in a dedicated Python environment (e.g. [micromamba](https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html) or another environment manager of your choice) to avoid version conflicts.
+As Comet contains a fair amount of dependencies, it should be installed in a dedicated Python environment (e.g. [conda](https://conda-forge.org/download) or another environment manager of your choice) to avoid version conflicts.
 
 ```
-micromamba create -n comet python==3.11
-micromamba activate comet
+conda create -n comet python==3.11
+conda activate comet
 pip install comet-toolbox
 ```
 
