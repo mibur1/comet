@@ -18,7 +18,7 @@ After installation, graphical user interface can be accessed through the termina
 
     comet-gui
 
-A brief introduction to the GUI with real data is provided in the :doc:`tutorials`.
+If you are on a fresh install, this might take a while to open on the first start. A brief introduction for how to use the GUI is provided in the :doc:`tutorials`.
 
 
 Scripting
