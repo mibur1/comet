@@ -202,6 +202,7 @@ class ParameterOptions:
         "drop_timepoints":      "Drop n timepoints",
         "standardize":          "Z-score connectivity",
         "tril":                 "Extract lower triangle",
+        "labels":               "Node labels",
         "method":               "Specific method",
         "params":               "Various parameters",
         "coi_correction":       "COI correction",
@@ -210,7 +211,9 @@ class ParameterOptions:
         "n_overlap":            "Window overlap",
         "tapered_window":       "Tapered window",
         "n_states":             "Number of states",
-        "subject_clusters":     "Number subject-level clusters",
+        "random_state":         "Random state",
+        "n_init":               "Number of runs",
+        "subject_clusters":     "Subject-level clusters",
         "normalization":        "Normalization",
         "clstr_distance":       "Distance measure",
         "subject":              "Subject",
@@ -221,29 +224,83 @@ class ParameterOptions:
         "vlim":                 "Color axis limit",
         "hmm_iter":             "HMM iterations",
         "parcellation":         "Parcellation",
-        "cov_estimator":        "Covariance estimator"
+        "cov_estimator":        "Covariance estimator",
+    }
+
+    INFO_OPTIONS = {
+        "windowsize":           "Size of the window used by the method. Should typically be an uneven number to have a center.",
+        "stepsize":             "Step size for moving the window across time.",
+        "shape":                "Shape of the windowing function.",
+        "std":                  "Width (sigma) of the window.",
+        "diagonal":             "Values for the main diagonal of the connectivity matrix.",
+        "fisher_z":             "Fisher z-transform the connectivity values.",
+        "num_cores":            "Parallelize on multiple cores (highly recommended for DCC and FLS).",
+        "standardizeData":      "Z-scoring. Timeseries are shifted to zero mean and scaled to unit variance.",
+        "mu":                   "Weighting parameter for FLS. Smaller values will produce more erratic changes in connectivity estimate.",
+        "flip_eigenvectors":    "Flips the sign of the eigenvectors.",
+        "dist":                 "Distance function",
+        "TR":                   "Repetition time of the data (in seconds)",
+        "fmin":                 "Minimum wavelet frequency",
+        "fmax":                 "Maximum wavelet frequency",
+        "n_scales":             "Number of wavelet scales",
+        "drop_scales":          "Drop the n largest and smallest scales to account for the cone of influence",
+        "drop_timepoints":      "Drop n first and last time points from the time series to account for the cone of influence",
+        "method":               "Specific implementation of the method",
+        "params":               "Various parameters",
+        "coi_correction":       "Cone of influence correction",
+        "clstr_distance":       "Distance metric",
+        "num_bins":             "Number of bins for discretization",
+        "method":               "Specific type of method",
+        "labels":               "Node labels (unused in the GUI)",
+        "n_overlap":            "Window overlap",
+        "tapered_window":       "Tapered window",
+        "n_states":             "Number of states",
+        "n_subj_clusters":      "Number of subject-level clusters",
+        "subject_clusters":     "Number of subject-level clusters",
+        "normalization":        "Normalization",
+        "subject":              "Subject ID",
+        "random_state":         "Random state (for reproducibility)",
+        "n_init":               "Number of times the k-means algorithm is run with different centroid seeds",
+        "Base measure":         "Base measure for the clustering",
+        "hmm_iter":             "Number of iterations for the HMM",
+        "sw_method":            "Sliding window method",
+        "state_ratio":          "Observation/state ratio",
+        "dhmm_obs_state_ratio": "Observation/state ratio for the DHMM",
+        "vlim":                 "Limit for color axis (for eTS visualization only)",
+        "cov_estimator":        "Covariance estimator",
+        "G":                    "Input connectivity/adjacency matrix",
+        "type":                 "Type of processing for this step",
+        "local":                "Local or global efficiency",
+        "density":              "Density of the network",
+        "threshold":            "Connectivity threshold value",
+        "diag":                 "Values for the main diagonal",
+        "avdeg":                "Desired average degree of the backbone",
+        "verbose":              "Print out edges while building the spanning tree",
+        "d":                    "Damping factor",
+        "ci":                   "Community detection method: bct.community_louvain()",
+        "degree":               "Nature of the graph (undirected, use in-degree, use out-degree",
     }
 
     CONNECTIVITY_METHODS = {
-        'SlidingWindow':                'CONT Sliding Window',
-        'Jackknife':                    'CONT Jackknife Correlation',
-        'FlexibleLeastSquares':         'CONT Flexible Least Squares',
-        'SpatialDistance':              'CONT Spatial Distance',
-        'TemporalDerivatives':          'CONT Multiplication of Temporal Derivatives',
-        'DCC':                          'CONT Dynamic Conditional Correlation',
-        'PhaseSynchrony':               'CONT Phase Synchronization',
-        'LeiDA':                        'CONT Leading Eigenvector Dynamics',
-        'WaveletCoherence':             'CONT Wavelet Coherence',
-        'EdgeConnectivity':             'CONT Edge-centric Connectivity',
-        'KSVD':                         'STATE K-SVD',
-        'CoactivationPatterns':         'STATE Co-activation Patterns',
-        'SlidingWindowClustering':      'STATE Sliding Window Clustering',
-        'DiscreteHMM':                  'STATE Discrete Hidden Markov Model',
-        'ContinuousHMM':                'STATE Continuous Hidden Markov Model',
-        'Static_Pearson':               'STATIC Pearson Correlation',
-        'Static_Covariance':            'STATIC Covariance',
-        'Static_Partial':               'STATIC Partial Correlation',
-        'Static_Mutual_Info':           'STATIC Mutual Information'
+        'SlidingWindow':                "CONT Sliding Window",
+        'Jackknife':                    "CONT Jackknife Correlation",
+        'FlexibleLeastSquares':         "CONT Flexible Least Squares",
+        'SpatialDistance':              "CONT Spatial Distance",
+        'TemporalDerivatives':          "CONT Multiplication of Temporal Derivatives",
+        'DCC':                          "CONT Dynamic Conditional Correlation",
+        'PhaseSynchrony':               "CONT Phase Synchronization",
+        'LeiDA':                        "CONT Leading Eigenvector Dynamics",
+        'WaveletCoherence':             "CONT Wavelet Coherence",
+        'EdgeConnectivity':             "CONT Edge-centric Connectivity",
+        'KSVD':                         "STATE K-SVD",
+        'CoactivationPatterns':         "STATE Co-activation Patterns",
+        'SlidingWindowClustering':      "STATE Sliding Window Clustering",
+        'DiscreteHMM':                  "STATE Discrete Hidden Markov Model",
+        'ContinuousHMM':                "STATE Continuous Hidden Markov Model",
+        'Static_Pearson':               "STATIC Pearson Correlation",
+        'Static_Covariance':            "STATIC Covariance",
+        'Static_Partial':               "STATIC Partial Correlation",
+        'Static_Mutual_Info':           "STATIC Mutual Information"
     }
 
     GRAPH_OPTIONS = {
@@ -290,120 +347,103 @@ class ParameterOptions:
     }
 
     ATLAS_OPTIONS_CIFTI = {
-        "Glasser MMP":              ["379"],
-        "Schaefer Kong":            ["100", "200", "300", "400", "500", "600", "700", "800", "900", "1000"],
-        "Schaefer Tian":            ["154", "254", "354", "454", "554", "654", "754", "854", "954", "1054"]
+        "Glasser MMP":          ["379"],
+        "Schaefer Kong":        ["100", "200", "300", "400", "500", "600", "700", "800", "900", "1000"],
+        "Schaefer Tian":        ["154", "254", "354", "454", "554", "654", "754", "854", "954", "1054"]
     }
 
     ATLAS_MAP = {
-                "Schaefer Kong 100": "schaefer_100_cortical",
-                "Schaefer Kong 200": "schaefer_200_cortical",
-                "Schaefer Kong 300": "schaefer_300_cortical",
-                "Schaefer Kong 400": "schaefer_400_cortical",
-                "Schaefer Kong 500": "schaefer_500_cortical",
-                "Schaefer Kong 600": "schaefer_600_cortical",
-                "Schaefer Kong 700": "schaefer_700_cortical",
-                "Schaefer Kong 800": "schaefer_800_cortical",
-                "Schaefer Kong 900": "schaefer_900_cortical",
-                "Schaefer Kong 1000": "schaefer_1000_cortical",
+        "Schaefer Kong 100":    "schaefer_100_cortical",
+        "Schaefer Kong 200":    "schaefer_200_cortical",
+        "Schaefer Kong 300":    "schaefer_300_cortical",
+        "Schaefer Kong 400":    "schaefer_400_cortical",
+        "Schaefer Kong 500":    "schaefer_500_cortical",
+        "Schaefer Kong 600":    "schaefer_600_cortical",
+        "Schaefer Kong 700":    "schaefer_700_cortical",
+        "Schaefer Kong 800":    "schaefer_800_cortical",
+        "Schaefer Kong 900":    "schaefer_900_cortical",
+        "Schaefer Kong 1000":   "schaefer_1000_cortical",
 
-                "Schaefer Tian 154": "schaefer_100_subcortical",
-                "Schaefer Tian 254": "schaefer_200_subcortical",
-                "Schaefer Tian 354": "schaefer_300_subcortical",
-                "Schaefer Tian 454": "schaefer_400_subcortical",
-                "Schaefer Tian 554": "schaefer_500_subcortical",
-                "Schaefer Tian 654": "schaefer_600_subcortical",
-                "Schaefer Tian 754": "schaefer_700_subcortical",
-                "Schaefer Tian 854": "schaefer_800_subcortical",
-                "Schaefer Tian 954": "schaefer_900_subcortical",
-                "Schaefer Tian 1054": "schaefer_1000_subcortical",
+        "Schaefer Tian 154":    "schaefer_100_subcortical",
+        "Schaefer Tian 254":    "schaefer_200_subcortical",
+        "Schaefer Tian 354":    "schaefer_300_subcortical",
+        "Schaefer Tian 454":    "schaefer_400_subcortical",
+        "Schaefer Tian 554":    "schaefer_500_subcortical",
+        "Schaefer Tian 654":    "schaefer_600_subcortical",
+        "Schaefer Tian 754":    "schaefer_700_subcortical",
+        "Schaefer Tian 854":    "schaefer_800_subcortical",
+        "Schaefer Tian 954":    "schaefer_900_subcortical",
+        "Schaefer Tian 1054":   "schaefer_1000_subcortical",
 
-                "Glasser MMP 379": "glasser_mmp_subcortical",
-            }
-
-    INFO_OPTIONS = {
-        "windowsize":               "Size of the window used by the method. Should typically be an uneven number to have a center.",
-        "shape":                    "Shape of the windowing function.",
-        "std":                      "Width (sigma) of the window.",
-        "diagonal":                 "Values for the main diagonal of the connectivity matrix.",
-        "fisher_z":                 "Fisher z-transform the connectivity values.",
-        "num_cores":                "Parallelize on multiple cores (highly recommended for DCC and FLS).",
-        "standardizeData":          "z-standardize the time series data.",
-        "mu":                       "Weighting parameter for FLS. Smaller values will produce more erratic changes in connectivity estimate.",
-        "flip_eigenvectors":        "Flips the sign of the eigenvectors.",
-        "dist":                     "Distance function",
-        "TR":                       "Repetition time of the data (in seconds)",
-        "fmin":                     "Minimum wavelet frequency",
-        "fmax":                     "Maximum wavelet frequency",
-        "n_scales":                 "Number of wavelet scales",
-        "drop_scales":              "Drop the n largest and smallest scales to account for the cone of influence",
-        "drop_timepoints":          "Drop n first and last time points from the time series to account for the cone of influence",
-        "method":                   "Specific implementation of the method",
-        "params":                   "Various parameters",
-        "coi_correction":           "Cone of influence correction",
-        "clstr_distance":           "Distance metric",
-        "num_bins":                 "Number of bins for discretization",
-        "method":                   "Specific type of method",
-        "n_overlap":                "Window overlap",
-        "tapered_window":           "Tapered window",
-        "n_states":                 "Number of states",
-        "n_subj_clusters":          "Number of subjects",
-        "normalization":            "Normalization",
-        "subject":                  "Subject",
-        "Base measure":             "Base measure for the clustering",
-        "Iterations":               "Number of iterations",
-        "Sliding window":           "Sliding window method",
-        "State ratio":              "Observation/state ratio for the DHMM",
-        "vlim":                     "Limit for color axis (for eTS visualization only)",
-        "cov_estimator":            "Covariance estimator"
+        "Glasser MMP 379":      "glasser_mmp_subcortical",
+    }
+     
+    PROCESSING_OPTIONS = {  
+        "basic":                "Basic processing options.\n\
+            - Detrend: Low frequency linear and polynomial trends are removed from the signal.\n\
+            - Standardize: Z-scoring. Timeseries are shifted to zero mean and scaled to unit variance.",
+        "confounds":            "Confound regression strategy.\n\
+            - High variance: Regress components with high variance as implemented in nilearn.image.high_variance_confounds().\n\
+            - Global signal: Regress the global signal from the data.\n\
+            - From file: Load and regress confounds from a text file (one confound per column).",
+        "smoothing":            "Full-width at half maximum in millimeters of the spatial smoothing to apply to the signal.",
+        "filtering":            "Temporal filtering. Cutoff frequencies (in Hz) as well as repetition time of the signal(TR).",
+        "parcellation":         "Parcellation atlas and resloution/type.",
+        "discard":              "Number of initial time points to discard from the data.",
+        "clean_fmriprep":       "Cleaning strategies as implemented in nilearn.interfaces.fmriprep.load_confounds()",
+        "basic_fmriprep":       "Basic processing options.\n\
+            - Detrend: Low frequency linear and polynomial trends are removed from the signal.\n\
+            - Standardize: Z-scoring. Timeseries are shifted to zero mean and scaled to unit variance.\n\
+            - Regress components with high variance as implemented in nilearn.image.high_variance_confounds().",
+        "zzz":                  "zzz"
     }
 
     CONFOUND_OPTIONS = {
-            "Cleaning\nstrategy": ["motion", "wm_csf", "compcor", "global_signal", "scrub", "demean", "high_pass", "ica_aroma"],
-            "motion": ["full", "basic", "power2", "derivatives"],
-            "wm_csf": ["basic", "power2", "derivatives", "full"],
-            "compcor": ["anat_combined", "anat_separated", "temporal", "temporal_anat_combined", "temporal_anat_separated"],
-            "n_compcor": ["all"],
-            "global_signal": ["basic", "power2", "derivatives", "full"],
-            "ica_aroma": ["full", "basic"],
-            "scrub": 5,
-            "fd_threshold": 0.5,
-            "std_dvars_threshold": 1.5,
-        }
+        "Cleaning\nstrategy":   ["motion", "wm_csf", "compcor", "global_signal", "scrub", "demean", "high_pass", "ica_aroma"],
+        "motion":               ["full", "basic", "power2", "derivatives"],
+        "wm_csf":               ["basic", "power2", "derivatives", "full"],
+        "compcor":              ["anat_combined", "anat_separated", "temporal", "temporal_anat_combined", "temporal_anat_separated"],
+        "n_compcor":            ["all"],
+        "global_signal":        ["basic", "power2", "derivatives", "full"],
+        "ica_aroma":            ["full", "basic"],
+        "scrub":                5,
+        "fd_threshold":         0.5,
+        "std_dvars_threshold":  1.5,
+    }
 
     CLEANING_INFO = {
-        "motion": "Type of confounds extracted from head motion estimates\n\
+        "motion":               "Type of confounds extracted from head motion estimates\n\
             - basic: translation/rotation (6 parameters)\n\
             - power2: translation/rotation + quadratic terms (12 parameters)\n\
             - derivatives: translation/rotation + derivatives (12 parameters)\n\
             - full: translation/rotation + derivatives + quadratic terms + power2d derivatives (24 parameters)",
-        "wm_csf": "Type of confounds extracted from masks of white matter and cerebrospinal fluids\n\
+        "wm_csf":               "Type of confounds extracted from masks of white matter and cerebrospinal fluids\n\
             - basic: the averages in each mask (2 parameters)\n\
             - power2: averages and quadratic terms (4 parameters)\n\
             - derivatives: averages and derivatives (4 parameters)\n\
             - full: averages + derivatives + quadratic terms + power2d derivatives (8 parameters)",
-        "compcor": "Type of confounds extracted from a component based noise correction method\n\
+        "compcor":              "Type of confounds extracted from a component based noise correction method\n\
             - anat_combined: noise components calculated using a white matter and CSF combined anatomical mask\n\
             - anat_separated: noise components calculated using white matter mask and CSF mask compcor separately; two sets of scores are concatenated\n\
             - temporal: noise components calculated using temporal compcor\n\
             - temporal_anat_combined: components of temporal and anat_combined\n\
             - temporal_anat_separated:  components of temporal and anat_separated",
-        "n_compcor": "The number of noise components to be extracted.\n\
+        "n_compcor":            "The number of noise components to be extracted.\n\
             - acompcor_combined=False, and/or compcor=full: the number of components per mask.\n\
             - all: all components (50% variance explained by fMRIPrep defaults)",
-        "global_signal": "Type of confounds xtracted from the global signal\n\
+        "global_signal":        "Type of confounds xtracted from the global signal\n\
             - basic: just the global signal (1 parameter)\n\
             - power2: global signal and quadratic term (2 parameters)\n\
             - derivatives: global signal and derivative (2 parameters)\n\
             - full: global signal + derivatives + quadratic terms + power2d derivatives (4 parameters)",
-        "ica_aroma": "ICA-AROMA denoising\n\
+        "ica_aroma":            "ICA-AROMA denoising\n\
             - full: use fMRIPrep output ~desc-smoothAROMAnonaggr_bold.nii.gz\n\
             - basic use noise independent components only.",
-        "scrub": "Lenght of segment to remove around time frames with excessive motion.",
-        "fd_threshold": "Framewise displacement threshold for scrub in mm.",
-        "std_dvars_threshold": "Standardized DVARS threshold for scrub.\n\
-            DVARS is the root mean squared intensity difference of volume N to volume N+1"
-    }
+        "scrub":                "Lenght of segment to remove around time frames with excessive motion.",
+        "fd_threshold":         "Framewise displacement threshold for scrub in mm.",
+        "std_dvars_threshold":  "Standardized DVARS threshold for scrub.\n\
+            - DVARS is the root mean squared intensity difference of volume N to volume N+1"
+        }
 
     MV_INIT_SCRIPT = (
         "\"\"\"\n"
@@ -429,7 +469,7 @@ class ParameterOptions:
         "    # Save results\n"
         "    result = {\"addition\": addition}\n"
         "    comet.utils.save_universe_results(result)\n"
-        )
+    )
 
     def __init__(self):
         self.param_names = self.PARAM_NAMES
@@ -442,6 +482,7 @@ class ParameterOptions:
         self.atlas_options_cifti = self.ATLAS_OPTIONS_CIFTI
         self.atlas_map = self.ATLAS_MAP
         self.info_options = self.INFO_OPTIONS
+        self.processing_options = self.PROCESSING_OPTIONS
         self.confound_options = self.CONFOUND_OPTIONS
         self.cleaning_info = self.CLEANING_INFO
         self.mv_init_script = self.MV_INIT_SCRIPT
@@ -667,6 +708,7 @@ class App(QMainWindow):
         self.atlas_options_cifti = parameterNames.atlas_options_cifti
         self.atlas_map = parameterNames.atlas_map
         self.info_options = parameterNames.info_options
+        self.processing_options = parameterNames.processing_options
         self.confound_options = parameterNames.confound_options
         self.cleaning_info = parameterNames.cleaning_info
         self.mv_init_script = parameterNames.mv_init_script
@@ -850,10 +892,11 @@ class App(QMainWindow):
         firstRowLayout = QHBoxLayout()
         self.detrendCheckbox = QCheckBox("Detrend")
         self.standardizeCheckbox = QCheckBox("Standardize")
-    
+        
         firstRowLayout.addWidget(self.detrendCheckbox)
         firstRowLayout.addWidget(self.standardizeCheckbox)
         firstRowLayout.addStretch(1)
+        firstRowLayout.addWidget(InfoButton(self.processing_options["basic"])) 
         miscCleaningLayout.addLayout(firstRowLayout)
 
         # Row 2: Confound regression controls
@@ -874,6 +917,7 @@ class App(QMainWindow):
         secondRowLayout.addWidget(self.gsrCheckbox)
         secondRowLayout.addWidget(self.confoundsFileCheckbox)
         secondRowLayout.addStretch(1)
+        secondRowLayout.addWidget(InfoButton(self.processing_options["confounds"]))
 
         miscCleaningLayout.addLayout(secondRowLayout)
 
@@ -923,6 +967,7 @@ class App(QMainWindow):
         smoothingLayout.addWidget(smoothingLabel)
         smoothingLayout.addWidget(self.smoothingSpinbox)
         smoothingLayout.addStretch(1)
+        smoothingLayout.addWidget(InfoButton(self.processing_options["smoothing"])) 
         smoothingLayout.setContentsMargins(0, 0, 0, 0)
         self.smoothingContainer.setLayout(smoothingLayout)
 
@@ -952,6 +997,7 @@ class App(QMainWindow):
         filteringLayout.addWidget(trLabel)
         filteringLayout.addWidget(self.trValue)
         filteringLayout.addStretch(1)
+        filteringLayout.addWidget(InfoButton(self.processing_options["filtering"])) 
         filteringLayout.setContentsMargins(0, 0, 0, 0)
         self.filteringContainer.setLayout(filteringLayout)
 
@@ -970,7 +1016,7 @@ class App(QMainWindow):
         self.parcellationLayout.setContentsMargins(5, 5, 5, 0)
 
         self.parcellationLabel = QLabel("Parcellation:")
-        self.parcellationLabel.setFixedWidth(100)
+        self.parcellationLabel.setFixedWidth(90)
 
         self.parcellationOptionsLabel = QLabel("Type:")
         self.parcellationOptionsLabel.setFixedWidth(40)
@@ -979,9 +1025,11 @@ class App(QMainWindow):
         self.parcellationDropdown = QComboBox()
         self.parcellationDropdown.addItems(self.atlas_options.keys())
         self.parcellationLayout.addWidget(self.parcellationLabel, 1)
-        self.parcellationLayout.addWidget(self.parcellationDropdown, 3)
+        self.parcellationLayout.addWidget(self.parcellationDropdown, 4)
         self.parcellationLayout.addWidget(self.parcellationOptionsLabel, 1)
         self.parcellationLayout.addWidget(self.parcellationOptions, 2)
+        self.parcellationLayout.addStretch(1)
+        self.parcellationLayout.addWidget(InfoButton(self.processing_options["parcellation"])) 
         self.parcellationContainer.setLayout(self.parcellationLayout)
 
         self.parcellationDropdown.currentIndexChanged.connect(self.onAtlasChanged)
@@ -997,6 +1045,7 @@ class App(QMainWindow):
         discardLayout.addWidget(discardLabel)
         discardLayout.addWidget(self.discardSpinBox)
         discardLayout.addStretch(1)
+        discardLayout.addWidget(InfoButton(self.processing_options["discard"]))
         discardLayout.setContentsMargins(5, 5, 5, 0)
         self.discardContainer.setLayout(discardLayout)
 
@@ -1160,6 +1209,7 @@ class App(QMainWindow):
         cleaningLayout.addWidget(self.fmriprep_highVarianceCheckbox)
         cleaningLayout.setContentsMargins(0, 0, 0, 0)
         cleaningLayout.addStretch(1)
+        cleaningLayout.addWidget(InfoButton(self.processing_options["basic_fmriprep"])) 
         generalCleaningLayout.addLayout(cleaningLayout)
         fmriprep_confoundsLayout.addWidget(self.generalCleaningContainer)
 
@@ -1176,6 +1226,7 @@ class App(QMainWindow):
         fmriprep_smoothingLayout.addWidget(smoothingLabel)
         fmriprep_smoothingLayout.addWidget(self.fmriprep_smoothingSpinbox)
         fmriprep_smoothingLayout.addStretch(1)
+        fmriprep_smoothingLayout.addWidget(InfoButton(self.processing_options["smoothing"])) 
         fmriprep_smoothingLayout.setContentsMargins(0, 0, 0, 0)
         self.fmriprep_smoothingContainer.setLayout(fmriprep_smoothingLayout)
         fmriprep_confoundsLayout.addWidget(self.fmriprep_smoothingContainer)
@@ -1208,6 +1259,7 @@ class App(QMainWindow):
         fmriprep_filteringLayout.addWidget(fmriprep_trLabel)
         fmriprep_filteringLayout.addWidget(self.fmriprep_trValue)
         fmriprep_filteringLayout.addStretch(1)
+        fmriprep_filteringLayout.addWidget(InfoButton(self.processing_options["filtering"])) 
         fmriprep_filteringLayout.setContentsMargins(0, 0, 0, 0)
         self.fmriprep_filteringContainer.setLayout(fmriprep_filteringLayout)
         fmriprep_confoundsLayout.addWidget(self.fmriprep_filteringContainer)
@@ -1223,6 +1275,7 @@ class App(QMainWindow):
         fmriprep_discardLayout.addWidget(fmriprep_discardLabel)
         fmriprep_discardLayout.addWidget(self.fmriprep_discardSpinBox)
         fmriprep_discardLayout.addStretch(1)
+        fmriprep_discardLayout.addWidget(InfoButton(self.processing_options["discard"])) 
         self.fmriprep_discardContainer.setLayout(fmriprep_discardLayout)
         fmriprep_confoundsLayout.addWidget(self.fmriprep_discardContainer)
 
@@ -2686,10 +2739,11 @@ class App(QMainWindow):
     def loadConfounds(self):
         confoundsWidget = QWidget()
         layout = QVBoxLayout(confoundsWidget)
+        layout.setContentsMargins(0, 0, 0, 0)
         self.strategy_layouts = {}  # Dict to hold the layouts for each strategy
 
         for key, param in self.confound_options.items():
-            h_layout = QHBoxLayout()
+            h_layout = QHBoxLayout()    
             label = QLabel(f"{key}:")
             label.setFixedWidth(70)
             h_layout.addWidget(label)
@@ -2721,6 +2775,7 @@ class App(QMainWindow):
 
             elif key == "Cleaning\nstrategy":
                 strategy_group = QGroupBox()
+                strategy_group.setContentsMargins(0, 0, 0, 0)
                 strategy_layout = QGridLayout(strategy_group)
                 self.strategy_checkboxes = {}
                 row, col = 0, 0
@@ -2734,7 +2789,10 @@ class App(QMainWindow):
                     if col == 4:
                         col = 0
                         row += 1
+
                 h_layout.addWidget(strategy_group)
+                h_layout.addStretch(1)
+                h_layout.addWidget(InfoButton(self.processing_options["clean_fmriprep"]))
                 input_widget = None
 
             else:
@@ -3547,10 +3605,7 @@ class App(QMainWindow):
         if self.data.data_filename:
             self.time_series_textbox.setText(self.data.data_filename)
         self.time_series_textbox.setEnabled(True)
-
-        # Create info button for time_series
-        time_series_info_text = "2D time series loaded from file (time has to be the first dimension)."
-        time_series_info_button = InfoButton(time_series_info_text)
+        time_series_info_button = InfoButton("Time series data created in the 'Data Preparation' tab with shape (n_timepoints, n_rois)")
 
         time_series_layout = QHBoxLayout()
         time_series_layout.addWidget(time_series_label)
@@ -4554,8 +4609,11 @@ class App(QMainWindow):
                     else:
                         param_widget = QLineEdit(str(param.default) if param.default != inspect.Parameter.empty else "")
 
+                info_widget = InfoButton(self.info_options[name])
+                temp_widgets[f"{name}_info"] = (param_label, info_widget)
                 temp_widgets[name] = (param_label, param_widget)
                 param_layout.addWidget(param_widget)
+                param_layout.addWidget(info_widget) 
                 self.graphParameterLayout.addLayout(param_layout)
 
         # Adjust visibility based on 'type' parameter
@@ -4571,16 +4629,24 @@ class App(QMainWindow):
                     if 'threshold' in temp_widgets:
                         temp_widgets['threshold'][0].show()
                         temp_widgets['threshold'][1].show()
+                        temp_widgets['threshold_info'][0].show()
+                        temp_widgets['threshold_info'][1].show()
                     if 'density' in temp_widgets:
                         temp_widgets['density'][0].hide()
                         temp_widgets['density'][1].hide()
+                        temp_widgets['density_info'][0].hide()
+                        temp_widgets['density_info'][1].hide()
                 elif selected_type == 'density':
                     if 'threshold' in temp_widgets:
                         temp_widgets['threshold'][0].hide()
                         temp_widgets['threshold'][1].hide()
+                        temp_widgets['threshold_info'][0].hide()
+                        temp_widgets['threshold_info'][1].hide()
                     if 'density' in temp_widgets:
                         temp_widgets['density'][0].show()
                         temp_widgets['density'][1].show()
+                        temp_widgets['density_info'][0].show()
+                        temp_widgets['density_info'][1].show()
 
             # Connect the signal from the type_widget to the updateVisibility function
             type_widget.currentIndexChanged.connect(updateVisibility)

@@ -455,7 +455,7 @@ def avg_shortest_path(G: np.ndarray,
     Parameters
     ----------
     G : np.ndarray
-        2D (NxN) or 3D (NxN x T) undirected connection matrix (binary or weighted).
+        2D (NxN) or 3D (NxN x T) undirected connectivity matrix (binary or weighted).
 
     include_diagonal : bool, optional
         If False, diagonal values are ignored when computing the average.
@@ -509,7 +509,7 @@ def transitivity_und(G: np.ndarray) -> np.ndarray:
     Parameters
     ----------
     G : np.ndarray
-        2D (NxN) or 3D (NxN x T) undirected connection matrix (binary or weighted).
+        2D (NxN) or 3D (NxN x T) undirected connectivity matrix (binary or weighted).
 
     Returns
     -------
@@ -547,7 +547,7 @@ def avg_clustering_onella(G: np.ndarray) -> np.ndarray:
     Parameters
     ----------
     G : np.ndarray
-        2D (NxN) or 3D (NxN x T) undirected connection matrix (binary or weighted).
+        2D (NxN) or 3D (NxN x T) undirected connectivity matrix (binary or weighted).
 
     Returns
     -------
@@ -598,7 +598,7 @@ def efficiency(G: np.ndarray,
     Parameters
     ----------
     G : np.ndarray
-        2D (NxN) or 3D (NxNxT) undirected connection matrix (binary or weighted).
+        2D (NxN) or 3D (NxNxT) undirected connectivity matrix (binary or weighted).
 
     local : bool, optional
         if True, local efficiency is computed. Default is False (global efficiency)
@@ -1017,13 +1017,13 @@ def backbone_wu(G: np.ndarray,
     
     The network backbone contains the dominant connections in the network
     and may be used to aid network visualization. This function computes
-    the backbone of a given weighted and undirected connection matrix G,
+    the backbone of a given weighted and undirected connectivity matrix G,
     using a minimum-spanning-tree based algorithm.
 
     Parameters
     ----------
     G : np.ndarray
-        2D (NxN) or 3D (NxN x T) weighted undirected connection matrix.
+        2D (NxN) or 3D (NxN x T) weighted undirected connectivity matrix.
     avgdeg : int, optional
         Desired average degree of the backbone. Default is 0.
     verbose : bool, optional
@@ -1071,7 +1071,7 @@ def betweenness(G: np.ndarray) -> np.ndarray:
     Parameters
     ----------
     G : np.ndarray
-        2D (NxN) or 3D (NxN x T) binary/weighted directed/undirected connection matrix.
+        2D (NxN) or 3D (NxN x T) binary/weighted directed/undirected connectivity matrix.
 
     Returns
     -------
@@ -1118,7 +1118,7 @@ def clustering_coef(G: np.ndarray) -> np.ndarray:
     Parameters
     ----------
     G : np.ndarray
-        2D (NxN) or 3D (NxN x T) weighted undirected connection matrix.
+        2D (NxN) or 3D (NxN x T) weighted undirected connectivity matrix.
 
     Returns
     -------
@@ -1158,7 +1158,7 @@ def degrees_und(G: np.ndarray) -> np.ndarray:
     Parameters
     ----------
     G : np.ndarray
-        2D (NxN) or 3D (NxN x T) undirected binary/weighted connection matrix.
+        2D (NxN) or 3D (NxN x T) undirected binary/weighted connectivity matrix.
 
     Returns
     -------
@@ -1199,7 +1199,7 @@ def density_und(G: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     Parameters
     ----------
     G : np.ndarray
-        2D (NxN) or 3D (NxN x T) undirected weighted/binary connection matrix.
+        2D (NxN) or 3D (NxN x T) undirected weighted/binary connectivity matrix.
 
     Returns
     -------
@@ -1335,7 +1335,7 @@ def participation_coef(G: np.ndarray,
     Parameters
     ----------
     G : np.ndarray or scipy.sparse.csr_matrix
-        2D (NxN) or 3D (NxN x T) binary/weighted directed/undirected connection matrix.
+        2D (NxN) or 3D (NxN x T) binary/weighted directed/undirected connectivity matrix.
 
     ci : str or array-like
         Community detection method. If "louvain", uses bct.community_louvain.
@@ -1400,7 +1400,7 @@ def participation_coef_sign(G: np.ndarray,
     Parameters
     ----------
     G : np.ndarray
-        2D (NxN) or 3D (NxN x T) undirected connection matrix with positive and negative weights.
+        2D (NxN) or 3D (NxN x T) undirected connectivity matrix with positive and negative weights.
 
     ci : str or array-like
         Community detection method. If "louvain", uses bct.community_louvain.
