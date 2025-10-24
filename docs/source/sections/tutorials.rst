@@ -9,8 +9,8 @@ The notebooks are included in the `tutorials/` folder of the toolbox or can be d
 
     This section is currently under construction. More tutorials will be added soon.
 
-Functional Connectivity
------------------------
+Dynamic Functional Connectivity (dFC)
+-------------------------------------
 
 .. toctree::
    :maxdepth: 1
