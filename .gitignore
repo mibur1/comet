@@ -8,6 +8,7 @@ tests/MATLAB/
 tutorials/abide_data/
 tutorials/adhd/
 tutorials/ds004489/
+tutorials/haxby2001/
 tutorials/README.md
 
 universe_*.py
