@@ -16,8 +16,9 @@ Functional Connectivity
    :maxdepth: 1
 
    notebooks/example_dfc_cont
-   notebooks/example_dfc_state
+   notebooks/example_dfc_state1
    notebooks/example_dfc_state2
+   notebooks/example_dfc_state3
 
 
 Graph Analysis
