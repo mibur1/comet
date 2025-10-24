@@ -1573,7 +1573,7 @@ class App(QMainWindow):
         buttonsLayout.addWidget(self.loadGraphFileButton, 1)
         self.loadGraphFileButton.clicked.connect(self.loadGraphFile)
 
-        self.graphFileNameLabel = QLabel('No data available.')
+        self.graphFileNameLabel = QLabel("No data available. Please use the previous two tabs or load connectivity results.")
         self.graphProcessingStepCounter = 1
         self.graphMeasureStepCounter = 1
 
@@ -4197,7 +4197,7 @@ class App(QMainWindow):
             self.plotLogo(self.graphFigure)
             self.graphCanvas.draw()
 
-            self.graphFileNameLabel.setText(f"No data available.")
+            self.graphFileNameLabel.setText(f"No data available. Please use the previous two tabs or load connectivity results.")
             return
 
         self.data.graph_raw = self.data.graph_data.copy()

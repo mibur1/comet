@@ -1560,6 +1560,8 @@ class CoactivationPatterns(ConnectivityMethod):
                  time_series: Union[np.ndarray, list],
                  n_states: int = 5,
                  subject_clusters: int = 5,
+                 random_state: int | None = None,
+                 n_init: int = 50,
                  progress_bar: bool = True):
 
         super().__init__(time_series, 0, False, False)
@@ -1567,10 +1569,12 @@ class CoactivationPatterns(ConnectivityMethod):
         self.N_estimates = self.T * time_series.shape[-1] if isinstance(time_series, np.ndarray) else self.T * len(time_series)
         self.n_states = n_states
         self.subject_clusters = subject_clusters
+        self.random_state = random_state
+        self.n_init = n_init
         self.progress_bar = progress_bar
        
     def cluster_ts(self, act, n_clusters):
-        kmeans = KMeans(n_clusters=n_clusters, n_init=500).fit(act)
+        kmeans = KMeans(n_clusters=n_clusters, n_init=self.n_init, random_state=self.random_state).fit(act)
         centroids = kmeans.cluster_centers_
 
         return centroids, kmeans
