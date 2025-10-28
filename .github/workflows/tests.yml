@@ -29,12 +29,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip uninstall -y comet comet-ml || true
-          # Stay on NumPy 1.x to avoid the NumPy 2 breakage
           pip install --upgrade --force-reinstall "numpy==1.26.4"
-          # Use a SciPy that is safely compatible with NumPy 1.x
           pip install --upgrade --force-reinstall "scipy>=1.10,<1.14"
           pip install --upgrade --force-reinstall "matplotlib==3.9.*" "seaborn==0.13.*"
-          # Ensure modern versions of these
           pip install "scikit-learn>=1.4" "statsmodels>=0.14.2" pandas teneto coverage
           pip install -e .
 
@@ -43,7 +40,7 @@ jobs:
           MPLBACKEND: Agg
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
         run: |
-          coverage run -m pytest -q tests
+          coverage run -m pytest -q "$GITHUB_WORKSPACE/tests"
           coverage report -m
           coverage xml
 
