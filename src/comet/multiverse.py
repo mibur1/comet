@@ -360,7 +360,7 @@ class Multiverse:
 
         return
 
-    def run(self, universe=None, parallel=1):
+    def run(self, universe=None, parallel=1, combine_results=True):
         """
         Run either an individual universe or the entire multiverse
 
@@ -416,12 +416,16 @@ class Multiverse:
                     Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in selected_universes)
 
         # Save all results in a single dictionary
-        self._combine_results()
+        if combine_results:
+            self._combine_results()
+            self.combined_results = True
+        else:
+            self.combined_results = False
 
         print("The multiverse analysis completed without any errors.")
         return
 
-    def summary(self, universe=None, print_df=True):
+    def summary(self, universe=None, print_df=True, return_df=False):
         """
         Print the multiverse summary to the terminal/notebook
 
@@ -447,19 +451,29 @@ class Multiverse:
             else:
                 print(multiverse_selection)
 
-        return None if self._in_notebook() else multiverse_selection
+        return multiverse_selection if return_df else None
 
     def get_results(self, universe=None):
         """
         Get the results of the multiverse (or a specific universe) as a dictionary
         """
-        path = f"{self.results_dir}/multiverse_results.pkl"
+        if os.path.exists(f"{self.results_dir}/multiverse_results.pkl"):
+            path = f"{self.results_dir}/multiverse_results.pkl"
 
-        with open(path, "rb") as file:
-            results = pickle.load(file)
+            with open(path, "rb") as file:
+                results = pickle.load(file)
 
-        if universe is not None:
-            results = results[f"universe_{universe}"]            
+            if universe is not None:
+                results = results[f"universe_{universe}"]            
+
+        else:
+            if universe is None:
+                raise ValueError("Multiverse results are not combined. Please specify a universe number.")
+
+            path = f"{self.results_dir}/tmp/universe_{universe}.pkl"
+
+            with open(path, "rb") as file:
+                results = pickle.load(file)
 
         return results
 

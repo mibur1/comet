@@ -83,7 +83,7 @@ def load_timeseries(path=None):
 
 def load_example(fname="time_series.txt"):
     """
-    Load simulation time series with two randomly changing connectivity states.
+    Load example data.
 
     Parameters
     ----------
@@ -91,8 +91,7 @@ def load_example(fname="time_series.txt"):
         File name for any of the included data
         - 'time_series.txt':          Parcellated BOLD time series data for one subject
         - 'time_series_multiple.npy': Parcellated BOLD time series data for 5 subjects
-        - 'simulation.txt':           Simulated time series data from the preprint
-        - 'simulation.pkl':           Simulated time series data from the preprint + parameters
+        - 'simulation.mat':           Simulated time series data for the example in the documentation
         Default is 'time_series.txt'.
 
     Returns
@@ -102,14 +101,13 @@ def load_example(fname="time_series.txt"):
 
     """
     with importlib_resources.path("comet.data", fname) as file_path:
-        # Handle different file formats
-        if fname.endswith(".pkl"):
-            with open(file_path, 'rb') as file:
-                data = pickle.load(file)
-        elif fname.endswith(".npy"):
+        # Handle different data files
+        if fname == "time_series_multiple.npy":
             data = np.load(file_path)
-        elif fname.endswith(".txt"):
+        elif fname == "time_series.txt":
             data = np.loadtxt(file_path)
+        elif fname == "simulation.mat":
+            data = mat73.loadmat(file_path)
         else:
             print("Error: Unsupported file format")
 
@@ -150,22 +148,36 @@ def save_universe_results(data):
     if not isinstance(data, dict):
         raise ValueError("Data must be povided as a dictionary.")
 
-    # Get the directory and universe name of the calling script
+    # Identify calling universe and paths
     caller_stack = inspect.stack()
-    universe_fname = caller_stack[1].filename
-    calling_script_dir = os.path.dirname(universe_fname)
-    match = re.search(r'universe_(\d+).py', universe_fname) # get universe number
-    universe_number = int(match.group(1))
+    universe_fname = caller_stack[1].filename               # .../multiverse/scripts/universe_#.py
+    scripts_dir     = os.path.dirname(universe_fname)       # .../multiverse/scripts
+    multiverse_dir  = os.path.dirname(scripts_dir)          # .../multiverse
 
-    savedir = os.path.join(calling_script_dir, "temp")
+    m = re.search(r'universe_(\d+)\.py$', os.path.basename(universe_fname))
+    if not m:
+        raise RuntimeError("Could not parse universe number from filename.")
+    universe_number = int(m.group(1))
+
+    # Attach decisions from multiverse_summary.csv
+    summary_path = os.path.join(multiverse_dir, "multiverse_summary.csv")
+    df = pd.read_csv(summary_path)
+
+    # Match row: Universe column uses 'Universe_#'
+    key = f"Universe_{universe_number}".lower()
+    row = df.loc[df["Universe"].str.lower() == key]
+    if not row.empty:
+        decisions = row.drop(columns=["Universe"]).iloc[0].to_dict()
+        data = dict(data)
+        data["decisions"] = decisions
+
+    # Save the data as a .pkl file in scripts/temp
+    savedir = os.path.join(scripts_dir, "temp")
     os.makedirs(savedir, exist_ok=True)
 
-    # Save the data as a .pkl file
-    file = savedir + f"/universe_{universe_number}.pkl"
-    with open(file, 'wb') as f:
+    file = os.path.join(savedir, f"universe_{universe_number}.pkl")
+    with open(file, "wb") as f:
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
-
-    return
 
 def clean(time_series, detrend=False, confounds=None, standardize=False, standardize_confounds=True, \
           filter='butterworth', low_pass=None, high_pass=None, t_r=None, ensure_finite=False):
