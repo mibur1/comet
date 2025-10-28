@@ -7,7 +7,7 @@ The notebooks are included in the `tutorials/` folder of the toolbox or can be d
 
 .. note::
 
-    This section is currently under construction. More tutorials will be added soon.
+    This page is actively being updated. Additional tutorials will be added over time.
 
 Dynamic Functional Connectivity (dFC)
 -------------------------------------
