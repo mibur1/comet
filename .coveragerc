@@ -1,3 +1,8 @@
 [run]
-source =
-    comet
+source = comet
+
+[report]
+include =
+    */comet/graph.py
+    */comet/connectivity.py
+    */comet/utils.py
