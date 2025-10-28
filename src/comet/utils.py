@@ -117,18 +117,12 @@ def load_testdata(data=None):
     """
     Load test data for unit tests.
     """
-    if data == "data":
-        pass
-    elif data == "connectivity":
-        fname = "testdata_connectivity.mat"
-    elif data == "graph":
-        fname = "testdata_graph.mat"
-    elif data == "multiverse":
-        pass
+    if data in ["graph", "connectivity"]:
+        fname = f"{data}.mat"
     else:
         raise ValueError("Valid test names are: 'graph', 'connectivity', 'multiverse', or 'data'.")
     
-    with importlib_resources.path("comet.data", fname) as file_path:
+    with importlib_resources.path("comet.data.tests", fname) as file_path:
         data = loadmat(file_path)
     return data
 
