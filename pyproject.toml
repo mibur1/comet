@@ -70,4 +70,5 @@ packages = ["src/comet"]
 [tool.hatch.build]
 exclude = [
   "tutorials/**",
-  "docs/**"]
+  "docs/**",
+  "tests/**"]
