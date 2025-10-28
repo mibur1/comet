@@ -803,7 +803,8 @@ class LeiDA(ConnectivityMethod):
     time_series : np.ndarray
         The input time series data.
     flip_eigenvectors : bool, optional
-        Whether to flip the eigenvectors so that the largest component is negative. Default is False.
+        The sign of each leading eigenvector is adjusted so that the majority of its elements are negative. 
+        This ensures consistent orientation of eigenvectors across time points and subjects. Default is True.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
     fisher_z : bool, optional
@@ -829,7 +830,7 @@ class LeiDA(ConnectivityMethod):
 
     def __init__(self,
                  time_series: np.ndarray,
-                 flip_eigenvectors: bool = False,
+                 flip_eigenvectors: bool = True,
                  diagonal: int = 0,
                  fisher_z: bool = False,
                  tril: bool = False):
@@ -844,13 +845,12 @@ class LeiDA(ConnectivityMethod):
     def estimate(self):
         """
         Calculate Leading Eigenvector Dynamics Analysis (LeiDA).
+        The leading eigenvectors are saved in as the V1 attribute.
 
         Returns
         -------
         np.ndarray
             Dynamic functional connectivity as a PxPxN array.
-        np.ndarray
-            Leading eigenvectors.
         """
         analytic_signal = hilbert(self.time_series, axis=0)
         instantaneous_phase = np.angle(np.asarray(analytic_signal))
@@ -1326,11 +1326,12 @@ class EdgeConnectivity(ConnectivityMethod):
         -------
         np.ndarray
             Dynamic functional connectivity depending on the method.
-                For eTS: Edge x Time array.
+                For eTS: Time x Edge array.
                 For eFC: Edge x Edge x Time array.
         """
         z = zscore(self.time_series, axis=0, ddof=1) if self.standardizeData else self.time_series
         self.u, self.v = np.triu_indices(self.time_series.shape[1], k=1)
+        print(self.u, self.v)
         a = np.multiply(z[:, self.u], z[:, self.v]) # edge time series
 
         # If labels are provided we can create edge names
