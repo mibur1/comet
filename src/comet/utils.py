@@ -89,9 +89,10 @@ def load_example(fname="time_series.txt"):
     ----------
     fname : str, optional
         File name for any of the included data
-        - 'time_series.txt':          Parcellated BOLD time series data for one subject
-        - 'time_series_multiple.npy': Parcellated BOLD time series data for 5 subjects
-        - 'simulation.mat':           Simulated time series data for the example in the documentation
+        - 'time_series.txt':            Parcellated BOLD time series data for one subject
+        - 'time_series_multiple.npy':   Parcellated BOLD time series data for 5 subjects
+        - 'simulation.mat':             Simulated time series data for the tutorials
+        - 'hurricane.tsv':              Hurricane data for the hurricane multiverse tutorial
         Default is 'time_series.txt'.
 
     Returns
@@ -102,14 +103,16 @@ def load_example(fname="time_series.txt"):
     """
     with importlib_resources.path("comet.data", fname) as file_path:
         # Handle different data files
-        if fname == "time_series_multiple.npy":
-            data = np.load(file_path)
-        elif fname == "time_series.txt":
+        if fname == "time_series.txt":
             data = np.loadtxt(file_path)
+        elif fname == "time_series_multiple.npy":
+            data = np.load(file_path)
         elif fname == "simulation.mat":
             data = mat73.loadmat(file_path)
+        elif fname == "hurricane.tsv":
+            data = pd.read_csv(file_path, sep="\t")
         else:
-            print("Error: Unsupported file format")
+            print("Error: Unsupported file name")
 
     return data
 

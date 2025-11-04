@@ -733,7 +733,7 @@ class FlexibleLeastSquares(ConnectivityMethod):
         
         return self.dfc
 
-class PhaseSynchrony(ConnectivityMethod):
+class PhaseSynchronization(ConnectivityMethod):
     """
     Instantaneous Phase Synchronization methods.
 
@@ -788,7 +788,7 @@ class PhaseSynchrony(ConnectivityMethod):
 
         ips = np.moveaxis(M, 0, 2)                            # -> (P, P, N)
 
-        # Enforce symmetry (in case of tiny fp asymmetries)
+        # Enforce symmetry (in case of tiny asymmetries)
         self.dfc = 0.5 * (ips + ips.transpose(1, 0, 2))
 
         self.dfc = self.postproc()

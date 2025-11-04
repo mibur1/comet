@@ -288,7 +288,7 @@ class ParameterOptions:
         'SpatialDistance':              "CONT Spatial Distance",
         'TemporalDerivatives':          "CONT Multiplication of Temporal Derivatives",
         'DCC':                          "CONT Dynamic Conditional Correlation",
-        'PhaseSynchrony':               "CONT Phase Synchronization",
+        'PhaseSynchronization':         "CONT Phase Synchronization",
         'LeiDA':                        "CONT Leading Eigenvector Dynamics",
         'WaveletCoherence':             "CONT Wavelet Coherence",
         'EdgeConnectivity':             "CONT Edge-centric Connectivity",
