@@ -58,8 +58,8 @@ def test_MTD(ts):
     assert np.allclose(dfc_comet, dfc_teneto, atol=1e-6)
 
 def test_PhaseSynchronization(ts):
-    """Test that PhaseSynchrony() gives same result as Teneto's instantaneous phase synchrony."""
-    dfc_comet = connectivity.PhaseSynchrony(ts, method="teneto", diagonal=1).estimate()
+    """Test that PhaseSynchrony() gives same result as Teneto's instantaneous phase synchronization."""
+    dfc_comet = connectivity.PhaseSynchronization(ts, method="teneto", diagonal=1).estimate()
     dfc_teneto = teneto.timeseries.derive_temporalnetwork(ts.T, params={"method": "instantaneousphasesync"})
     assert np.allclose(dfc_comet, dfc_teneto, atol=1e-4)
 
