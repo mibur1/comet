@@ -27,7 +27,8 @@ Graph Analysis
 .. toctree::
    :maxdepth: 1
 
-   notebooks/example_graph_eff
+   notebooks/example_graph
+   notebooks/example_graph_benchmark
 
 Multiverse Analysis
 -------------------
