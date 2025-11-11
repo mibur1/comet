@@ -3,7 +3,9 @@ Tutorials
 
 The following notebooks provide examples of how to use the Comet library for various analyses.
 
-The notebooks are included in the `tutorials/` folder of the toolbox or can be downloaded from GitHub: https://github.com/mibur1/comet
+.. tip::
+
+   The notebooks are included in the `tutorials/` folder of the toolbox and can be downloaded from GitHub: https://github.com/mibur1/comet
 
 .. note::
 

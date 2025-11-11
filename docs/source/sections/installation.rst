@@ -14,13 +14,13 @@ If you encounter any issues, please let us know via the `issue tracker <https://
     conda create -n comet python==3.11
     conda activate comet
 
-Installation is then possible through the Python Package Index (PyPI) with the pip or pip3 command, depending on your system:
+Installation is then possible through the Python Package Index (PyPI) via the pip command:
 
 .. code-block:: shell
 
     pip install comet-toolbox
 
-Installation from the source code of this repository is also possible:
+If you require the most recent updates, which may not yet be available on PyPI, you can also install the package directly from the source code of this repository:
 
 1. Download/clone the repository
 2. Open a terminal in the folder which contains the pyproject.toml file

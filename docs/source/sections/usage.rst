@@ -6,7 +6,8 @@ Users also have the option to choose between a normal Python scripting API and a
 
 .. tip::
 
-  The GUI offers many features for data loading and processing, (dynamic) functional connectivity estimation, graph analysis, and multiverse analysis. The scripting API is recommended if more flexibility is needed.
+  The GUI provides convenient tools for data handling, (dynamic) connectivity estimation, graph analysis, and multiverse exploration, offering a quick visual overview. 
+  For greater flexibility, the scripting API is recommended.
 
 
 GUI
@@ -18,13 +19,13 @@ After installation, graphical user interface can be accessed through the termina
 
     comet-gui
 
-If you are on a fresh install, this might take a while to open on the first start. A brief introduction for how to use the GUI is provided in the :doc:`tutorials`.
+On a fresh installation, the first startup may take a little longer due to the initialisation of the Matplotlib backend. A brief introduction for how to use the GUI is provided in the :doc:`tutorials`.
 
 
 Scripting
 ---------
 
-Dynamic functional connectivity can be estimated through the ``connectivity`` module. An example for sliding window correlation:
+Dynamic functional connectivity can be estimated through the `connectivity` module. An example for sliding window correlation:
 
 .. code-block:: python
 
@@ -32,7 +33,7 @@ Dynamic functional connectivity can be estimated through the ``connectivity`` mo
 
     ts = utils.load_example()
 
-    sw = connectivity.SlidingWindow(ts, windowsize=30, shape="gaussian").estimate()
+    sw = connectivity.SlidingWindow(ts, windowsize=30, shape="gaussian")
     dfc = sw.estimate()
 
 
@@ -64,8 +65,8 @@ This exaple will create and run a multiverse analysis with two decisions (6 poss
         }
 
     def analysis_template():
-        print(f"Decision1: {{decision1}}")
-        print(f"Decision2: {{decision2}}")
+        print("Decision1:", {{decision1}})
+        print("Decision2", {{decision2}})
 
     mverse = Multiverse(name="example_multiverse")
     mverse.create(analysis_template, forking_paths)

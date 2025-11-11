@@ -47,7 +47,7 @@ start exploring brain dynamics like never before. So, buckle up, and let's bring
 
 .. note::
 
- The Toolbox is under active development. If you have any questions, suggestions, or want to contribute, please don't hesitate to reach out on GitHub or via Email.
+ The Toolbox is under active development. If you have any questions, suggestions, or want to contribute, please do not hesitate to reach out via `GitHub <https://github.com/mibur1/comet/issues>`_ or email.
 
 
 Current features
@@ -82,7 +82,8 @@ Current features
                     <li>Co-activation Patterns</li>
                     <li>Discrete HMM</li>
                     <li>Continuous HMM</li>
-                    <li>k-SVD</li>
+                    <li>K-SVD</li>
+                    <li>K-means clustering for all continuous measures</li>
                 </ul>
                 <strong>Static</strong>
                 <ul>

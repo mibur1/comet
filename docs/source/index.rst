@@ -5,7 +5,7 @@
    :maxdepth: 1
    :hidden:
 
-   sections/overview
+   sections/installation
    sections/usage
    sections/tutorials
    sections/api
