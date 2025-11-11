@@ -33,7 +33,7 @@ jobs:
           pip install --upgrade --force-reinstall "scipy>=1.10,<1.14"
           pip install --upgrade --force-reinstall "matplotlib==3.9.*" "seaborn==0.13.*"
           pip install "scikit-learn>=1.4" "statsmodels>=0.14.2" pandas teneto coverage
-          pip install -e .
+          pip install -e .[test]
 
       - name: Run tests with coverage
         env:
