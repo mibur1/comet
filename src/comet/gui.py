@@ -279,6 +279,19 @@ class ParameterOptions:
         "d":                    "Damping factor",
         "ci":                   "Community detection method: bct.community_louvain()",
         "degree":               "Nature of the graph (undirected, use in-degree, use out-degree",
+        "save_timeseries":      "Save the processed time series to a .mat file. Keys:\n\
+        - filedata: original data\n\
+        - filename: file name of the original data\n\
+        - filepath: file path of the original data\n\
+        - ts_data: processed/cleaned data",
+        "save_connectivity":    "Save the connectivity to a .mat file. Keys:\n\
+        - dfc_data: dynamic functional connectivity data\n\
+        - dfc_name: name of the connectivity method\n\
+        - dfc_params: parameters of the connectivity method",
+        "save_graph":           "Save the graph data to a .mat file. Keys:\n\
+        - graph_raw: original input data\n\
+        - graph_data: processed graph data for graph measure calculation\n\
+        - graph_results: calculated graph measures",
     }
 
     CONNECTIVITY_METHODS = {
@@ -380,22 +393,21 @@ class ParameterOptions:
      
     PROCESSING_OPTIONS = {  
         "basic":                "Basic processing options.\n\
-            - Detrend: Low frequency linear and polynomial trends are removed from the signal.\n\
-            - Standardize: Z-scoring. Timeseries are shifted to zero mean and scaled to unit variance.",
+        - Detrend: Low frequency linear and polynomial trends are removed from the signal.\n\
+        - Standardize: Z-scoring. Timeseries are shifted to zero mean and scaled to unit variance.",
         "confounds":            "Confound regression strategy.\n\
-            - High variance: Regress components with high variance as implemented in nilearn.image.high_variance_confounds().\n\
-            - Global signal: Regress the global signal from the data.\n\
-            - From file: Load and regress confounds from a text file (one confound per column).",
+        - High variance: Regress components with high variance as implemented in nilearn.image.high_variance_confounds().\n\
+        - Global signal: Regress the global signal from the data.\n\
+        - From file: Load and regress confounds from a text file (one confound per column).",
         "smoothing":            "Full-width at half maximum in millimeters of the spatial smoothing to apply to the signal.",
         "filtering":            "Temporal filtering. Cutoff frequencies (in Hz) as well as repetition time of the signal(TR).",
         "parcellation":         "Parcellation atlas and resloution/type.",
         "discard":              "Number of initial time points to discard from the data.",
         "clean_fmriprep":       "Cleaning strategies as implemented in nilearn.interfaces.fmriprep.load_confounds()",
         "basic_fmriprep":       "Basic processing options.\n\
-            - Detrend: Low frequency linear and polynomial trends are removed from the signal.\n\
-            - Standardize: Z-scoring. Timeseries are shifted to zero mean and scaled to unit variance.\n\
-            - Regress components with high variance as implemented in nilearn.image.high_variance_confounds().",
-        "zzz":                  "zzz"
+        - Detrend: Low frequency linear and polynomial trends are removed from the signal.\n\
+        - Standardize: Z-scoring. Timeseries are shifted to zero mean and scaled to unit variance.\n\
+        - Regress components with high variance as implemented in nilearn.image.high_variance_confounds()."
     }
 
     CONFOUND_OPTIONS = {
@@ -413,36 +425,36 @@ class ParameterOptions:
 
     CLEANING_INFO = {
         "motion":               "Type of confounds extracted from head motion estimates\n\
-            - basic: translation/rotation (6 parameters)\n\
-            - power2: translation/rotation + quadratic terms (12 parameters)\n\
-            - derivatives: translation/rotation + derivatives (12 parameters)\n\
-            - full: translation/rotation + derivatives + quadratic terms + power2d derivatives (24 parameters)",
+        - basic: translation/rotation (6 parameters)\n\
+        - power2: translation/rotation + quadratic terms (12 parameters)\n\
+        - derivatives: translation/rotation + derivatives (12 parameters)\n\
+        - full: translation/rotation + derivatives + quadratic terms + power2d derivatives (24 parameters)",
         "wm_csf":               "Type of confounds extracted from masks of white matter and cerebrospinal fluids\n\
-            - basic: the averages in each mask (2 parameters)\n\
-            - power2: averages and quadratic terms (4 parameters)\n\
-            - derivatives: averages and derivatives (4 parameters)\n\
-            - full: averages + derivatives + quadratic terms + power2d derivatives (8 parameters)",
+        - basic: the averages in each mask (2 parameters)\n\
+        - power2: averages and quadratic terms (4 parameters)\n\
+        - derivatives: averages and derivatives (4 parameters)\n\
+        - full: averages + derivatives + quadratic terms + power2d derivatives (8 parameters)",
         "compcor":              "Type of confounds extracted from a component based noise correction method\n\
-            - anat_combined: noise components calculated using a white matter and CSF combined anatomical mask\n\
-            - anat_separated: noise components calculated using white matter mask and CSF mask compcor separately; two sets of scores are concatenated\n\
-            - temporal: noise components calculated using temporal compcor\n\
-            - temporal_anat_combined: components of temporal and anat_combined\n\
-            - temporal_anat_separated:  components of temporal and anat_separated",
+        - anat_combined: noise components calculated using a white matter and CSF combined anatomical mask\n\
+        - anat_separated: noise components calculated using white matter mask and CSF mask compcor separately; two sets of scores are concatenated\n\
+        - temporal: noise components calculated using temporal compcor\n\
+        - temporal_anat_combined: components of temporal and anat_combined\n\
+        - temporal_anat_separated:  components of temporal and anat_separated",
         "n_compcor":            "The number of noise components to be extracted.\n\
-            - acompcor_combined=False, and/or compcor=full: the number of components per mask.\n\
-            - all: all components (50% variance explained by fMRIPrep defaults)",
+        - acompcor_combined=False, and/or compcor=full: the number of components per mask.\n\
+        - all: all components (50% variance explained by fMRIPrep defaults)",
         "global_signal":        "Type of confounds xtracted from the global signal\n\
-            - basic: just the global signal (1 parameter)\n\
-            - power2: global signal and quadratic term (2 parameters)\n\
-            - derivatives: global signal and derivative (2 parameters)\n\
-            - full: global signal + derivatives + quadratic terms + power2d derivatives (4 parameters)",
+        - basic: just the global signal (1 parameter)\n\
+        - power2: global signal and quadratic term (2 parameters)\n\
+        - derivatives: global signal and derivative (2 parameters)\n\
+        - full: global signal + derivatives + quadratic terms + power2d derivatives (4 parameters)",
         "ica_aroma":            "ICA-AROMA denoising\n\
-            - full: use fMRIPrep output ~desc-smoothAROMAnonaggr_bold.nii.gz\n\
-            - basic use noise independent components only.",
+        - full: use fMRIPrep output ~desc-smoothAROMAnonaggr_bold.nii.gz\n\
+        - basic use noise independent components only.",
         "scrub":                "Lenght of segment to remove around time frames with excessive motion.",
         "fd_threshold":         "Framewise displacement threshold for scrub in mm.",
         "std_dvars_threshold":  "Standardized DVARS threshold for scrub.\n\
-            - DVARS is the root mean squared intensity difference of volume N to volume N+1"
+        - DVARS is the root mean squared intensity difference of volume N to volume N+1"
         }
 
     MV_INIT_SCRIPT = (
@@ -1309,10 +1321,18 @@ class App(QMainWindow):
         leftLayout.addWidget(self.processingResultsLabel)
         leftLayout.addStretch()
 
-        self.saveTimeSeriesButton = QPushButton('Save time series')
+        # Container widget for data saving
+        self.saveDataWidget = QWidget()
+        saveRowLayout = QHBoxLayout(self.saveDataWidget)
+        saveRowLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.saveTimeSeriesButton = QPushButton("Save time series")
+        saveRowLayout.addWidget(self.saveTimeSeriesButton)
+        self.saveInfoButton = InfoButton(self.info_options["save_timeseries"])
+        saveRowLayout.addWidget(self.saveInfoButton)
+        leftLayout.addWidget(self.saveDataWidget)
         self.saveTimeSeriesButton.clicked.connect(self.saveFile)
-        leftLayout.addWidget(self.saveTimeSeriesButton)
-        self.saveTimeSeriesButton.hide()
+        self.saveDataWidget.hide()
 
         return
 
@@ -1404,15 +1424,16 @@ class App(QMainWindow):
         buttonsLayout = QHBoxLayout()
 
         # Calculate connectivity button
-        self.calculateConnectivityButton = QPushButton('Estimate Connectivity')
+        self.calculateConnectivityButton = QPushButton('Estimate connectivity')
         self.calculateConnectivityButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         buttonsLayout.addWidget(self.calculateConnectivityButton, 2)  # 2/3 of the space
         self.calculateConnectivityButton.clicked.connect(self.calculateConnectivity)
 
         # Create the "Save" button
-        self.saveConnectivityButton = QPushButton('Save Connectivity')
+        self.saveConnectivityButton = QPushButton('Save connectivity')
         self.saveConnectivityButton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         buttonsLayout.addWidget(self.saveConnectivityButton, 1)  # 1/3 of the space
+        buttonsLayout.addWidget(InfoButton(self.info_options["save_connectivity"]))
         self.saveConnectivityButton.clicked.connect(self.saveConnectivity)
 
         # Add the buttons layout to the left layout
@@ -1421,7 +1442,7 @@ class App(QMainWindow):
         # Memory buttons
         self.keepInMemoryCheckbox = QCheckBox("Keep in memory")
         self.keepInMemoryCheckbox.stateChanged.connect(self.onKeepInMemoryChecked)
-        self.clearMemoryButton = QPushButton("Clear Memory")
+        self.clearMemoryButton = QPushButton("Clear memory")
         self.clearMemoryButton.clicked.connect(self.onClearMemory)
 
         buttonLayout = QHBoxLayout()
@@ -1706,10 +1727,19 @@ class App(QMainWindow):
         leftLayout.addWidget(self.graphStepContainer, 4)
 
         # Save button
-        self.graphSaveButton = QPushButton('Save')
-        leftLayout.addWidget(self.graphSaveButton)
-        self.graphSaveButton.clicked.connect(self.saveGraphFile)
+        self.saveGraphWidget = QWidget()
+        graphRowLayout = QHBoxLayout(self.saveGraphWidget)
+        graphRowLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.graphSaveButton = QPushButton("Save graph results")
         self.graphSaveButton.setEnabled(False)
+        graphRowLayout.addWidget(self.graphSaveButton)
+
+        self.graphInfoButton = InfoButton(self.info_options["save_graph"])
+        graphRowLayout.addWidget(self.graphInfoButton)
+
+        leftLayout.addWidget(self.saveGraphWidget)
+        self.graphSaveButton.clicked.connect(self.saveGraphFile)
 
         return
 
@@ -2109,7 +2139,7 @@ class App(QMainWindow):
             if np.ndim(fshape) == 3:
                 labeltext = f"Loaded {fname} with {fshape[0]} subjects. Shape: {fshape[1:]}. "
                 self.fileNameLabel.setText(labeltext)
-                self.saveTimeSeriesButton.show()
+                self.saveDataWidget.show()
                 self.confoundsFileCheckbox.setChecked(False)
                 self.confoundsFileCheckbox.hide()
             elif file_path.endswith(".mat"):
@@ -2122,7 +2152,7 @@ class App(QMainWindow):
             
             self.connectivityFileNameLabel.setText(f"Time series data with shape {fshape} is available for connectivity analysis.")
             self.processingResultsLabel.setText(f"Time series data with shape {fshape} is ready for connectivity analysis.")
-            self.saveTimeSeriesButton.show()
+            self.saveDataWidget.show()
 
         # Enable connectivity buttions
         self.calculateConnectivityButton.setEnabled(True)
@@ -2151,9 +2181,10 @@ class App(QMainWindow):
                 data_dict = {}
                 for field in [f for f in self.data.__dataclass_fields__ if f.startswith('data_')]:
                     value = getattr(self.data, field)
+                    key_name = field[5:] # Remove 'data_' prefix
 
                     if isinstance(value, np.ndarray):
-                        data_dict[field] = value
+                        data_dict[key_name] = value
                     elif isinstance(value, dict):
                         converted_dict = {}
                         for k, v in value.items():
@@ -2163,11 +2194,11 @@ class App(QMainWindow):
                                 converted_dict[k] = np.array([])
                             else:
                                 converted_dict[k] = v
-                        data_dict[field] = converted_dict
+                        data_dict[key_name] = converted_dict
                     elif value is None:
                         pass
                     else:
-                        data_dict[field] = value
+                        data_dict[key_name] = value
 
                 savemat(filePath, data_dict)
 
@@ -2188,7 +2219,7 @@ class App(QMainWindow):
         self.subjectDropdownContainer.hide()
         self.parcellationContainer.hide()
         self.discardContainer.hide()
-        self.saveTimeSeriesButton.hide()
+        self.saveDataWidget.hide()
 
         self.niftiExtractButtonContainer.hide()
         self.niftiCleanButtonContainer.hide()
@@ -2513,7 +2544,7 @@ class App(QMainWindow):
         # Hide containers
         self.tsExtractionContainer.hide()
         self.transposeCheckbox.hide()
-        self.saveTimeSeriesButton.hide()
+        self.saveDataWidget.hide()
 
         # Open a dialog to select the fmriprep outputs directory
         fmriprep_folder = QFileDialog.getExistingDirectory(self, "Select fMRIprep directory")
@@ -3093,7 +3124,7 @@ class App(QMainWindow):
         self.parcellationCalculateButton.setEnabled(True)
         self.fmriprep_calculateButton.setEnabled(True)
 
-        self.saveTimeSeriesButton.show()
+        self.saveDataWidget.show()
 
         # Enable connectivity tab elements
         self.methodComboBox.setEnabled(True)
@@ -3197,7 +3228,7 @@ class App(QMainWindow):
         self.plotCarpet()
         self.cleanButton.setEnabled(True)
         self.resetButton.setEnabled(True)
-        self.saveTimeSeriesButton.show()
+        self.saveDataWidget.show()
 
     def handleCleaningError(self, error):
         # Handles errors in the worker thread
