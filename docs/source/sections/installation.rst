@@ -36,6 +36,11 @@ If you require the most recent updates, which may not yet be available on PyPI, 
     pip install -e .
 
 
+.. tip::
+
+    Online usage (e.g. through Google Colab) is also possible if the toolbox is installed in the runtime environment: `!pip install comet-toolbox`
+
+
 Troubleshooting
 ...............
 

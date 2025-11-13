@@ -10,6 +10,7 @@ The following notebooks provide examples of how to use the Comet library for var
 .. note::
 
     This page is actively being updated. Additional tutorials will be added over time.
+    
 
 Dynamic Functional Connectivity (dFC)
 -------------------------------------
