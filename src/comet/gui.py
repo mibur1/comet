@@ -171,7 +171,7 @@ class CustomListSpinbox(QDoubleSpinBox):
 
     def get_value(self):
         return self._user_special_value if self.special_selected else super(CustomListSpinbox, self).value()
-    
+
 class ParameterOptions:
     '''
     Parameters for the GUI
