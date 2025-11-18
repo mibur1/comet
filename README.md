@@ -20,7 +20,7 @@ Please refer to the **[documentation](https://comet-toolbox.readthedocs.io/en/la
 As Comet contains a fair amount of dependencies, it should be installed in a dedicated Python environment (e.g. [conda](https://conda-forge.org/download) or another environment manager of your choice) to avoid version conflicts. Comet runs on all major operating systems (Linux, Windows, macOS), although development and testing are primarily conducted on Linux. If you encounter any issues, please let us know via the [issue tracker](https://github.com/mibur1/comet/issues).
 
 ```
-conda create -n comet python==3.11
+conda create -n comet python==3.13
 conda activate comet
 pip install comet-toolbox
 ```
