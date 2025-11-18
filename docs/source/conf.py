@@ -6,9 +6,9 @@ sys.path.insert(0, os.path.abspath('../..'))
 
 # -- Project information -----------------------------------------------------
 project = 'Comet Toolbox'
-copyright = '2025, Micha Burkhardt'
+copyright = '2026, Micha Burkhardt'
 author = 'Micha Burkhardt'
-release = '2025'
+release = '2026'
 
 # -- General configuration ---------------------------------------------------
 extensions = [

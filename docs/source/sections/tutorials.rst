@@ -52,6 +52,7 @@ Applications
 .. toctree::
    :maxdepth: 1
 
+   notebooks/example_mv_hurricane
    notebooks/example_mv_abide
    notebooks/example_mv_fmri_sim
    notebooks/example_mv_eeg_sim
