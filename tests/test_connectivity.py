@@ -12,7 +12,7 @@ np.random.seed(0)
 # Fixture to load data once for all tests
 @pytest.fixture(scope="module")
 def ts():
-    ts = utils.load_example("time_series.txt")
+    ts = utils.load_example()
     return ts
 
 """
