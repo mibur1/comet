@@ -25,23 +25,14 @@ from tqdm_joblib import tqdm_joblib
 
 class Multiverse:
     """
-    Multiverse class for creating, running, and visualizing the multiverse analysis.
+    Multiverse class for creating, running, and visualizing a multiverse analysis.
 
-    This class provides functionality to create multiple analysis scripts based on different decision paths,
-    run them in parallel, and visualize the results as a network or specification curve.
-
-    Attributes
+    Parameters
     ----------
     name : str
         Name of the multiverse analysis. Default is "multiverse".
-    num_universes : str
-        Number of universes in the multiverse.
-    forking_paths : dict
-        Dictionary containing the forking paths.
-    multiverse_dir : str
-        Path to the multiverse directory.
-    results_dir : str
-        Path to the results directory.
+    path : str
+        Path to a multiverse directory (only used by the GUI).
     """
 
     def __init__(self, name="multiverse", path=None):
@@ -743,6 +734,7 @@ class Multiverse:
         group_index = 0
 
         # Build y-ticks and position map
+        forking_paths = {key: list(reversed(values)) for key, values in reversed(forking_paths.items())} # Reverse
         for decision, options in forking_paths.items():
             group_label = (name_map[decision]
                         if (name_map is not None and decision in name_map)
@@ -1213,4 +1205,25 @@ class Multiverse:
             return None
         else:
             return fig
+
+# Load an existing multiverse
+def load_multiverse(path=None):
+    """
+    Load a previously created multiverse from disk.
+
+    Parameters
+    ----------
+    path : str
+        A full/relative path to an existing multiverse folder
         
+    """
+    if path is not None:
+        path = path.rstrip("/")        # Remove trailing slash if present
+        mverse = Multiverse(name=path) # Create the Multiverse object
+    else:
+        raise ValueError("Please provide a name/path to a multiverse directory.")
+    
+    if not os.path.exists(mverse.multiverse_dir + "/multiverse_summary.csv"):
+        raise ValueError("The specified path does not seem to contain a valid multiverse.")
+
+    return mverse
