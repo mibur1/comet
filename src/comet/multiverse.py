@@ -1,5 +1,4 @@
 import os
-import re
 import sys
 import csv
 import glob
@@ -659,69 +658,62 @@ class Multiverse:
         return self._handle_figure_returns(fig)
 
     def specification_curve(self, measure, baseline=None, p_value=None, ci=None, smooth_ci=True, 
-                          title="Specification Curve", name_map=None, cmap="Set3", linewidth=2, figsize=None, 
-                          height_ratio=(2,1), fontsize=10, dotsize=50, line_pad=0.3, ftype="pdf", dpi=300):
+                        title="Specification Curve", name_map=None, cmap="Set3", linewidth=2, figsize=None, 
+                        height_ratio=(2,1), fontsize=10, dotsize=50, line_pad=0.3, ftype="pdf", dpi=300):
         """
-        Create and save a specification curve plot from multiverse results
+        Create and save a specification curve plot from multiverse results.
 
         Parameters
         ----------
         measure : string
             Name of the measure to plot. Needs to be provided
-
         baseline : float
-            Plot baseline/chance level as a dashed line. Default is None
-
+            Plot baseline/chance level as a dashed line and use as reference
+            for p-value testing. Default is None
         p_value : float
-            Calculate and visualize statistically significant specification via p-value. Default is None
-
+            Calculate and visualise statistically significant specifications
+            via p-value. Default is None
         ci : int
             Confidence interval to plot. Default is 95
-
         smooth_ci : bool
-            Plot a smoothed confidence interval. Default is True
-
+            Plot a smoothed confidence interval band. If False, use vertical
+            CI lines only. Default is True
         title : string
             Title of the plot. Default is "Specification Curve"
-
         name_map : dict
             Dictionary to map the decision names to custom names. Default is None
-
         cmap : string
-            Colormap to use for the nodes. Default is "Set3"
-
+            Colormap to use for the decision groups in the lower panel.
+            Default is "Set3"
         linewidth : int
-            Width of the boxplots. Default is 2
-
+            Width of the CI lines. Default is 2
         figsize : tuple
-            Size of the figure. Default is None (will automatically try to determine the size).
-
+            Size of the figure. Default is None (auto based on data).
         height_ratio : tuple
             Height ratio of the two subplots. Default is (2,1)
-
         fontsize : int
             Font size of the labels. Default is 10
-
         dotsize : int
             Size of the dots. Default is 50
-
         line_pad : float
             Padding for the vertical lines on the left side of the plot. Default is 0.3
-
         ftype : string
             File type to save the plot. Default is "png"
-
         dpi : int
             Dots per inch for the saved figure.
         """
         # Sort the universes based on an outcome measure and get the forking paths
         sorted_universes, forking_paths = self._load_and_prepare_data(measure)
 
+        if len(sorted_universes) == 0:
+            print("No universes to plot.")
+            return None
+
         # Try to automatically determine the figure size
         if figsize is None:
             num_options = sum(len(values) for values in forking_paths.values())
             figsize = (max(8, len(sorted_universes)*0.07), max(6, num_options))
-    
+        
         # Plotting
         sns.set_theme(style="whitegrid")
         fig, ax = plt.subplots(2, 1, figsize=figsize, gridspec_kw={'height_ratios': height_ratio}, sharex=True)
@@ -737,38 +729,38 @@ class Multiverse:
         for param in single_params:
             del forking_paths[param]
 
-        # Setup variables for the bottom plot
-        composite_labels = []
+        # Setup variables for bottom plot
         display_labels = []
-        flat_list = []
         yticks = []
         line_ends = []
-        p_vals = []
         key_positions = {}
         y_max = 0
         space_between_groups = 1
         sig_color = "#018532"
 
-        # Build the y-tick labels as composite strings for lookup but separate display labels.
+        # map (decision, option) -> (y_pos, group_index)
+        decision_positions = {}
+        group_index = 0
+
+        # Build y-ticks and position map
         for decision, options in forking_paths.items():
-            # Get custom label for the decision if provided
-            group_label = name_map[decision] if (name_map is not None and decision in name_map) else decision
+            group_label = (name_map[decision]
+                        if (name_map is not None and decision in name_map)
+                        else decision)
             key_position = y_max + len(options) / 2 - 0.5
             key_positions[group_label] = key_position
 
             for option in options:
-                composite = f"{group_label}: {option}"  # composite used for lookup
-                composite_labels.append(composite)
-                flat_list.append((decision, option))
                 yticks.append(y_max)
-                display_labels.append(option)  # only the option will be displayed
+                display_labels.append(option)
+                decision_positions[(decision, option)] = (y_max, group_index)
                 y_max += 1
 
             line_ends.append(y_max)
             y_max += space_between_groups
+            group_index += 1
 
-        # Save your decision_info using the composite mapping list.
-        decision_info = (composite_labels, yticks, line_ends, list(forking_paths.keys()))
+        decision_keys = list(forking_paths.keys())
 
         # Setup bottom plot axes
         ax[1].set_yticks(yticks)
@@ -782,15 +774,18 @@ class Multiverse:
         trans1 = transforms.blended_transform_factory(ax[1].transAxes, ax[1].transData)
         renderer = fig.canvas.get_renderer()
         
-        # Find the minimum x position of a y label
-        tick_label_extents = [label.get_window_extent(renderer=renderer) for label in ax[1].get_yticklabels()]
+        # Find the minimum x position of a y label in bottom panel
+        tick_label_extents = [label.get_window_extent(renderer=renderer)
+                            for label in ax[1].get_yticklabels()]
         max_extent = max(tick_label_extents, key=lambda bbox: bbox.width)
-        x_start_pixel = max_extent.x0  # leftmost edge of the bounding box
+        x_start_pixel = max_extent.x0
         x_start_axes1 = ax[1].transAxes.inverted().transform((x_start_pixel, 0))[0]
 
-        tick_label_extents = [label.get_window_extent(renderer=renderer) for label in ax[0].get_yticklabels()]
+        # And for top panel
+        tick_label_extents = [label.get_window_extent(renderer=renderer)
+                            for label in ax[0].get_yticklabels()]
         max_extent = max(tick_label_extents, key=lambda bbox: bbox.width)
-        x_start_pixel = max_extent.x0  # leftmost edge of the bounding box
+        x_start_pixel = max_extent.x0
         x_start_axes0 = ax[0].transAxes.inverted().transform((x_start_pixel, 0))[0]
         
         min_x_start_axes = min(x_start_axes1, x_start_axes0)
@@ -802,63 +797,80 @@ class Multiverse:
             ax[1].text(line_offset - padding, pos, key, transform=trans1, ha='right', va='center',
                     fontweight="bold", fontsize=fontsize, rotation=0)
 
-        # Draw vertical lines separating decision groups on the bottom plot
+        # Draw vertical lines separating decision groups
         s = -0.5
-        for i, line_end in enumerate(line_ends):
+        for line_end in line_ends:
             e = line_end - 0.5
-            line = mlines.Line2D([line_offset, line_offset], [s, e], color="black", lw=1, transform=trans1, clip_on=False)
+            line = mlines.Line2D([line_offset, line_offset], [s, e],
+                                color="black", lw=1,
+                                transform=trans1, clip_on=False)
             ax[1].add_line(line)
             s = line_end + 0.5
 
-        # Setup variables for the CI and x-axis
+        # CI / p-value setup
         ci_lower_values = []
         ci_upper_values = []
         x_values = np.arange(len(sorted_universes))
+        p_vals = []
 
-        # Warn if few samples are available for the CI
-        result, decisions = sorted_universes[0]
-        if hasattr(result, '__len__') and len(result) < 30:
+        # Warn if few samples are available for CI / tests
+        first_result, _ = sorted_universes[0]
+        if hasattr(first_result, '__len__') and len(first_result) < 30:
             if ci is not None:
-                print(f"Warning: Only {len(result)} samples were available for the CI.")
+                print(f"Warning: Only {len(first_result)} samples were available for the CI.")
             if p_value is not None:
-                print(f"Warning: Only {len(result)} samples were available for the t-tests.")
+                print(f"Warning: Only {len(first_result)} samples were available for the t-tests.")
 
-        # Plot dots and confidence intervals for each universe in the top panel,
-        # and the forking path markers in the bottom panel.
+        baseline_for_tests = 0 if baseline is None else baseline
+
+        # Precompute colours for decision groups
+        num_groups = group_index
+        colormap_obj = plt.cm.get_cmap(cmap, num_groups if num_groups > 0 else 1)
+        group_colors = [colormap_obj(j) for j in range(num_groups)]
+
+        # Collect points for scatterplot
+        top_x = []
+        top_y = []
+        top_c = []
+
+        bottom_x = []
+        bottom_y = []
+        bottom_c = []
+
+        # Main loop over universes
         for i, (result, decisions) in enumerate(sorted_universes):
             # Compute mean value
             mean_val = np.mean(result) if hasattr(result, '__len__') else result
 
-            # Determine color based on p-value testing if provided
+            # Determine colour based on p-value testing if provided
             color = "black"
-            if p_value is not None:
-                baseline = 0 if baseline is None else baseline
-                if hasattr(result, '__len__'):
-                    t_obs, p_obs = stats.ttest_1samp(result, baseline)
-                    p_vals.append(p_obs)
-                    color = sig_color if p_obs < p_value else "black"
+            if p_value is not None and hasattr(result, '__len__'):
+                t_obs, p_obs = stats.ttest_1samp(result, baseline_for_tests)
+                p_vals.append(p_obs)
+                color = sig_color if p_obs < p_value else "black"
 
-            # Plot confidence interval for each universe if requested
+            # CI calculation
             if ci is not None:
                 if hasattr(result, '__len__') and len(result) > 3:
                     sem_val = np.std(result) / np.sqrt(len(result))
-                    ci_lower = mean_val - sem_val * stats.t.ppf((1 + ci / 100) / 2., len(result) - 1)
-                    ci_upper = mean_val + sem_val * stats.t.ppf((1 + ci / 100) / 2., len(result) - 1)
+                    ci_half = sem_val * stats.t.ppf((1 + ci / 100) / 2., len(result) - 1)
+                    ci_lower = mean_val - ci_half
+                    ci_upper = mean_val + ci_half
                     ci_lower_values.append(ci_lower)
                     ci_upper_values.append(ci_upper)
+
+                    # If not smoothing, draw simple vertical CI lines now
                     if not smooth_ci:
-                        ax[0].plot([i, i], [ci_lower, ci_upper], color="gray", linewidth=linewidth)
+                        ax[0].plot([i, i], [ci_lower, ci_upper],
+                                color="gray", linewidth=linewidth)
                 else:
                     ci_lower_values.append(mean_val)
                     ci_upper_values.append(mean_val)
 
-            ax[0].scatter(i, mean_val, zorder=3, color=color, edgecolor=color, s=dotsize)
-
-            # Determine colors for lower plot: each decision group gets its own color.
-            group_ends = decision_info[2]
-            num_groups = len(group_ends) + 1
-            colormap_obj = plt.cm.get_cmap(cmap, num_groups)
-            colors = [colormap_obj(j) for j in range(num_groups)]
+            # Store point for top scatter
+            top_x.append(i)
+            top_y.append(mean_val)
+            top_c.append(color)
 
             # Temporary solution to handle the new multiverse structure.
             # Build a dictionary of decisions and their corresponding options.
@@ -871,41 +883,51 @@ class Multiverse:
                 formatted_decisions[key] = value
                 dc += 1
 
-            # For each decision in the current universe, plot its marker using the composite label.
-            for decision, option in formatted_decisions.items():
-                if decision in decision_info[3]:
-                    # Build the composite label for lookup
-                    group_label = name_map[decision] if (name_map is not None and decision in name_map) else decision
-                    composite = f"{group_label}: {option}"
-                    if composite in decision_info[0]:
-                        index = decision_info[0].index(composite)
-                        plot_pos = decision_info[1][index]
+            # For each decision in the current universe, record its marker position/colour
+            for decision_name, option in formatted_decisions.items():
+                if decision_name in decision_keys:
+                    key_tuple = (decision_name, option)
+                    if key_tuple in decision_positions:
+                        y_pos, grp_idx = decision_positions[key_tuple]
+                        bottom_x.append(i)
+                        bottom_y.append(y_pos)
+                        if num_groups > 0:
+                            bottom_c.append(group_colors[grp_idx])
+                        else:
+                            bottom_c.append("black")
 
-                        current_group = 0
-                        for end in group_ends:
-                            if plot_pos <= end:
-                                break
-                            current_group += 1
-                        current_color = colors[current_group]
-                        ax[1].scatter(i, plot_pos, color=current_color, marker='o', s=dotsize)
-
-        # Plot the smooth CI band if required
-        if smooth_ci and ci is not None:
-            spline_lower = make_interp_spline(x_values, ci_lower_values, k=3)
-            spline_upper = make_interp_spline(x_values, ci_upper_values, k=3)
+        # Smooth CI band if required
+        if smooth_ci and ci is not None and len(ci_lower_values) >= 4:
+            # spline needs arrays
+            ci_lower_values_arr = np.array(ci_lower_values, dtype=float)
+            ci_upper_values_arr = np.array(ci_upper_values, dtype=float)
+            spline_lower = make_interp_spline(x_values, ci_lower_values_arr, k=3)
+            spline_upper = make_interp_spline(x_values, ci_upper_values_arr, k=3)
             x_smooth = np.linspace(x_values.min(), x_values.max(), 500)
             ci_lower_smooth = spline_lower(x_smooth)
             ci_upper_smooth = spline_upper(x_smooth)
-            ax[0].fill_between(x_smooth, ci_lower_smooth, ci_upper_smooth, color='gray', alpha=0.3)
+            ax[0].fill_between(x_smooth, ci_lower_smooth, ci_upper_smooth,
+                            color='gray', alpha=0.3)
+
+        # Scatterplot
+        top_x = np.asarray(top_x)
+        top_y = np.asarray(top_y)
+        top_c = np.asarray(top_c)
+
+        ax[0].scatter(top_x, top_y, c=top_c, s=dotsize, edgecolors=top_c, zorder=3)
+
+        if bottom_x:
+            bottom_x = np.asarray(bottom_x)
+            bottom_y = np.asarray(bottom_y)
+            bottom_c = np.asarray(bottom_c)
+            ax[1].scatter(bottom_x, bottom_y, c=bottom_c, s=dotsize, marker='o')
 
         # Upper plot settings
         trans0 = transforms.blended_transform_factory(ax[0].transAxes, ax[0].transData)
         ax[0].set_title(title, fontweight="bold", fontsize=fontsize+2)
         ax[0].xaxis.grid(False)
-        ax[0].set_xticks(np.arange(0, len(sorted_universes), 1))
-        ax[0].set_xticklabels([])
+        ax[0].set_xticks([])
         ax[0].set_xlim(-1, len(sorted_universes))
-
         ax[0].tick_params(axis='y', labelsize=fontsize)
 
         # Upper plot label for the measure
@@ -914,32 +936,53 @@ class Multiverse:
         measure_label = name_map[measure] if (name_map is not None and measure in name_map) else measure
         ax[0].text(line_offset - padding, ycenter, measure_label, transform=trans0, ha='right', va='center',
                 fontweight="bold", fontsize=fontsize, rotation=0)
-        line = mlines.Line2D([line_offset, line_offset], [ymin, ymax], color="black", lw=1, transform=trans0, clip_on=False)
+        line = mlines.Line2D([line_offset, line_offset], [ymin, ymax],
+                            color="black", lw=1,
+                            transform=trans0, clip_on=False)
         ax[0].add_line(line)
 
-        # Build legend items
+        # Legend
         legend_items = []
         y_lim = ax[0].get_ylim()
+
         if baseline is not None and y_lim[0] <= baseline <= y_lim[1]:
-            ax[0].hlines(baseline, xmin=-2, xmax=len(sorted_universes) + 1, linestyles="--", lw=2, colors='black', zorder=1)
-            legend_items.append(mlines.Line2D([], [], linestyle='--', color='black', linewidth=2, label="Baseline"))
-        if hasattr(result, '__len__') and len(result) > 3 and ci is not None:
-            legend_items.append(mpatches.Patch(facecolor='gray', edgecolor='white', label=f"{ci}% CI"))
+            ax[0].hlines(baseline, xmin=-2, xmax=len(sorted_universes) + 1,
+                        linestyles="--", lw=2, colors='black', zorder=1)
+            legend_items.append(
+                mlines.Line2D([], [], linestyle='--', color='black',
+                            linewidth=2, label="Baseline")
+            )
+
+        if hasattr(first_result, '__len__') and len(first_result) > 3 and ci is not None:
+            legend_items.append(
+                mpatches.Patch(facecolor='gray', edgecolor='white',
+                            label=f"{ci}% CI")
+            )
+
         if p_value is not None:
             if len(p_vals) > 0:
                 if min(p_vals) <= p_value:
-                    legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=9,
-                                                    markerfacecolor=sig_color, markeredgecolor=sig_color, label="p < 0.05"))
+                    legend_items.append(
+                        mlines.Line2D([], [], linestyle='None', marker='o',
+                                    markersize=9, markerfacecolor=sig_color,
+                                    markeredgecolor=sig_color,
+                                    label=f"p < {p_value}")
+                    )
                 if max(p_vals) > p_value:
-                    legend_items.append(mlines.Line2D([], [], linestyle='None', marker='o', markersize=9,
-                                                    markerfacecolor="black", markeredgecolor="black", label="p ≥ 0.05"))
+                    legend_items.append(
+                        mlines.Line2D([], [], linestyle='None', marker='o',
+                                    markersize=9, markerfacecolor="black",
+                                    markeredgecolor="black",
+                                    label=f"p ≥ {p_value}")
+                    )
             else:
                 print("Warning: No p-values were calculated (less than 30 samples)")
         if legend_items:
             ax[0].legend(handles=legend_items, loc='upper left', fontsize=fontsize)
 
         # Save the plot with tight layout to avoid clipping
-        plt.savefig(f"{self.results_dir}/specification_curve.{ftype}", bbox_inches='tight', dpi=dpi)
+        plt.savefig(f"{self.results_dir}/specification_curve.{ftype}",
+                    bbox_inches='tight', dpi=dpi)
         sns.reset_orig()
 
         return self._handle_figure_returns(fig)
