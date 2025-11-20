@@ -625,7 +625,7 @@ class Data:
     # Multiverse variables
     mv_folder:        str       = field(default=None)         # folder for multiverse analysis
     mv_forking_paths: Dict      = field(default_factory=dict) # decision points for multiverse analysis
-    mv_invalid_paths: list      = field(default_factory=list) # invalid paths for multiverse analysis
+    mv_config:        Dict      = field(default_factory=dict) # configuration for multiverse analysis
 
     def clear_dfc_data(self):
         self.dfc_params   = {}
@@ -5869,6 +5869,7 @@ class App(QMainWindow):
 
         # Initialize placeholders for the extracted components
         self.data.mv_forking_paths = {}
+        self.data.mv_config = {}
         analysis_template = None
 
         for node in tree.body:
@@ -5877,6 +5878,12 @@ class App(QMainWindow):
                 if isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'forking_paths':
                     self.data.mv_forking_paths = ast.get_source_segment(script_content, node)
                     extracted_content.append(self.data.mv_forking_paths)
+
+            # Exxtract config dictionary
+            if isinstance(node, ast.Assign):
+                if isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'config':
+                    self.data.mv_config = ast.get_source_segment(script_content, node)
+                    extracted_content.append(self.data.mv_config)
 
             # Extract the analysis_template function
             if isinstance(node, ast.FunctionDef) and node.name == 'analysis_template':
@@ -5957,7 +5964,7 @@ class App(QMainWindow):
             self.measureInput.addItems(variable_names)
 
         # Check size of the multiverse. If we have an identical amount of results we take this as a heuristic that the multiverse was already run
-        summary_df = self.mverse.summary(universe=None, print_df=False)
+        summary_df = self.mverse.summary(universe=None, print_df=False, return_df=True)
         all_files = os.listdir(self.mverse.results_dir)
         num_results = len([f for f in all_files if f.startswith('universe_') and f.endswith('.pkl')])
 
