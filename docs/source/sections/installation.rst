@@ -19,7 +19,13 @@ to avoid version conflicts.
     conda create -n comet python==3.13
     conda activate comet
 
-Installation is then possible through the Python Package Index (PyPI) via the pip command:
+Installation is possible though the Python Package Index (PyPI) via the pip command. To install the full toolbox including the GUI, use:
+
+.. code-block:: shell
+
+    pip install "comet-toolbox[gui]"
+
+Or alternatively only the core toolbox without the GUI (e.g., on a high performance cluster or on Google Colab):
 
 .. code-block:: shell
 

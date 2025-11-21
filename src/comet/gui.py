@@ -13,6 +13,22 @@ import numpy as np
 import pandas as pd
 import importlib_resources
 
+# GUI imports will only work if the optional dependencies are installed, otherwise exit here
+try:
+    import qdarkstyle
+    from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject, QRegularExpression, QLocale
+    from PyQt6.QtGui import QEnterEvent, QFontMetrics, QSyntaxHighlighter, QTextCharFormat
+    from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
+        QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, QGridLayout, \
+        QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QGroupBox
+
+except ImportError as e:
+    msg = ("\n[COMET] The GUI requires the optional 'gui' dependencies.\n"
+           "Install them with:\n\n"
+           "    pip install 'comet-toolbox[gui]'\n\n")
+    print(msg, file=sys.stderr)
+    raise SystemExit(1) from e
+
 from importlib import util
 from scipy.io import loadmat, savemat
 from dataclasses import dataclass, field
@@ -32,14 +48,6 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-
-# Qt imports
-import qdarkstyle
-from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject, QRegularExpression, QLocale
-from PyQt6.QtGui import QEnterEvent, QFontMetrics, QSyntaxHighlighter, QTextCharFormat
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, \
-     QSlider, QToolTip, QWidget, QLabel, QFileDialog, QComboBox, QLineEdit, QSizePolicy, QGridLayout, \
-     QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QGroupBox
 
 # Comet imports
 from . import cifti, connectivity, graph, multiverse, utils

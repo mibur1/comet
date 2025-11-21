@@ -22,7 +22,7 @@ As Comet contains a fair amount of dependencies, it should be installed in a ded
 ```
 conda create -n comet python==3.13
 conda activate comet
-pip install comet-toolbox
+pip install "comet-toolbox[gui]"
 ```
 
 Usage of the toolbox is then possible through either the GUI (might take 1-2 minutes to open on the *first* start):

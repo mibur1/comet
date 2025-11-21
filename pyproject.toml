@@ -1,6 +1,6 @@
 [project]
 name = "comet-toolbox"
-version = "0.9.11"
+version = "0.9.13"
 authors = [
   {name="Micha Burkhardt", email="micha.burkhardt@uol.de"},
 ]
@@ -46,12 +46,15 @@ dependencies = [
   # Progress bars
   "tqdm >= 4.67.1",
   "tqdm_joblib >= 0.0.5",
-  # GUI
-  "pyqt6 >= 6.10.0",
-  "qdarkstyle >= 3.2.3"
 ]
 
 [project.optional-dependencies]
+gui = [
+  # GUI
+  "pyqt6 >= 6.10.0",
+  "qdarkstyle >= 3.2.3",
+]
+
 doc = [
   # Documentation
   "sphinx >= 8.1.3",
