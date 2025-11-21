@@ -2,6 +2,7 @@ import random
 import numpy as np
 from tqdm import tqdm
 from tqdm_joblib import tqdm_joblib
+from matplotlib import pyplot as plt
 from typing import Literal, Union
 from abc import ABCMeta, abstractmethod
 from joblib import Parallel, delayed
@@ -154,7 +155,7 @@ class ConnectivityMethod(metaclass=ABCMeta):
                 dfc = dfc[mask]
 
         return dfc
-    
+
 
 """
 SECTION: Continuous dFC methods

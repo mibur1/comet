@@ -1,19 +1,4 @@
-import io
-import os
-import re
-import ast
-import sys
-import copy
-import json
-import mat73
-import pickle
-import inspect
-import warnings
-import numpy as np
-import pandas as pd
-import importlib_resources
-
-# GUI imports will only work if the optional dependencies are installed, otherwise exit here
+# The GUI will only work if the optional dependencies are installed, otherwise exit here
 try:
     import qdarkstyle
     from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject, QRegularExpression, QLocale
@@ -29,6 +14,25 @@ except ImportError as e:
     print(msg, file=sys.stderr)
     raise SystemExit(1) from e
 
+# Ignore syntax warnings from bct and pycwt
+import warnings
+warnings.filterwarnings("ignore", category=SyntaxWarning, module=r".*bct\.algorithms\.modularity.*")
+warnings.filterwarnings("ignore", category=SyntaxWarning, module=r".*pycwt.*")
+
+# General imports
+import io
+import os
+import re
+import ast
+import sys
+import copy
+import json
+import mat73
+import pickle
+import inspect
+import numpy as np
+import pandas as pd
+import importlib_resources
 from importlib import util
 from scipy.io import loadmat, savemat
 from dataclasses import dataclass, field
@@ -759,9 +763,6 @@ class App(QMainWindow):
         centralWidget = QWidget()
         centralWidget.setLayout(topLayout)
         self.setCentralWidget(centralWidget)
-
-        # Ignore irrelevant syntax warning from bctpy
-        warnings.filterwarnings("ignore", category=SyntaxWarning, module=r"^bct\.algorithms\.modularity$")
 
         return
 
