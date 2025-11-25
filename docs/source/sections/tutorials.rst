@@ -10,10 +10,13 @@ The following notebooks provide examples of how to use the Comet library for var
 .. note::
 
     This page is actively being updated. Additional tutorials will be added over time.
-    
+
 
 Dynamic Functional Connectivity (dFC)
 -------------------------------------
+
+General Introduction
+^^^^^^^^^^^^^^^^^^^^
 
 .. toctree::
    :maxdepth: 1
@@ -22,6 +25,15 @@ Dynamic Functional Connectivity (dFC)
    notebooks/example_dfc_state1
    notebooks/example_dfc_state2
    notebooks/example_dfc_state3
+
+Data Handling
+^^^^^^^^^^^^^
+
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/example_dfc_prep
+   notebooks/example_dfc_prep2
 
 
 Graph Analysis
@@ -56,6 +68,11 @@ Applications
    notebooks/example_mv_hurricane
    notebooks/example_mv_abide
    notebooks/example_mv_fmri_sim
+
+.. toctree::
+   :hidden:
+
+   notebooks/example_eeg_sim
 
 Graphical User Interface
 ------------------------

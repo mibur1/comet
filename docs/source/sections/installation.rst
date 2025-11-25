@@ -2,7 +2,12 @@ Installation
 ------------
 
 As Comet contains a fair amount of dependencies, it should be installed in a dedicated Python environment (e.g. `Conda <https://conda-forge.org/download>`_ or another environment manager of your choice) 
-to avoid version conflicts.
+to avoid version conflicts:
+
+.. code-block:: shell
+
+    conda create -n comet python==3.13
+    conda activate comet
 
 .. note::
 
@@ -14,22 +19,19 @@ to avoid version conflicts.
     If you encounter any issues, please let us know via the `issue tracker <https://github.com/mibur1/comet/issues>`_.
 
 
-.. code-block:: shell
-
-    conda create -n comet python==3.13
-    conda activate comet
-
-Installation is possible though the Python Package Index (PyPI) via the pip command. To install the full toolbox including the GUI, use:
+Installation is then possible though the Python Package Index (PyPI) via the pip command. To install the full toolbox including the GUI, use:
 
 .. code-block:: shell
 
     pip install "comet-toolbox[gui]"
 
-Or alternatively only the core toolbox without the GUI (e.g., on a high performance cluster or on Google Colab):
+
+Alternatively, you can install only the core toolbox without the GUI dependencies (e.g., on a high performance cluster or on Google Colab):
 
 .. code-block:: shell
 
     pip install comet-toolbox
+
 
 If you require the most recent updates, which may not yet be available on PyPI, you can also install the package directly from the source code of this repository:
 
