@@ -1347,9 +1347,9 @@ class EdgeConnectivity(ConnectivityMethod):
         d = np.outer(c, c) # Normalization matrix
         eFC = b / d # Element-wise division to get the correlation matrix
 
-        eFC = self.postproc()
         self.dfc = eFC
-
+        self.dfc = self.postproc()
+        
         return self.dfc
 
 
