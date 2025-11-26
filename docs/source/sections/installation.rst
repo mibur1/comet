@@ -1,7 +1,7 @@
 Installation
 ------------
 
-As Comet contains a fair amount of dependencies, it should be installed in a dedicated Python environment (e.g. `Conda <https://conda-forge.org/download>`_ or another environment manager of your choice) 
+As Comet contains a fair amount of dependencies, it should be installed in a dedicated Python environment (e.g. `conda through miniforge <https://conda-forge.org/download>`_ or another environment manager of your choice) 
 to avoid version conflicts:
 
 .. code-block:: shell

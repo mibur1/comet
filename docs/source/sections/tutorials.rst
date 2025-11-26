@@ -34,6 +34,7 @@ Data Handling
 
    notebooks/example_dfc_prep1
    notebooks/example_dfc_prep2
+   notebooks/example_dfc_prep3
 
 
 Graph Analysis
