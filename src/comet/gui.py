@@ -1,5 +1,6 @@
 # The GUI will only work if the optional dependencies are installed, otherwise exit here
 try:
+    import sys
     import qdarkstyle
     from PyQt6.QtCore import Qt, QPoint, QThread, pyqtSignal, QObject, QRegularExpression, QLocale
     from PyQt6.QtGui import QEnterEvent, QFontMetrics, QSyntaxHighlighter, QTextCharFormat
@@ -8,23 +9,18 @@ try:
         QSpacerItem, QCheckBox, QTabWidget, QSpinBox, QDoubleSpinBox, QTextEdit, QMessageBox, QGroupBox
 
 except ImportError as e:
-    msg = ("\n[COMET] The GUI requires the optional 'gui' dependencies.\n"
-           "Install them with:\n\n"
-           "    pip install 'comet-toolbox[gui]'\n\n")
+    msg = (f"\n\033[1;93m[ERROR]\033[0m Using the GUI requires the optional 'gui' dependencies.\n"
+           "You can install them with one of the following options:\n\n"
+           "    pip install 'comet-toolbox[gui]'\n"
+           "    pip install pyqt6 qdarkstyle\n")
     print(msg, file=sys.stderr)
     raise SystemExit(1) from e
-
-# Ignore syntax warnings from bct and pycwt
-import warnings
-warnings.filterwarnings("ignore", category=SyntaxWarning, module=r".*bct\.algorithms\.modularity.*")
-warnings.filterwarnings("ignore", category=SyntaxWarning, module=r".*pycwt.*")
 
 # General imports
 import io
 import os
 import re
 import ast
-import sys
 import copy
 import json
 import mat73
