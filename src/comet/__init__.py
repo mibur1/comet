@@ -6,6 +6,8 @@ warnings.filterwarnings("ignore", message=r"invalid value encountered in divide"
                         category=RuntimeWarning, module=r".*bct\.algorithms\.centrality")
 warnings.filterwarnings( "ignore", message=r'.*"is not" with \'tuple\' literal.*', 
                         category=SyntaxWarning)
+warnings.filterwarnings("ignore", message=r"Starting a Matplotlib GUI outside of the main thread",
+                        category=UserWarning)
 
 # Submodule imports
 from . import connectivity

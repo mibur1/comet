@@ -2992,6 +2992,7 @@ class App(QMainWindow):
         option = params["option"]
         mask = None
         self.data.data_sample_mask = None
+        self.confounds_df_filtered = None
 
         # Collect cleaning arguments
         # Non-fmriprep dataset
@@ -3050,6 +3051,9 @@ class App(QMainWindow):
                 if self.confounds_df_filtered is not None and "global_signal" in self.confounds_df_filtered:
                     self.confounds_df_filtered = self.confounds_df_filtered.drop(columns=["global_signal"])
 
+            if discarded_values > 0 and self.confounds_df_filtered is not None:
+                self.confounds_df_filtered = self.confounds_df_filtered.iloc[discarded_values:, :]
+
         # fMRIprep dataset
         else:
             img = nib.load(self.data.data_filepath)
@@ -3068,13 +3072,17 @@ class App(QMainWindow):
             tr = self.fmriprep_trValue.value() if self.fmriprep_trValue.value() > 0 else None
 
             args = self.collectCleaningArguments()
-            print("loading confounds:", img_path, args)
+            print("Loading confounds:", img_path, args)
             self.confounds_df_filtered, self.data.data_sample_mask = load_confounds(img_path, **args)
             mask = self.mask_name
 
             # Workaround for nilearn bug, will be fixed in the next nilearn release
             if self.confounds_df_filtered is not None and self.confounds_df_filtered.empty:
                 self.confounds_df_filtered = None
+
+            # Drop initial volumes in confounds
+            if discarded_values > 0 and self.confounds_df_filtered is not None:
+                self.confounds_df_filtered = self.confounds_df_filtered.iloc[discarded_values:, :]
 
         if atlas in ["Power et al. (2011)", "Seitzmann et al. (2018)", "Dosenbach et al. (2010)"]:
             if atlas == "Power et al. (2011)":
@@ -6090,6 +6098,7 @@ class App(QMainWindow):
                 universe_data = pickle.load(file)
 
             variable_names = list(universe_data[next(iter(universe_data))].keys()) # keys of the first universe
+            variable_names.remove("decisions") # Remove the decisions key as it is internal
             self.measureInput.clear()
             self.measureInput.addItems(variable_names)
             self.plotSpecificationCurve()        

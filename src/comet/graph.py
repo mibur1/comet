@@ -1,4 +1,5 @@
 import bct
+import warnings
 import numpy as np
 import scipy.sparse
 from numba import njit
