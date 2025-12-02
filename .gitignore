@@ -3,6 +3,7 @@
 
 # Custom files and folders
 testing_stuff/
+data/atlas/schaefer*
 
 # Ignore all tutorial subfolders, but not the tutorial files
 tutorials/*/
