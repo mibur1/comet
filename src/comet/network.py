@@ -49,7 +49,7 @@ def nested_spectral_partition(C, zero_negative=True):
     # Eigendecomposition (NumPy, not numba)
     eigvals, eigvecs = np.linalg.eigh(C)
     idx = np.argsort(eigvals)[::-1]
-    vals = eigvals[idx]
+    eigvals = eigvals[idx]
     eigvecs = eigvecs[:, idx]
 
     # Squared non-negative eigenvalues
