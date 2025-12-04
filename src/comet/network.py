@@ -1,10 +1,10 @@
 import numpy as np
+from tqdm import tqdm
 from numba import njit
 
-def nested_spectral_partition(C, zero_negative=True):
+class NestedSpectralPartition():
     """
-    Compute hierarchical integration/segregation measures from a symmetric
-    connectivity matrix C using the Nested Spectral Partition (NSP) method.
+    Implementation of the Nested Spectral Partition (NSP) method as implemented in Wang et al. (2021).
 
     References
     ----------
@@ -13,75 +13,150 @@ def nested_spectral_partition(C, zero_negative=True):
 
     Parameters
     ----------
-    C : (N, N) array_like
-        Connectivity matrix. Must be symmetric.
-    zero_negative : bool, default True
-        If True, set negative connectivity values to zero.
-    return_assignments : bool, default False
-        If True, additionally return module assignments for each level.
+    C : (N, N) array or (S, N, N) array or list of (N, N) arrays
+        Connectivity matrices. Must be symmetric.
+    negative_values : str, default 'zero'
+        How to handle negative connectivity values. Options:
+            'zero': set negative values to zero
+            'abs' : take absolute values
 
-    Returns
-    -------
-    results : dict
-        {
-          'H_In'       : global integration component,
-          'H_Se'       : hierarchical segregation component,
-          'H_B'        : balance indicator (H_In - H_Se),
-          'M_levels'   : array of module counts M_i for each level,
-          'H_levels'   : array of H_i for each eigenmode/level,
-          'p_levels'   : size-heterogeneity corrections p_i,
-          'eigvals'    : eigenvalues (sorted descending),
-          'eigvecs'    : eigenvectors,
-          'assignments': module assignments at each level
-        }
+    Attributes
+    ---------
+    C          : connectivity data,
+    S          : number of subjects,
+    N          : number of nodes,
+    neg_val    : method for handling negative values,
+    H_In       : global integration component,
+    H_Seg      : hierarchical segregation component,
+    H_B        : balance indicator (H_In - H_Seg),
+    M_levels   : array of module counts M_i for each level,
+    H_levels   : array of H_i for each eigenmode/level,
+    p_levels   : size-heterogeneity corrections p_i,
+    eigvals    : eigenvalues (sorted descending),
+    eigvals_sq : squared eigenvalues,
+    eigvecs    : eigenvectors,
+    assignments: module assignments at each level
+
     """
-    C = np.asarray(C, dtype=float).copy()
-    N = C.shape[0]
+    def __init__(self, C=None, negative_values="zero"):
+        self.C:           np.ndarray = np.asarray(C, dtype=float).copy()
+        self.S:           int = self.C.shape[0] if self.C.ndim == 3 else 1
+        self.N:           int = self.C.shape[1] if self.C.ndim == 3 else self.C.shape[0]
+        self.neg_val:     str = negative_values
 
-    # Ensure symmetry
-    if not np.allclose(C, C.T):
-        raise ValueError("Error: Matrix is not symmetric")
+        self.H_In:        np.ndarray = np.full(self.S, np.nan)
+        self.H_Seg:       np.ndarray = np.full(self.S, np.nan)
+        self.H_B:         np.ndarray  = np.full(self.S, np.nan)
+        
+        self.M_levels:    np.ndarray = np.full((self.S, self.N), -1, dtype=int)
+        self.H_levels:    np.ndarray = np.full((self.S, self.N), np.nan)
+        self.p_levels:    np.ndarray = np.full((self.S, self.N), np.nan)
+        self.eigvals:     np.ndarray = np.full((self.S, self.N), np.nan)
+        self.eigvals_sq:  np.ndarray = np.full((self.S, self.N), np.nan)
+        self.eigvecs:     np.ndarray = np.full((self.S, self.N, self.N), np.nan)
+        self.assignments: np.ndarray = np.full((self.S, self.N, self.N), -1, dtype=int)
 
-    # Zero negative values
-    if zero_negative:
-        C = np.maximum(C, 0.0)
+        self.H_In_cal:    np.ndarray = np.full(self.S, np.nan)
+        self.H_Seg_cal:   np.ndarray = np.full(self.S, np.nan)
+        self.H_B_cal:     np.ndarray  = np.full(self.S, np.nan)
 
-    # Eigendecomposition (NumPy, not numba)
-    eigvals, eigvecs = np.linalg.eigh(C)
-    idx = np.argsort(eigvals)[::-1]
-    eigvals = eigvals[idx]
-    eigvecs = eigvecs[:, idx]
+    def estimate(self):
+        """
+        Compute hierarchical integration/segregation measures from a symmetric
+        connectivity matrix/matrices C using the Nested Spectral Partition (NSP) method.
+        """
+        for s in tqdm(range(self.S)):
+            C = self.C[s, :, :] if self.C.ndim == 3 else self.C
+            results = self._estimate_single(C)
+            
+            # Assign attributes
+            self.H_In[s]        = results[0]
+            self.H_Seg[s]       = results[1]
+            self.H_B[s]         = results[2]
+            self.M_levels[s, :] = results[3]
+            self.H_levels[s, :] = results[4]
+            self.p_levels[s, :] = results[5]
+            self.eigvals[s, :]  = results[6]
+            self.eigvals_sq[s, :] = results[7]
+            self.eigvecs[s, :, :] = results[8]
+            self.assignments[s, :, :] = results[9]
 
-    # Squared non-negative eigenvalues
-    eigvals = np.where(eigvals > 1e-10, eigvals, 0.0)
-    eigvals_sq = eigvals ** 2
+    def _estimate_single(self, C):
+        """Estimation for a single connectivity matrix C."""
+        # Ensure symmetry
+        if not np.allclose(C, C.T):
+            raise ValueError("Error: Matrix is not symmetric")
 
-    # Call numba-compiled core
-    H_levels, M_levels, p_levels, assignments_all = _nsp_core(eigvecs, eigvals_sq)
+        # Handle negative values
+        if self.neg_val == "zero":
+            C = np.maximum(C, 0.0)
+        elif self.neg_val == "abs":
+            C = np.abs(C)
+        else:
+            raise ValueError("Error: negative_values must be 'zero' or 'abs'")
 
-    # Integration, segregation, balance
-    N_float = float(C.shape[0])
-    H_In = H_levels[0] / N_float
-    H_Se = H_levels[1:].sum() / N_float
-    H_B = H_In - H_Se
+        # Eigendecomposition
+        eigvals, eigvecs = np.linalg.eigh(C)
+        idx = np.argsort(eigvals)[::-1]
+        eigvals = eigvals[idx]
+        eigvecs = eigvecs[:, idx]
 
-    return {
-        "H_In": H_In,
-        "H_Se": H_Se,
-        "H_B": H_B,
-        "M_levels": M_levels,
-        "H_levels": H_levels,
-        "p_levels": p_levels,
-        "eigvals": eigvals,
-        "eigvecs": eigvecs,
-        "assignments": assignments_all
-    }
+        # Squared non-negative eigenvalues
+        eigvals = np.where(eigvals > 1e-10, eigvals, 0.0)
+        eigvals_sq = eigvals ** 2
+
+        # Numba-compiled core
+        M_levels, H_levels, p_levels, assignments = _nsp_core(eigvecs, eigvals_sq)
+
+        # Integration, segregation, balance
+        H_In = H_levels[0] / self.N
+        H_Seg = H_levels[1:].sum() / self.N
+        H_B = H_In - H_Seg
+
+        return (H_In, H_Seg, H_B, M_levels, H_levels, p_levels, eigvals, eigvals_sq, eigvecs, assignments)
+
+    def calibrate(self, C_master):
+        """
+        Calibration method
+
+        Parameters
+        ----------
+        C_master : (N, N) array
+            Master connectivity matrix for calibration. Must be symmetric.
+        negative_values : str, default 'zero'
+            How to handle negative connectivity values. Options:
+                'zero': set negative values to zero
+                'abs' : take absolute values
+        
+        Attributes
+        ----------
+        H_in_cal : calibrated global integration component,
+        H_seg_cal: calibrated hierarchical segregation component,
+        H_B_cal  : calibrated balance indicator (H_in_cal - H_seg_cal)
+        """
+        # Ensure .estimate() has been called
+        if np.isnan(self.H_In).any():
+            raise RuntimeError("Call .estimate() before .calibrate().")
+        
+        # Calculate stable integration component
+        results = self._estimate_single(C_master)
+        H_In_stable = results[0] 
+
+        # Population means
+        H_In_pop = self.H_In.mean()
+        H_Seg_pop = self.H_Seg.mean()
+
+        # Calibration
+        self.H_In_cal = self.H_In * (H_In_stable / H_In_pop)
+        self.H_Seg_cal = self.H_Seg * (H_In_stable / H_Seg_pop)
+        self.H_B_cal  = self.H_In_cal - self.H_Seg_cal
+        return
 
 
 @njit(fastmath=True, cache=True)
 def _nsp_core(eigvecs, eigvals_sq):
     """
-    numba-compiled core: builds NSP hierarchy and computes H_i, M_i, p_i.
+    numba-compiled core: builds NSP hierarchy and computes M_i, H_i, p_i, and assignments.
     eigvecs: (N, N) eigenvectors (columns)
     eigvals_sq: (N,) squared eigenvalues, descending
     """
@@ -175,4 +250,4 @@ def _nsp_core(eigvecs, eigvals_sq):
         # hierarchical component H_i
         H_levels[i] = eigvals_sq[i] * Mi * (1.0 - p_levels[i]) / float(N)
 
-    return H_levels, M_levels, p_levels, assignments_all
+    return M_levels, H_levels, p_levels, assignments_all
