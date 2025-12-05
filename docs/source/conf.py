@@ -32,4 +32,8 @@ html_theme_options = {
     'titles_only': False
 }
 
+# -- nbsphinx configuration ---------------------------------------------------
+nbsphinx_execute = "never"
+nbsphinx_allow_errors = True
+
 #print(f"Available files: {os.listdir()}")
