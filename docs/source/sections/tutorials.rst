@@ -73,7 +73,7 @@ Applications
 .. toctree::
    :hidden:
 
-   notebooks/example_eeg_sim
+   notebooks/example_mv_eeg_sim
 
 Graphical User Interface
 ------------------------
