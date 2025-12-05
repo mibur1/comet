@@ -13,22 +13,30 @@ class NestedSpectralPartition():
 
     Parameters
     ----------
-    C : (N, N) array or (S, N, N) array or list of (N, N) arrays
-        Connectivity matrices. Must be symmetric.
+    C : (N, N), (S, N, N), or (S, T, N, N) array (or list of arrays)
+        Symmetric connectivity matrices.
+            N nodes, S subjects, T time points (dynamic)
     negative_values : str, default 'zero'
         How to handle negative connectivity values. Options:
             'zero': set negative values to zero
             'abs' : take absolute values
+    type : str, default 'static'
+        Type of connectivity data. Options:
+            'static': first dim in 3D data is subjects
+            'dynamic: first dim in 3D data or second in 4D data is time
 
     Attributes
     ---------
     C          : connectivity data,
     S          : number of subjects,
     N          : number of nodes,
+    T          : number of time points,
     neg_val    : method for handling negative values,
+    
     H_In       : global integration component,
     H_Seg      : hierarchical segregation component,
     H_B        : balance indicator (H_In - H_Seg),
+    
     M_levels   : array of module counts M_i for each level,
     H_levels   : array of H_i for each eigenmode/level,
     p_levels   : size-heterogeneity corrections p_i,
@@ -36,14 +44,34 @@ class NestedSpectralPartition():
     eigvals_sq : squared eigenvalues,
     eigvecs    : eigenvectors,
     assignments: module assignments at each level
-
+    
+    H_In_cal   : calibrated global integration component,
+    H_Seg_cal  : calibrated hierarchical segregation component,
+    H_B_cal    : calibrated balance indicator (H_In_cal - H_Seg_cal)
     """
-    def __init__(self, C=None, negative_values="zero"):
-        self.C:           np.ndarray = np.asarray(C, dtype=float).copy()
-        self.S:           int = self.C.shape[0] if self.C.ndim == 3 else 1
-        self.N:           int = self.C.shape[1] if self.C.ndim == 3 else self.C.shape[0]
-        self.neg_val:     str = negative_values
+    def __init__(self, C=None, negative_values="zero", type="static"):
+        # Figure out data dimensions and set inital attributes
+        self.C:         np.ndarray = np.asarray(C, dtype=float).copy()
+        self.neg_val:   str = negative_values
+        self.type:      str = type
+        
+        self.S:         int = self.C.shape[0] if self.C.ndim >= 3 else 1
+        self.N:         int = self.C.shape[-1]
+        self.T:         int = 1 if self.type == "static" else self.C.shape[-3]
 
+        # Perform inital checks
+        if self.neg_val not in ["zero", "abs"]:
+            raise ValueError("Error: negative_values must be 'zero' or 'abs'")
+        if self.type not in ["static", "dynamic"]:       
+            raise ValueError("Error: type must be 'static' or 'dynamic'")
+        if self.C.ndim not in [2, 3, 4]:
+            raise ValueError("Error: C must be 2D, 3D, or 4D array or list of 2D, 3D arrays")
+        if self.C.shape[-1] != self.C.shape[-2]:
+            raise ValueError("Error: connectivity matrices must be square")
+        
+        print(f"NSP initialized with {self.S} subject(s), {self.N} node(s), {self.T} time point(s).")
+        
+        # Empty attributes for results
         self.H_In:        np.ndarray = np.full(self.S, np.nan)
         self.H_Seg:       np.ndarray = np.full(self.S, np.nan)
         self.H_B:         np.ndarray  = np.full(self.S, np.nan)
@@ -81,6 +109,9 @@ class NestedSpectralPartition():
             self.eigvecs[s, :, :] = results[8]
             self.assignments[s, :, :] = results[9]
 
+    def estimate_dynamic(self):
+        pass
+
     def _estimate_single(self, C):
         """Estimation for a single connectivity matrix C."""
         # Ensure symmetry
@@ -88,12 +119,7 @@ class NestedSpectralPartition():
             raise ValueError("Error: Matrix is not symmetric")
 
         # Handle negative values
-        if self.neg_val == "zero":
-            C = np.maximum(C, 0.0)
-        elif self.neg_val == "abs":
-            C = np.abs(C)
-        else:
-            raise ValueError("Error: negative_values must be 'zero' or 'abs'")
+        C = np.maximum(C, 0.0) if self.neg_val == "zero" else np.abs(C)
 
         # Eigendecomposition
         eigvals, eigvecs = np.linalg.eigh(C)
