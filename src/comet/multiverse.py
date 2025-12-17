@@ -443,10 +443,21 @@ class Multiverse:
 
         return multiverse_selection if return_df else None
 
-    def get_results(self, universe=None):
+    def get_results(self, universe=None, type="dict"):
         """
-        Get the results of the multiverse (or a specific universe) as a dictionary
+        Get the results of the multiverse (or a specific universe).
+
+        Parameters
+        ----------
+        universe : int | None
+            If given, return results for that specific universe.
+        type : {"dict", "df"}
+            "dict" returns the raw dict (default).
+            "df" returns a pandas DataFrame (only valid when universe is None).
         """
+        if type not in {"dict", "df"}:
+            raise ValueError("type must be 'dict' or 'df'")
+
         if os.path.exists(f"{self.results_dir}/multiverse_results.pkl"):
             path = f"{self.results_dir}/multiverse_results.pkl"
 
@@ -454,18 +465,45 @@ class Multiverse:
                 results = pickle.load(file)
 
             if universe is not None:
-                results = results[f"universe_{universe}"]            
+                results = results[f"universe_{universe}"]
+                return results
+
+            if type == "df":
+                df = pd.DataFrame.from_dict(results, orient="index")
+
+                # keep string universe label as a column
+                df.insert(0, "universe", df.index)
+
+                # integer index
+                df.index = (
+                    df["universe"]
+                    .str.replace("universe_", "", regex=False)
+                    .astype(int)
+                )
+                df.index.name = None
+
+                return df.sort_index()
+
+            return results
 
         else:
             if universe is None:
-                raise ValueError("Multiverse results are not combined. Please specify a universe number.")
+                raise ValueError(
+                    "Multiverse results are not combined. Please specify a universe number."
+                )
 
             path = f"{self.results_dir}/tmp/universe_{universe}.pkl"
 
             with open(path, "rb") as file:
                 results = pickle.load(file)
 
-        return results
+            if type == "df":
+                df = pd.DataFrame([results])
+                df.insert(0, "universe", f"universe_{universe}")
+                df.index = pd.Index([int(universe)], name="universe_id")
+                return df
+
+            return results
 
     def visualize(self, universe=None, cmap="Set2", node_size=1500, figsize=(8,5), label_offset=0.04, exclude_single=False):
         """
