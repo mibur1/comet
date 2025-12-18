@@ -1017,6 +1017,58 @@ class Multiverse:
 
         return self._handle_figure_returns(fig)
 
+    def multiverse_plot(self, measure):
+        pass
+
+    def integrate(self, measure=None, method="uniform", type="mean"):
+        """
+        Integrate the multiverse results.
+
+        Parameters
+        ----------
+        measure : string
+            Name of the measure to integrate.
+
+        method : string
+            Method to use for integration. Options are:
+                 "uniform" (default): Simple mean/median across all universes
+                 "bma": Bayesian model averaging (requires BIC values in the results)
+                 
+        type : string
+            Type of (weighted) integration. Options are "mean" (default) or "median".
+        """
+        # Get results dataframe and convert columns to lowercase
+        results = self.get_results(type="df")
+        results.columns = results.columns.str.lower()
+
+        # Initial checks
+        if measure is None:
+            raise ValueError("Please provide a measure to integrate.")
+        if measure not in results.columns:
+            raise ValueError(f"The measure '{measure}' was not found in the results.")
+        if method == "bma" and "bic" not in results.columns:
+            raise ValueError("BMA weights require a 'bic' column in the results.")
+        
+        # Get measure and compute weights
+        x = results[measure].to_numpy()
+
+        if method == "uniform":
+            weights = self._uniform_weights(x)
+        elif method == "bma":
+            weights = self._bma_weights(x)
+        else:
+            raise ValueError("method must be 'uniform' or 'bma'")
+        
+        # Compute integrated estimate
+        if type == "mean":
+            integrated_estimate = self._weighted_mean(x, weights)
+        elif type == "median":
+            integrated_estimate = self._weighted_median(x, weights)
+        else:
+            raise ValueError("type must be 'mean' or 'median'")
+        
+        return integrated_estimate, weights
+
     # Internal methods
     def _create_summary(self, all_universes, keys):
         """
@@ -1243,6 +1295,42 @@ class Multiverse:
             return None
         else:
             return fig
+
+    # Multiverse integration methods
+    def _weighted_mean(self,x: np.ndarray, w: np.ndarray) -> float:
+        """
+        Compute the weighted mean of x with weights w.
+        Assumes w >= 0 and w.sum() == 1.
+        """
+        return float(np.sum(w * x))
+
+    def _weighted_median(self, x: np.ndarray, w: np.ndarray) -> float:
+        """
+        Compute the weighted median of x with weights w.
+        Assumes w >= 0 and w.sum() == 1.
+        """
+        order = np.argsort(x)
+        x_sorted = x[order]
+        w_sorted = w[order]
+
+        cw = np.cumsum(w_sorted)
+        return float(x_sorted[np.searchsorted(cw, 0.5, side="left")])
+
+    def _uniform_weights(self, data: pd.DataFrame) -> np.ndarray:
+        """
+        Compute uniform weights for all universes.
+        """
+        n = len(data)
+        return np.full(n, 1.0 / n, dtype=float)
+
+    def _bma_weights(self, data: pd.DataFrame) -> np.ndarray:
+        """
+        Compute normalised BMA weights from BIC values.
+        """
+        bic = data["bic"].to_numpy(float)
+        delta = bic - np.min(bic)
+        w = np.exp(-0.5 * delta)
+        return w / w.sum()
 
 # Load an existing multiverse
 def load_multiverse(path=None):
