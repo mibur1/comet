@@ -60,8 +60,7 @@ A comprehensive set of usage examples are provided in the **[documentation](http
 
 ### Citing
 
-If you use the toolbox in your own work, please cite the following paper:
-
+If you use Comet in your work, please cite the following paper:
 
 > Burkhardt, M., & Gießing, C. (2026). The Comet Toolbox: Improving Robustness in Network Neuroscience  
 Through Multiverse Analysis. Imaging Neuroscience. https://doi.org/10.1162/IMAG.a.1122
