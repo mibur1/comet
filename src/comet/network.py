@@ -33,9 +33,9 @@ class NestedSpectralPartition():
     type       : type of connectivity data,
     neg_val    : method for handling negative values,
     
-    H_In       : global integration component,
-    H_Seg      : hierarchical segregation component,
-    H_B        : balance indicator (H_In - H_Seg),
+    H_int      : global integration component,
+    H_seg      : hierarchical segregation component,
+    H_bal      : balance indicator (H_int - H_int),
     
     M_levels   : array of module counts M_i for each level,
     H_levels   : array of H_i for each eigenmode/level,
@@ -45,9 +45,9 @@ class NestedSpectralPartition():
     eigvecs    : eigenvectors,
     assignments: module assignments at each level,
     
-    H_In_cal   : calibrated global integration component,
-    H_Seg_cal  : calibrated hierarchical segregation component,
-    H_B_cal    : calibrated balance indicator (H_In_cal - H_Seg_cal)
+    H_int_cal  : calibrated global integration component,
+    H_int_cal  : calibrated hierarchical segregation component,
+    H_bal_cal  : calibrated balance indicator (H_int_cal - H_int_cal)
     """
     def __init__(self, C=None, type="static", negative_values="zero"):
         # Figure out data dimensions and set inital attributes
@@ -87,13 +87,13 @@ class NestedSpectralPartition():
         shape2 = (self.S, self.N) if self.T == 1 else (self.S, self.N, self.T)
         shape3 = (self.S, self.N, self.N) if self.T == 1 else (self.S, self.N, self.N, self.T)
         
-        self.H_In:        np.ndarray = np.full(shape1, np.nan)
-        self.H_Seg:       np.ndarray = np.full(shape1, np.nan)
-        self.H_B:         np.ndarray = np.full(shape1, np.nan)
+        self.H_int:        np.ndarray = np.full(shape1, np.nan)
+        self.H_int:       np.ndarray = np.full(shape1, np.nan)
+        self.H_bal:         np.ndarray = np.full(shape1, np.nan)
         
-        self.H_In_cal:    np.ndarray = np.full(shape2, np.nan)
-        self.H_Seg_cal:   np.ndarray = np.full(shape2, np.nan)
-        self.H_B_cal:     np.ndarray = np.full(shape2, np.nan)
+        self.H_int_cal:    np.ndarray = np.full(shape2, np.nan)
+        self.H_seg_cal:   np.ndarray = np.full(shape2, np.nan)
+        self.H_bal_cal:     np.ndarray = np.full(shape2, np.nan)
         
         self.M_levels:    np.ndarray = np.full(shape2, -1, dtype=int)
         self.H_levels:    np.ndarray = np.full(shape2, np.nan)
@@ -108,7 +108,7 @@ class NestedSpectralPartition():
         self.Dwell_In   = np.full((self.S), np.nan)
         self.Dwell_Seg  = np.full((self.S), np.nan)
         self.Trans_freq = np.full((self.S), np.nan)
-        self.H_B_thr    = np.full((self.S), np.nan)
+        self.H_bal_thr    = np.full((self.S), np.nan)
 
     def estimate(self):
         """
@@ -119,13 +119,13 @@ class NestedSpectralPartition():
             for s in tqdm(range(self.S), desc="Subjects"):
                 for t in tqdm(range(self.T), desc="Time points", leave=False):
                     C = self.C[s, :, :, t]
-                    (H_In, H_Seg, H_B,
+                    (H_int, H_seg, H_bal,
                      M_levels, H_levels, p_levels,
                      eigvals, eigvals_sq, eigvecs, assignments) = self._estimate_single(C)
 
-                    self.H_In[s, t]  = H_In
-                    self.H_Seg[s, t] = H_Seg
-                    self.H_B[s, t]   = H_B
+                    self.H_int[s, t]  = H_int
+                    self.H_seg[s, t] = H_seg
+                    self.H_bal[s, t]   = H_bal
                     self.M_levels[s, :, t]   = M_levels
                     self.H_levels[s, :, t]   = H_levels
                     self.p_levels[s, :, t]   = p_levels
@@ -137,13 +137,13 @@ class NestedSpectralPartition():
         elif self.type == "static":
             for s in tqdm(range(self.S), desc="Subjects"):
                 C = self.C[s, :, :] if self.C.ndim == 3 else self.C
-                (H_In, H_Seg, H_B,
+                (H_int, H_seg, H_bal,
                  M_levels, H_levels, p_levels,
                  eigvals, eigvals_sq, eigvecs, assignments) = self._estimate_single(C)
 
-                self.H_In[s]      = H_In
-                self.H_Seg[s]     = H_Seg
-                self.H_B[s]       = H_B
+                self.H_int[s]      = H_int
+                self.H_seg[s]     = H_seg
+                self.H_bal[s]       = H_bal
                 self.M_levels[s]  = M_levels
                 self.H_levels[s]  = H_levels
                 self.p_levels[s]  = p_levels
@@ -157,7 +157,7 @@ class NestedSpectralPartition():
 
     def calibrate(self, C_master):
         """
-        Calibration method
+        Calibration method to bring H_bal closer to 0
 
         Parameters
         ----------
@@ -168,25 +168,25 @@ class NestedSpectralPartition():
         ----------
         H_in_cal : calibrated global integration component,
         H_seg_cal: calibrated hierarchical segregation component,
-        H_B_cal  : calibrated balance indicator (H_in_cal - H_seg_cal)
+        H_bal_cal  : calibrated balance indicator (H_in_cal - H_seg_cal)
         """
         # Ensure .estimate() has been called
-        if np.isnan(self.H_In).any():
+        if np.isnan(self.H_int).any():
             raise RuntimeError("Call .estimate() before .calibrate().")
         
         # Calculate stable integration component
         results = self._estimate_single(C_master)
-        H_In_stable = results[0]
-        H_Seg_stable = results[1] 
+        H_int_stable = results[0]
+        H_seg_stable = results[1] 
 
         # Population means
-        H_In_pop = self.H_In.mean()
-        H_Seg_pop = self.H_Seg.mean()
+        H_int_pop = self.H_int.mean()
+        H_seg_pop = self.H_seg.mean()
 
         # Calibration
-        self.H_In_cal = self.H_In * (H_In_stable / H_In_pop)
-        self.H_Seg_cal = self.H_Seg * (H_Seg_stable / H_Seg_pop)
-        self.H_B_cal  = self.H_In_cal - self.H_Seg_cal
+        self.H_int_cal = self.H_int * (H_int_stable / H_int_pop)
+        self.H_seg_cal = self.H_seg * (H_seg_stable / H_seg_pop)
+        self.H_bal_cal  = self.H_int_cal - self.H_seg_cal
         return
 
     def dynamic_measures(self, calibrated=False, mean="individual"):
@@ -197,7 +197,7 @@ class NestedSpectralPartition():
         Parameters
         ----------
         calibrated : bool, default False
-            If True, use H_B_cal instead of H_B.
+            If True, use H_bal_cal instead of H_bal.
         mean : {"individual", "population"}, default "individual"
             How to define the threshold:
             - "individual": per-subject mean over time (one threshold per subject)
@@ -212,40 +212,40 @@ class NestedSpectralPartition():
         self.Dwell_In   : (S,) fractional occupancy of integration state
         self.Dwell_Seg  : (S,) fractional occupancy of segregation state
         self.Trans_freq : (S,) transition frequency per frame
-        self.H_B_thr    : (S,) threshold(s) used per subject
+        self.H_bal_thr    : (S,) threshold(s) used per subject
         """
-        if np.isnan(self.H_In).any():
+        if np.isnan(self.H_int).any():
             raise RuntimeError("Call .estimate() before .dynamic_measures().")
         if self.T <= 1:
             raise RuntimeError("Data must be dynamic (T > 1) to compute dynamic measures.")
 
-        # H_B must be (S, T)
-        H_B = self.H_B_cal if calibrated else self.H_B
+        # H_bal must be (S, T)
+        H_bal = self.H_bal_cal if calibrated else self.H_bal
 
-        if H_B.ndim == 1:
-            H_B = H_B[np.newaxis, :]
+        if H_bal.ndim == 1:
+            H_bal = H_bal[np.newaxis, :]
 
         if mean == "individual":
             # per subject mean over time
-            H_B_thr_tmp = H_B.mean(axis=1, keepdims=True)   # (S, 1)
+            H_bal_thr_tmp = H_bal.mean(axis=1, keepdims=True)   # (S, 1)
 
         elif mean == "population":
             if self.S == 1:
                 print("Warning: Only one subject present, the population mean is the individual mean.")
-                H_B_thr_tmp = H_B.mean(axis=1, keepdims=True)   # (1, 1)
+                H_bal_thr_tmp = H_bal.mean(axis=1, keepdims=True)   # (1, 1)
             else:
                 # global mean over all subjects and time points -> scalar
-                global_mean = H_B.mean()
-                H_B_thr_tmp = np.full((self.S, 1), global_mean)      # (S, 1)
+                global_mean = H_bal.mean()
+                H_bal_thr_tmp = np.full((self.S, 1), global_mean)      # (S, 1)
         else:
             raise ValueError("mean must be 'individual' or 'population'.")
 
         # store thresholds as (S,) array
-        self.H_B_thr = H_B_thr_tmp[:, 0]
+        self.H_bal_thr = H_bal_thr_tmp[:, 0]
 
         for s in range(self.S):
-            HB_s  = H_B[s]
-            thr_s = float(self.H_B_thr[s])
+            HB_s  = H_bal[s]
+            thr_s = float(self.H_bal_thr[s])
 
             # Total strengths
             mask_in  = HB_s > thr_s
@@ -296,11 +296,11 @@ class NestedSpectralPartition():
         M_levels, H_levels, p_levels, assignments = _nsp_core(eigvecs, eigvals_sq)
 
         # Integration, segregation, balance
-        H_In = H_levels[0] / self.N
-        H_Seg = H_levels[1:].sum() / self.N
-        H_B = H_In - H_Seg
+        H_int = H_levels[0] / self.N
+        H_seg = H_levels[1:].sum() / self.N
+        H_bal = H_int - H_seg
 
-        return (H_In, H_Seg, H_B, M_levels, H_levels, p_levels, eigvals, eigvals_sq, eigvecs, assignments)
+        return (H_int, H_seg, H_bal, M_levels, H_levels, p_levels, eigvals, eigvals_sq, eigvecs, assignments)
 
 
 @njit(fastmath=True, cache=True)
