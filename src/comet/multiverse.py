@@ -2,6 +2,7 @@ import os
 import sys
 import csv
 import glob
+import shutil
 import pickle
 import inspect
 import itertools
@@ -443,10 +444,21 @@ class Multiverse:
 
         return multiverse_selection if return_df else None
 
-    def get_results(self, universe=None):
+    def get_results(self, universe=None, as_df=False):
         """
-        Get the results of the multiverse (or a specific universe) as a dictionary
+        Get the results of the multiverse (or a specific universe).
+
+        Parameters
+        ----------
+        universe : int | None
+            If given, return results for that specific universe.
+        as_df : bool
+            False returns the raw dict (default).
+            True returns a pandas DataFrame (only valid when universe is None).
         """
+        if not isinstance(as_df, bool):
+            raise ValueError("as_df must be a boolean")
+        
         if os.path.exists(f"{self.results_dir}/multiverse_results.pkl"):
             path = f"{self.results_dir}/multiverse_results.pkl"
 
@@ -454,18 +466,45 @@ class Multiverse:
                 results = pickle.load(file)
 
             if universe is not None:
-                results = results[f"universe_{universe}"]            
+                results = results[f"universe_{universe}"]
+                return results
+
+            if as_df:
+                df = pd.DataFrame.from_dict(results, orient="index")
+
+                # keep string universe label as a column
+                df.insert(0, "universe", df.index)
+
+                # integer index
+                df.index = (
+                    df["universe"]
+                    .str.replace("universe_", "", regex=False)
+                    .astype(int)
+                )
+                df.index.name = None
+
+                return df.sort_index()
+
+            return results
 
         else:
             if universe is None:
-                raise ValueError("Multiverse results are not combined. Please specify a universe number.")
+                raise ValueError(
+                    "Multiverse results are not combined. Please specify a universe number."
+                )
 
             path = f"{self.results_dir}/tmp/universe_{universe}.pkl"
 
             with open(path, "rb") as file:
                 results = pickle.load(file)
 
-        return results
+            if as_df:
+                df = pd.DataFrame([results])
+                df.insert(0, "universe", f"universe_{universe}")
+                df.index = pd.Index([int(universe)], name="universe_id")
+                return df
+
+            return results
 
     def visualize(self, universe=None, cmap="Set2", node_size=1500, figsize=(8,5), label_offset=0.04, exclude_single=False):
         """
@@ -1218,12 +1257,13 @@ def load_multiverse(path=None):
         
     """
     if path is not None:
-        path = path.rstrip("/")        # Remove trailing slash if present
-        mverse = Multiverse(name=path) # Create the Multiverse object
+        name = path.rstrip("/") # Remove trailing slash if present
+        mverse = Multiverse(name=name, path=path) # Create the Multiverse object for the given path
     else:
         raise ValueError("Please provide a name/path to a multiverse directory.")
     
     if not os.path.exists(mverse.multiverse_dir + "/multiverse_summary.csv"):
+        shutil.rmtree(mverse.multiverse_dir) # clean up created directory
         raise ValueError("The specified path does not seem to contain a valid multiverse.")
 
     return mverse
