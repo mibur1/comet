@@ -25,6 +25,12 @@ conda activate comet
 pip install "comet-toolbox[gui]"
 ```
 
+Alternatively, you can install only the core toolbox without the GUI dependencies (e.g., for a high performance cluster or on Google Colab):
+
+```
+pip install comet-toolbox
+```
+
 Usage of the toolbox is then possible through either the GUI (might take 1-2 minutes to open on the *first* start):
 
 ```

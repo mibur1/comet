@@ -96,3 +96,8 @@ exclude = [
   "tutorials/**",
   "docs/**",
   "tests/**"]
+
+include = [
+  "README.md",
+  "LICENSE",
+]
