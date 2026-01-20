@@ -68,8 +68,7 @@ A comprehensive set of usage examples are provided in the **[documentation](http
 
 If you use Comet in your work, please cite the following paper:
 
-> Burkhardt, M., & Gießing, C. (2026). The Comet Toolbox: Improving Robustness in Network Neuroscience  
-Through Multiverse Analysis. Imaging Neuroscience. https://doi.org/10.1162/IMAG.a.1122
+> Burkhardt, M., & Gießing, C. (2026). The Comet Toolbox: Improving Robustness in Network Neuroscience Through Multiverse Analysis. Imaging Neuroscience. https://doi.org/10.1162/IMAG.a.1122
 
 ```
 @article{Burkhardt2026,
