@@ -78,8 +78,11 @@ build = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/mibur1/comet"
+Paper = "https://doi.org/10.1162/IMAG.a.1122"
+Documentation = "https://comet-toolbox.readthedocs.io/en/latest/"
+Repository = "https://github.com/mibur1/comet.git"
 Issues = "https://github.com/mibur1/comet/issues"
+
 
 [project.scripts]
 comet-gui = "comet.gui:run"
