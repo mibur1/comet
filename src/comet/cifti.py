@@ -6,7 +6,7 @@ import importlib_resources
 from scipy.io import loadmat
 
 
-def parcellate(dtseries, atlas="schaefer_200_cortical", method=np.mean, standardize=True):
+def parcellate(dtseries, atlas="schaefer_200_cortical", method=np.mean, standardize=True) -> np.ndarray:
     """
     Parcellate cifti data (.dtseries.nii) using a given atlas.
 
@@ -80,7 +80,7 @@ def parcellate(dtseries, atlas="schaefer_200_cortical", method=np.mean, standard
 
     return ts_parc
 
-def _get_atlas(atlas_name, debug=False):
+def _get_atlas(atlas_name, debug=False) -> tuple:
     """
     Helper function: Get and prepare a CIFTI-2 atlas for parcellation.
 
@@ -176,7 +176,7 @@ def _get_atlas(atlas_name, debug=False):
 
     return (rois, keys, labels, rgba)
 
-def _stdize(ts):
+def _stdize(ts) -> np.ndarray:
     """
     Helper function: Standardize time series to zero (temporal) mean and unit standard deviation.
 
