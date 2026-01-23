@@ -171,7 +171,7 @@ def save_universe_results(data):
     if not row.empty:
         decisions = row.drop(columns=["Universe"]).iloc[0].to_dict()
         data = dict(data)
-        data["decisions"] = decisions
+        data["__decisions"] = decisions
 
     # Save the data as a .pkl file in scripts/temp
     savedir = os.path.join(scripts_dir, "temp")

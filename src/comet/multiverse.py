@@ -38,7 +38,6 @@ class Multiverse:
     path : str
         Path to a multiverse directory (only used by the GUI).
     """
-
     def __init__(self, name="multiverse", path=None):
         self.name = name.split('/')[-1].split('.')[0]
         self.num_universes = None
@@ -447,7 +446,7 @@ class Multiverse:
 
         return multiverse_selection if return_df else None
 
-    def get_results(self, universe=None, as_df=False):
+    def get_results(self, universe=None, as_df=False, expand_dec=False):
         """
         Get the results of the multiverse (or a specific universe).
 
@@ -479,12 +478,26 @@ class Multiverse:
                 df.insert(0, "universe", df.index)
 
                 # integer index
-                df.index = (
-                    df["universe"]
-                    .str.replace("universe_", "", regex=False)
-                    .astype(int)
-                )
+                df.index = (df["universe"].str.replace("universe_", "", regex=False).astype(int))
                 df.index.name = None
+
+                if expand_dec:
+                    # Flatten decisions into columns
+                    flat = df["__decisions"].map(self._flatten_decisions)
+                    dec_only_df = pd.DataFrame(list(flat), index=df.index)
+                    dec_only_df = dec_only_df.add_prefix("__")
+                    if dec_only_df.shape[1] == 0:
+                        raise ValueError("Could not extract any decisions from the 'decisions' dicts.")
+
+                    # Enforce decision-group order from "Decision 1..N"
+                    decision_order = self._extract_decision_order(df.iloc[0]["__decisions"])
+                    decision_order = [f"__{d}" for d in decision_order if f"__{d}" in dec_only_df.columns]
+                    leftovers = [c for c in dec_only_df.columns if c not in decision_order]
+                    decisions_list = decision_order + leftovers
+
+                    # Reorder decision columns and merge
+                    dec_only_df = dec_only_df.reindex(columns=decisions_list)
+                    df = pd.concat([df.drop(columns=["__decisions"]), dec_only_df.reindex(columns=decisions_list)], axis=1)
 
                 return df.sort_index()
 
@@ -690,27 +703,26 @@ class Multiverse:
 
         return self._handle_figure_returns(fig)
 
-    def specification_curve(
-        self,
-        measure: str,
-        baseline: float | None = None,
-        p_value: float | str | bool | None = None,
-        ci: int | str | bool | None = None,
-        smooth_ci: bool = True,
-        title: str | None = None,
-        name_map: dict | None = None,
-        cmap: str = "Set3",
-        linewidth: float = 2,
-        figsize: tuple | None = None,
-        height_ratio: tuple = (2, 1),
-        fontsize: int = 10,
-        dotsize: int = 50,
-        line_pad: float = 0.3,
-        ftype: str = "pdf",
-        dpi: int = 300,
-        p_threshold: float = 0.05,
-        ci_level_default: int = 95,
-    ):
+    def specification_curve(self,
+            measure: str,
+            baseline: float | None = None,
+            p_value: float | str | bool | None = None,
+            ci: int | str | bool | None = None,
+            smooth_ci: bool = True,
+            title: str | None = None,
+            name_map: dict | None = None,
+            cmap: str = "Set3",
+            linewidth: float = 2,
+            figsize: tuple | None = None,
+            height_ratio: tuple = (2, 1),
+            fontsize: int = 10,
+            dotsize: int = 50,
+            line_pad: float = 0.3,
+            ftype: str = "pdf",
+            dpi: int = 300,
+            p_threshold: float = 0.05,
+            ci_level_default: int = 95,
+        ):
         """
         Create and save a specification curve plot from multiverse results (df-based).
 
@@ -737,7 +749,7 @@ class Multiverse:
         def _extract_decision_order(decisions_obj) -> list[str]:
             if not isinstance(decisions_obj, dict):
                 return []
-            dec_block = decisions_obj.get("decisions")
+            dec_block = decisions_obj.get("__decisions")
             d = dec_block if isinstance(dec_block, dict) else decisions_obj
             order = []
             i = 1
@@ -752,7 +764,7 @@ class Multiverse:
 
         if measure not in df.columns:
             raise ValueError(f"'{measure}' not found in multiverse results.")
-        if "decisions" not in df.columns:
+        if "__decisions" not in df.columns:
             raise ValueError("Expected a 'decisions' column containing decision dictionaries.")
 
         # Keep raw before scalarising (for CI / p-value computation)
@@ -767,18 +779,18 @@ class Multiverse:
 
         # ------------------------------------------------------------
         # Flatten decisions -> columns
-        flat = df["decisions"].map(self._flatten_decisions)
+        flat = df["__decisions"].map(self._flatten_decisions)
         dec_df = pd.DataFrame(list(flat), index=df.index)
         if dec_df.shape[1] == 0:
             raise ValueError("Could not extract any decisions from the 'decisions' dicts.")
 
         # decision-group order from stored Decision 1..N
-        decision_order = _extract_decision_order(df.iloc[0]["decisions"])
+        decision_order = _extract_decision_order(df.iloc[0]["__decisions"])
         decision_order = [d for d in decision_order if d in dec_df.columns]
         leftovers = [c for c in dec_df.columns if c not in decision_order]
         decision_cols_all = decision_order + leftovers
 
-        df = pd.concat([df.drop(columns=["decisions"]), dec_df], axis=1)
+        df = pd.concat([df.drop(columns=["__decisions"]), dec_df], axis=1)
 
         # Keep only decisions with >1 unique option
         decision_cols = [c for c in decision_cols_all if df[c].nunique(dropna=True) > 1]
@@ -1076,18 +1088,17 @@ class Multiverse:
         sns.reset_orig()
         return self._handle_figure_returns(fig)
 
-    def multiverse_plot(
-        self,
-        measure: str,
-        n_bins: int = 20,
-        sig_col: str | None = None,
-        sig_threshold: float = 0.05,
-        baseline: float | None = None,
-        name_map: dict | None = None,
-        figsize: tuple = (7, 9),
-        ftype: str = "pdf",
-        dpi: int = 300,
-    ):
+    def multiverse_plot(self,
+            measure: str,
+            n_bins: int = 20,
+            sig_col: str | None = None,
+            sig_threshold: float = 0.05,
+            baseline: float | None = None,
+            name_map: dict | None = None,
+            figsize: tuple = (7, 9),
+            ftype: str = "pdf",
+            dpi: int = 300,
+        ):
         """
         Multiverse plot as introduced by Krähmer & Young (2026).
 
@@ -1177,39 +1188,15 @@ class Multiverse:
             counts["bin_idx"] = counts["outcome_bin"].map(bin_to_idx)
             return counts
 
-        def _extract_decision_order(decisions_obj) -> list[str]:
-            """
-            Return ["<Decision 1 name>", "<Decision 2 name>", ...] from COMET decisions storage.
-            Supports two schemas:
-            1) row["decisions"] is the decisions block itself
-            2) row["decisions"] is a result dict containing {"decisions": {...}}
-            """
-            if not isinstance(decisions_obj, dict):
-                return []
-
-            # schema 2: {"decisions": {...}}
-            dec_block = decisions_obj.get("decisions")
-            if isinstance(dec_block, dict):
-                d = dec_block
-            else:
-                # schema 1: already the block
-                d = decisions_obj
-
-            order = []
-            i = 1
-            while f"Decision {i}" in d:
-                order.append(str(d[f"Decision {i}"]))
-                i += 1
-            return order
-
-        # Load results
-        df = self.get_results(as_df=True)
+        ###############
+        # General setup
+        df = self.get_results(as_df=True) # Load results
 
         if measure not in df.columns:
             raise ValueError(
                 f"'{measure}' not found in multiverse results. Make sure to save it in the multiverse template."
             )
-        if "decisions" not in df.columns:
+        if "__decisions" not in df.columns:
             raise ValueError("Expected a 'decisions' column containing decision dictionaries.")
         if n_bins > len(df):
             raise ValueError(f"n_bins ({n_bins}) cannot be higher than the number of universes ({len(df)}).")
@@ -1227,10 +1214,10 @@ class Multiverse:
                 significant = (s_num < sig_threshold).fillna(False)
 
             df = df.copy()
-            df["significant"] = significant
+            df["__significant"] = significant
         else:
             df = df.copy()
-            df["significant"] = False
+            df["__significant"] = False
 
         # Scalarise outcome: mean over list/array; scalar -> float
         df[measure] = df[measure].apply(
@@ -1240,20 +1227,21 @@ class Multiverse:
             raise ValueError(f"NaNs detected in '{measure}' after reduction to mean.")
 
         # Flatten decisions into columns
-        flat = df["decisions"].map(self._flatten_decisions)
+        flat = df["__decisions"].map(self._flatten_decisions)
         dec_only_df = pd.DataFrame(list(flat), index=df.index)
+        dec_only_df = dec_only_df.add_prefix("__")
         if dec_only_df.shape[1] == 0:
             raise ValueError("Could not extract any decisions from the 'decisions' dicts.")
 
         # Enforce decision-group order from "Decision 1..N"
-        decision_order = _extract_decision_order(df.iloc[0]["decisions"])
-        decision_order = [d for d in decision_order if d in dec_only_df.columns]
+        decision_order = self._extract_decision_order(df.iloc[0]["__decisions"])
+        decision_order = [f"__{d}" for d in decision_order if f"__{d}" in dec_only_df.columns]
         leftovers = [c for c in dec_only_df.columns if c not in decision_order]
         decisions_list = decision_order + leftovers
 
         # Reorder decision columns and merge
         dec_only_df = dec_only_df.reindex(columns=decisions_list)
-        df = pd.concat([df.drop(columns=["decisions"]), dec_only_df], axis=1)
+        df = pd.concat([df.drop(columns=["__decisions"]), dec_only_df.reindex(columns=decisions_list)], axis=1)
 
         # Options within each decision: keep order-of-appearance (do NOT reverse)
         for d in decisions_list:
@@ -1279,7 +1267,8 @@ class Multiverse:
                     lvl_map[lvl] = f"{(lvl_mean - ref_mean):+.2f}"
             avg_diff_lookup[varname] = lvl_map
 
-        # Binning & density
+        ##################
+        # Top density plot
         multiverse_outcome = df[measure].to_numpy(dtype=float)
         x_min = float(np.min(multiverse_outcome))
         x_max = float(np.max(multiverse_outcome))
@@ -1294,10 +1283,10 @@ class Multiverse:
 
         y_all = _kde_density(multiverse_outcome, grid_x, x_min, x_max)
 
-        if df["significant"].any():
-            sig_vals = df.loc[df["significant"], measure].to_numpy(dtype=float)
+        if df["__significant"].any():
+            sig_vals = df.loc[df["__significant"], measure].to_numpy(dtype=float)
             y_sig = _kde_density(sig_vals, grid_x, x_min, x_max)
-            sig_share = float(df["significant"].mean())
+            sig_share = float(df["__significant"].mean())
             y_sig_scaled = np.minimum(y_sig * sig_share, y_all)
         else:
             y_sig_scaled = None
@@ -1310,7 +1299,7 @@ class Multiverse:
         n_rows = density_height + sum([2 + c for c in strip_levels_counts]) + 1
 
         fig = plt.figure(figsize=figsize)
-        gs = gridspec.GridSpec(n_rows, 1, figure=fig, hspace=0.0)
+        gs = gridspec.GridSpec(n_rows, 1, figure=fig, hspace=0) # 0.75 if baseline label
         current_row = 0
 
         tab10 = plt.get_cmap("tab10").colors
@@ -1329,14 +1318,18 @@ class Multiverse:
             ax_density.fill_between(grid_x, y_sig_scaled, alpha=0.4, label="Significant", color="tomato")
 
         ax_density.set_xlim(*common_xlim)
-        ax_density.set_yticks([])
         ax_density.set_xticks([])
+        ax_density.set_xticklabels([])
+        ax_density.set_ylabel("Density")
+        ax_density.set_yticks([])
+        #ax_density.text(baseline, -0.1, str(baseline),ha="center", va="top") if baseline is not None else None
         ax_density.legend(frameon=False)
         ax_density.grid(False)
         ax_density.set_frame_on(False)
         ax_density.plot([common_xlim[0], common_xlim[1]], [0, 0], linewidth=1, color="black")
 
-        # Strips (decision-group order enforced; options unchanged)
+        ##############################
+        # Decision/options strip plots
         x_label_pos = common_xlim[1] + 0.01 * (x_max - x_min)
 
         for varname in decisions_list:
@@ -1365,11 +1358,12 @@ class Multiverse:
             # Right-side mean diffs
             for i_level, lvl in enumerate(levels):
                 lab = avg_diff_lookup.get(varname, {}).get(lvl, "")
-                ax.text(x_label_pos, i_level + 2.5, lab, va="center", ha="left", fontsize=8, clip_on=False)
+                ax.text(x_label_pos, i_level + 2.5, lab, va="center", ha="left", clip_on=False)
 
             # y ticks
             ytick_pos = [0.5, 1.5] + [i + 2.5 for i in range(n_levels)]
-            ytick_labels = ["", _map_name(str(varname))] + [str(lvl) for lvl in levels]
+            display_name = {c: c.replace("__", "", 1) for c in dec_only_df.columns}
+            ytick_labels = ["", _map_name(display_name[varname])] + [str(lvl) for lvl in levels]
             ax.set_yticks(ytick_pos)
             ax.set_yticklabels(ytick_labels)
 
@@ -1383,27 +1377,32 @@ class Multiverse:
             for spine in ["top", "right", "left", "bottom"]:
                 ax.spines[spine].set_visible(False)
 
-        # Bottom x-axis only
-        ax_x = fig.add_subplot(gs[current_row : current_row + 1, 0])
+        #############################################
+        # Bottom x-axis (the multiverse plot measure)
+        bottom_xaxis = fig.add_subplot(gs[current_row : current_row + 1, 0])
         current_row += 1
 
-        ax_x.set_xlim(*common_xlim)
-        ax_x.set_yticks([])
-        ax_x.tick_params(axis="y", left=False, labelleft=False)
-
-        ax_x.set_xlabel(_map_name(measure))
-        ax_x.set_xticks([x_min, (x_min + x_max) / 2.0, x_max])
+        bottom_xaxis.set_xlim(*common_xlim)
+        bottom_xaxis.set_yticks([])
+        bottom_xaxis.tick_params(axis="y", left=False, labelleft=False)
+        
+        bottom_xaxis.set_xlabel(_map_name(measure))
+        bottom_xaxis.set_xticks([x_min, (x_min + x_max) / 2.0, x_max])
 
         for spine in ["top", "left", "right"]:
-            ax_x.spines[spine].set_visible(False)
-        ax_x.spines["bottom"].set_visible(True)
-        ax_x.tick_params(axis="x", bottom=True, labelbottom=True)
+            bottom_xaxis.spines[spine].set_visible(False)
+        bottom_xaxis.spines["bottom"].set_visible(True)
+        bottom_xaxis.tick_params(axis="x", bottom=True, labelbottom=True)
 
         # Save and return
-        plt.savefig(f"{self.results_dir}/multiverse_plot.{ftype}", bbox_inches="tight", dpi=dpi)
+        plt.savefig(f"{self.results_dir}/multiverse_plot.{ftype}", bbox_inches="tight", dpi=dpi)  
         return self._handle_figure_returns(fig)
 
-    def integrate(self, measure=None, method="uniform", type="mean"):
+    def integrate(self, 
+            measure=None,
+            method="uniform",
+            type="mean"
+        ):
         """
         Integrate the multiverse results.
 
@@ -1623,6 +1622,31 @@ class Multiverse:
             out[str(v)] = str(dec_block.get(value_key, "NA"))
 
         return out
+
+    def _extract_decision_order(self, decisions_obj) -> list[str]:
+        """
+        Return ["<Decision 1 name>", "<Decision 2 name>", ...] from COMET decisions storage.
+        Supports two schemas:
+        1) row["__decisions"] is the decisions block itself
+        2) row["__decisions"] is a result dict containing {"__decisions": {...}}
+        """
+        if not isinstance(decisions_obj, dict):
+            return []
+
+        # schema 2: {"__decisions": {...}}
+        dec_block = decisions_obj.get("__decisions")
+        if isinstance(dec_block, dict):
+            d = dec_block
+        else:
+            # schema 1: already the block
+            d = decisions_obj
+
+        order = []
+        i = 1
+        while f"Decision {i}" in d:
+            order.append(str(d[f"Decision {i}"]))
+            i += 1
+        return order
 
     def _load_and_prepare_data(self, measure=None):
         """
