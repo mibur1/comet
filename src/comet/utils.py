@@ -5,6 +5,7 @@ import pickle
 import inspect
 import numpy as np
 import pandas as pd
+import nibabel as nib
 import importlib_resources
 from nilearn import signal
 from scipy.io import loadmat
@@ -127,11 +128,18 @@ def load_testdata(data=None):
     """
     if data in ["graph", "connectivity"]:
         fname = f"{data}.mat"
+        
+        with importlib_resources.path("comet.data.tests", fname) as file_path:
+            data = loadmat(file_path)
+
+    elif data == "cifti":
+        fname = f"{data}.dtseries.nii"
+
+        with importlib_resources.path("comet.data.tests", fname) as file_path:
+            data = nib.load(file_path).get_fdata()
     else:
-        raise ValueError("Valid test names are: 'graph', 'connectivity', 'multiverse', or 'data'.")
+        raise ValueError("Valid test names are: 'graph', 'connectivity', or 'cifti'.")
     
-    with importlib_resources.path("comet.data.tests", fname) as file_path:
-        data = loadmat(file_path)
     return data
 
 def save_universe_results(data):
