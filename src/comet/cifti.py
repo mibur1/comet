@@ -9,16 +9,17 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
                atlas         : str="schaefer", 
                resolution    : int=100, 
                networks      : int=7, 
-               subcortical   : None|str="S4",
+               subcortical   : None|str="S1",
                kong          : bool=False,
                standardize   : bool=True,
                method        = np.mean,
                return_labels : bool=False,
                debug         : bool=False
     ) -> np.ndarray | tuple[np.ndarray, list[str], np.ndarray, np.ndarray]:
-    """
-    Parcellate cifti data (.dtseries.nii) using a given atlas. Only 3T atlases are currently supported.
-    The parcellated time series is calculated as the mean over all grayordinates within a parcel.
+    """ 
+    Parcellate cifti data (.dtseries.nii) using a given atlas. 
+    66 different atlases are available and will be downloaded on demand (see References).
+    If the atlas for the parameter combination is not available, a ValueError is raised.
 
     References
     ----------
@@ -57,7 +58,7 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
         standard deviation before(!) parcellation.
 
     method : function
-        function to use for parcellation. Only available option is np.nanmean
+        Aggregation function to use for parcellation. Default (and the only tested function) is np.mean
 
     debug : bool
         Flag to provide additional debugging information. Default is False.
@@ -136,8 +137,7 @@ def _get_atlas(atlas, resolution, networks, subcortical, kong, debug) -> tuple:
 
     Parameters
     ----------
-    **params from parcellate function**
-        See above for details.
+    **See parcellate() for details.**
 
     Returns
     -------
@@ -244,8 +244,8 @@ def _stdize(ts) -> np.ndarray:
     ts : np.ndarray
         Standardized time series data
     """
-    mean = np.nanmean(ts, axis=0, keepdims=True)
-    std  = np.nanstd(ts, axis=0, keepdims=True)
+    mean = np.mean(ts, axis=0, keepdims=True)
+    std  = np.std(ts, axis=0, keepdims=True)
     std[std == 0] = 1.0
     
     return (ts - mean) / std
