@@ -6,14 +6,15 @@ import importlib_resources
 from scipy.io import loadmat
 
 def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image, 
-               atlas : str="schaefer", 
-               resolution : int=100, 
-               networks : int=7, 
-               subcortical : None|str="S4", 
-               standardize : bool=True,
-               method = np.mean,
+               atlas         : str="schaefer", 
+               resolution    : int=100, 
+               networks      : int=7, 
+               subcortical   : None|str="S4",
+               kong          : bool=False,
+               standardize   : bool=True,
+               method        = np.mean,
                return_labels : bool=False,
-               debug : bool=False
+               debug         : bool=False
     ) -> np.ndarray | tuple[np.ndarray, list[str], np.ndarray, np.ndarray]:
     """
     Parcellate cifti data (.dtseries.nii) using a given atlas. Only 3T atlases are currently supported.
@@ -32,8 +33,8 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
     atlas : string
         Name of the atlas to use for parcellation. Available options are:
         - "schaefer": Schaefer et al. (2018) atlas
-        - "glasser":  Glasser et al. (2016) atlas
-        - "gordon":   Gordon et al. (2016) atlas
+        - "glasser": Glasser et al. (2016) atlas
+        - "gordon": Gordon et al. (2016) atlas
     
     resolution : int
         Number of parcels in the atlas. Only used with Schaefer atlas.
@@ -46,6 +47,10 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
     subcortical : None or string
         If a string containing the scale is provided, the Tian subcortical parcels are included.
         Available options are: 'S1' (16 ROIs), 'S2' (32 ROIs), 'S3' (50 ROIs), 'S4' (54 ROIs).
+    
+    kong : bool
+        Use the Kong 2022 version of the Schaefer atlas (only for Schaefer cortical atlas with 17 networks).
+        Reference: https://doi.org/10.1093/cercor/bhab101
 
     standardize : bool
         Standardize the time series to zero (temporal) mean and unit
@@ -60,16 +65,18 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
     Returns
     -------
     ts_parc : TxP np.ndarray or tuple
-        If return_labels is False, returns a TxP array containing the parcellated time series data
-        If return_labels is True, returns a tuple containing:
-        - ts_parc : TxP np.ndarray
-            Parcellated time series data
-        - labels : list
-            List of label names for each parcel
-        - rgba : list
-            RGBA values of each label
-        - rois : np.ndarray
-            ROI indices for each vertex
+        If return_labels is False (default):
+            - ts_parc : TxP np.ndarray
+                Parcellated time series data
+        If return_labels is True, a tuple containing:
+            - ts_parc : TxP np.ndarray
+                Parcellated time series data
+            - labels : list
+                List of label names for each parcel
+            - rgba : list
+                RGBA values of each label
+            - rois : np.ndarray
+                ROI indices for each vertex in the CIFTI
     """
 
     if isinstance(dtseries, nib.cifti2.cifti2.Cifti2Image):
@@ -83,7 +90,7 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
         print("Error: Input must be a nibabel cifti image object or a numpy memmap object")
         return
 
-    rois, keys, labels, rgba = _get_atlas(atlas=atlas, resolution=resolution, networks=networks, subcortical=subcortical, debug=debug)
+    rois, keys, labels, rgba = _get_atlas(atlas=atlas, resolution=resolution, networks=networks, subcortical=subcortical, kong=kong, debug=debug)
     
     # Schaefer cortical includes the medial wall which we have to insert into the data
     if atlas == "schaefer" and subcortical is None:
@@ -104,18 +111,26 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
         ts = _stdize(ts)
 
     # Parcellation
-    n = np.sum(keys!=0)
-    ts_parc = np.zeros((len(ts), n), dtype=ts.dtype)
+    ts_parc = np.zeros((len(ts), len(labels)), dtype=ts.dtype)
 
     i = 0
-    for k in keys:
-        if k!=0:
-            ts_parc[:, i] = method(ts[:, rois==k], axis=1)
+    for k, lab in zip(keys, labels):
+        if k == 0:
+            continue
+
+        mask = (rois == k)
+        if not np.any(mask):
+            ts_parc[:, i] = 0
             i += 1
-            
+            print(f"[WARN] ROI {lab} is empty and was set to zero.")
+            continue
+
+        ts_parc[:, i] = method(ts[:, mask], axis=1)
+        i += 1
+
     return (ts_parc, labels, rgba, rois) if return_labels else ts_parc
 
-def _get_atlas(atlas, resolution, networks, subcortical, debug) -> tuple:
+def _get_atlas(atlas, resolution, networks, subcortical, kong, debug) -> tuple:
     """
     Helper function: Get and prepare a CIFTI-2 atlas for parcellation.
 
@@ -139,10 +154,10 @@ def _get_atlas(atlas, resolution, networks, subcortical, debug) -> tuple:
     """
 
     base_urls = {
-        "schaefer_c": "https://github.com/ThomasYeoLab/CBIG/raw/master/stable_projects/brain_parcellation/Schaefer2018_LocalGlobal/Parcellations/HCP/fslr32k/cifti/Schaefer2018_{parcels}Parcels_{networks}Networks_order.dlabel.nii",
+        "schaefer_c": "https://github.com/ThomasYeoLab/CBIG/raw/master/stable_projects/brain_parcellation/Schaefer2018_LocalGlobal/Parcellations/HCP/fslr32k/cifti/Schaefer2018_{parcels}Parcels_{kong}{networks}Networks_order.dlabel.nii",
         "schaefer":   "https://github.com/yetianmed/subcortex/raw/master/Group-Parcellation/3T/Cortex-Subcortex/Schaefer2018_{parcels}Parcels_{networks}Networks_order_Tian_Subcortex_{subcortical}.dlabel.nii",
+        "gordon":     "https://github.com/yetianmed/subcortex/raw/master/Group-Parcellation/3T/Cortex-Subcortex/Gordon333.32k_fs_LR_Tian_Subcortex_{subcortical}.dlabel.nii",
         "glasser":    "https://github.com/yetianmed/subcortex/raw/master/Group-Parcellation/3T/Cortex-Subcortex/Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors.32k_fs_LR_Tian_Subcortex_{subcortical}.dlabel.nii",
-        "gordon":     "https://github.com/yetianmed/subcortex/raw/master/Group-Parcellation/3T/Cortex-Subcortex/Gordon333.32k_fs_LR_Tian_Subcortex_{subcortical}.dlabel.nii"
         #"glasser":   "Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors_with_Atlas_ROIs2.32k_fs_LR.dlabel.nii"
     }
 
@@ -151,6 +166,10 @@ def _get_atlas(atlas, resolution, networks, subcortical, debug) -> tuple:
         raise ValueError(f"Resolution '{resolution}' not available. Please choose from [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000].")
     if resolution not in  [100, 200, 400] and subcortical is not None:
         raise ValueError(f"Schaefer + Tian subcortical parcellation is only available for resolutions 100, 200, and 400.")
+    if atlas != "schaefer" and subcortical is not None and networks != 17 and kong is True:
+        raise ValueError(f"Kong 2022 version is only available for Schaefer atlases with 17 networks and without subcortical parcels.")
+    if atlas == "schaefer" and networks == 7 and kong is True:
+        raise ValueError(f"Kong 2022 version is only available for Schaefer atlases with 17 networks and without subcortical parcels.")
     if networks not in [7, 17]:
         raise ValueError(f"Networks '{networks}' not available. Please choose from [7, 17].")
     if atlas in ["glasser", "gordon"] and subcortical is None:
@@ -164,13 +183,11 @@ def _get_atlas(atlas, resolution, networks, subcortical, debug) -> tuple:
     if not isinstance(debug, bool):
         raise ValueError(f"Debug flag must be a boolean value (True or False).")
     
-    
     # All checks passed, prepare the atlas url
     if atlas == "schaefer" and subcortical is None:
-        url = base_urls["schaefer_c"].format(parcels=resolution, networks=networks)
+        url = base_urls["schaefer_c"].format(parcels=resolution, networks=networks, kong="Kong2022_" if kong else "")
     else:
         url = base_urls[atlas].format(parcels=resolution, networks=networks, subcortical=subcortical)
-
     filename = url.split("/")[-1]
 
     # Download the atlas
