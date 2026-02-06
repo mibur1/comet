@@ -153,7 +153,8 @@ def binarise(G: np.ndarray,
 def normalise(G: np.ndarray,
               copy: bool = True) -> np.ndarray:
     '''
-    Normalise connectivity/adjacency matrix
+    Rescales the connectivity/adjacency matrix by dividing all values by the 
+    maximum absolute value. As a result, the largest absolute weight becomes 1.
 
     Parameters
     ----------
@@ -189,6 +190,87 @@ def normalise(G: np.ndarray,
         raise ValueError("Input must be a 2D or 3D matrix.")
 
     return G
+
+def minmax_scale(G: np.ndarray,
+                 feature_range: tuple[float, float] = (0.0, 1.0),
+                 include_diagonal: bool = False,
+                 copy: bool = True) -> np.ndarray:
+    """
+    Min-max scale connectivity/adjacency matrix to a given range (default [0, 1]).
+
+    If G contains only non-negative values and has a minimum value of zero (e.g., after discarding 
+    negative weights), min–max scaling to [0, 1] becomes equivalent to the ``normalise`` function.
+
+    Parameters
+    ----------
+    G : np.ndarray
+        2D (PxP) or 3D (PxPxT) adjacency/connectivity matrix.
+
+    feature_range : tuple[float, float], optional
+        Target range (min, max). Default is (0.0, 1.0).
+
+    include_diagonal : bool, optional
+        If False, diagonal is ignored when computing min/max.
+        The diagonal itself is left unchanged unless it lies outside the target range. Default is False.
+
+    copy : bool, optional
+        If True, a copy is returned. Default is True.
+
+    Returns
+    -------
+    np.ndarray
+        Scaled matrix with values in the specified feature_range.
+    """
+    if copy:
+        G = G.copy()
+
+    lo, hi = feature_range
+    if not (hi > lo):
+        raise ValueError("feature_range must satisfy hi > lo.")
+
+    def _scale_2d(A: np.ndarray) -> np.ndarray:
+        A = A.copy()
+
+        if include_diagonal:
+            vals = A[np.isfinite(A)]
+        else:
+            mask = ~np.eye(A.shape[0], dtype=bool)
+            vals = A[mask & np.isfinite(A)]
+
+        if vals.size == 0:
+            return A
+
+        vmin = float(np.min(vals))
+        vmax = float(np.max(vals))
+
+        # Avoid division by zero if matrix is constant (off-diagonal)
+        if np.isclose(vmax, vmin):
+            if include_diagonal:
+                A[:] = lo
+            else:
+                mask = ~np.eye(A.shape[0], dtype=bool)
+                A[mask] = lo
+            return A
+
+        # Standard min-max scaling
+        if include_diagonal:
+            A = (A - vmin) / (vmax - vmin)
+            A = A * (hi - lo) + lo
+        else:
+            mask = ~np.eye(A.shape[0], dtype=bool)
+            A_off = A[mask]
+            A_off = (A_off - vmin) / (vmax - vmin)
+            A_off = A_off * (hi - lo) + lo
+            A[mask] = A_off
+
+        return A
+
+    if G.ndim == 2:
+        return _scale_2d(G)
+    elif G.ndim == 3:
+        return np.stack([_scale_2d(G[:, :, t]) for t in range(G.shape[2])], axis=2)
+    else:
+        raise ValueError("Input must be a 2D or 3D matrix.")
 
 def invert(G: np.ndarray,
            copy: bool = True) -> np.ndarray:

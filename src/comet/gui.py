@@ -232,7 +232,7 @@ class ParameterOptions:
         "vlim":                 "Color axis limit",
         "hmm_iter":             "HMM iterations",
         "parcellation":         "Parcellation",
-        "cov_estimator":        "Covariance estimator",
+        "cov_estimator":        "Covariance estimator"
     }
 
     INFO_OPTIONS = {
@@ -299,7 +299,7 @@ class ParameterOptions:
         "save_graph":           "Save the graph data to a .mat file. Keys:\n\
         - graph_raw: original input data\n\
         - graph_data: processed graph data for graph measure calculation\n\
-        - graph_results: calculated graph measures",
+        - graph_results: calculated graph measures"
     }
 
     CONNECTIVITY_METHODS = {
@@ -329,6 +329,7 @@ class ParameterOptions:
         "threshold":                    "PREP Threshold",
         "binarise":                     "PREP Binarise",
         "normalise":                    "PREP Normalise",
+        "minmax_scale":                 "PREP Min-max scale",
         "invert":                       "PREP Invert",
         "logtransform":                 "PREP Log-transform",
         "symmetrise":                   "PREP Symmetrise",
@@ -346,7 +347,7 @@ class ParameterOptions:
         "pagerank_centrality":          "BCT Pagerank centrality",
         "participation_coef":           "BCT Participation coef",
         "participation_coef_sign":      "BCT Participation coef (sign)",
-        "avg_clustering_onella":        "BCT Average clustering (Onella)",
+        "avg_clustering_onella":        "BCT Average clustering (Onella)"
     }
 
     # Reversed dictionaries for easy lookup
