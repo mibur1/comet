@@ -3,7 +3,9 @@
 
 # Custom files and folders
 testing_stuff/
-data/atlas/schaefer*
+src/comet/data/atlas/Schaefer*
+src/comet/data/atlas/Gordon*
+src/comet/data/atlas/Q1*
 
 # Ignore all tutorial subfolders, but not the tutorial files
 tutorials/*/

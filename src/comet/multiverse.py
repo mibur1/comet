@@ -1,10 +1,12 @@
 import os
+import re
 import sys
 import csv
 import glob
 import shutil
 import pickle
 import inspect
+import textwrap
 import itertools
 import subprocess
 import numpy as np
@@ -17,12 +19,15 @@ from matplotlib import transforms
 from collections import defaultdict
 from matplotlib import pyplot as plt
 from matplotlib import lines as mlines
+from matplotlib import gridspec as gridspec
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib import patches as mpatches
 from scipy.interpolate import make_interp_spline
 from IPython.display import display as ipy_display
 from joblib import Parallel, delayed
 from tqdm.auto import tqdm
 from tqdm_joblib import tqdm_joblib
+
 
 class Multiverse:
     """
@@ -35,7 +40,6 @@ class Multiverse:
     path : str
         Path to a multiverse directory (only used by the GUI).
     """
-
     def __init__(self, name="multiverse", path=None):
         self.name = name.split('/')[-1].split('.')[0]
         self.num_universes = None
@@ -444,7 +448,7 @@ class Multiverse:
 
         return multiverse_selection if return_df else None
 
-    def get_results(self, universe=None, as_df=False):
+    def get_results(self, universe=None, as_df=False, expand_dec=False):
         """
         Get the results of the multiverse (or a specific universe).
 
@@ -476,12 +480,26 @@ class Multiverse:
                 df.insert(0, "universe", df.index)
 
                 # integer index
-                df.index = (
-                    df["universe"]
-                    .str.replace("universe_", "", regex=False)
-                    .astype(int)
-                )
+                df.index = (df["universe"].str.replace("universe_", "", regex=False).astype(int))
                 df.index.name = None
+
+                if expand_dec:
+                    # Flatten decisions into columns
+                    flat = df["__decisions"].map(self._flatten_decisions)
+                    dec_only_df = pd.DataFrame(list(flat), index=df.index)
+                    dec_only_df = dec_only_df.add_prefix("__")
+                    if dec_only_df.shape[1] == 0:
+                        raise ValueError("Could not extract any decisions from the 'decisions' dicts.")
+
+                    # Enforce decision-group order from "Decision 1..N"
+                    decision_order = self._extract_decision_order(df.iloc[0]["__decisions"])
+                    decision_order = [f"__{d}" for d in decision_order if f"__{d}" in dec_only_df.columns]
+                    leftovers = [c for c in dec_only_df.columns if c not in decision_order]
+                    decisions_list = decision_order + leftovers
+
+                    # Reorder decision columns and merge
+                    dec_only_df = dec_only_df.reindex(columns=decisions_list)
+                    df = pd.concat([df.drop(columns=["__decisions"]), dec_only_df.reindex(columns=decisions_list)], axis=1)
 
                 return df.sort_index()
 
@@ -506,7 +524,16 @@ class Multiverse:
 
             return results
 
-    def visualize(self, universe=None, cmap="Set2", node_size=1500, figsize=(8,5), label_offset=0.04, exclude_single=False):
+    def visualize(self,
+            universe=None,
+            figsize=(8,5),
+            node_size=1500,
+            text_size=12,
+            max_label_len=15,
+            label_offset=0.04,
+            cmap="Set2",
+            exclude_single=False
+        ):
         """
         Visualize the multiverse as a network.
 
@@ -516,14 +543,18 @@ class Multiverse:
             The universe to highlight in the network. If None or if the provided universe number
             is higher than available universes, the entire multiverse is shown without highlighting.
             Default is None.
-        cmap : str
-            Colormap to use for the nodes. Default is "Set2".
-        node_size : int
-            Size of the nodes. Default is 1500.
         figsize : tuple
             Size of the figure. Default is (8,5).
+        node_size : int
+            Size of the nodes. Default is 1500.
+        text_size : int
+            Size of the text labels. Default is 12.
+        max_label_len : int
+            Maximum length of decision labels before wrapping.
         label_offset : float
             Offset multiplier for decision labels.
+        cmap : str
+            Colormap to use for the nodes. Default is "Set2".
         exclude_single : bool
             Whether to exclude parameters with only one unique option.
         """
@@ -623,38 +654,27 @@ class Multiverse:
         level_colors = {level: colors[i] for i, level in enumerate(sorted(levels))}
 
         # Draw edges.
-        nx.draw(
-            G,
-            pos,
-            with_labels=False,
-            node_size=node_size - 10,
-            node_color="white",
-            arrows=True,
-            edge_color=edge_colors,
-            width=edge_widths,
-            ax=ax,
-        )
+        nx.draw(G, pos, with_labels=False, node_size=node_size - 10, node_color="white", 
+                arrows=True, edge_color=edge_colors, width=edge_widths, ax=ax)
 
         # Draw nodes with colors based on their level.
         for level in levels:
             nodes_at_level = [node for node in G.nodes if G.nodes[node].get("level") == level]
-            nx.draw_networkx_nodes(
-                G,
-                pos,
-                nodelist=nodes_at_level,
-                node_size=node_size,
-                node_color=[level_colors[level] for _ in nodes_at_level],
-                ax=ax,
-            )
+            nx.draw_networkx_nodes(G, pos, nodelist=nodes_at_level, node_size=node_size, 
+                                   node_color=[level_colors[level] for _ in nodes_at_level], ax=ax)
 
         # Prepare labels: For non-root nodes, use the 'option' text; for the root, use its label.
+        def wrap_label(text, max_len=max_label_len):
+            return "\n".join(textwrap.wrap(text, max_len))
+        
         node_labels = {}
         for node in G.nodes:
             if node != root_node and "option" in G.nodes[node]:
-                node_labels[node] = str(G.nodes[node]["option"])
+                raw_label = str(G.nodes[node]["option"])
+                node_labels[node] = wrap_label(raw_label, max_len=max_label_len)
             else:
                 node_labels[node] = G.nodes[node].get("label", node)
-        nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=12, ax=ax)
+        nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=text_size, ax=ax)
 
         # Calculate an offset based on the maximum number of nodes at any level.
         node_nums = [len([n for n in G.nodes if G.nodes[n].get("level") == level]) for level in levels]
@@ -673,350 +693,753 @@ class Multiverse:
                     else:
                         decision_value = decision
                     x, y = pos[bottom_node]
-                    ax.text(
-                        x,
-                        y - label_offset * max_nodes,
-                        decision_value,
-                        horizontalalignment="center",
-                        fontsize=12,
-                        fontweight="bold",
-                    )
+                    ax.text(x, y - label_offset * max_nodes, decision_value, 
+                            horizontalalignment="center", fontsize=text_size, fontweight="bold")
 
         # Save the figure to the results directory.
         plt.savefig(f"{self.results_dir}/multiverse.png", bbox_inches="tight")
 
         return self._handle_figure_returns(fig)
 
-    def specification_curve(self, measure, baseline=None, p_value=None, ci=None, smooth_ci=True, 
-                        title="Specification Curve", name_map=None, cmap="Set3", linewidth=2, figsize=None, 
-                        height_ratio=(2,1), fontsize=10, dotsize=50, line_pad=0.3, ftype="pdf", dpi=300):
+    def specification_curve(self,
+            measure: str,
+            baseline: float | None = None,
+            p_value: float | str | bool | None = None,
+            ci: int | str | bool | None = None,
+            smooth_ci: bool = True,
+            title: str | None = None,
+            name_map: dict | None = None,
+            cmap: str = "Set3",
+            linewidth: float = 2,
+            figsize: tuple | None = None,
+            height_ratio: tuple = (2, 1),
+            fontsize: int = 10,
+            dotsize: int = 50,
+            line_pad: float = 0.3,
+            ftype: str = "pdf",
+            dpi: int = 300,
+            p_threshold: float = 0.05,
+            ci_level_default: int = 95,
+        ):
         """
-        Create and save a specification curve plot from multiverse results.
+        Create a specification curve plot from multiverse results.
 
-        Parameters
-        ----------
-        measure : string
-            Name of the measure to plot. Needs to be provided
-        baseline : float
-            Plot baseline/chance level as a dashed line and use as reference
-            for p-value testing. Default is None
-        p_value : float
-            Calculate and visualise statistically significant specifications
-            via p-value. Default is None
-        ci : int
-            Confidence interval to plot. Default is 95
-        smooth_ci : bool
-            Plot a smoothed confidence interval band. If False, use vertical
-            CI lines only. Default is True
-        title : string
-            Title of the plot. Default is "Specification Curve"
-        name_map : dict
-            Dictionary to map the decision names to custom names. Default is None
-        cmap : string
-            Colormap to use for the decision groups in the lower panel.
-            Default is "Set3"
-        linewidth : int
-            Width of the CI lines. Default is 2
-        figsize : tuple
-            Size of the figure. Default is None (auto based on data).
-        height_ratio : tuple
-            Height ratio of the two subplots. Default is (2,1)
-        fontsize : int
-            Font size of the labels. Default is 10
-        dotsize : int
-            Size of the dots. Default is 50
-        line_pad : float
-            Padding for the vertical lines on the left side of the plot. Default is 0.3
-        ftype : string
-            File type to save the plot. Default is "png"
-        dpi : int
-            Dots per inch for the saved figure.
+        The figure is saved to the results directory as "specification curve.{ftype}".
+
+        Notes
+        -----
+            - If `p_value` is float or True, `measure` must contain list/array samples per universe.
+            - If `ci` is int or True, `measure` must contain list/array samples per universe.
+            - If `p_value` is a string, it is interpreted as a p-value column (numeric) or a significance flag (bool).
+            - If `ci` is a string, it must contain per-universe (lower, upper) bounds.
+
+        Returns
+        -------
+        Any
+            The figure if in a .py script.
+            None if in a .ipynb notebook (the figure is saved and displayed inline)
         """
-        # Sort the universes based on an outcome measure and get the forking paths
-        sorted_universes, forking_paths = self._load_and_prepare_data(measure)
+        def _map_name(key: str) -> str:
+            return name_map.get(key, key) if isinstance(name_map, dict) else key
 
-        if len(sorted_universes) == 0:
-            print("No universes to plot.")
-            return None
+        def _extract_decision_order(decisions_obj) -> list[str]:
+            if not isinstance(decisions_obj, dict):
+                return []
+            dec_block = decisions_obj.get("__decisions")
+            d = dec_block if isinstance(dec_block, dict) else decisions_obj
+            order = []
+            i = 1
+            while f"Decision {i}" in d:
+                order.append(str(d[f"Decision {i}"]))
+                i += 1
+            return order
 
-        # Try to automatically determine the figure size
+        # ------------------------------------------------------------
+        # Load df and basic checks
+        df = self.get_results(as_df=True).copy()
+
+        if measure not in df.columns:
+            raise ValueError(f"'{measure}' not found in multiverse results.")
+        if "__decisions" not in df.columns:
+            raise ValueError("Expected a 'decisions' column containing decision dictionaries.")
+
+        # Keep raw before scalarising (for CI / p-value computation)
+        raw_measure = df[measure].copy()
+
+        # Scalarise outcome for plotting (mean over list/array; scalar -> float)
+        df[measure] = df[measure].apply(
+            lambda x: float(np.mean(x)) if isinstance(x, (list, tuple, np.ndarray)) else float(x)
+        )
+        if df[measure].isna().any():
+            raise ValueError(f"NaNs detected in '{measure}' after reduction to mean.")
+
+        # ------------------------------------------------------------
+        # Flatten decisions -> columns
+        flat = df["__decisions"].map(self._flatten_decisions)
+        dec_df = pd.DataFrame(list(flat), index=df.index)
+        if dec_df.shape[1] == 0:
+            raise ValueError("Could not extract any decisions from the 'decisions' dicts.")
+
+        # decision-group order from stored Decision 1..N
+        decision_order = _extract_decision_order(df.iloc[0]["__decisions"])
+        decision_order = [d for d in decision_order if d in dec_df.columns]
+        leftovers = [c for c in dec_df.columns if c not in decision_order]
+        decision_cols_all = decision_order + leftovers
+
+        df = pd.concat([df.drop(columns=["__decisions"]), dec_df], axis=1)
+
+        # Keep only decisions with >1 unique option
+        decision_cols = [c for c in decision_cols_all if df[c].nunique(dropna=True) > 1]
+        if len(decision_cols) == 0:
+            raise ValueError("No decisions with more than one option found; nothing to plot in the bottom panel.")
+
+        # ------------------------------------------------------------
+        # Sort by outcome
+        sort_idx = df[measure].sort_values().index
+        df = df.loc[sort_idx].reset_index(drop=True)
+        raw_measure_sorted = raw_measure.loc[sort_idx].reset_index(drop=True)  # <-- aligned raw samples
+        n = len(df)
+        x_values = np.arange(n)
+        y_values = df[measure].to_numpy(dtype=float)
+
+        # ------------------------------------------------------------
+        # Significance handling
+        baseline_for_tests = 0.0 if baseline is None else float(baseline)
+        sig_color = "#018532"
+
+        significant = np.zeros(n, dtype=bool)
+        pvals = None
+
+        if p_value is None:
+            pass
+
+        elif isinstance(p_value, str):
+            if p_value not in df.columns:
+                raise ValueError(f"p_value column '{p_value}' not found in results df.")
+            col = df[p_value]
+            if pd.api.types.is_bool_dtype(col):
+                significant = col.fillna(False).to_numpy(dtype=bool)
+            else:
+                pvals = pd.to_numeric(col, errors="coerce").to_numpy(dtype=float)
+                if np.isnan(pvals).any():
+                    raise ValueError(f"NaNs detected in p-value column '{p_value}'.")
+                significant = pvals < float(p_threshold)
+
+        else:
+            thr = float(p_threshold) if p_value is True else float(p_value)
+
+            pvals_list = []
+            for rv in raw_measure_sorted:
+                if isinstance(rv, (list, tuple, np.ndarray)):
+                    arr = np.asarray(rv, dtype=float)
+                    arr = arr[np.isfinite(arr)]
+                    if len(arr) >= 2:
+                        _, p = stats.ttest_1samp(arr, baseline_for_tests)
+                        pvals_list.append(float(p))
+                    else:
+                        pvals_list.append(np.nan)
+                else:
+                    pvals_list.append(np.nan)
+
+            pvals = np.asarray(pvals_list, dtype=float)
+            if np.isnan(pvals).any():
+                raise ValueError(
+                    "Cannot compute p-values for some universes: "
+                    f"'{measure}' must contain list/array samples per universe when p_value is float/True."
+                )
+            significant = pvals < thr
+
+        top_colors = np.where(significant, sig_color, "black")
+
+        # ------------------------------------------------------------
+        # CI handling
+        ci_lower = None
+        ci_upper = None
+
+        if ci is None:
+            pass
+
+        elif isinstance(ci, str):
+            if ci not in df.columns:
+                raise ValueError(f"CI column '{ci}' not found in results df.")
+            bounds = df[ci].to_list()
+            lows, highs = [], []
+            for b in bounds:
+                if isinstance(b, (list, tuple, np.ndarray)) and len(b) == 2:
+                    lo, hi = float(b[0]), float(b[1])
+                    if not (np.isfinite(lo) and np.isfinite(hi)):
+                        raise ValueError(f"Non-finite CI bounds in column '{ci}'.")
+                    lows.append(lo)
+                    highs.append(hi)
+                else:
+                    raise ValueError(f"CI column '{ci}' must contain (lower, upper) tuples/lists per universe.")
+            ci_lower = np.asarray(lows, dtype=float)
+            ci_upper = np.asarray(highs, dtype=float)
+
+        else:
+            level = int(ci_level_default) if ci is True else int(ci)
+
+            lows, highs = [], []
+            for rv, mean_val in zip(raw_measure_sorted, y_values):
+                if not isinstance(rv, (list, tuple, np.ndarray)):
+                    raise ValueError(
+                        f"Cannot compute CI because '{measure}' does not contain per-universe samples. "
+                        "Provide a CI column instead (ci='colname')."
+                    )
+                arr = np.asarray(rv, dtype=float)
+                arr = arr[np.isfinite(arr)]
+                if len(arr) < 4:
+                    raise ValueError(
+                        f"Cannot compute CI for a universe with <4 finite samples in '{measure}'. "
+                        "Provide a CI column instead (ci='colname') or store more samples."
+                    )
+
+                sem = np.std(arr, ddof=1) / np.sqrt(len(arr))
+                half = sem * stats.t.ppf((1.0 + level / 100.0) / 2.0, len(arr) - 1)
+                lows.append(float(mean_val - half))
+                highs.append(float(mean_val + half))
+
+            ci_lower = np.asarray(lows, dtype=float)
+            ci_upper = np.asarray(highs, dtype=float)
+
+        # ------------------------------------------------------------
+        # Figure size (auto if None)
+        if title is None:
+            title = "Specification Curve"
+
         if figsize is None:
-            num_options = sum(len(values) for values in forking_paths.values())
-            figsize = (max(8, len(sorted_universes)*0.07), max(6, num_options))
-        
-        # Plotting
-        sns.set_theme(style="whitegrid")
-        fig, ax = plt.subplots(2, 1, figsize=figsize, gridspec_kw={'height_ratios': height_ratio}, sharex=True)
+            num_options = sum(df[c].nunique(dropna=True) for c in decision_cols)
+            figsize = (max(8, n * 0.07), max(6, num_options * 0.35))
 
-        # Remove forking paths that only have a single option
-        single_params = []
-        for decision, options in forking_paths.items():
-            for i, opt in enumerate(options):
-                if isinstance(opt, dict):
-                    options[i] = opt.get('name')
-            if len(options) == 1:
-                single_params.append(decision)
-        for param in single_params:
-            del forking_paths[param]
-
-        # Setup variables for bottom plot
+        # ------------------------------------------------------------
+        # Bottom panel layout (decision order enforced; options order-of-appearance)
+        decision_positions = {}
         display_labels = []
         yticks = []
         line_ends = []
         key_positions = {}
         y_max = 0
         space_between_groups = 1
-        sig_color = "#018532"
 
-        # map (decision, option) -> (y_pos, group_index)
-        decision_positions = {}
-        group_index = 0
+        num_groups = len(decision_cols)
+        cmap_obj = plt.cm.get_cmap(cmap, num_groups if num_groups > 0 else 1)
+        group_colors = [cmap_obj(i) for i in range(num_groups)]
 
-        # Build y-ticks and position map
-        forking_paths = {key: list(reversed(values)) for key, values in reversed(forking_paths.items())} # Reverse
-        for decision, options in forking_paths.items():
-            group_label = (name_map[decision]
-                        if (name_map is not None and decision in name_map)
-                        else decision)
-            key_position = y_max + len(options) / 2 - 0.5
-            key_positions[group_label] = key_position
+        for group_idx, decision in enumerate(decision_cols):
+            options = pd.unique(df[decision].astype("object"))
+            options = [o for o in options if pd.notna(o)]
 
-            for option in options:
+            group_label = _map_name(decision)
+            key_positions[group_label] = y_max + len(options) / 2.0 - 0.5
+
+            for opt in options:
                 yticks.append(y_max)
-                display_labels.append(option)
-                decision_positions[(decision, option)] = (y_max, group_index)
+                display_labels.append(str(opt))
+                decision_positions[(decision, opt)] = (y_max, group_idx)
                 y_max += 1
 
             line_ends.append(y_max)
             y_max += space_between_groups
-            group_index += 1
 
-        decision_keys = list(forking_paths.keys())
+        # ------------------------------------------------------------
+        # Plot
+        sns.set_theme(style="whitegrid")
+        fig, ax = plt.subplots(
+            2, 1, figsize=figsize, gridspec_kw={"height_ratios": height_ratio}, sharex=True
+        )
 
-        # Setup bottom plot axes
+        # Bottom axes setup
         ax[1].set_yticks(yticks)
         ax[1].set_yticklabels(display_labels, fontsize=fontsize)
-        ax[1].tick_params(axis='y', labelsize=fontsize)
+        ax[1].tick_params(axis="y", labelsize=fontsize)
         ax[1].set_ylim(-1, y_max)
         ax[1].xaxis.grid(False)
+        ax[1].invert_yaxis()
 
-        # Calculate padding for the lines and labels
+        # Left padding for group labels/lines
         fig.canvas.draw()
-        trans1 = transforms.blended_transform_factory(ax[1].transAxes, ax[1].transData)
         renderer = fig.canvas.get_renderer()
-        
-        # Find the minimum x position of a y label in bottom panel
-        tick_label_extents = [label.get_window_extent(renderer=renderer)
-                            for label in ax[1].get_yticklabels()]
-        max_extent = max(tick_label_extents, key=lambda bbox: bbox.width)
+
+        trans1 = transforms.blended_transform_factory(ax[1].transAxes, ax[1].transData)
+        tick_extents = [lbl.get_window_extent(renderer=renderer) for lbl in ax[1].get_yticklabels()]
+        max_extent = max(tick_extents, key=lambda bb: bb.width)
         x_start_pixel = max_extent.x0
         x_start_axes1 = ax[1].transAxes.inverted().transform((x_start_pixel, 0))[0]
 
-        # And for top panel
-        tick_label_extents = [label.get_window_extent(renderer=renderer)
-                            for label in ax[0].get_yticklabels()]
-        max_extent = max(tick_label_extents, key=lambda bbox: bbox.width)
-        x_start_pixel = max_extent.x0
-        x_start_axes0 = ax[0].transAxes.inverted().transform((x_start_pixel, 0))[0]
-        
+        trans0 = transforms.blended_transform_factory(ax[0].transAxes, ax[0].transData)
+        tick_extents0 = [lbl.get_window_extent(renderer=renderer) for lbl in ax[0].get_yticklabels()]
+        if tick_extents0:
+            max_extent0 = max(tick_extents0, key=lambda bb: bb.width)
+            x_start_pixel0 = max_extent0.x0
+            x_start_axes0 = ax[0].transAxes.inverted().transform((x_start_pixel0, 0))[0]
+        else:
+            x_start_axes0 = x_start_axes1
+
         min_x_start_axes = min(x_start_axes1, x_start_axes0)
         padding = -line_pad * min_x_start_axes
         line_offset = min_x_start_axes - padding
 
-        # Plot the key (decision group) labels on the left
+        # Group labels + separators
         for key, pos in key_positions.items():
-            ax[1].text(line_offset - padding, pos, key, transform=trans1, ha='right', va='center',
-                    fontweight="bold", fontsize=fontsize, rotation=0)
+            ax[1].text(
+                line_offset - padding, pos, key, transform=trans1,
+                ha="right", va="center", fontweight="bold", fontsize=fontsize
+            )
 
-        # Draw vertical lines separating decision groups
         s = -0.5
         for line_end in line_ends:
             e = line_end - 0.5
-            line = mlines.Line2D([line_offset, line_offset], [s, e],
-                                color="black", lw=1,
-                                transform=trans1, clip_on=False)
-            ax[1].add_line(line)
+            ax[1].add_line(
+                mlines.Line2D([line_offset, line_offset], [s, e], color="black", lw=1, transform=trans1, clip_on=False)
+            )
             s = line_end + 0.5
 
-        # CI / p-value setup
-        ci_lower_values = []
-        ci_upper_values = []
-        x_values = np.arange(len(sorted_universes))
-        p_vals = []
+        # Top scatter
+        ax[0].scatter(x_values, y_values, c=top_colors, s=dotsize, edgecolors=top_colors, zorder=3)
 
-        # Warn if few samples are available for CI / tests
-        first_result, _ = sorted_universes[0]
-        if hasattr(first_result, '__len__') and len(first_result) < 30:
-            if ci is not None:
-                print(f"Warning: Only {len(first_result)} samples were available for the CI.")
-            if p_value is not None:
-                print(f"Warning: Only {len(first_result)} samples were available for the t-tests.")
+        # CI drawing
+        if ci_lower is not None and ci_upper is not None:
+            if smooth_ci and len(ci_lower) >= 4:
+                spline_lo = make_interp_spline(x_values, ci_lower.astype(float), k=3)
+                spline_hi = make_interp_spline(x_values, ci_upper.astype(float), k=3)
+                x_smooth = np.linspace(x_values.min(), x_values.max(), 500)
+                ax[0].fill_between(x_smooth, spline_lo(x_smooth), spline_hi(x_smooth), color="gray", alpha=0.3)
+            else:
+                for i in range(n):
+                    ax[0].plot([i, i], [ci_lower[i], ci_upper[i]], color="gray", linewidth=linewidth, zorder=2)
 
-        baseline_for_tests = 0 if baseline is None else baseline
+        # Baseline line
+        legend_items = []
+        if baseline is not None:
+            ax[0].hlines(float(baseline), xmin=-2, xmax=n + 1, linestyles="--", lw=2, colors="black", zorder=1)
+            legend_items.append(mlines.Line2D([], [], linestyle="--", color="black", linewidth=2, label="Baseline"))
 
-        # Precompute colours for decision groups
-        num_groups = group_index
-        colormap_obj = plt.cm.get_cmap(cmap, num_groups if num_groups > 0 else 1)
-        group_colors = [colormap_obj(j) for j in range(num_groups)]
+        # Measure label + left line
+        ymin, ymax = ax[0].get_ylim()
+        ycenter = (ymin + ymax) / 2.0
+        ax[0].text(
+            line_offset - padding, ycenter, _map_name(measure), transform=trans0,
+            ha="right", va="center", fontweight="bold", fontsize=fontsize
+        )
+        ax[0].add_line(
+            mlines.Line2D([line_offset, line_offset], [ymin, ymax], color="black", lw=1, transform=trans0, clip_on=False)
+        )
 
-        # Collect points for scatterplot
-        top_x = []
-        top_y = []
-        top_c = []
+        # Bottom markers (vectorised melt)
+        long = df[decision_cols].reset_index().melt(
+            id_vars="index", value_vars=decision_cols, var_name="decision", value_name="option"
+        ).rename(columns={"index": "x"})
 
-        bottom_x = []
-        bottom_y = []
-        bottom_c = []
-
-        # Main loop over universes
-        for i, (result, decisions) in enumerate(sorted_universes):
-            # Compute mean value
-            mean_val = np.mean(result) if hasattr(result, '__len__') else result
-
-            # Determine colour based on p-value testing if provided
-            color = "black"
-            if p_value is not None and hasattr(result, '__len__'):
-                t_obs, p_obs = stats.ttest_1samp(result, baseline_for_tests)
-                p_vals.append(p_obs)
-                color = sig_color if p_obs < p_value else "black"
-
-            # CI calculation
-            if ci is not None:
-                if hasattr(result, '__len__') and len(result) > 3:
-                    sem_val = np.std(result) / np.sqrt(len(result))
-                    ci_half = sem_val * stats.t.ppf((1 + ci / 100) / 2., len(result) - 1)
-                    ci_lower = mean_val - ci_half
-                    ci_upper = mean_val + ci_half
-                    ci_lower_values.append(ci_lower)
-                    ci_upper_values.append(ci_upper)
-
-                    # If not smoothing, draw simple vertical CI lines now
-                    if not smooth_ci:
-                        ax[0].plot([i, i], [ci_lower, ci_upper],
-                                color="gray", linewidth=linewidth)
-                else:
-                    ci_lower_values.append(mean_val)
-                    ci_upper_values.append(mean_val)
-
-            # Store point for top scatter
-            top_x.append(i)
-            top_y.append(mean_val)
-            top_c.append(color)
-
-            # Temporary solution to handle the new multiverse structure.
-            # Build a dictionary of decisions and their corresponding options.
-            formatted_decisions = {}
-            formatted_decisions["Universe"] = decisions["Universe"]
-            dc = 1  # Decision counter
-            while f"Decision {dc}" in decisions and f"Value {dc}" in decisions:
-                key = decisions[f"Decision {dc}"]
-                value = decisions[f"Value {dc}"]
-                formatted_decisions[key] = value
-                dc += 1
-
-            # For each decision in the current universe, record its marker position/colour
-            for decision_name, option in formatted_decisions.items():
-                if decision_name in decision_keys:
-                    key_tuple = (decision_name, option)
-                    if key_tuple in decision_positions:
-                        y_pos, grp_idx = decision_positions[key_tuple]
-                        bottom_x.append(i)
-                        bottom_y.append(y_pos)
-                        if num_groups > 0:
-                            bottom_c.append(group_colors[grp_idx])
-                        else:
-                            bottom_c.append("black")
-
-        # Smooth CI band if required
-        if smooth_ci and ci is not None and len(ci_lower_values) >= 4:
-            # spline needs arrays
-            ci_lower_values_arr = np.array(ci_lower_values, dtype=float)
-            ci_upper_values_arr = np.array(ci_upper_values, dtype=float)
-            spline_lower = make_interp_spline(x_values, ci_lower_values_arr, k=3)
-            spline_upper = make_interp_spline(x_values, ci_upper_values_arr, k=3)
-            x_smooth = np.linspace(x_values.min(), x_values.max(), 500)
-            ci_lower_smooth = spline_lower(x_smooth)
-            ci_upper_smooth = spline_upper(x_smooth)
-            ax[0].fill_between(x_smooth, ci_lower_smooth, ci_upper_smooth,
-                            color='gray', alpha=0.3)
-
-        # Scatterplot
-        top_x = np.asarray(top_x)
-        top_y = np.asarray(top_y)
-        top_c = np.asarray(top_c)
-
-        ax[0].scatter(top_x, top_y, c=top_c, s=dotsize, edgecolors=top_c, zorder=3)
+        bottom_x, bottom_y, bottom_c = [], [], []
+        for row in long.itertuples(index=False):
+            opt = row.option
+            if pd.isna(opt):
+                continue
+            key = (row.decision, opt)
+            if key in decision_positions:
+                y_pos, grp_idx = decision_positions[key]
+                bottom_x.append(row.x)
+                bottom_y.append(y_pos)
+                bottom_c.append(group_colors[grp_idx] if num_groups > 0 else "black")
 
         if bottom_x:
-            bottom_x = np.asarray(bottom_x)
-            bottom_y = np.asarray(bottom_y)
-            bottom_c = np.asarray(bottom_c)
-            ax[1].scatter(bottom_x, bottom_y, c=bottom_c, s=dotsize, marker='o')
+            ax[1].scatter(np.asarray(bottom_x), np.asarray(bottom_y), c=np.asarray(bottom_c), s=dotsize, marker="o")
 
-        # Upper plot settings
-        trans0 = transforms.blended_transform_factory(ax[0].transAxes, ax[0].transData)
-        ax[0].set_title(title, fontweight="bold", fontsize=fontsize+2)
+        # Top panel styling
+        ax[0].set_title(title, fontweight="bold", fontsize=fontsize + 2)
         ax[0].xaxis.grid(False)
         ax[0].set_xticks([])
-        ax[0].set_xlim(-1, len(sorted_universes))
-        ax[0].tick_params(axis='y', labelsize=fontsize)
+        ax[0].set_xlim(-1, n)
+        ax[0].tick_params(axis="y", labelsize=fontsize)
 
-        # Upper plot label for the measure
-        ymin, ymax = ax[0].get_ylim()
-        ycenter = (ymax + ymin) / 2
-        measure_label = name_map[measure] if (name_map is not None and measure in name_map) else measure
-        ax[0].text(line_offset - padding, ycenter, measure_label, transform=trans0, ha='right', va='center',
-                fontweight="bold", fontsize=fontsize, rotation=0)
-        line = mlines.Line2D([line_offset, line_offset], [ymin, ymax],
-                            color="black", lw=1,
-                            transform=trans0, clip_on=False)
-        ax[0].add_line(line)
-
-        # Legend
-        legend_items = []
-        y_lim = ax[0].get_ylim()
-
-        if baseline is not None and y_lim[0] <= baseline <= y_lim[1]:
-            ax[0].hlines(baseline, xmin=-2, xmax=len(sorted_universes) + 1,
-                        linestyles="--", lw=2, colors='black', zorder=1)
-            legend_items.append(
-                mlines.Line2D([], [], linestyle='--', color='black',
-                            linewidth=2, label="Baseline")
-            )
-
-        if hasattr(first_result, '__len__') and len(first_result) > 3 and ci is not None:
-            legend_items.append(
-                mpatches.Patch(facecolor='gray', edgecolor='white',
-                            label=f"{ci}% CI")
-            )
-
-        if p_value is not None:
-            if len(p_vals) > 0:
-                if min(p_vals) <= p_value:
-                    legend_items.append(
-                        mlines.Line2D([], [], linestyle='None', marker='o',
-                                    markersize=9, markerfacecolor=sig_color,
-                                    markeredgecolor=sig_color,
-                                    label=f"p < {p_value}")
-                    )
-                if max(p_vals) > p_value:
-                    legend_items.append(
-                        mlines.Line2D([], [], linestyle='None', marker='o',
-                                    markersize=9, markerfacecolor="black",
-                                    markeredgecolor="black",
-                                    label=f"p ≥ {p_value}")
-                    )
+        # Legend for CI
+        if ci_lower is not None and ci_upper is not None:
+            if isinstance(ci, int):
+                ci_lab = f"{ci}% CI"
+            elif ci is True:
+                ci_lab = f"{ci_level_default}% CI"
             else:
-                print("Warning: No p-values were calculated (less than 30 samples)")
+                ci_lab = "CI"
+            legend_items.append(mpatches.Patch(facecolor="gray", edgecolor="white", label=ci_lab))
+
+        # Legend for significance (only if p_value requested)
+        if p_value is not None:
+            if significant.any():
+                legend_items.append(
+                    mlines.Line2D([], [], linestyle="None", marker="o", markersize=9,
+                                markerfacecolor=sig_color, markeredgecolor=sig_color,
+                                label="significant")
+                )
+            if (~significant).any():
+                legend_items.append(
+                    mlines.Line2D([], [], linestyle="None", marker="o", markersize=9,
+                                markerfacecolor="black", markeredgecolor="black",
+                                label="not significant")
+                )
+
         if legend_items:
-            ax[0].legend(handles=legend_items, loc='upper left', fontsize=fontsize)
+            ax[0].legend(handles=legend_items, loc="upper left", fontsize=fontsize, frameon=False)
 
-        # Save the plot with tight layout to avoid clipping
-        plt.savefig(f"{self.results_dir}/specification_curve.{ftype}",
-                    bbox_inches='tight', dpi=dpi)
+        plt.savefig(f"{self.results_dir}/specification_curve2.{ftype}", bbox_inches="tight", dpi=dpi)
         sns.reset_orig()
-
         return self._handle_figure_returns(fig)
+
+    def multiverse_plot(self,
+            measure: str,
+            n_bins: int = 20,
+            sig_col: str | None = None,
+            sig_threshold: float = 0.05,
+            baseline: float | None = None,
+            name_map: dict | None = None,
+            figsize: tuple = (7, 9),
+            ftype: str = "pdf",
+            dpi: int = 300,
+        ):
+        """
+        Multiverse plot as introduced by Krähmer & Young (2026).
+
+        This plot visualises the distribution of multiverse outcomes together with
+        heatmap strips showing how different analytic choices relate to the outcome.
+        For each decision level, the average change in the outcome relative to the
+        reference level is shown on the right.
+
+        The figure is saved to the results directory as "multiverse_plot.{ftype}".
+
+        References
+        ----------
+        Krähmer, D., & Young, C. (2026). Visualizing vastness: Graphical methods for 
+        multiverse analysis. PLOS One, 21(2). https://doi.org/10.1371/journal.pone.0339452
+
+        Parameters
+        ----------
+        measure : str
+            Name of the outcome/measure column in the multiverse results.
+            Entries may be scalars or lists/arrays (in which case the mean is used).
+        n_bins : int, optional
+            Number of bins used to discretise the outcome axis for the heatmap strips.
+        sig_col : str | None, optional
+            Column indicating statistical significance. If provided:
+            - boolean values are interpreted directly (True = significant),
+            - numeric values are compared against ``sig_threshold``.
+            If None, no significance overlay is drawn.
+        sig_threshold : float, optional
+            Threshold used when ``sig_col`` is numeric (default is 0.05).
+        baseline : float | None, optional
+            Optional baseline value for the outcome. If provided, a vertical dashed
+            reference line is drawn at this value in the density plot.
+        name_map : dict | None, optional
+            Optional mapping for display names. Keys may include the measure name
+            and decision names. Values are the desired display labels.
+        figsize : tuple, optional
+            Figure size passed to Matplotlib (width, height) in inches.
+        ftype : str, optional
+            File type used when saving the figure (e.g., ``"pdf"``, ``"png"``).
+        dpi : int, optional
+            Resolution (dots per inch) used when saving the figure.
+
+        Returns
+        -------
+        Any
+            The figure if in a .py script.
+            None if in a .ipynb notebook (the figure is saved and displayed inline)
+        """
+        # Helpers
+        def _map_name(key: str) -> str:
+            return name_map.get(key, key) if isinstance(name_map, dict) else key
+
+        def _kde_density(values, grid, x_min, x_max):
+            values = np.asarray(values, dtype=float)
+            values = values[np.isfinite(values)]
+            if len(values) < 2:
+                hist, edges = np.histogram(values, bins=20, range=(x_min, x_max), density=True)
+                mids = (edges[:-1] + edges[1:]) / 2
+                return np.interp(grid, mids, hist, left=0, right=0)
+            return stats.gaussian_kde(values)(grid)
+
+        def _build_heatmap_data(df_in, varname, outcome_var, breaks):
+            tmp = df_in[[varname, outcome_var]].copy()
+            tmp["outcome_bin"] = pd.cut(tmp[outcome_var], bins=breaks, include_lowest=True)
+
+            all_bins = tmp["outcome_bin"].cat.categories
+            levels = tmp[varname].cat.categories
+
+            idx = pd.MultiIndex.from_product([all_bins, levels], names=["outcome_bin", varname])
+            counts = (
+                tmp.groupby(["outcome_bin", varname], observed=False)
+                .size()
+                .reindex(idx, fill_value=0)
+                .reset_index(name="n")
+            )
+
+            total_by_bin = counts.groupby("outcome_bin")["n"].transform(lambda x: x.sum() if x.sum() > 0 else 1)
+            counts["prop"] = counts["n"] / total_by_bin
+
+            bin_to_idx = {iv: i for i, iv in enumerate(all_bins)}
+            counts["bin_idx"] = counts["outcome_bin"].map(bin_to_idx)
+            return counts
+
+        ###############
+        # General setup
+        df = self.get_results(as_df=True) # Load results
+
+        if measure not in df.columns:
+            raise ValueError(
+                f"'{measure}' not found in multiverse results. Make sure to save it in the multiverse template."
+            )
+        if "__decisions" not in df.columns:
+            raise ValueError("Expected a 'decisions' column containing decision dictionaries.")
+        if n_bins > len(df):
+            raise ValueError(f"n_bins ({n_bins}) cannot be higher than the number of universes ({len(df)}).")
+
+        # Significance handling
+        if sig_col is not None:
+            if sig_col not in df.columns:
+                raise ValueError(f"sig_col='{sig_col}' not found in results df.")
+
+            s = df[sig_col]
+            if pd.api.types.is_bool_dtype(s):
+                significant = s.fillna(False).astype(bool)
+            else:
+                s_num = pd.to_numeric(s, errors="coerce")
+                significant = (s_num < sig_threshold).fillna(False)
+
+            df = df.copy()
+            df["__significant"] = significant
+        else:
+            df = df.copy()
+            df["__significant"] = False
+
+        # Scalarise outcome: mean over list/array; scalar -> float
+        df[measure] = df[measure].apply(
+            lambda x: float(np.mean(x)) if isinstance(x, (list, tuple, np.ndarray)) else float(x)
+        )
+        if df[measure].isna().any():
+            raise ValueError(f"NaNs detected in '{measure}' after reduction to mean.")
+
+        # Flatten decisions into columns
+        flat = df["__decisions"].map(self._flatten_decisions)
+        dec_only_df = pd.DataFrame(list(flat), index=df.index)
+        dec_only_df = dec_only_df.add_prefix("__")
+        if dec_only_df.shape[1] == 0:
+            raise ValueError("Could not extract any decisions from the 'decisions' dicts.")
+
+        # Enforce decision-group order from "Decision 1..N"
+        decision_order = self._extract_decision_order(df.iloc[0]["__decisions"])
+        decision_order = [f"__{d}" for d in decision_order if f"__{d}" in dec_only_df.columns]
+        leftovers = [c for c in dec_only_df.columns if c not in decision_order]
+        decisions_list = decision_order + leftovers
+
+        # Reorder decision columns and merge
+        dec_only_df = dec_only_df.reindex(columns=decisions_list)
+        df = pd.concat([df.drop(columns=["__decisions"]), dec_only_df.reindex(columns=decisions_list)], axis=1)
+
+        # Options within each decision: keep order-of-appearance (do NOT reverse)
+        for d in decisions_list:
+            s = df[d].astype("object")
+            cats = list(pd.unique(s))
+            df[d] = pd.Categorical(s, categories=cats, ordered=True)
+
+        # Average increase labels (mean difference vs reference = first option)
+        avg_diff_lookup = {}
+        for varname in decisions_list:
+            levels_all = list(df[varname].cat.categories)
+            if len(levels_all) == 0:
+                continue
+            ref = levels_all[0]
+            ref_mean = float(df.loc[df[varname] == ref, measure].mean())
+
+            lvl_map = {}
+            for lvl in levels_all:
+                if lvl == ref:
+                    lvl_map[lvl] = "Ref."
+                else:
+                    lvl_mean = float(df.loc[df[varname] == lvl, measure].mean())
+                    lvl_map[lvl] = f"{(lvl_mean - ref_mean):+.2f}"
+            avg_diff_lookup[varname] = lvl_map
+
+        ##################
+        # Top density plot
+        multiverse_outcome = df[measure].to_numpy(dtype=float)
+        x_min = float(np.min(multiverse_outcome))
+        x_max = float(np.max(multiverse_outcome))
+        if not np.isfinite(x_min) or not np.isfinite(x_max) or x_min == x_max:
+            raise ValueError(f"'{measure}' must have finite, non-constant values.")
+
+        x_pad = 0.02 * np.ptp(multiverse_outcome)
+        common_xlim = (x_min - x_pad, x_max + x_pad)
+
+        breaks = np.linspace(x_min, x_max, n_bins + 1)
+        grid_x = np.linspace(x_min, x_max, 1000)
+
+        y_all = _kde_density(multiverse_outcome, grid_x, x_min, x_max)
+
+        if df["__significant"].any():
+            sig_vals = df.loc[df["__significant"], measure].to_numpy(dtype=float)
+            y_sig = _kde_density(sig_vals, grid_x, x_min, x_max)
+            sig_share = float(df["__significant"].mean())
+            y_sig_scaled = np.minimum(y_sig * sig_share, y_all)
+        else:
+            y_sig_scaled = None
+
+        # Plot layout
+        DENSITY_RATIO = 0.5
+        strip_levels_counts = [len(df[v].cat.categories) for v in decisions_list]
+        total_strip_levels = sum(strip_levels_counts)
+        density_height = max(1, int(DENSITY_RATIO * total_strip_levels))
+        n_rows = density_height + sum([2 + c for c in strip_levels_counts]) + 1
+
+        fig = plt.figure(figsize=figsize)
+        gs = gridspec.GridSpec(n_rows, 1, figure=fig, hspace=0) # 0.75 if baseline label
+        current_row = 0
+
+        tab10 = plt.get_cmap("tab10").colors
+        base_colors = {v: tab10[i % len(tab10)] for i, v in enumerate(decisions_list)}
+
+        # Density panel
+        ax_density = fig.add_subplot(gs[current_row : current_row + density_height, 0])
+        current_row += density_height
+
+        if baseline is not None:
+            ax_density.plot([baseline, baseline], [0, float(np.max(y_all))], linestyle="--", linewidth=1, color="black")
+
+        ax_density.plot(grid_x, y_all, label="All", linewidth=1.5)
+
+        if y_sig_scaled is not None:
+            ax_density.fill_between(grid_x, y_sig_scaled, alpha=0.4, label="Significant", color="tomato")
+
+        ax_density.set_xlim(*common_xlim)
+        ax_density.set_xticks([])
+        ax_density.set_xticklabels([])
+        ax_density.set_ylabel("Density")
+        ax_density.set_yticks([])
+        #ax_density.text(baseline, -0.1, str(baseline),ha="center", va="top") if baseline is not None else None
+        ax_density.legend(frameon=False)
+        ax_density.grid(False)
+        ax_density.set_frame_on(False)
+        ax_density.plot([common_xlim[0], common_xlim[1]], [0, 0], linewidth=1, color="black")
+
+        ##############################
+        # Decision/options strip plots
+        x_label_pos = common_xlim[1] + 0.01 * (x_max - x_min)
+
+        for varname in decisions_list:
+            levels = list(df[varname].cat.categories)  # keep option order
+            n_levels = len(levels)
+            n_rows_strip = 2 + n_levels  # blank + header + levels
+
+            ax = fig.add_subplot(gs[current_row : current_row + n_rows_strip, 0])
+            current_row += n_rows_strip
+
+            counts = _build_heatmap_data(df, varname, measure, breaks)
+
+            H = np.zeros((n_levels + 2, len(breaks) - 1))
+            for i_level, lvl in enumerate(levels):
+                sub = counts[counts[varname] == lvl]
+                prop_by_bin = dict(zip(sub["bin_idx"], sub["prop"]))
+                for b in range(len(breaks) - 1):
+                    H[i_level + 2, b] = prop_by_bin.get(b, 0.0)
+
+            cmap = LinearSegmentedColormap.from_list("white_to_color", [(1, 1, 1), base_colors[varname]])
+            X = breaks
+            Y = np.arange(n_levels + 3)  # edges
+            ax.pcolormesh(X, Y, H, shading="flat", cmap=cmap, vmin=0.0, vmax=1.0)
+            ax.set_ylim(n_levels + 2, 0)
+
+            # Right-side mean diffs
+            for i_level, lvl in enumerate(levels):
+                lab = avg_diff_lookup.get(varname, {}).get(lvl, "")
+                ax.text(x_label_pos, i_level + 2.5, lab, va="center", ha="left", clip_on=False)
+
+            # y ticks
+            ytick_pos = [0.5, 1.5] + [i + 2.5 for i in range(n_levels)]
+            display_name = {c: c.replace("__", "", 1) for c in dec_only_df.columns}
+            ytick_labels = ["", _map_name(display_name[varname])] + [str(lvl) for lvl in levels]
+            ax.set_yticks(ytick_pos)
+            ax.set_yticklabels(ytick_labels)
+
+            ticklbls = ax.get_yticklabels()
+            if len(ticklbls) > 1:
+                ticklbls[1].set_fontweight("bold")
+
+            ax.tick_params(axis="y", length=0)
+            ax.set_xlim(*common_xlim)
+            ax.tick_params(axis="x", which="both", bottom=False, labelbottom=False)
+            for spine in ["top", "right", "left", "bottom"]:
+                ax.spines[spine].set_visible(False)
+
+        #############################################
+        # Bottom x-axis (the multiverse plot measure)
+        bottom_xaxis = fig.add_subplot(gs[current_row : current_row + 1, 0])
+        current_row += 1
+
+        bottom_xaxis.set_xlim(*common_xlim)
+        bottom_xaxis.set_yticks([])
+        bottom_xaxis.tick_params(axis="y", left=False, labelleft=False)
+        
+        bottom_xaxis.set_xlabel(_map_name(measure))
+        bottom_xaxis.set_xticks([x_min, (x_min + x_max) / 2.0, x_max])
+
+        for spine in ["top", "left", "right"]:
+            bottom_xaxis.spines[spine].set_visible(False)
+        bottom_xaxis.spines["bottom"].set_visible(True)
+        bottom_xaxis.tick_params(axis="x", bottom=True, labelbottom=True)
+
+        # Save and return
+        plt.savefig(f"{self.results_dir}/multiverse_plot.{ftype}", bbox_inches="tight", dpi=dpi)  
+        return self._handle_figure_returns(fig)
+
+    def integrate(self, 
+            measure=None,
+            method="uniform",
+            type="mean"
+        ):
+        """
+        Integrate the multiverse results.
+
+        Parameters
+        ----------
+        measure : string
+            Name of the measure to integrate.
+
+        method : string
+            Method to use for integration. Options are:
+                 "uniform" (default): Simple mean/median across all universes
+                 "bma": Bayesian model averaging (requires BIC values in the results)
+                 
+        type : string
+            Type of (weighted) integration. Options are "mean" (default) or "median".
+        """
+        # Get results dataframe and convert columns to lowercase
+        results = self.get_results(as_df=True)
+        results.columns = results.columns.str.lower()
+
+        # Initial checks
+        if measure is None:
+            raise ValueError("Please provide a measure to integrate.")
+        if measure not in results.columns:
+            raise ValueError(f"The measure '{measure}' was not found in the results.")
+        if method == "bma" and "bic" not in results.columns:
+            raise ValueError("BMA weights require a 'bic' column in the results.")
+        
+        # Get measure and compute weights
+        x = results[measure].to_numpy()
+
+        if method == "uniform":
+            weights = self._uniform_weights(x)
+        elif method == "bma":
+            weights = self._bma_weights(results)
+        else:
+            raise ValueError("method must be 'uniform' or 'bma'")
+        
+        # Compute integrated estimate
+        if type == "mean":
+            integrated_estimate = self._weighted_mean(x, weights)
+        elif type == "median":
+            integrated_estimate = self._weighted_median(x, weights)
+        else:
+            raise ValueError("type must be 'mean' or 'median'")
+        
+        return integrated_estimate, weights
 
     # Internal methods
     def _create_summary(self, all_universes, keys):
@@ -1170,6 +1593,51 @@ class Multiverse:
 
         return
 
+    def _flatten_decisions(self, dec_block):
+        """ 
+        Convert {'Decision 1': 'X', 'Value 1': Y, ...} into {'X': 'Y', ...}.
+        Values are stringified for categorical plotting. 
+        """
+        if not isinstance(dec_block, dict):
+            return {}
+
+        out = {}
+        for k, v in dec_block.items():
+            m = re.fullmatch(r"Decision\s+(\d+)", str(k))
+            if not m:
+                continue
+
+            idx = m.group(1)
+            value_key = f"Value {idx}"
+            out[str(v)] = str(dec_block.get(value_key, "NA"))
+
+        return out
+
+    def _extract_decision_order(self, decisions_obj) -> list[str]:
+        """
+        Return ["<Decision 1 name>", "<Decision 2 name>", ...] from COMET decisions storage.
+        Supports two schemas:
+        1) row["__decisions"] is the decisions block itself
+        2) row["__decisions"] is a result dict containing {"__decisions": {...}}
+        """
+        if not isinstance(decisions_obj, dict):
+            return []
+
+        # schema 2: {"__decisions": {...}}
+        dec_block = decisions_obj.get("__decisions")
+        if isinstance(dec_block, dict):
+            d = dec_block
+        else:
+            # schema 1: already the block
+            d = decisions_obj
+
+        order = []
+        i = 1
+        while f"Decision {i}" in d:
+            order.append(str(d[f"Decision {i}"]))
+            i += 1
+        return order
+
     def _load_and_prepare_data(self, measure=None):
         """
         Internal function: Load and prepare the data for the specification curve plotting.
@@ -1241,9 +1709,45 @@ class Multiverse:
         if self._in_notebook():
             ipy_display(fig)
             plt.close(fig)
-            return None
+            return
         else:
             return fig
+
+    # Multiverse integration
+    def _weighted_mean(self,x: np.ndarray, w: np.ndarray) -> float:
+        """
+        Compute the weighted mean of x with weights w.
+        Assumes w >= 0 and w.sum() == 1.
+        """
+        return float(np.sum(w * x))
+
+    def _weighted_median(self, x: np.ndarray, w: np.ndarray) -> float:
+        """
+        Compute the weighted median of x with weights w.
+        Assumes w >= 0 and w.sum() == 1.
+        """
+        order = np.argsort(x)
+        x_sorted = x[order]
+        w_sorted = w[order]
+
+        cw = np.cumsum(w_sorted)
+        return float(x_sorted[np.searchsorted(cw, 0.5, side="left")])
+
+    def _uniform_weights(self, data: pd.DataFrame) -> np.ndarray:
+        """
+        Compute uniform weights for all universes.
+        """
+        n = len(data)
+        return np.full(n, 1.0 / n, dtype=float)
+
+    def _bma_weights(self, data: pd.DataFrame) -> np.ndarray:
+        """
+        Compute normalised BMA weights from BIC values.
+        """
+        bic = data["bic"].to_numpy(float)
+        delta = bic - np.min(bic)
+        w = np.exp(-0.5 * delta)
+        return w / w.sum()
 
 # Load an existing multiverse
 def load_multiverse(path=None):
