@@ -9,11 +9,11 @@
 
     <br>
 
-.. image:: https://img.shields.io/badge/DOI-10.1101%2F2024.01.21.576546-blue?logo=arxiv
-   :target: https://doi.org/10.1101/2024.01.21.576546
-   :alt: DOI Badge
+.. image:: https://img.shields.io/badge/paper-Imaging_Neuroscience-orange?style=flat&logo=openaccess&logoColor=orange&link=%20https%3A%2F%2Fdoi.org%2F10.1162%2FIMAG.a.1122
+   :target: https://doi.org/10.1162/IMAG.a.1122
+   :alt: Paper Badge
 
-.. image:: https://img.shields.io/badge/PyPI-comet--toolbox-orange?logo=PyPI
+.. image:: https://img.shields.io/badge/PyPI-comet--toolbox-blue?logo=PyPI
    :target: https://pypi.org/project/comet-toolbox/
    :alt: PyPI Badge
 
@@ -146,3 +146,22 @@ Current features
 .. raw:: html
 
     <br>
+
+
+Citing
+------
+
+If you use Comet in your work, please cite the following paper:
+
+    Burkhardt, M., & Gießing, C. (2026). *The Comet Toolbox: Improving Robustness in Network Neuroscience 
+    Through Multiverse Analysis*. Imaging Neuroscience. https://doi.org/10.1162/IMAG.a.1122
+
+.. code-block:: bibtex
+
+   @article{Burkhardt2026,
+     title   = {The Comet Toolbox: Improving Robustness in Network Neuroscience Through Multiverse Analysis},
+     author  = {Burkhardt, Micha and Giessing, Carsten},
+     journal = {Imaging Neuroscience},
+     year    = {2026},
+     doi     = {10.1162/IMAG.a.1122}
+   }

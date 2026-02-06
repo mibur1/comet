@@ -4,8 +4,8 @@
 
 # Comet - A toolbox for dynamic functional connectivity and multiverse analysis
 
-[![DOI](https://img.shields.io/badge/DOI-10.1101%2F2024.01.21.576546-blue?logo=arxiv)](https://doi.org/10.1101/2024.01.21.576546) [![PyPI](https://img.shields.io/badge/PyPI-comet--toolbox-orange?logo=PyPI)](https://pypi.org/project/comet-toolbox/)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/2e766745c5c04d4786ea28f7135c193e)](https://app.codacy.com/gh/mibur1/comet/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade) [![Documentation Status](https://readthedocs.org/projects/comet-toolbox/badge/?version=latest)](https://comet-toolbox.readthedocs.io/en/latest/) [![Coverage Status](https://coveralls.io/repos/github/mibur1/comet/badge.svg)](https://coveralls.io/github/mibur1/comet) [![PyPI Downloads](https://static.pepy.tech/personalized-badge/comet-toolbox?period=total&units=INTERNATIONAL_SYSTEM&left_color=GRAY&right_color=YELLOW&left_text=downloads)](https://pepy.tech/projects/comet-toolbox)
+[![DOI](https://img.shields.io/badge/paper-Imaging_Neuroscience-orange?style=flat&logo=openaccess&logoColor=orange&link=%20https%3A%2F%2Fdoi.org%2F10.1162%2FIMAG.a.1122)](https://doi.org/10.1162/IMAG.a.1122) [![PyPI](https://img.shields.io/badge/PyPI-comet--toolbox-blue?logo=PyPI)](https://pypi.org/project/comet-toolbox/)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/2e766745c5c04d4786ea28f7135c193e)](https://app.codacy.com/gh/mibur1/comet/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade) [![Documentation Status](https://readthedocs.org/projects/comet-toolbox/badge/?version=latest)](https://comet-toolbox.readthedocs.io/en/latest/) [![Coverage Status](https://coveralls.io/repos/github/mibur1/comet/badge.svg)](https://coveralls.io/github/mibur1/comet)
 
 ## About the toolbox
 
@@ -62,6 +62,22 @@ A comprehensive set of usage examples are provided in the **[documentation](http
 ├─ tests/             ← Unit tests
 ├─ pyproject.toml     ← Packaging & dependencies
 └─ README.md          ← Project overview
+```
+
+### Citing
+
+If you use Comet in your work, please cite the following paper:
+
+> Burkhardt, M., & Gießing, C. (2026). The Comet Toolbox: Improving Robustness in Network Neuroscience Through Multiverse Analysis. Imaging Neuroscience. https://doi.org/10.1162/IMAG.a.1122
+
+```
+@article{Burkhardt2026,
+  title={The Comet Toolbox: Improving Robustness in Network Neuroscience Through Multiverse Analysis},
+  author={Burkhardt, Micha and Giessing, Carsten},
+  journal={Imaging Neuroscience},
+  year={2026},
+  doi={https://doi.org/10.1162/IMAG.a.1122}
+}
 ```
 
 ### Contributing
