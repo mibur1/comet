@@ -6,6 +6,7 @@ import glob
 import shutil
 import pickle
 import inspect
+import textwrap
 import itertools
 import subprocess
 import numpy as np
@@ -26,6 +27,7 @@ from IPython.display import display as ipy_display
 from joblib import Parallel, delayed
 from tqdm.auto import tqdm
 from tqdm_joblib import tqdm_joblib
+
 
 class Multiverse:
     """
@@ -522,7 +524,16 @@ class Multiverse:
 
             return results
 
-    def visualize(self, universe=None, cmap="Set2", node_size=1500, figsize=(8,5), label_offset=0.04, exclude_single=False):
+    def visualize(self,
+            universe=None,
+            figsize=(8,5),
+            node_size=1500,
+            text_size=12,
+            max_label_len=15,
+            label_offset=0.04,
+            cmap="Set2",
+            exclude_single=False
+        ):
         """
         Visualize the multiverse as a network.
 
@@ -532,14 +543,18 @@ class Multiverse:
             The universe to highlight in the network. If None or if the provided universe number
             is higher than available universes, the entire multiverse is shown without highlighting.
             Default is None.
-        cmap : str
-            Colormap to use for the nodes. Default is "Set2".
-        node_size : int
-            Size of the nodes. Default is 1500.
         figsize : tuple
             Size of the figure. Default is (8,5).
+        node_size : int
+            Size of the nodes. Default is 1500.
+        text_size : int
+            Size of the text labels. Default is 12.
+        max_label_len : int
+            Maximum length of decision labels before wrapping.
         label_offset : float
             Offset multiplier for decision labels.
+        cmap : str
+            Colormap to use for the nodes. Default is "Set2".
         exclude_single : bool
             Whether to exclude parameters with only one unique option.
         """
@@ -639,38 +654,27 @@ class Multiverse:
         level_colors = {level: colors[i] for i, level in enumerate(sorted(levels))}
 
         # Draw edges.
-        nx.draw(
-            G,
-            pos,
-            with_labels=False,
-            node_size=node_size - 10,
-            node_color="white",
-            arrows=True,
-            edge_color=edge_colors,
-            width=edge_widths,
-            ax=ax,
-        )
+        nx.draw(G, pos, with_labels=False, node_size=node_size - 10, node_color="white", 
+                arrows=True, edge_color=edge_colors, width=edge_widths, ax=ax)
 
         # Draw nodes with colors based on their level.
         for level in levels:
             nodes_at_level = [node for node in G.nodes if G.nodes[node].get("level") == level]
-            nx.draw_networkx_nodes(
-                G,
-                pos,
-                nodelist=nodes_at_level,
-                node_size=node_size,
-                node_color=[level_colors[level] for _ in nodes_at_level],
-                ax=ax,
-            )
+            nx.draw_networkx_nodes(G, pos, nodelist=nodes_at_level, node_size=node_size, 
+                                   node_color=[level_colors[level] for _ in nodes_at_level], ax=ax)
 
         # Prepare labels: For non-root nodes, use the 'option' text; for the root, use its label.
+        def wrap_label(text, max_len=max_label_len):
+            return "\n".join(textwrap.wrap(text, max_len))
+        
         node_labels = {}
         for node in G.nodes:
             if node != root_node and "option" in G.nodes[node]:
-                node_labels[node] = str(G.nodes[node]["option"])
+                raw_label = str(G.nodes[node]["option"])
+                node_labels[node] = wrap_label(raw_label, max_len=max_label_len)
             else:
                 node_labels[node] = G.nodes[node].get("label", node)
-        nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=12, ax=ax)
+        nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=text_size, ax=ax)
 
         # Calculate an offset based on the maximum number of nodes at any level.
         node_nums = [len([n for n in G.nodes if G.nodes[n].get("level") == level]) for level in levels]
@@ -689,14 +693,8 @@ class Multiverse:
                     else:
                         decision_value = decision
                     x, y = pos[bottom_node]
-                    ax.text(
-                        x,
-                        y - label_offset * max_nodes,
-                        decision_value,
-                        horizontalalignment="center",
-                        fontsize=12,
-                        fontweight="bold",
-                    )
+                    ax.text(x, y - label_offset * max_nodes, decision_value, 
+                            horizontalalignment="center", fontsize=text_size, fontweight="bold")
 
         # Save the figure to the results directory.
         plt.savefig(f"{self.results_dir}/multiverse.png", bbox_inches="tight")
@@ -724,11 +722,9 @@ class Multiverse:
             ci_level_default: int = 95,
         ):
         """
-        Create and save a specification curve plot from multiverse results (df-based).
+        Create a specification curve plot from multiverse results.
 
-        Supports significance and CI either computed from per-universe samples in `measure`
-        (when `p_value`/`ci` are bool/float/int) or read from columns (when `p_value`/`ci`
-        are strings naming columns).
+        The figure is saved to the results directory as "specification curve.{ftype}".
 
         Notes
         -----
@@ -741,7 +737,8 @@ class Multiverse:
         Returns
         -------
         Any
-            Whatever ``self._handle_figure_returns(fig)`` returns.
+            The figure if in a .py script.
+            None if in a .ipynb notebook (the figure is saved and displayed inline)
         """
         def _map_name(key: str) -> str:
             return name_map.get(key, key) if isinstance(name_map, dict) else key
@@ -1102,17 +1099,17 @@ class Multiverse:
         """
         Multiverse plot as introduced by Krähmer & Young (2026).
 
-        Visualises the distribution of multiverse outcomes together with decision-wise
+        This plot visualises the distribution of multiverse outcomes together with
         heatmap strips showing how different analytic choices relate to the outcome.
         For each decision level, the average change in the outcome relative to the
         reference level is shown on the right.
 
-        Decision-group order
-        --------------------
-        The *vertical order of decision groups* (strips) follows the original COMET
-        forking-path order: "Decision 1", "Decision 2", ... as stored in the decisions
-        dicts. This ensures that plots match the order in which decisions were defined
-        (e.g., software -> resampling -> stimulation -> electrode).
+        The figure is saved to the results directory as "multiverse_plot.{ftype}".
+
+        References
+        ----------
+        Krähmer, D., & Young, C. (2026). Visualizing vastness: Graphical methods for 
+        multiverse analysis. PLOS One, 21(2). https://doi.org/10.1371/journal.pone.0339452
 
         Parameters
         ----------
@@ -1144,15 +1141,9 @@ class Multiverse:
         Returns
         -------
         Any
-            Whatever ``self._handle_figure_returns(fig)`` returns.
+            The figure if in a .py script.
+            None if in a .ipynb notebook (the figure is saved and displayed inline)
         """
-        import numpy as np
-        import pandas as pd
-        import matplotlib.pyplot as plt
-        import matplotlib.gridspec as gridspec
-        from matplotlib.colors import LinearSegmentedColormap
-        from scipy import stats
-
         # Helpers
         def _map_name(key: str) -> str:
             return name_map.get(key, key) if isinstance(name_map, dict) else key

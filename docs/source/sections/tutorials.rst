@@ -57,6 +57,7 @@ General Introduction
 
    notebooks/example_mv_basics
    notebooks/example_mv_load
+   notebooks/example_mv_plot
    notebooks/example_mv_structure
    notebooks/example_mv_recipes
 
@@ -70,11 +71,6 @@ Applications
    notebooks/example_mv_hurricane
    notebooks/example_mv_abide
    notebooks/example_mv_fmri_sim
-
-.. toctree::
-   :hidden:
-
-   notebooks/example_eeg_sim
 
 Graphical User Interface
 ------------------------
