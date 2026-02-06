@@ -13,13 +13,14 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: "3.13"
 
-      # Cache pip downloads
       - name: Cache pip
         uses: actions/cache@v4
         with:
@@ -29,23 +30,35 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Install Connectome Workbench
+        shell: bash
         run: |
-          set -eux
+          set -euo pipefail
 
           WB_VERSION=1.5.0
-          WB_DIR="$HOME/workbench"
+          BASE="$HOME/workbench"
+          URL="https://www.humanconnectome.org/storage/app/media/workbench/workbench-linux64-v${WB_VERSION}.zip"
 
-          curl -L \
-            "https://www.humanconnectome.org/storage/app/media/workbench/workbench-linux64-v${WB_VERSION}.zip" \
-            -o workbench.zip
+          rm -rf "$BASE"
+          mkdir -p "$BASE"
 
-          rm -rf "$WB_DIR"
-          unzip -q workbench.zip -d "$WB_DIR"
+          curl -L "$URL" -o workbench.zip
+          unzip -q workbench.zip -d "$BASE"
+          rm -f workbench.zip
 
-          echo "$WB_DIR/bin_linux64" >> "$GITHUB_PATH"
+          WB_HOME="$BASE/workbench"
+
+          # For subsequent steps
+          echo "$WB_HOME/bin_linux64" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=$WB_HOME/libs_linux64:$WB_HOME/libs_linux64_software_opengl:\$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+          echo "QT_PLUGIN_PATH=$WB_HOME/plugins_linux64" >> "$GITHUB_ENV"
+
+          # Quick sanity check in this step
+          export PATH="$PATH:$WB_HOME/bin_linux64"
+          export LD_LIBRARY_PATH="$WB_HOME/libs_linux64:$WB_HOME/libs_linux64_software_opengl:${LD_LIBRARY_PATH:-}"
+          export QT_PLUGIN_PATH="$WB_HOME/plugins_linux64"
           wb_command -version
 
-      - name: Installs
+      - name: Python installs
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip uninstall -y comet comet-ml || true
