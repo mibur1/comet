@@ -728,11 +728,10 @@ class Multiverse:
 
         Notes
         -----
-        - If `p_value` is float or True, `measure` must contain list/array samples per universe.
-        - If `ci` is int or True, `measure` must contain list/array samples per universe.
-        - If `p_value` is a string, it is interpreted as a p-value column (numeric) or a
-        significance flag (bool).
-        - If `ci` is a string, it must contain per-universe (lower, upper) bounds.
+            - If `p_value` is float or True, `measure` must contain list/array samples per universe.
+            - If `ci` is int or True, `measure` must contain list/array samples per universe.
+            - If `p_value` is a string, it is interpreted as a p-value column (numeric) or a significance flag (bool).
+            - If `ci` is a string, it must contain per-universe (lower, upper) bounds.
 
         Returns
         -------
