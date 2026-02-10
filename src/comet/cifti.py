@@ -65,19 +65,20 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
 
     Returns
     -------
-    ts_parc : TxP np.ndarray or tuple
-        If return_labels is False (default):
-            - ts_parc : TxP np.ndarray
-                Parcellated time series data
-        If return_labels is True, a tuple containing:
-            - ts_parc : TxP np.ndarray
-                Parcellated time series data
-            - labels : list
-                List of label names for each parcel
-            - rgba : list
-                RGBA values of each label
-            - rois : np.ndarray
-                ROI indices for each vertex in the CIFTI
+    ts_parc : np.ndarray or tuple  
+        If ``return_labels`` is False (default):  
+            - ts_parc : (T, P) np.ndarray  
+                Parcellated time series data.  
+
+        If ``return_labels`` is True:  
+            -  ts_parc : (T, P) np.ndarray  
+                Parcellated time series data.  
+            -  labels : list of str  
+                Label name for each parcel.  
+            -  rgba : list of tuple  
+                RGBA colour for each parcel.  
+            -  rois : np.ndarray  
+                ROI index for each vertex in the CIFTI file.  
     """
 
     if isinstance(dtseries, nib.cifti2.cifti2.Cifti2Image):
@@ -130,6 +131,58 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
         i += 1
 
     return (ts_parc, labels, rgba, rois) if return_labels else ts_parc
+
+def get_networks(labels: list[str]) -> tuple[list[str], np.ndarray, list[str]]:
+    """
+    Extract network labels and values for Schaefer atlases based on the parcel labels.  
+    Only supports data which was parcellated with Schaefer (Yeo 7 / 17) atlases.
+    
+    Parameters
+    ----------
+    labels : list of str
+        Atlas parcel labels obtained from ``cifti.parcellate()``.
+
+    Returns
+    -------
+    networks : list of str
+        Network label per parcel (length N).
+    ids : np.ndarray
+        Integer network ids (length N), values in {1, ..., K}.
+    hemisphere : list of str
+        Hemisphere label per parcel ('LH' or 'RH').
+
+    Raises
+    ------
+    ValueError
+        If network labels cannot be inferred from the atlas labels.
+    """
+    first = labels[0]
+    networks: list[str] = []
+    hemisphere: list[str] = []
+
+    # Schaefer Yeo-style labels
+    if "networks_" in first:
+        for lab in labels:
+            parts = lab.split("_")
+            if len(parts) < 3:
+                raise ValueError(f"Unexpected Schaefer label format: {lab}")
+            hemisphere.append(parts[1])
+            networks.append(parts[2])
+
+    # Other atlases without canonical network labels will raise errors
+    elif first.startswith("Parcel_"):
+        raise ValueError("Error: Gordon atlas detected. No canonical network partition is available.")
+    elif first.endswith("_ROI"):
+        raise ValueError("Error: Glasser/HCP-MMP atlas detected. No canonical network partition is available.")
+    else:
+        raise ValueError("Unknown atlas label format; cannot infer network assignments.")
+
+    # Map network names to integers
+    uniq = sorted(set(networks))
+    name_to_id = {name: i + 1 for i, name in enumerate(uniq)}
+    ids = np.array([name_to_id[n] for n in networks], dtype=int)
+
+    return networks, ids, hemisphere
 
 def _get_atlas(atlas, resolution, networks, subcortical, kong, debug) -> tuple:
     """
