@@ -6,3 +6,4 @@ include =
     */comet/graph.py
     */comet/connectivity.py
     */comet/utils.py
+    */comet/cifti.py
