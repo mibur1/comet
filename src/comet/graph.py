@@ -1401,7 +1401,7 @@ def pagerank_centrality(G: np.ndarray,
         raise ValueError("Input must be a 2D or 3D matrix.")
     
 def participation_coef(G: np.ndarray,
-                       ci: Literal["louvain"] = "louvain",
+                       ci: Literal["louvain"] | np.ndarray | list = "louvain",
                        degree: Literal["undirected", "in", "out"] = "undirected") -> np.ndarray:
     '''
     This is a wrapper function for the `participation_coef` and `participation_coef_sparse`
