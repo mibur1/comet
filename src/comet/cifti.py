@@ -146,9 +146,9 @@ def get_networks(labels: list[str]) -> tuple[list[str], np.ndarray, list[str], d
     networks : list of str
         Network label per parcel (length N).
     ids : np.ndarray
-        Integer network ids per parcel (length N), values in {1, ..., K}.
-    hemisphere : list of str
-        Hemisphere label per parcel ('LH' or 'RH').
+        Integer network ids per parcel (length N).
+    hemisphere : list of str    
+        Hemisphere label per parcel ('LH' or 'RH'; length N).
     network_map : dict[str, int]
         Mapping from network name to integer id.
 
