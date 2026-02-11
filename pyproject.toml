@@ -35,6 +35,7 @@ dependencies = [
   # Plotting
   "matplotlib >= 3.10.7",
   "seaborn >= 0.13.2",
+  "surfplot >= 0.2.0",
   # Connectivity methods
   "pycwt >= 0.5.0b0",
   "hmmlearn >= 0.3.3",

@@ -4,6 +4,7 @@ import nibabel as nib
 nib.imageglobals.logger.setLevel(40)
 import importlib_resources
 from scipy.io import loadmat
+from surfplot import Plot
 
 def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image, 
                atlas         : str="schaefer", 
@@ -72,12 +73,13 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
         If ``return_labels`` is True:  
             -  ts_parc : (T, P) np.ndarray  
                 Parcellated time series data.  
-            -  labels : list of str  
+            -  node_labels : list of str  
                 Label name for each parcel.  
+            -  vertex_labels : np.ndarray  
+                ROI index for each vertex in the CIFTI file.  
             -  rgba : list of tuple  
                 RGBA colour for each parcel.  
-            -  rois : np.ndarray  
-                ROI index for each vertex in the CIFTI file.  
+
     """
 
     if isinstance(dtseries, nib.cifti2.cifti2.Cifti2Image):
@@ -121,7 +123,7 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
         subcortical = None
 
     # Get the atlas    
-    rois, keys, labels, rgba = _get_atlas(atlas=atlas, resolution=resolution, networks=networks, subcortical=subcortical, kong=kong, debug=debug)
+    vertex_labels, keys, node_labels, rgba = _get_atlas(atlas=atlas, resolution=resolution, networks=networks, subcortical=subcortical, kong=kong, debug=debug)
     
     # Schaefer cortical includes the medial wall which we have to insert into the data
     if atlas == "schaefer" and subcortical is None:
@@ -142,14 +144,14 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
         ts = _stdize(ts)
 
     # Parcellation
-    ts_parc = np.zeros((len(ts), len(labels)), dtype=ts.dtype)
+    ts_parc = np.zeros((len(ts), len(node_labels)), dtype=ts.dtype)
 
     i = 0
-    for k, lab in zip(keys, labels):
+    for k, lab in zip(keys, node_labels):
         if k == 0:
             continue
 
-        mask = (rois == k)
+        mask = (vertex_labels == k)
         if not np.any(mask):
             ts_parc[:, i] = 0
             i += 1
@@ -159,7 +161,30 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
         ts_parc[:, i] = method(ts[:, mask], axis=1)
         i += 1
 
-    return (ts_parc, labels, rgba, rois) if return_labels else ts_parc
+    return (ts_parc, node_labels, vertex_labels, rgba) if return_labels else ts_parc
+
+def surface_plot(node_values, vertex_labels, surface="super_inflated", size=(800, 600)):
+    lh_surf, rh_surf = _get_surface(surface)
+
+    lh_parc = vertex_labels[:32492]
+    rh_parc = vertex_labels[32492:]
+
+    lh_data = np.zeros(32492, dtype=float)
+    rh_data = np.zeros(32492, dtype=float)
+
+    lh_mask = lh_parc > 0
+    rh_mask = rh_parc > 0
+
+    lh_data[lh_mask] = node_values[lh_parc[lh_mask].astype(int) - 1]
+    rh_data[rh_mask] = node_values[rh_parc[rh_mask].astype(int) - 1]
+
+    # Create and save the figure
+    p = Plot(lh_surf, rh_surf, zoom=1.5, flip=False, brightness=0.8, size=size)
+    p.add_layer({"left": lh_data, "right": rh_data}, cmap="viridis", cbar=True)
+    p.add_layer({"left": lh_data, "right": rh_data}, as_outline=True, cmap="gray", cbar=False)
+    fig = p.build()
+    
+    return fig
 
 def get_networks(labels: list[str]) -> tuple[list[str], np.ndarray, list[str], dict[str, int]]:
     """
@@ -228,6 +253,52 @@ def get_networks(labels: list[str]) -> tuple[list[str], np.ndarray, list[str], d
     ids = np.array([network_map[n] for n in networks], dtype=int)
 
     return networks, ids, hemisphere, network_map
+
+def _get_surface(surface: str = "very_inflated") -> tuple[str, str]:
+    """
+    Helper function: download + load fs_LR 32k surfaces from CBIG.
+
+    Parameters
+    ----------
+    surface : str
+        Surface type (CBIG filenames). Options include:
+        - "inflated"
+        - "very_inflated"
+        - "super_inflated"
+        - "midthickness_mni"
+        - "midthickness_orig"
+        - "sphere"
+
+        These map to files like:
+        fsaverage.L.<surface>.32k_fs_LR.surf.gii
+        fsaverage.R.<surface>.32k_fs_LR.surf.gii
+
+    Returns
+    -------
+    lh_surf, rh_surf : str
+        Path to surface files.
+    """
+    base_url = ("https://github.com/ThomasYeoLab/CBIG/raw/master/data/templates/surface/fs_LR_32k")
+
+    # CBIG filenames in that folder
+    lh_name = f"fsaverage.L.{surface}.32k_fs_LR.surf.gii"
+    rh_name = f"fsaverage.R.{surface}.32k_fs_LR.surf.gii"
+
+    lh_url = f"{base_url}/{lh_name}"
+    rh_url = f"{base_url}/{rh_name}"
+
+    # Store in resources
+    with importlib_resources.path("comet.data.surf", lh_name) as lh_path:
+        if not lh_path.exists():
+            urllib.request.urlretrieve(lh_url, lh_path)
+        lh_path = str(lh_path)
+
+    with importlib_resources.path("comet.data.surf", rh_name) as rh_path:
+        if not rh_path.exists():
+            urllib.request.urlretrieve(rh_url, rh_path)
+        rh_path = str(rh_path)
+
+    return lh_path, rh_path
 
 def _get_atlas(atlas, resolution, networks, subcortical, kong, debug) -> tuple:
     """

@@ -6,6 +6,7 @@ testing_stuff/
 src/comet/data/atlas/Schaefer*
 src/comet/data/atlas/Gordon*
 src/comet/data/atlas/Q1*
+src/comet/data/surf/*
 
 # Ignore all tutorial subfolders, but not the tutorial files
 tutorials/*/
