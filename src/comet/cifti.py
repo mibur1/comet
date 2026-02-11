@@ -8,8 +8,8 @@ from scipy.io import loadmat
 def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image, 
                atlas         : str="schaefer", 
                resolution    : int=100, 
+               subcortical   : None|str=None,
                networks      : int=7, 
-               subcortical   : None|str="S1",
                kong          : bool=False,
                standardize   : bool=True,
                method        = np.mean,
@@ -17,8 +17,8 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
                debug         : bool=False
     ) -> np.ndarray | tuple[np.ndarray, list[str], np.ndarray, np.ndarray]:
     """ 
-    Parcellate cifti data (.dtseries.nii) using a given atlas. 
-    66 different atlases are available and will be downloaded on demand (see References).
+    Parcellate cifti data (.dtseries.nii) using a given atlas.  
+    Atlases for many different parameter combinations are available and will be downloaded on demand (see References).  
     If the atlas for the parameter combination is not available, a ValueError is raised.
 
     References
@@ -40,25 +40,24 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
     resolution : int
         Number of parcels in the atlas. Only used with Schaefer atlas.
         Available options are: 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000. 
+    
+    subcortical : None or string
+        If a string containing the scale is provided, the Tian subcortical parcels are included.
+        Available options are: None, 'S1' (16 ROIs), 'S2' (32 ROIs), 'S3' (50 ROIs), 'S4' (54 ROIs).
 
     networks : int
         Number of networks in the atlas. Only used with Schaefer atlas.
         Available options are: 7, 17
-    
-    subcortical : None or string
-        If a string containing the scale is provided, the Tian subcortical parcels are included.
-        Available options are: 'S1' (16 ROIs), 'S2' (32 ROIs), 'S3' (50 ROIs), 'S4' (54 ROIs).
     
     kong : bool
         Use the Kong 2022 version of the Schaefer atlas (only for Schaefer cortical atlas with 17 networks).
         Reference: https://doi.org/10.1093/cercor/bhab101
 
     standardize : bool
-        Standardize the time series to zero (temporal) mean and unit
-        standard deviation before(!) parcellation.
+        Standardize the time series to zero (temporal) mean and unit variance before parcellation.
 
     method : function
-        Aggregation function to use for parcellation. Default (and the only tested function) is np.mean
+        Aggregation function to use for parcellation. Default (and the only tested function) is np.mean.
 
     debug : bool
         Flag to provide additional debugging information. Default is False.
@@ -160,30 +159,42 @@ def get_networks(labels: list[str]) -> tuple[list[str], np.ndarray, list[str], d
     if len(labels) == 0:
         raise ValueError("Empty label list.")
 
-    first = labels[0]
     networks: list[str] = []
     hemisphere: list[str] = []
 
-    # Schaefer Yeo-style labels
-    if ("networks_" in first) or ("Networks_" in first):
-        for lab in labels:
+    for lab in labels:
+        # Cortical Schaefer Yeo-style labels
+        if ("networks_" in lab) or ("Networks_" in lab):
             parts = lab.split("_")
             if len(parts) < 3:
                 raise ValueError(f"Unexpected Schaefer label format: {lab}")
             hemisphere.append(parts[1])
             networks.append(parts[2])
 
-    # Other atlases without canonical network labels will raise errors
-    elif first.startswith("Parcel_"):
-        raise ValueError("Error: Gordon atlas detected. No canonical network partition is available.")
-    elif first.endswith("_ROI"):
-        raise ValueError("Error: Glasser/HCP-MMP atlas detected. No canonical network partition is available.")
-    else:
-        raise ValueError("Unknown atlas label format; cannot infer network assignments.")
+        # Simple subcortical extension (your labels: *-lh / *-rh)
+        elif lab.endswith("-lh") or lab.endswith("-rh"):
+            hemisphere.append("LH" if lab.endswith("-lh") else "RH")
+            networks.append("Subcortical")
+
+        # Other atlases without canonical network labels will raise errors
+        elif lab.startswith("Parcel_"):
+            raise ValueError("Error: Gordon atlas detected. No canonical network partition is available.")
+        elif lab.endswith("_ROI"):
+            raise ValueError("Error: Glasser/HCP-MMP atlas detected. No canonical network partition is available.")
+        else:
+            raise ValueError(f"Unknown atlas label format; cannot infer network assignments: {lab}")
 
     # Map network names to integers (stable alphabetical order)
     uniq = sorted(set(networks))
-    network_map = {name: i + 1 for i, name in enumerate(uniq)}
+    
+    if "Subcortical" in uniq:
+        uniq.remove("Subcortical")
+        network_map = {"Subcortical": 0}
+        for i, name in enumerate(uniq, start=1):
+            network_map[name] = i
+    else:
+        network_map = {name: i + 1 for i, name in enumerate(uniq)}
+
     ids = np.array([network_map[n] for n in networks], dtype=int)
 
     return networks, ids, hemisphere, network_map
@@ -218,28 +229,35 @@ def _get_atlas(atlas, resolution, networks, subcortical, kong, debug) -> tuple:
         #"glasser":   "Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors_with_Atlas_ROIs2.32k_fs_LR.dlabel.nii"
     }
 
-    # Check input parameters
+    # Check validity of provided parameters
+    if atlas not in ["schaefer", "glasser", "gordon"]:
+        raise ValueError(f"Atlas '{atlas}' not available. Please choose from ['schaefer', 'glasser', 'gordon'].")
     if resolution not in [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]:
         raise ValueError(f"Resolution '{resolution}' not available. Please choose from [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000].")
-    if resolution not in  [100, 200, 400] and subcortical is not None:
-        raise ValueError(f"Schaefer + Tian subcortical parcellation is only available for resolutions 100, 200, and 400.")
-    if atlas != "schaefer" and subcortical is not None and networks != 17 and kong is True:
-        raise ValueError(f"Kong 2022 version is only available for Schaefer atlases with 17 networks and without subcortical parcels.")
-    if atlas == "schaefer" and networks == 7 and kong is True:
-        raise ValueError(f"Kong 2022 version is only available for Schaefer atlases with 17 networks and without subcortical parcels.")
     if networks not in [7, 17]:
         raise ValueError(f"Networks '{networks}' not available. Please choose from [7, 17].")
+    if subcortical not in [None, 'S1', 'S2', 'S3', 'S4']:
+        raise ValueError(f"Subcortical scale '{subcortical}' not available. Please choose from [None, 'S1', 'S2', 'S3', 'S4'].")
+    if kong not in [True, False]:
+        raise ValueError(f"Kong flag must be a boolean value (True or False).")
+
+    # Check invalid combinations
+    if atlas == "schaefer" and resolution not in [100, 200, 400] and subcortical is not None:
+        raise ValueError(f"Schaefer + Tian subcortical parcellation is only available for resolutions 100, 200, and 400.")
     if atlas in ["glasser", "gordon"] and subcortical is None:
-        raise ValueError(f"Atlas '{atlas}' includes subcortical parcels. Please provide a valid subcortical scale.")
-    if resolution == 100 and networks == 17 and atlas == "schaefer" and subcortical is not None:
-        raise ValueError(f"Schaefer 100 not available for 17 networks and subcortical parcels. Use 7 networks or cortical only instead.")
-    if subcortical is not None and subcortical not in ['S1', 'S2', 'S3', 'S4']:
-        raise ValueError(f"Subcortical scale '{subcortical}' not available. Please choose from ['S1', 'S2', 'S3', 'S4'] or set to None.")
-    if subcortical is None and atlas == "glasser":
-        raise ValueError(f"Glasser atlas requires subcortical parcels. Please provide a valid subcortical scale.")
-    if not isinstance(debug, bool):
-        raise ValueError(f"Debug flag must be a boolean value (True or False).")
-    
+        raise ValueError(f"Atlas '{atlas}' includes subcortical parcels. Please provide a subcortical scale.")
+
+    # Combinations which automatically adjust parameters with a warning instead of raising an error.
+    if atlas == "schaefer" and networks == 7 and kong is True:
+        print(f"[WARN] Schaefer Kong version is only available with 17 networks. Networks were set to 17.")
+        networks = 17
+    if atlas == "schaefer" and resolution == 100 and networks == 17 and subcortical is not None:
+        print(f"[WARN] Schaefer 100 + Tian subcortical parcellation is only available with 7 networks. Networks were set to 7.")
+        networks = 7
+    if atlas == "schaefer" and kong is True and subcortical is not None :
+        print(f"[WARN] Schaefer Kong atlases are not available with subcortical parcels. 'subcortical' was set to None.")
+        subcortical = None
+
     # All checks passed, prepare the atlas url
     if atlas == "schaefer" and subcortical is None:
         url = base_urls["schaefer_c"].format(parcels=resolution, networks=networks, kong="Kong2022_" if kong else "")
