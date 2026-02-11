@@ -132,11 +132,10 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
 
     return (ts_parc, labels, rgba, rois) if return_labels else ts_parc
 
-def get_networks(labels: list[str]) -> tuple[list[str], np.ndarray, list[str]]:
+def get_networks(labels: list[str]) -> tuple[list[str], np.ndarray, list[str], dict[str, int]]:
     """
-    Extract network labels and values for Schaefer atlases based on the parcel labels.  
-    Only supports data which was parcellated with Schaefer (Yeo 7 / 17) atlases.
-    
+    Extract network information for Schaefer-Yeo parcellations.
+
     Parameters
     ----------
     labels : list of str
@@ -147,21 +146,26 @@ def get_networks(labels: list[str]) -> tuple[list[str], np.ndarray, list[str]]:
     networks : list of str
         Network label per parcel (length N).
     ids : np.ndarray
-        Integer network ids (length N), values in {1, ..., K}.
+        Integer network ids per parcel (length N), values in {1, ..., K}.
     hemisphere : list of str
         Hemisphere label per parcel ('LH' or 'RH').
+    network_map : dict[str, int]
+        Mapping from network name to integer id.
 
     Raises
     ------
     ValueError
         If network labels cannot be inferred from the atlas labels.
     """
+    if len(labels) == 0:
+        raise ValueError("Empty label list.")
+
     first = labels[0]
     networks: list[str] = []
     hemisphere: list[str] = []
 
     # Schaefer Yeo-style labels
-    if "networks_" in first:
+    if ("networks_" in first) or ("Networks_" in first):
         for lab in labels:
             parts = lab.split("_")
             if len(parts) < 3:
@@ -177,12 +181,12 @@ def get_networks(labels: list[str]) -> tuple[list[str], np.ndarray, list[str]]:
     else:
         raise ValueError("Unknown atlas label format; cannot infer network assignments.")
 
-    # Map network names to integers
+    # Map network names to integers (stable alphabetical order)
     uniq = sorted(set(networks))
-    name_to_id = {name: i + 1 for i, name in enumerate(uniq)}
-    ids = np.array([name_to_id[n] for n in networks], dtype=int)
+    network_map = {name: i + 1 for i, name in enumerate(uniq)}
+    ids = np.array([network_map[n] for n in networks], dtype=int)
 
-    return networks, ids, hemisphere
+    return networks, ids, hemisphere, network_map
 
 def _get_atlas(atlas, resolution, networks, subcortical, kong, debug) -> tuple:
     """
