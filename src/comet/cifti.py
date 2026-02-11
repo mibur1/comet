@@ -90,7 +90,37 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
     else:
         print("Error: Input must be a nibabel cifti image object or a numpy memmap object")
         return
+    
+    # Check provided parameters
+    if atlas not in ["schaefer", "glasser", "gordon"]:
+        raise ValueError(f"Atlas '{atlas}' not available. Please choose from ['schaefer', 'glasser', 'gordon'].")
+    if resolution not in [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]:
+        raise ValueError(f"Resolution '{resolution}' not available. Please choose from [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000].")
+    if networks not in [7, 17]:
+        raise ValueError(f"Networks '{networks}' not available. Please choose from [7, 17].")
+    if subcortical not in [None, 'S1', 'S2', 'S3', 'S4']:
+        raise ValueError(f"Subcortical scale '{subcortical}' not available. Please choose from [None, 'S1', 'S2', 'S3', 'S4'].")
+    if kong not in [True, False]:
+        raise ValueError(f"Kong flag must be a boolean value (True or False).")
 
+    # Check invalid combinations
+    if atlas == "schaefer" and resolution not in [100, 200, 400] and subcortical is not None:
+        raise ValueError(f"Schaefer + Tian subcortical parcellation is only available for resolutions 100, 200, and 400.")
+    if atlas in ["glasser", "gordon"] and subcortical is None:
+        raise ValueError(f"Atlas '{atlas}' includes subcortical parcels. Please provide a subcortical scale.")
+
+    # Combinations which automatically adjust parameters with a warning instead of raising an error.
+    if atlas == "schaefer" and networks == 7 and kong is True:
+        print(f"[WARN] Schaefer Kong version is only available with 17 networks. Networks were set to 17.")
+        networks = 17
+    if atlas == "schaefer" and resolution == 100 and networks == 17 and subcortical is not None and kong is False:
+        print(f"[WARN] Schaefer 100 + Tian subcortical parcellation is only available with 7 networks. Networks were set to 7.")
+        networks = 7
+    if atlas == "schaefer" and kong is True and subcortical is not None :
+        print(f"[WARN] Schaefer Kong atlases are not available with subcortical parcels. 'subcortical' was set to None.")
+        subcortical = None
+
+    # Get the atlas    
     rois, keys, labels, rgba = _get_atlas(atlas=atlas, resolution=resolution, networks=networks, subcortical=subcortical, kong=kong, debug=debug)
     
     # Schaefer cortical includes the medial wall which we have to insert into the data
@@ -229,36 +259,7 @@ def _get_atlas(atlas, resolution, networks, subcortical, kong, debug) -> tuple:
         #"glasser":   "Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors_with_Atlas_ROIs2.32k_fs_LR.dlabel.nii"
     }
 
-    # Check validity of provided parameters
-    if atlas not in ["schaefer", "glasser", "gordon"]:
-        raise ValueError(f"Atlas '{atlas}' not available. Please choose from ['schaefer', 'glasser', 'gordon'].")
-    if resolution not in [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]:
-        raise ValueError(f"Resolution '{resolution}' not available. Please choose from [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000].")
-    if networks not in [7, 17]:
-        raise ValueError(f"Networks '{networks}' not available. Please choose from [7, 17].")
-    if subcortical not in [None, 'S1', 'S2', 'S3', 'S4']:
-        raise ValueError(f"Subcortical scale '{subcortical}' not available. Please choose from [None, 'S1', 'S2', 'S3', 'S4'].")
-    if kong not in [True, False]:
-        raise ValueError(f"Kong flag must be a boolean value (True or False).")
-
-    # Check invalid combinations
-    if atlas == "schaefer" and resolution not in [100, 200, 400] and subcortical is not None:
-        raise ValueError(f"Schaefer + Tian subcortical parcellation is only available for resolutions 100, 200, and 400.")
-    if atlas in ["glasser", "gordon"] and subcortical is None:
-        raise ValueError(f"Atlas '{atlas}' includes subcortical parcels. Please provide a subcortical scale.")
-
-    # Combinations which automatically adjust parameters with a warning instead of raising an error.
-    if atlas == "schaefer" and networks == 7 and kong is True:
-        print(f"[WARN] Schaefer Kong version is only available with 17 networks. Networks were set to 17.")
-        networks = 17
-    if atlas == "schaefer" and resolution == 100 and networks == 17 and subcortical is not None:
-        print(f"[WARN] Schaefer 100 + Tian subcortical parcellation is only available with 7 networks. Networks were set to 7.")
-        networks = 7
-    if atlas == "schaefer" and kong is True and subcortical is not None :
-        print(f"[WARN] Schaefer Kong atlases are not available with subcortical parcels. 'subcortical' was set to None.")
-        subcortical = None
-
-    # All checks passed, prepare the atlas url
+    # Prepare the atlas url
     if atlas == "schaefer" and subcortical is None:
         url = base_urls["schaefer_c"].format(parcels=resolution, networks=networks, kong="Kong2022_" if kong else "")
     else:

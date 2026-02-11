@@ -67,6 +67,7 @@ def _cases():
                         yield (atlas, resolution, networks, subcortical, kong)
 
 CASES = list(_cases())
+print(CASES)
 
 # Fixtures
 @pytest.fixture(scope="module")
@@ -81,6 +82,14 @@ def cifti_file():
 
 @pytest.fixture
 def atlas_file(atlas, resolution, networks, subcortical, kong):
+    # Combinations which automatically adjust parameters with a warning instead of raising an error.
+    if atlas == "schaefer" and networks == 7 and kong is True:
+        networks = 17
+    if atlas == "schaefer" and resolution == 100 and networks == 17 and subcortical is not None and kong is False:
+        networks = 7
+    if atlas == "schaefer" and kong is True and subcortical is not None :
+        subcortical = None
+        
     atlas_name = _atlas_filename(atlas, resolution, networks, subcortical, kong)
     with importlib_resources.path("comet.data.atlas", atlas_name) as p:
         yield str(p)
