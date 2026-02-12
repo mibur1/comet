@@ -81,7 +81,6 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
                 RGBA colour for each parcel.  
 
     """
-
     if isinstance(dtseries, nib.cifti2.cifti2.Cifti2Image):
         ts = dtseries.get_fdata()
     elif isinstance(dtseries, np.ndarray) or isinstance(dtseries, np.memmap):
@@ -163,7 +162,7 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
 
     return (ts_parc, node_labels, vertex_labels, rgba) if return_labels else ts_parc
 
-def surface_plot(node_values, vertex_labels, surface="super_inflated", size=(800, 600)):
+def surface_plot(node_values, vertex_labels, surface="super_inflated", xlabel="", size=(800, 600)):
     lh_surf, rh_surf = _get_surface(surface)
 
     lh_parc = vertex_labels[:32492]
