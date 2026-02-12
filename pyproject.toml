@@ -1,6 +1,6 @@
 [project]
 name = "comet-toolbox"
-version = "1.2.1"
+version = "1.2.2"
 authors = [
   {name="Micha Burkhardt", email="micha.burkhardt@uol.de"},
 ]
@@ -100,8 +100,3 @@ exclude = [
   "tutorials/**",
   "docs/**",
   "tests/**"]
-
-include = [
-  "README.md",
-  "LICENSE",
-]
