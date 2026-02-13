@@ -1,10 +1,12 @@
+import math
 import urllib
 import numpy as np
 import nibabel as nib
-nib.imageglobals.logger.setLevel(40)
+import pyvista as pv
 import importlib_resources
 from scipy.io import loadmat
-from surfplot import Plot
+
+nib.imageglobals.logger.setLevel(40)
 
 def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image, 
                atlas         : str="schaefer", 
@@ -162,28 +164,180 @@ def parcellate(dtseries:str|nib.cifti2.cifti2.Cifti2Image,
 
     return (ts_parc, node_labels, vertex_labels, rgba) if return_labels else ts_parc
 
-def surface_plot(node_values, vertex_labels, surface="super_inflated", xlabel="", size=(800, 600)):
-    lh_surf, rh_surf = _get_surface(surface)
+def surface_plot(node_values : np.ndarray|None=None, 
+                 vertex_labels: np.ndarray|None=None, 
+                 hemi: str="both", 
+                 surface: str="inflated", 
+                 view_names: tuple[str, str]=("medial", "lateral"), 
+                 ncols: int|None=None, 
+                 colwise: bool=True, 
+                 cmap: str="viridis", 
+                 border_color: None|str=None, 
+                 distance: float=400.0, 
+                 size: list[int]|None=None,
+                 interactive : bool=True,
+                 save_as : str|None=None):
+    """
+    Plot cortical hemispheres with optional parcel border overlays.
 
-    lh_parc = vertex_labels[:32492]
-    rh_parc = vertex_labels[32492:]
+    Parameters
+    ----------
+    node_values : ndarray or None
+        Parcel-level values (1D). If None, only surfaces are shown.
+    vertex_labels : ndarray or None
+        Vertex-to-parcel labels for both hemispheres (length 64984).
+    hemi : {"left", "right", "both"}
+        Hemisphere(s) to render.
+    surface : str
+        Surface name passed to `cifti._get_surface`.
+    view_names : sequence of str
+        Views to render per hemisphere.
+    ncols : int or None
+        Number of subplot columns.
+    colwise : bool
+        If True (default), fill subplots column-wise.
+        If False, fill row-wise.
+    cmap : str
+        Colormap for node values.
+    border_color : str or None
+        Border color. If None, no border overlay is added.
+    distance : float
+        Camera distance.
+    size : tuple[int, int] or None
+        Plotter window size.
+    """
+    # Input validation / normalization
+    if node_values is None:
+        print("Warning: node_values are required for data plotting. Proceeding with blank surfaces.")
+    else:
+        node_values = np.asarray(node_values, dtype=float)
+        vertex_labels = np.asarray(vertex_labels, dtype=np.int64)
+        if vertex_labels.ndim != 1:
+            raise ValueError("vertex_labels must be a 1D array of parcel IDs per vertex.")
+        if node_values.ndim != 1:
+            raise ValueError("node_values must be a 1D array of node/parcel values.")
+        if vertex_labels.size != 64984:
+            raise ValueError(f"vertex_labels must have length 64984. Got {vertex_labels.size}.")
 
-    lh_data = np.zeros(32492, dtype=float)
-    rh_data = np.zeros(32492, dtype=float)
-
-    lh_mask = lh_parc > 0
-    rh_mask = rh_parc > 0
-
-    lh_data[lh_mask] = node_values[lh_parc[lh_mask].astype(int) - 1]
-    rh_data[rh_mask] = node_values[rh_parc[rh_mask].astype(int) - 1]
-
-    # Create and save the figure
-    p = Plot(lh_surf, rh_surf, zoom=1.5, flip=False, brightness=0.8, size=size)
-    p.add_layer({"left": lh_data, "right": rh_data}, cmap="viridis", cbar=True)
-    p.add_layer({"left": lh_data, "right": rh_data}, as_outline=True, cmap="gray", cbar=False)
-    fig = p.build()
+    # Get surface meshes and desired views
+    meshes = _get_surface(surface=surface)  # get the surface mesh(es)
+    hemi_order = [hemi] if hemi in ("left", "right") else ["left", "right"] # which hemispheres to plot
+    panels = [(h, v) for h in hemi_order for v in view_names]  # list of (hemisphere, view) pairs
     
-    return fig
+    # Define default camera positions
+    base_cams = {
+        "lateral":   ("x", +1, (0, 0, 1)),
+        "medial":    ("x", -1, (0, 0, 1)),
+        "anterior":  ("y", -1, (0, 0, 1)),
+        "posterior": ("y", +1, (0, 0, 1)),
+        "superior":  ("z", -1, (0, 1, 0)),
+        "inferior":  ("z", +1, (0, 1, 0))
+    }
+
+    # Check validity of views
+    unknown_views = sorted({v for _, v in panels if v not in base_cams})
+    if unknown_views:
+        raise ValueError(f"Unknown view(s): {unknown_views}. Available: {list(base_cams.keys())}")
+
+    # Set up plot layout
+    n = len(panels)
+    if n == 0:
+        raise ValueError("No panels to plot. Check 'hemi' and available surfaces.")
+    if ncols is None:
+        ncols = min(3, n) if n <= 6 else int(math.ceil(math.sqrt(n)))
+    nrows = int(math.ceil(n / ncols))
+    
+    if colwise:
+        ncols = int(math.ceil(n / nrows)) # guarantee enough columns
+    
+    axis_idx = {"x": 0, "y": 1, "z": 2}
+    
+    # Build per-vertex arrays for each hemisphere
+    scalars = {}
+
+    if node_values is not None and vertex_labels is not None:
+        def _map_to_vertices(parc):
+            out = np.full(32492, np.nan, dtype=float)
+            mask = (parc > 0) & (parc <= node_values.size)
+            out[mask] = node_values[parc[mask] - 1]  # labels are 1-based
+            return out
+
+        lh_parc = vertex_labels[:32492]
+        rh_parc = vertex_labels[32492:]
+        scalars["left"] = _map_to_vertices(lh_parc)
+        scalars["right"] = _map_to_vertices(rh_parc)
+ 
+    # Use one shared colour scale across all plotted hemispheres
+    vals_list = [scalars[h][~np.isnan(scalars[h])] for h in scalars if h in meshes]
+    vals_list = [v for v in vals_list if v.size > 0]
+    clim = None
+    if vals_list:
+        vals = np.concatenate(vals_list)
+        clim = (float(np.nanmin(vals)), float(np.nanmax(vals)))
+    
+    # Plotting
+    pl = pv.Plotter(shape=(nrows, ncols), window_size=size, title="Comet Toolbox Surface Viewer", border=False, notebook=False, off_screen= not interactive)
+    pl.enable_anti_aliasing("msaa")
+
+    # Loop through panels and plot each view
+    for i, (h, v) in enumerate(panels):
+        mesh = meshes[h]
+        center = mesh.center
+        axis, sign, up = base_cams[v]
+        row, col = (i % nrows, i // nrows) if colwise else (i // ncols, i % ncols)
+        
+        # Swap lateral/medial for right hemisphere
+        if h == "right" and v in ("lateral", "medial"):
+            sign *= -1
+
+        # Plot the mesh
+        pl.subplot(row, col)
+        pl.add_text(f"{h} {v}")
+
+        if node_values is None or vertex_labels is None:
+            pl.add_mesh(mesh, color="lightgray")
+        else:
+            values = scalars[h].copy()
+
+            # Make 0 values white by masking them
+            zero_mask = values == 0
+            values = values.astype(float)
+            values[zero_mask] = np.nan  # treat zeros as NaN
+
+            # Plot data to the surface
+            pl.add_mesh(mesh, scalars=values, cmap=cmap, clim=clim, nan_color="white",
+                        nan_opacity=1.0, show_scalar_bar=False, interpolate_before_map=False)
+
+            # Border outline
+            if border_color is not None:
+                outline_scalars = vertex_labels[:32492] if h == "left" else vertex_labels[32492:]
+                border_mask = _parcel_border_mask(mesh, outline_scalars).astype(float)
+
+                # Draw +normal and -normal offsets so borders remain visible regardless of camera direction
+                normals_mesh = mesh.compute_normals(point_normals=True, cell_normals=False, inplace=False)
+                normals = normals_mesh.point_data["Normals"]
+                for s in (1.0, -1.0):
+                    border_mesh = mesh.copy(deep=True)
+                    border_mesh.points = border_mesh.points + s * 0.25 * normals
+                    pl.add_mesh(border_mesh, scalars=border_mask, cmap=[border_color, border_color], clim=(0.0, 1.0), 
+                                nan_opacity=0.0, show_scalar_bar=False, interpolate_before_map=True)
+
+        # Camera position
+        cam_pos = list(center)
+        cam_pos[axis_idx[axis]] += sign * distance
+        pl.camera_position = [tuple(cam_pos), center, up]
+
+
+    if interactive:
+        pl.show(auto_close=False)
+        if save_as is not None:
+            pl.save_graphic(f"surface_plot.{save_as}", raster=False)
+    else:
+        if save_as is not None:
+            pl.save_graphic(f"surface_plot.{save_as}", raster=False)
+    
+    pl.close()
+    return
 
 def get_networks(labels: list[str]) -> tuple[list[str], np.ndarray, list[str], dict[str, int]]:
     """
@@ -253,29 +407,35 @@ def get_networks(labels: list[str]) -> tuple[list[str], np.ndarray, list[str], d
 
     return networks, ids, hemisphere, network_map
 
-def _get_surface(surface: str = "very_inflated") -> tuple[str, str]:
+def _get_surface(surface: str = "very_inflated") -> dict[str, pv.PolyData]:
     """
-    Helper function: download + load fs_LR 32k surfaces from CBIG.
+    Download (if needed) and load fs_LR 32k cortical surfaces
+    from the CBIG template repository and return them as PyVista meshes.
 
     Parameters
     ----------
-    surface : str
-        Surface type (CBIG filenames). Options include:
+    surface : str, default="very_inflated"
+        Surface type. Options:
+        - "midthickness_orig"
+        - "midthickness_mni"
         - "inflated"
         - "very_inflated"
         - "super_inflated"
-        - "midthickness_mni"
-        - "midthickness_orig"
         - "sphere"
-
-        These map to files like:
-        fsaverage.L.<surface>.32k_fs_LR.surf.gii
-        fsaverage.R.<surface>.32k_fs_LR.surf.gii
 
     Returns
     -------
-    lh_surf, rh_surf : str
-        Path to surface files.
+    dict
+        Dictionary containing the loaded hemispheres:
+        {"left":  pv.PolyData,
+         "right": pv.PolyData}
+
+    Notes
+    -----
+    Surface files are downloaded from:
+    https://github.com/ThomasYeoLab/CBIG
+
+    Files are cached in the `comet.data.surf` resource directory.
     """
     base_url = ("https://github.com/ThomasYeoLab/CBIG/raw/master/data/templates/surface/fs_LR_32k")
 
@@ -297,7 +457,52 @@ def _get_surface(surface: str = "very_inflated") -> tuple[str, str]:
             urllib.request.urlretrieve(rh_url, rh_path)
         rh_path = str(rh_path)
 
-    return lh_path, rh_path
+    meshes = {}
+    # VTK requires faces stored in a single array structured as:
+    # [n_points, v0, v1, v2,  n_points, v0, v1, v2, ...]
+    vertices, triangles = nib.load(lh_path).agg_data()
+    meshes["left"] = pv.make_tri_mesh(vertices, triangles)
+
+    vertices, triangles = nib.load(rh_path).agg_data()
+    meshes["right"] = pv.make_tri_mesh(vertices, triangles)
+
+    return meshes
+
+def _parcel_border_mask(mesh, parc_labels):
+    """
+    Return a per-vertex border overlay mask.
+
+    Parameters
+    ----------
+    mesh : pv.PolyData
+        Triangular surface mesh.
+    parc_labels : ndarray, shape (n_vertices,)
+        Parcel labels per vertex.
+
+    Returns
+    -------
+    ndarray, shape (n_vertices,)
+        Float array with `1.0` on border vertices and `NaN` elsewhere.
+    """
+    parc_labels = np.asarray(parc_labels)
+    if parc_labels.ndim != 1 or parc_labels.size != mesh.n_points:
+        raise ValueError(
+            f"parc_labels must be a 1D array of length {mesh.n_points}. "
+            f"Got shape={parc_labels.shape}."
+        )
+    faces = mesh.faces.reshape(-1, 4)[:, 1:]
+    e0 = faces[:, [0, 1]]
+    e1 = faces[:, [1, 2]]
+    e2 = faces[:, [2, 0]]
+    edges = np.vstack([e0, e1, e2])
+    edges = np.sort(edges, axis=1)
+    edges = np.unique(edges, axis=0)
+    edge_labels = parc_labels[edges]
+    idx_border = np.unique(edges[edge_labels[:, 0] != edge_labels[:, 1]])
+    border = np.zeros_like(parc_labels, dtype=np.uint8)
+    border[idx_border] = 1
+    
+    return np.where(border > 0, 1.0, np.nan)
 
 def _get_atlas(atlas, resolution, networks, subcortical, kong, debug) -> tuple:
     """
@@ -395,3 +600,15 @@ def _stdize(ts) -> np.ndarray:
     std[std == 0] = 1.0
     
     return (ts - mean) / std
+
+    """
+    Helper function to check if the code is running in a Jupyter notebook
+    """
+    try:
+        from IPython import get_ipython
+        if 'IPKernelApp' not in get_ipython().config:
+            return False
+    except Exception:
+        return False
+    print("HI, running in jupyter")
+    return True
