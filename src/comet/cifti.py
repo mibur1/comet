@@ -4,6 +4,7 @@ import numpy as np
 import nibabel as nib
 import pyvista as pv
 import importlib_resources
+from typing import Any, cast
 from scipy.io import loadmat
 
 nib.imageglobals.logger.setLevel(40)
@@ -175,6 +176,8 @@ def surface_plot(node_values : np.ndarray|None=None,
                  border_color: None|str=None, 
                  distance: float=400.0, 
                  size: list[int]|None=None,
+                 colorbar: None|str="bottom",
+                 colorbar_label : str|None=None,
                  interactive : bool=True,
                  save_as : str|None=None):
     """
@@ -182,21 +185,32 @@ def surface_plot(node_values : np.ndarray|None=None,
 
     Parameters
     ----------
-    node_values : ndarray or None
+    node_values : ndarray or None  
         Parcel-level values (1D). If None, only surfaces are shown.
-    vertex_labels : ndarray or None
+    vertex_labels : ndarray or None  
         Vertex-to-parcel labels for both hemispheres (length 64984).
     hemi : {"left", "right", "both"}
         Hemisphere(s) to render.
     surface : str
-        Surface name passed to `cifti._get_surface`.
-    view_names : sequence of str
-        Views to render per hemisphere.
+        Surface type. Valid options are:  
+        - "midthickness_orig"
+        - "midthickness_mni"
+        - "inflated"
+        - "very_inflated"
+        - "super_inflated"
+        - "sphere"
+    view_names : tuple containing one or multiple strings
+        Views to render per hemisphere. Options are:  
+        - "lateral"
+        - "medial"
+        - "anterior"
+        - "posterior"
+        - "superior"
+        - "inferior"
     ncols : int or None
         Number of subplot columns.
     colwise : bool
-        If True (default), fill subplots column-wise.
-        If False, fill row-wise.
+        If True (default), fill subplots column-wise, else fill row-wise.
     cmap : str
         Colormap for node values.
     border_color : str or None
@@ -205,11 +219,16 @@ def surface_plot(node_values : np.ndarray|None=None,
         Camera distance.
     size : tuple[int, int] or None
         Plotter window size.
+    colorbar : {"bottom", "right", None}
+        Shared colorbar placement outside data panels. If None, no colorbar is shown.
+    colorbar_label : str or None
+        Label for the colorbar.
     interactive : bool
-        Show the interactive plot window
+        Show the plot in an interactive window (default is True).
     save_as : bool
-        Save plot (can be interactively manipulated first)  
-        Options are: "png", "jpeg", "jpg", "bmp", "tif", "tiff", "svg", "eps", "ps", "pdf", "tex".  
+        Save the plot (will consider manipulations done in the interactive window). Options:  
+        - Raster: "png", "jpeg", "jpg", "bmp", "tif", "tiff"  
+        - Vectorised: "svg", "eps", "ps", "pdf", "tex"  
     """
     # Input validation / normalization
     if node_values is None:
@@ -279,9 +298,33 @@ def surface_plot(node_values : np.ndarray|None=None,
     if vals_list:
         vals = np.concatenate(vals_list)
         clim = (float(np.nanmin(vals)), float(np.nanmax(vals)))
+        if clim[0] == clim[1]:
+            eps = 1e-12 if clim[0] == 0.0 else abs(clim[0]) * 1e-12
+            clim = (clim[0] - eps, clim[1] + eps)
+
+    # Colorbar needs to get an extra grid slot
+    show_shared_colorbar = (node_values is not None) and (clim is not None) and (colorbar is not None)
+    panel_nrows, panel_ncols = nrows, ncols
+    row_weights = None
+    col_weights = None
+    groups = None
+    if show_shared_colorbar and colorbar == "bottom":
+        plot_shape = (panel_nrows + 1, panel_ncols)
+        # Merge the full bottom row into one renderer and keep it narrow.
+        groups = [([panel_nrows], list(range(panel_ncols)))]
+        row_weights = [1.0] * panel_nrows + [0.2]
+    elif show_shared_colorbar and colorbar == "right":
+        plot_shape = (panel_nrows, panel_ncols + 1)
+        # Merge the full right column into one renderer and keep it narrow.
+        groups = [(list(range(panel_nrows)), [panel_ncols])]
+        col_weights = [1.0] * panel_ncols + [0.2]
+    else:
+        plot_shape = (panel_nrows, panel_ncols)
     
     # Plotting
-    pl = pv.Plotter(shape=(nrows, ncols), window_size=size, title="Comet Toolbox Surface Viewer", border=False, notebook=False, off_screen= not interactive)
+    pv.global_theme.font.family = "times"
+    pl = pv.Plotter(shape=plot_shape, window_size=size, title="Comet Toolbox Surface Viewer", border=False,
+                    notebook=False, off_screen= not interactive, row_weights=row_weights, col_weights=col_weights, groups=groups)
     pl.enable_anti_aliasing("msaa")
 
     # Loop through panels and plot each view
@@ -289,7 +332,7 @@ def surface_plot(node_values : np.ndarray|None=None,
         mesh = meshes[h]
         center = mesh.center
         axis, sign, up = base_cams[v]
-        row, col = (i % nrows, i // nrows) if colwise else (i // ncols, i % ncols)
+        row, col = (i % panel_nrows, i // panel_nrows) if colwise else (i // panel_ncols, i % panel_ncols)
         
         # Swap lateral/medial for right hemisphere
         if h == "right" and v in ("lateral", "medial"):
@@ -301,6 +344,7 @@ def surface_plot(node_values : np.ndarray|None=None,
 
         if node_values is None or vertex_labels is None:
             pl.add_mesh(mesh, color="lightgray")
+            colorbar_mapper = None
         else:
             values = scalars[h].copy()
 
@@ -310,10 +354,11 @@ def surface_plot(node_values : np.ndarray|None=None,
             values[zero_mask] = np.nan  # treat zeros as NaN
 
             # Plot data to the surface
-            pl.add_mesh(mesh, scalars=values, cmap=cmap, clim=clim, nan_color="white",
-                        nan_opacity=1.0, show_scalar_bar=False, interpolate_before_map=False)
+            actor = pl.add_mesh(mesh, scalars=values, cmap=cmap, clim=clim, nan_color="white",
+                                nan_opacity=1.0, show_scalar_bar=False, interpolate_before_map=False)
+            colorbar_mapper = actor.mapper
 
-            # Border outline
+            # Draw parcel outlines
             if border_color is not None:
                 outline_scalars = vertex_labels[:32492] if h == "left" else vertex_labels[32492:]
                 border_mask = _parcel_border_mask(mesh, outline_scalars).astype(float)
@@ -332,7 +377,21 @@ def surface_plot(node_values : np.ndarray|None=None,
         cam_pos[axis_idx[axis]] += sign * distance
         pl.camera_position = [tuple(cam_pos), center, up]
 
-    # Show and save
+    # Plot the colorbar
+    if show_shared_colorbar and colorbar_mapper is not None:
+        add_scalar_bar = cast(Any, pl.add_scalar_bar)
+        if colorbar == "bottom":
+            cb_row, cb_col = panel_nrows, 0
+            pl.subplot(cb_row, cb_col)
+            add_scalar_bar(title=colorbar_label, mapper=colorbar_mapper, vertical=False, width=0.33, height=0.7,
+               position_x=0.33, position_y=0.1, n_labels=4, fmt="%.3g", label_font_size=25, title_font_size=35)
+        else:
+            cb_row, cb_col = 0, panel_ncols
+            pl.subplot(cb_row, cb_col)
+            add_scalar_bar(title=colorbar_label, mapper=colorbar_mapper, vertical=True, width=0.7, height=0.25,
+                           position_x=0.1, position_y=0.33, n_labels=4, fmt="%.3g", label_font_size=25, title_font_size=35)
+
+    # Show and save the figure
     if interactive:
         pl.show(auto_close=False)
 
@@ -606,15 +665,3 @@ def _stdize(ts) -> np.ndarray:
     std[std == 0] = 1.0
     
     return (ts - mean) / std
-
-    """
-    Helper function to check if the code is running in a Jupyter notebook
-    """
-    try:
-        from IPython import get_ipython
-        if 'IPKernelApp' not in get_ipython().config:
-            return False
-    except Exception:
-        return False
-    print("HI, running in jupyter")
-    return True
