@@ -205,6 +205,11 @@ def surface_plot(node_values : np.ndarray|None=None,
         Camera distance.
     size : tuple[int, int] or None
         Plotter window size.
+    interactive : bool
+        Show the interactive plot window
+    save_as : bool
+        Save plot (can be interactively manipulated first)  
+        Options are: "png", "jpeg", "jpg", "bmp", "tif", "tiff", "svg", "eps", "ps", "pdf", "tex".  
     """
     # Input validation / normalization
     if node_values is None:
@@ -327,17 +332,18 @@ def surface_plot(node_values : np.ndarray|None=None,
         cam_pos[axis_idx[axis]] += sign * distance
         pl.camera_position = [tuple(cam_pos), center, up]
 
-
+    # Show and save
     if interactive:
         pl.show(auto_close=False)
-        if save_as is not None:
-            pl.save_graphic(f"surface_plot.{save_as}", raster=False)
+
+    if save_as in ("svg", "pdf", "eps", "ps"):
+        pl.save_graphic(f"surface_plot.{save_as}", raster=False)
+    elif save_as in ("png", "jpeg", "jpg", "bmp", "tif", "tiff"):
+        pl.screenshot(f"surface_plot.{save_as}")
     else:
-        if save_as is not None:
-            pl.save_graphic(f"surface_plot.{save_as}", raster=False)
-    
-    pl.close()
-    return
+        pass
+   
+    return pl.close()
 
 def get_networks(labels: list[str]) -> tuple[list[str], np.ndarray, list[str], dict[str, int]]:
     """
