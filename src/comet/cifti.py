@@ -179,11 +179,12 @@ def surface_plot(node_values : np.ndarray|None=None,
                  border_color: None|str=None, 
                  border_width: int=5,
                  distance: float=400.0, 
-                 size: list[int]|None=None,
+                 size : list[int]|None=None,
+                 labelsize : int=18,
                  colorbar: None|str="bottom",
                  colorbar_label : str|None=None,
                  interactive : bool=True,
-                 save_as : str|None=None):
+                 fname : str|None=None):
     """
     Plot cortical hemispheres with optional parcel border overlays.
 
@@ -238,10 +239,11 @@ def surface_plot(node_values : np.ndarray|None=None,
         Label for the colorbar.
     interactive : bool
         Show the plot in an interactive window (default is True).
-    save_as : bool
-        Save the plot (will consider manipulations done in the interactive window). Options:  
-        - Raster: "png", "jpeg", "jpg", "bmp", "tif", "tiff"  
-        - Vectorised: "svg", "eps", "ps", "pdf", "tex"  
+    fname : string or None
+        Save the plot (will consider manipulations done in the interactive window).  
+        The name should contain the desired file type with the options being:    
+        - Raster: ".png", ".jpeg", ".jpg", ".bmp", ".tif", ".tiff"  
+        - Vectorised: ".svg", ".eps", ".ps", ".pdf", ".tex"  
     """
     # Input validation / normalization
     if node_values is None:
@@ -309,7 +311,6 @@ def surface_plot(node_values : np.ndarray|None=None,
     vals_list = [v for v in vals_list if v.size > 0]
     clim = None
     discrete_values = None
-    discrete_annotations = None
     discrete_nlabels = 4
     discrete_ref_max = None
     if vals_list:
@@ -326,7 +327,6 @@ def surface_plot(node_values : np.ndarray|None=None,
             uniq_vals = uniq_vals[uniq_vals != 0]
         if uniq_vals.size > 0 and np.allclose(uniq_vals, np.round(uniq_vals)) and uniq_vals.size <= 32:
             discrete_values = uniq_vals.astype(float)
-            discrete_annotations = {float(v): str(int(round(v))) for v in discrete_values}
             discrete_nlabels = int(discrete_values.size)
             # Use exact integer limits so scalar-bar ticks can be labeled 1..K.
             clim = (float(np.min(discrete_values)), float(np.max(discrete_values)))
@@ -357,12 +357,8 @@ def surface_plot(node_values : np.ndarray|None=None,
     
     # Plotting
     pv.global_theme.font.family = "times"
-    #pv.global_theme.font.size = 18
-    #pv.global_theme.font.title_size = 20
-    #pv.global_theme.font.label_size = 16
-    
-    pl = pv.Plotter(shape=plot_shape, window_size=size, title="Comet Toolbox Surface Viewer", border=False,
-                    notebook=False, off_screen= not interactive, row_weights=row_weights, col_weights=col_weights, groups=groups)
+    pl = pv.Plotter(shape=plot_shape, window_size=size, title="Comet Toolbox Surface Viewer", border=False, line_smoothing=True,
+                    notebook=_in_notebook() and not interactive, off_screen=not interactive, row_weights=row_weights, col_weights=col_weights, groups=groups)
     pl.enable_anti_aliasing("msaa")
 
     # Loop through panels and plot each view
@@ -378,7 +374,7 @@ def surface_plot(node_values : np.ndarray|None=None,
 
         # Plot the mesh
         pl.subplot(row, col)
-        pl.add_text(f"{h} {v}")
+        pl.add_text(f"{h} {v}", font_size=int(labelsize*0.7))
 
         if node_values is None or vertex_labels is None:
             pl.add_mesh(mesh, color="lightgray")
@@ -433,23 +429,27 @@ def surface_plot(node_values : np.ndarray|None=None,
             n_labels = discrete_nlabels if discrete_values is not None else 4
             fmt = "%.0f" if discrete_values is not None else "%.3g"
             add_scalar_bar(title=colorbar_label, mapper=colorbar_mapper, vertical=False, width=0.33, height=0.7,
-               position_x=0.33, position_y=0.1, n_labels=n_labels, fmt=fmt, label_font_size=25, title_font_size=35)
+               position_x=0.33, position_y=0.1, n_labels=n_labels, fmt=fmt, label_font_size=int(labelsize), title_font_size=int(labelsize*1.2))
         else:
             cb_row, cb_col = 0, panel_ncols
             pl.subplot(cb_row, cb_col)
             n_labels = discrete_nlabels if discrete_values is not None else 4
             fmt = "%.0f" if discrete_values is not None else "%.3g"
             add_scalar_bar(title=colorbar_label, mapper=colorbar_mapper, vertical=True, width=0.7, height=0.25,
-                           position_x=0.1, position_y=0.33, n_labels=n_labels, fmt=fmt, label_font_size=25, title_font_size=35)
+                           position_x=0.1, position_y=0.33, n_labels=n_labels, fmt=fmt, label_font_size=int(labelsize), title_font_size=int(labelsize*1.2))
 
-    # Show and save the figure
+    # Show static/interactive figure
     if interactive:
         pl.show(auto_close=False)
+    else:
+        pl.show(jupyter_backend="static")
 
-    if save_as in ("svg", "pdf", "eps", "ps"):
-        pl.save_graphic(f"surface_plot.{save_as}", raster=False)
-    elif save_as in ("png", "jpeg", "jpg", "bmp", "tif", "tiff"):
-        pl.screenshot(f"surface_plot.{save_as}")
+    # Save the figure
+    if fname is not None:
+        if fname.endswith(("svg", "pdf", "eps", "ps")):
+            pl.save_graphic(fname, raster=False)
+        elif fname.endswith(("png", "jpeg", "jpg", "bmp", "tif", "tiff")):
+            pl.screenshot(fname)
     else:
         pass
    
@@ -849,3 +849,13 @@ def _chaikin_smooth(points: np.ndarray, iterations: int, closed: bool) -> np.nda
             out[-1] = pts[-1]
             pts = out
     return pts
+
+def _in_notebook():
+    """Check if the code is running in a Jupyter notebook."""
+    try:
+        from IPython import get_ipython
+        if 'IPKernelApp' not in get_ipython().config:
+            return False
+    except Exception:
+        return False
+    return True
