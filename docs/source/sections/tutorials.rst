@@ -46,6 +46,14 @@ Graph Analysis
    notebooks/example_graph
    notebooks/example_graph_benchmark
 
+CIFTI Tools
+-----------
+
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/example_cifti
+
 Multiverse Analysis
 -------------------
 
