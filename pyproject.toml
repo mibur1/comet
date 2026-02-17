@@ -1,6 +1,6 @@
 [project]
 name = "comet-toolbox"
-version = "1.2.2"
+version = "1.2.3"
 authors = [
   {name="Micha Burkhardt", email="micha.burkhardt@uol.de"},
 ]
@@ -83,7 +83,6 @@ Paper = "https://doi.org/10.1162/IMAG.a.1122"
 Documentation = "https://comet-toolbox.readthedocs.io/en/latest/"
 Repository = "https://github.com/mibur1/comet.git"
 Issues = "https://github.com/mibur1/comet/issues"
-
 
 [project.scripts]
 comet-gui = "comet.gui:run"
