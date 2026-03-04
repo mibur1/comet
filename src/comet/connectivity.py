@@ -1811,13 +1811,13 @@ class Static_Pearson(ConnectivityMethod):
 
     def __init__(self,
                  time_series: np.ndarray,
-                 cov_estimator: Literal[None, "LedoitWolf"] = None,
+                 shrinkage: Literal[None, "LedoitWolf"] = None,
                  diagonal: int = 0,
                  fisher_z: bool = False,
                  tril: bool = False):
 
         self.fc = None
-        self.cov_estimator = cov_estimator
+        self.shrinkage = shrinkage
         super().__init__(time_series, diagonal, fisher_z, tril)
 
     def estimate(self):
@@ -1829,7 +1829,7 @@ class Static_Pearson(ConnectivityMethod):
         np.ndarray
             Static functional connectivity matrix.
         """
-        if self.cov_estimator == "LedoitWolf":
+        if self.shrinkage == "LedoitWolf":
             C = LedoitWolf().fit(self.time_series).covariance_
         else:
             C = np.cov(self.time_series.T)
@@ -1848,7 +1848,7 @@ class Static_Partial(ConnectivityMethod):
     ----------
     time_series : np.ndarray
         The input time series data.
-    cov_estimator : str, optional
+    shrinkage : str, optional
         Shrinkage for covariance estimation. Can be None or Ledoit-Wolf. Default is None.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
@@ -1861,13 +1861,13 @@ class Static_Partial(ConnectivityMethod):
 
     def __init__(self,
                  time_series: np.ndarray,
-                 cov_estimator: Literal["LedoitWolf", None] = None,
+                 shrinkage: Literal["LedoitWolf", None] = None,
                  diagonal: int = 0,
                  fisher_z: bool = False,
                  tril: bool = False):
 
         self.fc = None
-        self.cov_estimator = cov_estimator
+        self.shrinkage = shrinkage
         super().__init__(time_series, diagonal, fisher_z, tril)
 
     def estimate(self):
@@ -1879,7 +1879,7 @@ class Static_Partial(ConnectivityMethod):
         np.ndarray
             Static functional connectivity matrix.
         """
-        if self.cov_estimator == "LedoitWolf":
+        if self.shrinkage == "LedoitWolf":
             C = LedoitWolf().fit(self.time_series).covariance_
         else:
             C = np.cov(self.time_series.T)
@@ -1959,7 +1959,7 @@ class Static_Covariance(ConnectivityMethod):
     ----------
     time_series : np.ndarray
         The input time series data.
-    cov_estimator : str, optional
+    shrinkage : str, optional
         Shrinkage for covariance estimation. Can be None or Ledoit-Wolf. Default is None.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
@@ -1973,13 +1973,13 @@ class Static_Covariance(ConnectivityMethod):
 
     def __init__(self,
                  time_series: np.ndarray,
-                 cov_estimator: Literal["LedoitWolf", None] = None,
+                 shrinkage: Literal["LedoitWolf", None] = None,
                  diagonal: int = 0,
                  fisher_z: bool = False,
                  tril: bool = False):
 
         self.fc = None
-        self.cov_estimator = cov_estimator
+        self.shrinkage = shrinkage
         super().__init__(time_series, diagonal, fisher_z, tril)
 
     def estimate(self):
@@ -1991,7 +1991,7 @@ class Static_Covariance(ConnectivityMethod):
         np.ndarray
             Static functional connectivity matrix.
         """
-        if self.cov_estimator == "LedoitWolf":
+        if self.shrinkage == "LedoitWolf":
             self.fc = LedoitWolf().fit(self.time_series).covariance_
         else:
             self.fc = np.cov(self.time_series.T)
