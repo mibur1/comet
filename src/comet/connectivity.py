@@ -1798,8 +1798,8 @@ class Static_Pearson(ConnectivityMethod):
     ----------
     time_series : np.ndarray
         The input time series data.
-    cov_estimator : str, optional
-        Method to estimate covariance. Default is Ledoit-Wolf shrinkage.
+    shrinkage : str, optional
+        Shrinkage for covariance estimation. Can be None or Ledoit-Wolf. Default is None.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
     fisher_z : bool, optional
@@ -1811,7 +1811,7 @@ class Static_Pearson(ConnectivityMethod):
 
     def __init__(self,
                  time_series: np.ndarray,
-                 cov_estimator: Literal[None, "LedoitWolf"] = "LedoitWolf",
+                 cov_estimator: Literal[None, "LedoitWolf"] = None,
                  diagonal: int = 0,
                  fisher_z: bool = False,
                  tril: bool = False):
@@ -1849,7 +1849,7 @@ class Static_Partial(ConnectivityMethod):
     time_series : np.ndarray
         The input time series data.
     cov_estimator : str, optional
-        Method to estimate covariance. If "LedoitWolf", it uses Ledoit-Wolf shrinkage. Default is LedoitWolf.
+        Shrinkage for covariance estimation. Can be None or Ledoit-Wolf. Default is None.
     diagonal : int, optional
         Value to set on the diagonal of connectivity matrices. Default is 0.
     fisher_z : bool, optional
@@ -1861,7 +1861,7 @@ class Static_Partial(ConnectivityMethod):
 
     def __init__(self,
                  time_series: np.ndarray,
-                 cov_estimator: Literal["LedoitWolf", None] = "LedoitWolf",
+                 cov_estimator: Literal["LedoitWolf", None] = None,
                  diagonal: int = 0,
                  fisher_z: bool = False,
                  tril: bool = False):
@@ -1952,11 +1952,28 @@ class Static_Mutual_Info(ConnectivityMethod):
         return self.fc
 
 class Static_Covariance(ConnectivityMethod):
+    """
+    Static functional connectivity method using covariance.
+
+    Parameters
+    ----------
+    time_series : np.ndarray
+        The input time series data.
+    cov_estimator : str, optional
+        Shrinkage for covariance estimation. Can be None or Ledoit-Wolf. Default is None.
+    diagonal : int, optional
+        Value to set on the diagonal of connectivity matrices. Default is 0.
+    fisher_z : bool, optional
+        Whether to apply Fisher z-transformation. Default is False.
+    tril : bool, optional
+        Whether to return only the lower triangle of the matrices. Default is False.
+    """
+
     name = "STATIC Covariance"
 
     def __init__(self,
                  time_series: np.ndarray,
-                 cov_estimator: Literal["LedoitWolf", None] = "LedoitWolf",
+                 cov_estimator: Literal["LedoitWolf", None] = None,
                  diagonal: int = 0,
                  fisher_z: bool = False,
                  tril: bool = False):
