@@ -34,9 +34,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          WB_VERSION=1.5.0
           BASE="$HOME/workbench"
-          URL="https://www.humanconnectome.org/storage/app/media/workbench/workbench-linux64-v${WB_VERSION}.zip"
+          URL="https://www.humanconnectome.org/storage/app/media/workbench/workbench-linux64-v1.5.0.zip"
 
           rm -rf "$BASE"
           mkdir -p "$BASE"
