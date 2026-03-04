@@ -3,10 +3,14 @@
 
 # Custom files and folders
 testing_stuff/
-src/comet/data/atlas/Schaefer*
-src/comet/data/atlas/Gordon*
-src/comet/data/atlas/Q1*
+src/comet/data/img/
+
+src/comet/data/atlas/*
+!src/comet/data/atlas/__init__.py
+!src/comet/data/atlas/fs_LR_32k_medial_mask.mat
+
 src/comet/data/surf/*
+!src/comet/data/surf/__init__.py
 
 # Ignore all tutorial subfolders, but not the tutorial files
 tutorials/*/
