@@ -15,6 +15,7 @@ import seaborn as sns
 import networkx as nx
 from scipy import stats
 from jinja2 import Template
+from tqdm.auto import tqdm
 from matplotlib import transforms
 from collections import defaultdict
 from matplotlib import pyplot as plt
@@ -24,9 +25,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib import patches as mpatches
 from scipy.interpolate import make_interp_spline
 from IPython.display import display as ipy_display
-from joblib import Parallel, delayed
-from tqdm.auto import tqdm
-from tqdm_joblib import tqdm_joblib
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class Multiverse:
@@ -61,7 +60,7 @@ class Multiverse:
         os.makedirs(self.script_dir, exist_ok=True)
 
     # Public methods
-    def create(self, analysis_template, forking_paths, config={}):
+    def create(self, analysis_template, forking_paths, config={}, verbose=False):
         """
         Create the individual universe scripts
 
@@ -134,7 +133,9 @@ class Multiverse:
                 for condition in rule:
                     if isinstance(condition, dict):
                         for key, val in condition.items():
-                            if path_dict.get(key) != val:
+                            actual = path_dict.get(key)
+                            no_match = actual not in val if isinstance(val, list) else actual != val
+                            if no_match:
                                 matches = False
                                 break
                     elif isinstance(condition, str):
@@ -165,7 +166,9 @@ class Multiverse:
                 for condition in rule:
                     if isinstance(condition, dict):
                         for key, val in condition.items():
-                            if path_dict.get(key) != val:
+                            actual = path_dict.get(key)
+                            no_match = actual not in val if isinstance(val, list) else actual != val
+                            if no_match:
                                 matches = False
                                 break
                     elif isinstance(condition, str):
@@ -269,10 +272,7 @@ class Multiverse:
                         if isinstance(val, float) and (val != val):  # NaN
                             rule_context_counts[(cond_sig, k)] += 1
 
-        if rule_context_counts:
-            print("Exclusion summary")
-            print("-----------------")
-            
+        if rule_context_counts and verbose:
             if config:
                 if config.get("order"):
                     print(f"Total number of universes: {pre_dedup_count} (includes ordering permutations)")
@@ -280,7 +280,7 @@ class Multiverse:
                     print(f"Total number of universes: {pre_dedup_count}")
             
             if dedup_removed:
-                print(f"  - Removed {dedup_removed} duplicate universes (set 'deduplicate' to False if you want to keep them)")
+                print(f"Removed {dedup_removed} duplicate universes (set 'deduplicate' to False if you want to keep them)")
 
             for (cond_sig, key), count in rule_context_counts.items():
                 human_cond = "{" + ", ".join([f"'{k}': {repr(v)}" for k, v in cond_sig]) + "}"
@@ -303,11 +303,12 @@ class Multiverse:
             for universe, rule in removed_universes:
                 rule_to_universes[str(rule)].append(dict(universe))
 
-            print(f"  - Removed {len(removed_universes)} out of {len(all_universes)} remaining universes:")
-            for i, (rule, universes) in enumerate(rule_to_universes.items(), 1):
-                print(f"      Rule {rule} excluded {len(universes)} universes:")
-                for u in universes:
-                    print(f"      {u}")
+            print(f"Removed {len(removed_universes)} out of {len(all_universes)} remaining universes:")
+            if verbose:
+                for i, (rule, universes) in enumerate(rule_to_universes.items(), 1):
+                    print(f"      Rule {rule} excluded {len(universes)} universes:")
+                    for u in universes:
+                        print(f"      {u}")
         else:
             valid_universes = all_universes
         
@@ -377,20 +378,34 @@ class Multiverse:
             if os.path.isfile(item_path) and item_path.endswith('.pkl') and not item_path.endswith('forking_paths.pkl'):
                 os.remove(item_path)
 
-        # Function for parallel processing, called by joblib.delayed
+        # Function for parallel processing
         def execute_script(file):
+            env = os.environ.copy()
+            if parallel > 1:
+                # Restrict each subprocess to 1 thread in case of parallel execution 
+                # to avoid conflicts in SLURM environments
+                for var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS",
+                            "BLIS_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
+                    env[var] = "1"
             subprocess.run([sys.executable, os.path.join(self.script_dir, file)],
-                        check=True, env=os.environ.copy())
-        
-        if universe is None:
-            print("Starting multiverse analysis for all universes...")
-            
+                        check=True, env=env)
+
+        def run_parallel(file_list, desc):
             if parallel == 1:
-                for file in tqdm(scripts):
+                for file in tqdm(file_list, desc=desc):
                     execute_script(file)
             else:
-                with tqdm_joblib(total=len(scripts), desc="Performing multiverse analysis:") as progress:
-                    Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in scripts)
+                # Use threads to avoid conflicts in SLURM environments
+                with ThreadPoolExecutor(max_workers=parallel) as pool:
+                    futures = {pool.submit(execute_script, f): f for f in file_list}
+                    with tqdm(total=len(futures), desc=desc) as pbar:
+                        for fut in as_completed(futures):
+                            fut.result()  # re-raise any subprocess errors
+                            pbar.update(1)
+
+        if universe is None:
+            print("Starting multiverse analysis for all universes...")
+            run_parallel(scripts, "Performing multiverse analysis:")
         else:
             # Subset of universes was chosen
             if isinstance(universe, int):
@@ -399,16 +414,10 @@ class Multiverse:
                 universe_numbers = list(universe)
             else:
                 raise ValueError("universe_number should be None, an int, a list, tuple, or a range.")
-            
+
             selected_universes = [f for f in scripts if any(f.endswith(f"universe_{u}.py") for u in universe_numbers)]
             print(f"Starting analysis for universe(s): {universe_numbers}...")
-            
-            if parallel == 1:
-                for file in tqdm(selected_universes):
-                    execute_script(file)
-            else:
-                with tqdm_joblib(total=len(selected_universes), desc="Performing multiverse analysis:") as progress:
-                    Parallel(n_jobs=parallel)(delayed(execute_script)(file) for file in selected_universes)
+            run_parallel(selected_universes, "Performing multiverse analysis:")
 
         # Save all results in a single dictionary
         if combine_results:
@@ -524,6 +533,110 @@ class Multiverse:
 
             return results
 
+    def add_results(self, name, values):
+        """
+        Add a derived measure to the saved multiverse results.
+
+        The measure is written into ``multiverse_results.pkl`` so it becomes a regular column in
+        :meth:`get_results` and can be used by :meth:`multiverse_plot`, :meth:`specification_curve`,
+        and :meth:`integrate`. Useful for quantities computed from existing measures (e.g. the
+        difference between two measures). An existing measure of the same name is overwritten.
+
+        Parameters
+        ----------
+        name : str
+            Name of the measure.
+        values : array-like or pandas.Series
+            One value per universe. A ``pandas.Series`` is aligned by its index to the universe
+            numbers (1..N); any other array-like is matched positionally in universe order
+            (``universe_1`` .. ``universe_N``). Each entry may be a scalar or an array.
+
+        Returns
+        -------
+        pandas.DataFrame
+            The updated results, as returned by ``get_results(as_df=True)``.
+        """
+        results_path = os.path.join(self.results_dir, "multiverse_results.pkl")
+        if not os.path.exists(results_path):
+            raise FileNotFoundError(
+                "Combined results not found. Run the multiverse first so that "
+                "'multiverse_results.pkl' exists."
+            )
+
+        with open(results_path, "rb") as file:
+            results = pickle.load(file)
+
+        # Universe order: universe_1 .. universe_N
+        universe_keys = sorted(results.keys(), key=lambda k: int(k.split("_")[1]))
+        universe_ids = [int(k.split("_")[1]) for k in universe_keys]
+
+        # Align a Series by its index, otherwise match positionally in universe order.
+        if isinstance(values, pd.Series):
+            ordered = [values.loc[uid] for uid in universe_ids]
+        else:
+            ordered = list(values)
+
+        if len(ordered) != len(universe_keys):
+            raise ValueError(f"Expected {len(universe_keys)} values (one per universe), got {len(ordered)}.")
+
+        for key, val in zip(universe_keys, ordered):
+            results[key][name] = val
+
+        with open(results_path, "wb") as file:
+            pickle.dump(results, file)
+
+        return self.get_results(as_df=True)
+
+    def integrate(self, measure=None, method="uniform", type="mean"):
+        """
+        Integrate the multiverse results for a specific measure.
+
+        Parameters
+        ----------
+        measure : string
+            Name of the measure to integrate.
+
+        method : string
+            Method to use for integration. Options are:
+                 "uniform" (default): Uniform weights across all universes
+                 "bma": Bayesian model averaging (requires BIC values in the results)
+                 
+        type : string
+            Type of (weighted) integration. Options are "mean" (default) or "median".
+        """
+        # Get results dataframe and convert columns to lowercase
+        results = self.get_results(as_df=True)
+        results.columns = results.columns.str.lower()
+
+        # Initial checks
+        if measure is None:
+            raise ValueError("Please provide a measure to integrate.")
+        if measure not in results.columns:
+            raise ValueError(f"The measure '{measure}' was not found in the results.")
+        if method == "bma" and "bic" not in results.columns:
+            raise ValueError("BMA weights require a 'bic' column in the results.")
+        
+        # Get measure and compute weights
+        x = results[measure].to_numpy()
+
+        if method == "uniform":
+            weights = self._uniform_weights(x)
+        elif method == "bma":
+            weights = self._bma_weights(results)
+        else:
+            raise ValueError("method must be 'uniform' or 'bma'")
+        
+        # Compute integrated estimate
+        if type == "mean":
+            integrated_estimate = self._weighted_mean(x, weights)
+        elif type == "median":
+            integrated_estimate = self._weighted_median(x, weights)
+        else:
+            raise ValueError("type must be 'mean' or 'median'")
+        
+        return integrated_estimate, weights
+
+    # Plotting methods
     def visualize(self,
             universe=None,
             figsize=(8,5),
@@ -716,6 +829,7 @@ class Multiverse:
             fontsize: int = 10,
             dotsize: int = 50,
             line_pad: float = 0.3,
+            fname: str = "specification_curve",
             ftype: str = "pdf",
             dpi: int = 300,
             p_threshold: float = 0.05,
@@ -724,7 +838,7 @@ class Multiverse:
         """
         Create a specification curve plot from multiverse results.
 
-        The figure is saved to the results directory as "specification curve.{ftype}".
+        The figure is saved to the results directory as "specification_curve.{ftype}".
 
         Notes
         -----
@@ -828,20 +942,7 @@ class Multiverse:
         else:
             thr = float(p_threshold) if p_value is True else float(p_value)
 
-            pvals_list = []
-            for rv in raw_measure_sorted:
-                if isinstance(rv, (list, tuple, np.ndarray)):
-                    arr = np.asarray(rv, dtype=float)
-                    arr = arr[np.isfinite(arr)]
-                    if len(arr) >= 2:
-                        _, p = stats.ttest_1samp(arr, baseline_for_tests)
-                        pvals_list.append(float(p))
-                    else:
-                        pvals_list.append(np.nan)
-                else:
-                    pvals_list.append(np.nan)
-
-            pvals = np.asarray(pvals_list, dtype=float)
+            pvals = self._one_sample_ttest(raw_measure_sorted, baseline_for_tests)
             if np.isnan(pvals).any():
                 raise ValueError(
                     "Cannot compute p-values for some universes: "
@@ -1080,7 +1181,7 @@ class Multiverse:
         if legend_items:
             ax[0].legend(handles=legend_items, loc="upper left", fontsize=fontsize, frameon=False)
 
-        plt.savefig(f"{self.results_dir}/specification_curve2.{ftype}", bbox_inches="tight", dpi=dpi)
+        plt.savefig(f"{self.results_dir}/{fname}.{ftype}", bbox_inches="tight", dpi=dpi)
         sns.reset_orig()
         return self._handle_figure_returns(fig)
 
@@ -1092,6 +1193,7 @@ class Multiverse:
             baseline: float | None = None,
             name_map: dict | None = None,
             figsize: tuple = (7, 9),
+            fname: str = "multiverse_plot",
             ftype: str = "pdf",
             dpi: int = 300,
         ):
@@ -1103,7 +1205,7 @@ class Multiverse:
         For each decision level, the average change in the outcome relative to the
         reference level is shown on the right.
 
-        The figure is saved to the results directory as "multiverse_plot.{ftype}".
+        The figure is saved to the results directory as "{fname}.{ftype}".
 
         References
         ----------
@@ -1121,12 +1223,17 @@ class Multiverse:
             Column indicating statistical significance. If provided:
             - boolean values are interpreted directly (True = significant),
             - numeric values are compared against ``sig_threshold``.
-            If None, no significance overlay is drawn.
+            If None, significance is computed from per-universe sample arrays with a one-sample
+            t-test against ``baseline`` (identical to ``specification_curve``), thresholded by
+            ``sig_threshold``. This requires ``measure`` to hold array samples per universe;
+            scalar measures cannot be tested and no overlay is drawn.
         sig_threshold : float, optional
-            Threshold used when ``sig_col`` is numeric (default is 0.05).
+            Threshold applied to a numeric ``sig_col`` or to the computed p-values when
+            ``sig_col`` is None (default is 0.05).
         baseline : float | None, optional
-            Optional baseline value for the outcome. If provided, a vertical dashed
-            reference line is drawn at this value in the density plot.
+            Baseline value for the outcome. If provided, a vertical dashed reference line is
+            drawn at this value (extending through the strips to the x-axis), and it is the null
+            used for the one-sample t-test when significance is computed (defaults to 0).
         name_map : dict | None, optional
             Optional mapping for display names. Keys may include the measure name
             and decision names. Values are the desired display labels.
@@ -1198,16 +1305,19 @@ class Multiverse:
 
             s = df[sig_col]
             if pd.api.types.is_bool_dtype(s):
-                significant = s.fillna(False).astype(bool)
+                significant = s.fillna(False).to_numpy(dtype=bool)
             else:
                 s_num = pd.to_numeric(s, errors="coerce")
-                significant = (s_num < sig_threshold).fillna(False)
-
-            df = df.copy()
-            df["__significant"] = significant
+                significant = (s_num < sig_threshold).fillna(False).to_numpy(dtype=bool)
         else:
-            df = df.copy()
-            df["__significant"] = False
+            # No column: compute significance from per-universe sample arrays (one-sample t-test
+            # against `baseline`), identical to specification_curve. Scalar/too-short samples
+            # yield NaN p-values and are treated as not significant (so scalar measures get no overlay).
+            pvals = self._one_sample_ttest(df[measure], baseline)
+            significant = pvals < sig_threshold
+
+        df = df.copy()
+        df["__significant"] = significant
 
         # Scalarise outcome: mean over list/array; scalar -> float
         df[measure] = df[measure].apply(
@@ -1299,9 +1409,6 @@ class Multiverse:
         ax_density = fig.add_subplot(gs[current_row : current_row + density_height, 0])
         current_row += density_height
 
-        if baseline is not None:
-            ax_density.plot([baseline, baseline], [0, float(np.max(y_all))], linestyle="--", linewidth=1, color="black")
-
         ax_density.plot(grid_x, y_all, label="All", linewidth=1.5)
 
         if y_sig_scaled is not None:
@@ -1312,11 +1419,16 @@ class Multiverse:
         ax_density.set_xticklabels([])
         ax_density.set_ylabel("Density")
         ax_density.set_yticks([])
-        #ax_density.text(baseline, -0.1, str(baseline),ha="center", va="top") if baseline is not None else None
         ax_density.legend(frameon=False)
         ax_density.grid(False)
         ax_density.set_frame_on(False)
         ax_density.plot([common_xlim[0], common_xlim[1]], [0, 0], linewidth=1, color="black")
+
+        # Baseline 
+        if baseline is not None:
+            ax_density.plot([baseline, baseline], [0, float(np.max(y_all))], linestyle="--", linewidth=1, color="black")
+            #ax_density.text(baseline, -0.1, str(baseline),ha="center", va="top") if baseline is not None else None
+
 
         ##############################
         # Decision/options strip plots
@@ -1345,6 +1457,10 @@ class Multiverse:
             ax.pcolormesh(X, Y, H, shading="flat", cmap=cmap, vmin=0.0, vmax=1.0)
             ax.set_ylim(n_levels + 2, 0)
 
+            # Extend the baseline down through the strip plot)
+            #if baseline is not None:
+            #    ax.axvline(baseline, linestyle="--", linewidth=1, color="black", zorder=10)
+
             # Right-side mean diffs
             for i_level, lvl in enumerate(levels):
                 lab = avg_diff_lookup.get(varname, {}).get(lvl, "")
@@ -1367,6 +1483,7 @@ class Multiverse:
             for spine in ["top", "right", "left", "bottom"]:
                 ax.spines[spine].set_visible(False)
 
+
         #############################################
         # Bottom x-axis (the multiverse plot measure)
         bottom_xaxis = fig.add_subplot(gs[current_row : current_row + 1, 0])
@@ -1384,62 +1501,13 @@ class Multiverse:
         bottom_xaxis.spines["bottom"].set_visible(True)
         bottom_xaxis.tick_params(axis="x", bottom=True, labelbottom=True)
 
+        #if baseline is not None:
+        #    bottom_xaxis.axvline(baseline, linestyle="--", linewidth=1, color="black", zorder=10)
+
         # Save and return
-        plt.savefig(f"{self.results_dir}/multiverse_plot.{ftype}", bbox_inches="tight", dpi=dpi)  
+        plt.savefig(f"{self.results_dir}/{fname}.{ftype}", bbox_inches="tight", dpi=dpi)  
         return self._handle_figure_returns(fig)
 
-    def integrate(self, 
-            measure=None,
-            method="uniform",
-            type="mean"
-        ):
-        """
-        Integrate the multiverse results.
-
-        Parameters
-        ----------
-        measure : string
-            Name of the measure to integrate.
-
-        method : string
-            Method to use for integration. Options are:
-                 "uniform" (default): Simple mean/median across all universes
-                 "bma": Bayesian model averaging (requires BIC values in the results)
-                 
-        type : string
-            Type of (weighted) integration. Options are "mean" (default) or "median".
-        """
-        # Get results dataframe and convert columns to lowercase
-        results = self.get_results(as_df=True)
-        results.columns = results.columns.str.lower()
-
-        # Initial checks
-        if measure is None:
-            raise ValueError("Please provide a measure to integrate.")
-        if measure not in results.columns:
-            raise ValueError(f"The measure '{measure}' was not found in the results.")
-        if method == "bma" and "bic" not in results.columns:
-            raise ValueError("BMA weights require a 'bic' column in the results.")
-        
-        # Get measure and compute weights
-        x = results[measure].to_numpy()
-
-        if method == "uniform":
-            weights = self._uniform_weights(x)
-        elif method == "bma":
-            weights = self._bma_weights(results)
-        else:
-            raise ValueError("method must be 'uniform' or 'bma'")
-        
-        # Compute integrated estimate
-        if type == "mean":
-            integrated_estimate = self._weighted_mean(x, weights)
-        elif type == "median":
-            integrated_estimate = self._weighted_median(x, weights)
-        else:
-            raise ValueError("type must be 'mean' or 'median'")
-        
-        return integrated_estimate, weights
 
     # Internal methods
     def _create_summary(self, all_universes, keys):
@@ -1593,10 +1661,25 @@ class Multiverse:
 
         return
 
+    def _one_sample_ttest(self, samples_per_universe, baseline=0.0):
+        """One-sample t-test per universe against a baseline."""
+        baseline = 0.0 if baseline is None else float(baseline)
+        pvals = []
+        for rv in samples_per_universe:
+            if isinstance(rv, (list, tuple, np.ndarray)):
+                arr = np.asarray(rv, dtype=float)
+                arr = arr[np.isfinite(arr)]
+                if len(arr) >= 2:
+                    _, p = stats.ttest_1samp(arr, baseline)
+                    pvals.append(float(p))
+                    continue
+            pvals.append(np.nan)
+        return np.asarray(pvals, dtype=float)
+
     def _flatten_decisions(self, dec_block):
-        """ 
+        """
         Convert {'Decision 1': 'X', 'Value 1': Y, ...} into {'X': 'Y', ...}.
-        Values are stringified for categorical plotting. 
+        Values are stringified for categorical plotting.
         """
         if not isinstance(dec_block, dict):
             return {}
