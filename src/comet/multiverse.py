@@ -1643,16 +1643,16 @@ class Multiverse:
         plt.savefig(f"{self.results_dir}/{fname}.{ftype}", bbox_inches="tight", dpi=dpi)  
         return self._handle_figure_returns(fig)
 
-    def plot_integration(self, 
+    def plot_integration(self,
             measure,
-            weights=None, 
+            weights=None,
             true_value=None, 
-            agg="mean", 
+            agg="mean",
             xlim=None,
-            figsize=(7, 3), 
-            title=None, 
-            fname="weighted_posterior", 
-            ftype="png", 
+            figsize=(7, 3),
+            title=None,
+            fname="weighted_posterior",
+            ftype="png",
             dpi=300):
         """
         Plot weighted density distributions of a measure for each integration scheme.
@@ -1998,7 +1998,7 @@ class Multiverse:
             return fig
 
     # Multiverse integration
-    def _compute_weights(self, results: pd.DataFrame, measure: str, method: str, 
+    def _compute_weights(self, results: pd.DataFrame, measure: str, method: str,
                          agg: str = "mean", bic_column: str|None = None) -> np.ndarray:
         """Compute weights with the requested weighting scheme. Shared by integrate() and compare_methods()."""
         if method == "uniform":

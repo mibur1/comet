@@ -2,7 +2,6 @@ import random
 import numpy as np
 from tqdm import tqdm
 from tqdm_joblib import tqdm_joblib
-from matplotlib import pyplot as plt
 from typing import Literal, Union
 from abc import ABCMeta, abstractmethod
 from joblib import Parallel, delayed
@@ -25,6 +24,7 @@ SECTION: Class template for all dynamic functional connectivity methods.
          New methods should be implemented as child classes.
 """
 class ConnectivityMethod(metaclass=ABCMeta):
+   
     """
     Base class for all dynamic functional connectivity methods.
 
@@ -43,6 +43,7 @@ class ConnectivityMethod(metaclass=ABCMeta):
     tril : bool
         Whether to return only the lower triangle of the matrices.
     """
+
     def __init__(self, time_series, diagonal=0, fisher_z=False, tril=False):
         """
         Initializes the ConnectivityMethod with the given parameters.
@@ -118,8 +119,8 @@ class ConnectivityMethod(metaclass=ABCMeta):
 
     def postproc(self):
         """
-        Post-process the connectivity matrix with optional Fisher z-transformation,
-        z-standardization, diagonal setting, and lower triangle extraction.
+        Post-process the connectivity matrix.
+        Optional Fisher z-transformation, z-standardization, diagonal setting, and lower triangle extraction.
 
         Returns
         -------
@@ -360,7 +361,7 @@ class Jackknife(ConnectivityMethod):
         self.dfc = self.postproc()
 
         return self.dfc
-    
+
 class SpatialDistance(ConnectivityMethod):
     """
     Spatial Distance connectivity method.
@@ -1088,7 +1089,8 @@ class DCC(ConnectivityMethod):
         return output
 
     def _rToEpsilon(self, r, theta):
-        """Calculates the standardized residual vector and standardized conditional volatility vector (eq. 25)
+        """
+        Calculates the standardized residual vector and standardized conditional volatility vector (eq. 25)
 
         Parameters
         ----------
@@ -1270,7 +1272,7 @@ class DCC(ConnectivityMethod):
         for t in tqdm(range(T), disable=not self.progress_bar, desc="Conditional covariance matrices", dynamic_ncols=True):
             H[:,:,t] = np.diag(np.sqrt(D[t,:])) @ R[:,:,t] @ np.diag(np.sqrt(D[t,:]))
         
-        self.dfc = R 
+        self.dfc = R
         self.dfc = self.postproc()
 
         self.H = H

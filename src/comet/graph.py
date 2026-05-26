@@ -13,8 +13,8 @@ SECTION: Graph processing functions
 def handle_negative_weights(G: np.ndarray,
                             type: Literal["absolute", "discard"] = "absolute",
                             copy: bool = True) -> np.ndarray:
-    '''
-    Handle negative weights in a connectivity/adjacency matrix
+    """
+    Handle negative weights in a connectivity/adjacency matrix.
 
     Connectivity methods can produce negative estimates, which can be handled in different ways before graph analysis.
 
@@ -35,7 +35,7 @@ def handle_negative_weights(G: np.ndarray,
     -------
     G : PxP np.ndarray
         adjacency/connectivity matrix with only positive weights
-    '''
+    """
 
     if copy:
         G = G.copy()
@@ -53,8 +53,8 @@ def threshold(G: np.ndarray,
               threshold: float = None,
               density: float = 0.2,
               copy: bool = True) -> np.ndarray:
-    '''
-    Thresholding of connectivity/adjacency matrix
+    """
+    Thresholding of connectivity/adjacency matrix.
 
     Performs absolute or density-based thresholding
 
@@ -88,7 +88,7 @@ def threshold(G: np.ndarray,
     -----
     The implemented for density based thresholding always keeps the exact same number of connections. If multiple edges have the same weight,
     the included edges are chosen "randomly" (based on their order in the sorted indices). This is identical to the behaviour in the BCT implementation.
-    '''
+    """
 
     if copy:
         G = G.copy()
@@ -126,8 +126,8 @@ def threshold(G: np.ndarray,
 
 def binarise(G: np.ndarray,
              copy: bool = True) -> np.ndarray:
-    '''
-    Binarise connectivity/adjacency matrix
+    """
+    Binarise connectivity/adjacency matrix.
 
     Parameters
     ----------
@@ -142,7 +142,7 @@ def binarise(G: np.ndarray,
     -------
     G : PxP np.ndarray
         binarised adjacency/connectivity matrix
-    '''
+    """
 
     if copy:
         G = G.copy()
@@ -152,7 +152,7 @@ def binarise(G: np.ndarray,
 
 def normalise(G: np.ndarray,
               copy: bool = True) -> np.ndarray:
-    '''
+    """
     Rescales the connectivity/adjacency matrix by dividing all values by the 
     maximum absolute value. As a result, the largest absolute weight becomes 1.
 
@@ -169,7 +169,7 @@ def normalise(G: np.ndarray,
     -------
     G : PxP np.ndarray
         normalised adjacency/connectivity matrix
-    '''
+    """
 
     if copy:
         G = G.copy()
@@ -274,8 +274,8 @@ def minmax_scale(G: np.ndarray,
 
 def invert(G: np.ndarray,
            copy: bool = True) -> np.ndarray:
-    '''
-    Invert connectivity/adjacency matrix
+    """
+    Invert connectivity/adjacency matrix.
 
     Element wise inversion W such that each value W[i,j] will be 1 / W[i,j] (internode strengths internode distances)
 
@@ -292,7 +292,7 @@ def invert(G: np.ndarray,
     -------
     G : PxP np.ndarray
         element wise inverted adjacency/connectivity matrix
-    '''
+    """
 
     if copy:
         G = G.copy()
@@ -303,8 +303,8 @@ def invert(G: np.ndarray,
 def logtransform(G: np.ndarray,
                  epsilon: float = 1e-10,
                  copy: bool = True) -> np.ndarray:
-    '''
-    Log transform of connectivity/adjacency matrix
+    """
+    Log transform of connectivity/adjacency matrix.
 
     Element wise log transform of W such that each value W[i,j] will be -log(W[i,j]
 
@@ -325,7 +325,7 @@ def logtransform(G: np.ndarray,
     -------
     G : PxP np.ndarray
         element wise log transformed adjacency/connectivity matrix
-    '''
+    """
 
     if copy:
         G = G.copy()
@@ -338,7 +338,7 @@ def logtransform(G: np.ndarray,
 
 def symmetrise(G: np.ndarray,
                copy: bool = True) -> np.ndarray:
-    '''
+    """
     Symmetrise connectivity/adjacency matrix
 
     Symmetrise G such that each value G[i,j] will be G[j,i].
@@ -356,7 +356,7 @@ def symmetrise(G: np.ndarray,
     -------
     G : PxP np.ndarray
         symmetrised adjacency/connectivity matrix
-    '''
+    """
 
     if copy:
         G = G.copy()
@@ -378,8 +378,8 @@ def symmetrise(G: np.ndarray,
 
 def randomise(G: np.ndarray,
               copy: bool = True) -> np.ndarray:
-    '''
-    Randomly rewire edges of an adjacency/connectivity matrix
+    """
+    Randomly rewire edges of an adjacency/connectivity matrix.
 
     Implemented as in https://github.com/rkdan/small_world_propensity
 
@@ -392,7 +392,7 @@ def randomise(G: np.ndarray,
     -------
     G_rand : PxP np.ndarray
         randomised adjacency/connectivity matrix
-    '''
+    """
 
     if copy:
         G = G.copy()
@@ -418,7 +418,7 @@ def randomise(G: np.ndarray,
         raise ValueError("Input must be a 2D or 3D array.")
 
 def regular_matrix(G: np.ndarray, r: int) -> np.ndarray:
-    '''
+    """
     Create a regular matrix.
 
     Adapted from https://github.com/rkdan/small_world_propensity
@@ -434,7 +434,7 @@ def regular_matrix(G: np.ndarray, r: int) -> np.ndarray:
     -------
     M : np.ndarray
         Regularised adjacency matrix (same shape as input).
-    '''
+    """
     def _regularise(G2D, r):
         """Regularisation for a single 2D matrix."""
         n = G2D.shape[0]
@@ -473,8 +473,8 @@ def regular_matrix(G: np.ndarray, r: int) -> np.ndarray:
 def postproc(G: np.ndarray,
              diag: float = 0,
              copy: bool = True) -> np.ndarray:
-    '''
-    Postprocessing of connectivity/adjacency matrix
+    """
+    Postprocessing of connectivity/adjacency matrix.
 
     Ensures G is symmetric, sets diagonal to diag, removes NaNs and infinities, and ensures exact binarity
 
@@ -495,7 +495,7 @@ def postproc(G: np.ndarray,
     -------
     G : PxP np.ndarray
         processed adjacency/connectivity matrix
-    '''
+    """
     if copy:
         G = G.copy()
 
@@ -524,7 +524,7 @@ SECTION: Graph analysis functions
 def avg_shortest_path(G: np.ndarray,
                       include_diagonal: bool = False,
                       include_infinite: bool = False) -> np.ndarray:
-    '''
+    """
     Compute the average shortest path length for a 2D or 3D connectivity matrix.
 
     For binary matrices, the connection length matrix is identical to the connectivity matrix.
@@ -548,7 +548,7 @@ def avg_shortest_path(G: np.ndarray,
     np.ndarray
         Average shortest path length(s). If 2D, a single float is returned; if 3D, a 1D array
         of average path lengths is returned, one for each time slice.
-    '''
+    """
     def _avg_shortest_path(D):
         """Average shortest path for a single 2D matrix."""
         if np.isinf(D).any():
@@ -577,7 +577,7 @@ def avg_shortest_path(G: np.ndarray,
         raise ValueError("Input must be a 2D or 3D matrix.")
 
 def transitivity_und(G: np.ndarray) -> np.ndarray:
-    '''
+    """
     Compute transitivity for undirected networks (binary and weighted),
     adapted from the bctpy implementation: https://github.com/aestrivex/bctpy
 
@@ -594,7 +594,7 @@ def transitivity_und(G: np.ndarray) -> np.ndarray:
     np.ndarray
         Transitivity scalar(s). If 2D, a single float is returned; if 3D, a 1D array
         of transitivity values is returned, one for each time slice.
-    '''
+    """
 
     def _transitivity(A):
         """Transitivity for a single 2D matrix."""
@@ -619,7 +619,7 @@ def transitivity_und(G: np.ndarray) -> np.ndarray:
         raise ValueError("Input must be a 2D or 3D matrix.")
 
 def avg_clustering_onella(G: np.ndarray) -> np.ndarray:
-    '''
+    """
     Compute the average clustering coefficient as described by Onnela et al. (2005).
 
     Parameters
@@ -638,7 +638,7 @@ def avg_clustering_onella(G: np.ndarray) -> np.ndarray:
     Onnela, J. P., Saramäki, J., Kertész, J., & Kaski, K. (2005). Intensity and
     coherence of motifs in weighted complex networks. Physical Review E, 71(6), 065103.
     DOI: https://doi.org/10.1103/PhysRevE.71.065103
-    '''
+    """
 
     def _clustering(A):
         """Average clustering for a single 2D matrix."""
@@ -665,8 +665,8 @@ def avg_clustering_onella(G: np.ndarray) -> np.ndarray:
 
 def efficiency(G: np.ndarray,
                local: bool = False) -> np.ndarray:
-    '''
-    Efficiency for binary and weighted networks (global and local)
+    """
+    Efficiency for binary and weighted networks (global and local).
 
     Optimized version of the bctpy implelementation by Roan LaPlante (https://github.com/aestrivex/bctpy)
 
@@ -706,7 +706,7 @@ def efficiency(G: np.ndarray,
 
     Wang, Y., Ghumare, E., Vandenberghe, R., & Dupont, P. (2017). Comparison of different generalizations of clustering coefficient
     and local efficiency for weighted undirected graphs. Neural computation, 29(2), 313-331. DOI: https://doi.org/10.1162/NECO_a_00914
-    '''
+    """
 
     def _efficiency(G2D, local):
         """Efficiency for a single 2D matrix."""
@@ -764,7 +764,7 @@ def efficiency(G: np.ndarray,
 
 def small_world_sigma(G: np.ndarray,
                       nrand: int = 10) -> np.ndarray:
-    '''
+    """
     Compute the small-worldness sigma for undirected networks (binary or weighted).
 
     Small-worldness sigma is calculated as the ratio of the clustering coefficient
@@ -791,7 +791,7 @@ def small_world_sigma(G: np.ndarray,
     This implementation of small worldness relies on matrix operations and is 
     *drastically* faster than the Networkx implementation. However, it uses a 
     different approach for rewiring edges, so the results may differ.
-    '''
+    """
 
     def _small_world_sigma(G2D, nrand):
         """Small-worldness sigma for a single 2D matrix."""
@@ -818,7 +818,7 @@ def small_world_sigma(G: np.ndarray,
         raise ValueError("Input must be a 2D or 3D matrix.")
 
 def small_world_propensity(G: np.ndarray) -> np.ndarray:
-    '''
+    """
     Small world propensity calculation for undirected and symmetric networks.
     Clustering is calculated using the approach of Onnela et al. (2005).
 
@@ -852,7 +852,7 @@ def small_world_propensity(G: np.ndarray) -> np.ndarray:
     Onnela, J. P., Saramäki, J., Kertész, J., & Kaski, K. (2005). Intensity and
     coherence of motifs in weighted complex networks. Physical Review E, 71(6), 065103.
     DOI: https://doi.org/10.1103/PhysRevE.71.065103
-    '''
+    """
     def _small_world_propensity(G2D):
         if not np.allclose(G2D, G2D.T):
             raise ValueError("Error: Matrix is not symmetrical")
@@ -913,8 +913,8 @@ def small_world_propensity(G: np.ndarray) -> np.ndarray:
         raise ValueError("Input must be a 2D or 3D matrix.")
 
 def matching_ind_und(G: np.ndarray) -> np.ndarray:
-    '''
-    Matching index for undirected networks
+    """
+    Matching index for undirected networks.
 
     Based on the MATLAB implementation by Stuart Oldham:
     https://github.com/StuartJO/FasterMatchingIndex
@@ -950,7 +950,7 @@ def matching_ind_und(G: np.ndarray) -> np.ndarray:
     (ncon2 = c1 * CIJ should instead be ncon2 = CIJ * use)
 
     This bug is irrelevant here due to the opimized implementation.
-    '''
+    """
     if G.ndim == 2:
             return _matching_ind(G)
     elif G.ndim == 3:
@@ -960,7 +960,7 @@ def matching_ind_und(G: np.ndarray) -> np.ndarray:
 
 @njit(fastmath=True, cache=True)
 def distance_wei(G: np.ndarray, inv: bool = False) -> np.ndarray:
-    '''
+    """
     (Inverse) distance matrix for weighted networks with significantly
     improved performance due to numba compilation.
 
@@ -980,7 +980,7 @@ def distance_wei(G: np.ndarray, inv: bool = False) -> np.ndarray:
     Notes
     -----
     Algorithm: Modified Dijkstra's algorithm
-    '''
+    """
 
     n = len(G)
     D = np.full((n, n), np.inf)
@@ -1021,7 +1021,7 @@ def distance_wei(G: np.ndarray, inv: bool = False) -> np.ndarray:
 
 @njit(fastmath=True, cache=True)
 def distance_bin(G: np.ndarray, inv: bool = False) -> np.ndarray:
-    '''
+    """
     Distance matrix calculation for binary networks with significantly
     improved performance due to numba compilation.
 
@@ -1038,7 +1038,7 @@ def distance_bin(G: np.ndarray, inv: bool = False) -> np.ndarray:
     Notes
     -----
     Algorithm: Matrix multiplication to find paths, faster than original Dijkstra's algorithm
-    '''
+    """
 
     D = np.eye(len(G))
     n = 1
@@ -1090,7 +1090,7 @@ SECTION: bctpy wrapper functions
 def backbone_wu(G: np.ndarray,
                 avgdeg: int = 0,
                 verbose: bool = False) -> tuple[np.ndarray, np.ndarray]:
-    '''
+    """
     Wrapper for `bct.backbone_wu()` from the Brain Connectivity Toolbox.
     
     The network backbone contains the dominant connections in the network
@@ -1115,7 +1115,7 @@ def backbone_wu(G: np.ndarray,
         Gclus : NxN (or NxN x T) np.ndarray
             Connection matrix of the minimum spanning tree plus strongest
             connections up to the specified average degree.
-    '''
+    """
 
     if G.ndim == 2:
         # Single timepoint, just call bct
@@ -1138,7 +1138,7 @@ def backbone_wu(G: np.ndarray,
         raise ValueError("Input must be a 2D or 3D matrix.")
 
 def betweenness(G: np.ndarray) -> np.ndarray:
-    '''
+    """
     This is a wrapper function for the `betweenness_bin()` and `betweenness_wei()` functions
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
 
@@ -1162,7 +1162,7 @@ def betweenness(G: np.ndarray) -> np.ndarray:
     - For binary graphs, betweenness is normalized as BC/[(N-1)(N-2)].
     - For weighted graphs, it is based on connection lengths and similarly normalized.
     - If the input is 3D, each time slice is computed independently.
-    '''
+    """
     is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
 
     if G.ndim == 2:
@@ -1183,7 +1183,7 @@ def betweenness(G: np.ndarray) -> np.ndarray:
         raise ValueError("Input must be a 2D or 3D matrix.")
 
 def clustering_coef(G: np.ndarray) -> np.ndarray:
-    '''
+    """
     This is a wrapper function for the `clustering_coef_*()` functions
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
 
@@ -1203,7 +1203,7 @@ def clustering_coef(G: np.ndarray) -> np.ndarray:
     np.ndarray
         Clustering coefficient vector. If G is 2D, the output is Nx1.
         If G is 3D, the output is NxT.
-    '''
+    """
     is_binary = np.all(np.logical_or(np.isclose(G, 0), np.isclose(G, 1)))
 
     if G.ndim == 2:
@@ -1227,7 +1227,7 @@ def clustering_coef(G: np.ndarray) -> np.ndarray:
         raise ValueError("Input must be a 2D or 3D matrix.")
 
 def degrees_und(G: np.ndarray) -> np.ndarray:
-    '''
+    """
     This is a wrapper function for the `degrees_und()` function
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
 
@@ -1248,7 +1248,7 @@ def degrees_und(G: np.ndarray) -> np.ndarray:
     -----
     - If the graph is 3D (NxN x T), each slice is processed independently.
     - Weight information is discarded.
-    '''
+    """
 
     if G.ndim == 2:
         # Single timepoint, just call bct
@@ -1268,7 +1268,7 @@ def degrees_und(G: np.ndarray) -> np.ndarray:
         raise ValueError("Input must be a 2D or 3D matrix.")
 
 def density_und(G: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    '''
+    """
     This is a wrapper function for the `density_und()` function
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
 
@@ -1291,7 +1291,7 @@ def density_und(G: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     - Assumes G is undirected and has no self-connections.
     - Weight information is discarded.
     - If G is 3D (NxN x T), each slice is processed independently.
-    '''
+    """
     if G.ndim == 2:
         # Single timepoint, just call bct
         return bct.density_und(G)
@@ -1312,7 +1312,7 @@ def density_und(G: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         raise ValueError("Input must be a 2D or 3D matrix.")
 
 def eigenvector_centrality_und(G: np.ndarray) -> np.ndarray:
-    '''
+    """
     This is a wrapper function for the `eigenvector_centrality_und()` function
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
 
@@ -1333,7 +1333,7 @@ def eigenvector_centrality_und(G: np.ndarray) -> np.ndarray:
         Eigenvector associated with the largest eigenvalue of the matrix.
         If G is 2D, the output is Nx1.
         If G is 3D, the output is NxT.
-    '''
+    """
 
     if G.ndim == 2:
         # Single timepoint, just call bct
@@ -1354,7 +1354,7 @@ def eigenvector_centrality_und(G: np.ndarray) -> np.ndarray:
 
 def pagerank_centrality(G: np.ndarray,
                         d: float = 0.85) -> np.ndarray:
-    '''
+    """
     This is a wrapper function for the `pagerank_centrality()` function
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
 
@@ -1381,7 +1381,7 @@ def pagerank_centrality(G: np.ndarray,
     -----
     - This function does not currently support the `falff` parameter from bctpy.
     - If G is 3D, each time slice is processed independently.
-    '''
+    """
 
     if G.ndim == 2:
         # Single timepoint, just call bct
@@ -1403,7 +1403,7 @@ def pagerank_centrality(G: np.ndarray,
 def participation_coef(G: np.ndarray,
                        ci: Literal["louvain"] | np.ndarray | list = "louvain",
                        degree: Literal["undirected", "in", "out"] = "undirected") -> np.ndarray:
-    '''
+    """
     This is a wrapper function for the `participation_coef` and `participation_coef_sparse`
     functions of the bctpy toolbox: https://github.com/aestrivex/bctpy.
 
@@ -1432,7 +1432,7 @@ def participation_coef(G: np.ndarray,
         Participation coefficient vector. 
         If G is 2D, the output is Nx1.
         If G is 3D, the output is NxT.
-    '''
+    """
 
     def _compute_communities(G2D):
         if isinstance(ci, str) and ci.lower() == "louvain":
@@ -1468,7 +1468,7 @@ def participation_coef(G: np.ndarray,
 
 def participation_coef_sign(G: np.ndarray,
                             ci: Literal["louvain"] = "louvain") -> tuple[np.ndarray, np.ndarray]:
-    '''
+    """
     This is a wrapper function for the `participation_coef_sign()` function
     of the bctpy toolbox: https://github.com/aestrivex/bctpy.
 
@@ -1491,7 +1491,7 @@ def participation_coef_sign(G: np.ndarray,
         - `Pneg`: Participation coefficient from negative weights.
         
         If G is 2D, each is Nx1. If G is 3D, each is NxT.
-    '''
+    """
 
     def _compute_communities(G2D):
         if isinstance(ci, str) and ci.lower() == "louvain":

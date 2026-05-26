@@ -1,5 +1,5 @@
 <div style="padding-top:1em; padding-bottom: 0.5em;">
-<img src="src/comet/data/img/logo.svg" width =130 align="right" />
+<img src="src/comet/data/img/logo.svg" width =130 align="right" alt="logo"/>
 </div>
 
 # Comet - A toolbox for dynamic functional connectivity and multiverse analysis
@@ -13,7 +13,6 @@ Please refer to the **[documentation](https://comet-toolbox.readthedocs.io/en/la
 
 > [!NOTE]
 > This package is under active development. Please check regularly for new releases. If you have questions, suggestions, find a bug, or would like to contribute, feel free to open an issue on GitHub or contact us via the email address listed in the [`pyproject.toml`](https://github.com/mibur1/dfc-multiverse/blob/main/pyproject.toml).
-
 
 ### Installation and usage
 
@@ -68,7 +67,7 @@ A comprehensive set of usage examples are provided in the **[documentation](http
 
 If you use Comet in your work, please cite the following paper:
 
-> Burkhardt, M., & Gießing, C. (2026). The Comet Toolbox: Improving Robustness in Network Neuroscience Through Multiverse Analysis. Imaging Neuroscience. https://doi.org/10.1162/IMAG.a.1122
+> Burkhardt, M., & Gießing, C. (2026). The Comet Toolbox: Improving Robustness in Network Neuroscience Through Multiverse Analysis. Imaging Neuroscience. <https://doi.org/10.1162/IMAG.a.1122>
 
 ```
 @article{Burkhardt2026,
