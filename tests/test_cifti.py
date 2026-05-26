@@ -35,7 +35,8 @@ def _n_cortical(atlas, resolution):
 
 
 def _cortical_filename(atlas, resolution, networks, kong):
-    """Published dlabel that supplies the cortical parcels for an atlas.
+    """
+    Published dlabel that supplies the cortical parcels for an atlas.
 
     Schaefer/Yan ship cortical-only files. Glasser/Gordon are only published as Tian-combined
     files, so the (scale-invariant) S1 file is used and its leading 16 Tian columns are dropped.
@@ -57,7 +58,8 @@ def _gordon_tian_filename(subcortical):
 
 
 def _cases():
-    """Every valid atlas/parameter combination after the cortical+subcortical refactor.
+    """
+    Every valid atlas/parameter combination after the cortical+subcortical refactor.
 
     Every atlas works both cortical-only (subcortical=None) and combined with any Tian scale.
     Resolution/networks only matter for Schaefer and Yan; kong only for Schaefer (and forces
@@ -102,7 +104,8 @@ def _wb_parcellate(wb, cifti_file, atlas_filename, out_path):
 
 
 def _expected(wb, cifti_file, atlas, resolution, networks, subcortical, kong, tmp_path):
-    """Reference parcellation assembled from published component files via wb_command.
+    """
+    Reference parcellation assembled from published component files via wb_command.
 
     Mirrors the runtime assembly independently: cortex from the cortical source file and,
     when requested, the Tian subcortex from the Gordon+Tian file placed first (matching the
