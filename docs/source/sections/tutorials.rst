@@ -9,7 +9,8 @@ The following notebooks provide examples of how to use the Comet library for var
 
 .. note::
 
-    This page is actively being updated. Additional tutorials will be added over time.
+    This page is actively being updated and more tutorials will be added over time. Some features listed here might occasionally not
+    yet be available on PyPI distributions. You can install the latest development version from GitHub to access all features.
 
 
 Dynamic Functional Connectivity (dFC)
