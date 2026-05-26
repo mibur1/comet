@@ -85,15 +85,6 @@ Usage Examples
    notebooks/example_mv_fmri_sim
 
 
-Multiverse Integration
-^^^^^^^^^^^^^^^^^^^^^^
-
-.. toctree::
-   :maxdepth: 1
-
-   notebooks/example_mv_integration
-
-
 Graphical User Interface
 ------------------------
 
