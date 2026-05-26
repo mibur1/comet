@@ -93,6 +93,8 @@ def load_example(fname="time_series"):
         - 'time_series':    Parcellated BOLD time series data (default)
         - 'simulation':     Simulated time series data for the tutorial
         - 'hurricane':      Hurricane data from https://osf.io/9rvps/ (cleaned columns)
+        - 'cantone':        Data as used in Cantone & Tomaselli (2024): https://doi.org/10.1007/s11634-024-00610-9
+                            Downloaded from Del Giudice and Gangestad (2021): https://doi.org/10.6084/m9.figshare.12089736
 
     Returns
     -------
@@ -104,6 +106,7 @@ def load_example(fname="time_series"):
         "time_series": "time_series.txt",
         "simulation": "simulation.mat",
         "hurricane": "hurricane.tsv",
+        "cantone": "cantone.csv",
     }
 
     if fname not in files:
@@ -117,6 +120,8 @@ def load_example(fname="time_series"):
             data = mat73.loadmat(path)
         elif fname.endswith(".tsv"):
             data = pd.read_csv(path, sep="\t")
+        elif fname.endswith(".csv"):
+            data = pd.read_csv(path)
         else:
             raise ValueError("Unsupported file type.")
 
