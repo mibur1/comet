@@ -46,6 +46,7 @@ Graph Analysis
    notebooks/example_graph
    notebooks/example_graph_benchmark
 
+
 CIFTI Tools
 -----------
 
@@ -53,6 +54,7 @@ CIFTI Tools
    :maxdepth: 1
 
    notebooks/example_cifti
+
 
 Multiverse Analysis
 -------------------
@@ -68,9 +70,10 @@ General Introduction
    notebooks/example_mv_plot
    notebooks/example_mv_structure
    notebooks/example_mv_recipes
+   notebooks/example_mv_hpc
 
-Applications
-^^^^^^^^^^^^
+Usage Examples
+^^^^^^^^^^^^^^
 
 .. toctree::
    :maxdepth: 1
@@ -79,6 +82,16 @@ Applications
    notebooks/example_mv_hurricane
    notebooks/example_mv_abide
    notebooks/example_mv_fmri_sim
+
+
+Multiverse Integration
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/example_mv_integration
+
 
 Graphical User Interface
 ------------------------
