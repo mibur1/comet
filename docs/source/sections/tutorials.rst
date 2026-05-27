@@ -70,8 +70,10 @@ General Introduction
    notebooks/example_mv_load
    notebooks/example_mv_plot
    notebooks/example_mv_structure
+   notebooks/example_mv_integration
    notebooks/example_mv_recipes
    notebooks/example_mv_hpc
+
 
 Usage Examples
 ^^^^^^^^^^^^^^
