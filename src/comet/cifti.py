@@ -406,6 +406,8 @@ def surface_plot(node_values : np.ndarray|None=None,
                  cmap: str="viridis", 
                  border_color: None|str=None, 
                  border_width: int=5,
+                 surface_color: str="white",
+                 surface_alpha: float=1.0,
                  distance: float=400.0, 
                  size : list[int]|None=None,
                  labelsize : int=18,
@@ -458,6 +460,11 @@ def surface_plot(node_values : np.ndarray|None=None,
     border_line_decimate : int
         Keep every Nth point along each border polyline before smoothing.
         Use 1 to keep all points. Only used when ``border_mode="lines"``.
+    surface_color : str
+        Colour of the surface where no data is shown (medial wall, parcels with value 0 or NaN).
+    surface_alpha : float
+        Opacity of that surface (0-1). Below 1 the data parcels are drawn as a separate opaque actor on
+        top of the translucent surface (depth peeling), so parcels on the far side shine through.
     distance : float
         Camera distance.
     size : tuple[int, int] or None
@@ -496,13 +503,14 @@ def surface_plot(node_values : np.ndarray|None=None,
     panels = [(h, v) for h in hemi_order for v in view_names]  # list of (hemisphere, view) pairs
     
     # Define default camera positions
+    # (axis, side the camera is placed on, up vector) for the LEFT hemisphere; lateral/medial flip for the right
     base_cams = {
-        "lateral":   ("x", +1, (0, 0, 1)),
-        "medial":    ("x", -1, (0, 0, 1)),
-        "anterior":  ("y", -1, (0, 0, 1)),
-        "posterior": ("y", +1, (0, 0, 1)),
-        "superior":  ("z", -1, (0, 1, 0)),
-        "inferior":  ("z", +1, (0, 1, 0))
+        "lateral":   ("x", -1, (0, 0, 1)),
+        "medial":    ("x", +1, (0, 0, 1)),
+        "anterior":  ("y", +1, (0, 0, 1)),
+        "posterior": ("y", -1, (0, 0, 1)),
+        "superior":  ("z", +1, (0, 1, 0)),
+        "inferior":  ("z", -1, (0, 1, 0))
     }
 
     # Check validity of views
@@ -591,7 +599,12 @@ def surface_plot(node_values : np.ndarray|None=None,
     pv.global_theme.font.family = "times"
     pl = pv.Plotter(shape=plot_shape, window_size=size, title="Comet Toolbox Surface Viewer", border=False, line_smoothing=True,
                     notebook=_in_notebook() and not interactive, off_screen=not interactive, row_weights=row_weights, col_weights=col_weights, groups=groups)
-    pl.enable_anti_aliasing("msaa")
+    if surface_alpha < 1.0:
+        # Translucency needs depth peeling, which needs a non-multisampled framebuffer (so no MSAA)
+        pl.ren_win.SetMultiSamples(0)
+        pl.ren_win.SetAlphaBitPlanes(True)
+    else:
+        pl.enable_anti_aliasing("msaa")
 
     # Loop through panels and plot each view
     for i, (h, v) in enumerate(panels):
@@ -607,9 +620,11 @@ def surface_plot(node_values : np.ndarray|None=None,
         # Plot the mesh
         pl.subplot(row, col)
         pl.add_text(f"{h} {v}", font_size=int(labelsize*0.7))
+        if surface_alpha < 1.0:
+            pl.enable_depth_peeling(number_of_peels=12, occlusion_ratio=0.0)
 
         if node_values is None or vertex_labels is None:
-            pl.add_mesh(mesh, color="lightgray", smooth_shading=True)
+            pl.add_mesh(mesh, color="lightgray", opacity=surface_alpha, smooth_shading=True)
             colorbar_mapper = None
         else:
             values = scalars[h].copy()
@@ -620,7 +635,7 @@ def surface_plot(node_values : np.ndarray|None=None,
             values[zero_mask] = np.nan  # treat zeros as NaN
 
             # Plot data to the surface
-            mesh_kwargs = dict(scalars=values, clim=clim, nan_color="white", nan_opacity=1.0,
+            mesh_kwargs = dict(scalars=values, clim=clim, nan_color=surface_color, nan_opacity=1.0,
                                show_scalar_bar=False, interpolate_before_map=False, smooth_shading=True)
             
             if discrete_values is not None:
@@ -637,7 +652,20 @@ def surface_plot(node_values : np.ndarray|None=None,
             else:
                 mesh_kwargs["cmap"] = cmap
 
-            actor = pl.add_mesh(mesh, **mesh_kwargs)
+            if surface_alpha < 1.0:
+                # Two actors: one actor cannot mix opacities per vertex. A triangle counts as data when all
+                # three vertices carry a value, so no NaN colour bleeds into the data actor.
+                faces = mesh.faces.reshape(-1, 4)[:, 1:]
+                is_data = np.all(~np.isnan(values)[faces], axis=1)
+                carrier = mesh.copy(deep=False)
+                carrier.point_data["values"] = values
+                data_mesh = carrier.extract_cells(np.flatnonzero(is_data)).extract_surface(algorithm="dataset_surface")
+                surf_mesh = carrier.extract_cells(np.flatnonzero(~is_data)).extract_surface(algorithm="dataset_surface")
+                pl.add_mesh(surf_mesh, color=surface_color, opacity=surface_alpha, smooth_shading=True, show_scalar_bar=False)
+                mesh_kwargs["scalars"] = "values"
+                actor = pl.add_mesh(data_mesh, **mesh_kwargs)
+            else:
+                actor = pl.add_mesh(mesh, **mesh_kwargs)
             colorbar_mapper = actor.mapper
 
             # Draw parcel outlines
@@ -738,13 +766,14 @@ def subcortical_plot(node_values: np.ndarray | list[float] | None = None,
         values = values[:n_sub]
 
     panels = list(view_names)
+    # (axis, side the camera is placed on, up vector); lateral = seen from the left, medial = from the right
     base_cams = {
-        "lateral":   ("x", +1, (0, 0, 1)),
-        "medial":    ("x", -1, (0, 0, 1)),
-        "anterior":  ("y", -1, (0, 0, 1)),
-        "posterior": ("y", +1, (0, 0, 1)),
-        "superior":  ("z", -1, (0, 1, 0)),
-        "inferior":  ("z", +1, (0, 1, 0))
+        "lateral":   ("x", -1, (0, 0, 1)),
+        "medial":    ("x", +1, (0, 0, 1)),
+        "anterior":  ("y", +1, (0, 0, 1)),
+        "posterior": ("y", -1, (0, 0, 1)),
+        "superior":  ("z", +1, (0, 1, 0)),
+        "inferior":  ("z", -1, (0, 1, 0))
     }
     unknown_views = sorted({v for v in panels if v not in base_cams})
     if unknown_views:
@@ -788,7 +817,13 @@ def subcortical_plot(node_values: np.ndarray | list[float] | None = None,
     pl = pv.Plotter(shape=plot_shape, window_size=size, title=f"Comet Toolbox Tian {scale} Viewer", border=False,
                     notebook=_in_notebook() and not interactive, off_screen=not interactive,
                     row_weights=row_weights, col_weights=col_weights, groups=groups)
-    pl.enable_anti_aliasing("msaa")
+    translucent = surface_alpha < 1.0 or nan_alpha < 1.0
+    if translucent:
+        # Translucency needs depth peeling, which needs a non-multisampled framebuffer (so no MSAA)
+        pl.ren_win.SetMultiSamples(0)
+        pl.ren_win.SetAlphaBitPlanes(True)
+    else:
+        pl.enable_anti_aliasing("msaa")
 
     colorbar_mapper = None
     axis_idx = {"x": 0, "y": 1, "z": 2}
@@ -803,6 +838,8 @@ def subcortical_plot(node_values: np.ndarray | list[float] | None = None,
 
         pl.subplot(row, col)
         pl.add_text(view_name, font_size=int(labelsize * 0.7))
+        if translucent:
+            pl.enable_depth_peeling(number_of_peels=12, occlusion_ratio=0.0)
 
         for mesh in context_meshes.values():
             pl.add_mesh(mesh, color=surface_color, opacity=surface_alpha, show_scalar_bar=False,
@@ -950,7 +987,10 @@ def _get_subcortical(scale: str, smooth_iter: int = 20, smooth_relaxation: float
             with open(txt_path, "r", encoding="utf-8", errors="ignore") as f:
                 for line in f:
                     parts = line.replace("\t", " ").split()
-                    if len(parts) < 2:
+                    if not parts:
+                        continue
+                    if len(parts) == 1:  # Tian label files: one name per line, the id is the line number
+                        labels[len(labels) + 1] = parts[0]
                         continue
                     try:
                         labels[int(parts[0])] = parts[1]
