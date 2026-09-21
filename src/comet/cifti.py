@@ -13,6 +13,127 @@ from matplotlib.colors import ListedColormap
 nib.imageglobals.logger.setLevel(40)
 _DISCRETE_CMAP_REF_MAX: dict[str, int] = {}
 
+_SHADING_PRESETS: dict[str, dict] = {
+    "default": {},                                                                    # pyvista defaults
+    "matte":   dict(lighting=True, ambient=0.65, diffuse=0.4, specular=0.0, specular_power=15),
+    "glossy":  dict(lighting=True, ambient=0.3, diffuse=0.7, specular=0.3, specular_power=30),
+    "flat":    dict(lighting=False),
+}
+_SHARPEN_CACHE: dict[tuple, tuple] = {}
+
+
+def _shading(style: str) -> dict:
+    if style not in _SHADING_PRESETS:
+        raise ValueError(f"Unknown style '{style}'. Available: {list(_SHADING_PRESETS)}")
+    return dict(_SHADING_PRESETS[style])
+
+
+def _set_camera(pl, center, axis: str, sign: int, up, projection: str, distance: float, zoom: float):
+    """Place the camera of the active subplot on the given side of ``center``."""
+    axis_idx = {"x": 0, "y": 1, "z": 2}
+    cam_pos = list(np.asarray(center, dtype=float))
+    cam_pos[axis_idx[axis]] += sign * distance
+    pl.camera_position = [tuple(cam_pos), tuple(np.asarray(center, dtype=float)), up]
+    if projection == "parallel":
+        pl.camera.parallel_projection = True
+        pl.reset_camera()            # fit everything in the subplot, keeping the viewing direction
+        pl.camera.zoom(zoom)
+    elif projection != "perspective":
+        raise ValueError("projection must be 'parallel' or 'perspective'.")
+
+
+def _crop_to_content(img: np.ndarray, pad: int = 8) -> np.ndarray:
+    """Crop a screenshot to its content (alpha > 0 for RGBA, non-white for RGB)."""
+    mask = img[..., 3] > 0 if img.shape[-1] == 4 else np.any(img[..., :3] < 250, axis=-1)
+    if not mask.any():
+        return img
+    ys, xs = np.nonzero(mask)
+    y0, y1 = max(ys.min() - pad, 0), min(ys.max() + pad + 1, img.shape[0])
+    x0, x1 = max(xs.min() - pad, 0), min(xs.max() + pad + 1, img.shape[1])
+    return img[y0:y1, x0:x1]
+
+
+def _finish_plot(pl, interactive: bool, fname: str | None, transparent: bool, scale: int, crop: bool,
+                 return_array: bool):
+    """Show, save and/or return the rendered figure (shared by surface_plot and subcortical_plot)."""
+    if interactive:
+        pl.show(auto_close=False)
+    elif not return_array:           # a returned array is meant to be composed by the caller
+        if _in_notebook():
+            pl.show(jupyter_backend="static", auto_close=False)
+        else:
+            pl.show(auto_close=False)
+
+    img = None
+    if fname is not None and fname.endswith(("svg", "pdf", "eps", "ps")):
+        if transparent:
+            print("Warning: transparent backgrounds are not supported for vectorised output, saving opaque.")
+        pl.save_graphic(fname, raster=False)
+    elif fname is not None or return_array:
+        img = pl.screenshot(None, transparent_background=transparent, return_img=True, scale=scale)
+        if crop:
+            img = _crop_to_content(img)
+        if fname is not None:
+            from PIL import Image
+            Image.fromarray(img).save(fname)
+    pl.close()
+    return img if return_array else None
+
+
+def _sharpen_parcels(mesh: pv.PolyData, labels: np.ndarray, levels: int = 2, smooth_iter: int = 4):
+    """Subdivide a hemisphere mesh and relabel the finer vertices from neighbourhood-smoothed parcel
+    masks, so that parcel borders become smooth curves instead of vertex-level stair-steps.
+
+    Returns the subdivided mesh and an integer label per new vertex (0 = medial wall / background).
+    The masks are kept sparse, so this works for any number of parcels.
+    """
+    import scipy.sparse as sp
+    pts = np.asarray(mesh.points, dtype=np.float64)
+    faces = mesh.faces.reshape(-1, 4)[:, 1:].astype(np.int64)
+    labels = np.asarray(labels, dtype=np.int64)
+    n, n_lab = pts.shape[0], int(labels.max()) + 1
+    masks = sp.csr_matrix((np.ones(n), (np.arange(n), labels)), shape=(n, n_lab))
+
+    # neighbourhood averaging of the one-hot parcel masks on the original mesh
+    i = np.concatenate([faces[:, 0], faces[:, 1], faces[:, 2], faces[:, 1], faces[:, 2], faces[:, 0]])
+    j = np.concatenate([faces[:, 1], faces[:, 2], faces[:, 0], faces[:, 0], faces[:, 1], faces[:, 2]])
+    adj = sp.csr_matrix((np.ones(i.size), (i, j)), shape=(n, n))
+    adj.data[:] = 1.0
+    adj = adj + sp.eye(n, format="csr")
+    weights = sp.diags(1.0 / np.asarray(adj.sum(axis=1)).ravel()) @ adj
+    for _ in range(smooth_iter):
+        masks = weights @ masks
+
+    # linear subdivision: every new vertex is an edge midpoint whose mask is the mean of its endpoints
+    for _ in range(levels):
+        edges = np.sort(np.vstack([faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]]), axis=1)
+        keys, inv = np.unique(edges[:, 0] * n + edges[:, 1], return_inverse=True)   # 1-D unique is much faster
+        edges = np.column_stack([keys // n, keys % n])
+        m_ab, m_bc, m_ca = np.asarray(inv).ravel().reshape(3, -1) + n
+        a, b, c = faces[:, 0], faces[:, 1], faces[:, 2]
+        faces = np.vstack([np.column_stack([a, m_ab, m_ca]), np.column_stack([b, m_bc, m_ab]),
+                           np.column_stack([c, m_ca, m_bc]), np.column_stack([m_ab, m_bc, m_ca])])
+        pts = np.vstack([pts, (pts[edges[:, 0]] + pts[edges[:, 1]]) / 2.0])
+        masks = sp.vstack([masks, (masks[edges[:, 0]] + masks[edges[:, 1]]) * 0.5]).tocsr()
+        n = pts.shape[0]
+
+    new_labels = np.asarray(masks.argmax(axis=1)).ravel().astype(np.int64)
+    sub = pv.PolyData(pts, np.column_stack([np.full(faces.shape[0], 3, dtype=np.int64), faces]).ravel())
+    return sub, new_labels
+
+
+def _sharpen_parcels_cached(surface: str, hemi: str, mesh: pv.PolyData, labels: np.ndarray):
+    """_sharpen_parcels with an in-memory cache keyed by surface, hemisphere and label content.
+    The cache holds plain arrays (a cached PolyData would be torn down after VTK at interpreter exit)."""
+    import hashlib
+    key = (surface, hemi, hashlib.sha1(np.ascontiguousarray(labels).tobytes()).hexdigest())
+    if key not in _SHARPEN_CACHE:
+        sub, sub_labels = _sharpen_parcels(mesh, labels)
+        _SHARPEN_CACHE[key] = (np.asarray(sub.points), np.asarray(sub.faces), sub_labels)
+    pts, faces, sub_labels = _SHARPEN_CACHE[key]
+    return pv.PolyData(pts.copy(), faces.copy()), sub_labels
+
+
 # Parcellation
 def parcellate(dtseries :str|np.ndarray|nib.cifti2.cifti2.Cifti2Image|None=None, 
                atlas         : str="schaefer", 
@@ -400,22 +521,32 @@ def surface_plot(node_values : np.ndarray|None=None,
                  vertex_labels: np.ndarray|None=None, 
                  hemi: str="both", 
                  surface: str="inflated", 
-                 view_names: tuple[str, str]=("medial", "lateral"), 
+                 anatomical_extent: bool=True,
+                 view_names: tuple[str, ...]=("lateral", "medial"), 
                  ncols: int|None=None, 
                  colwise: bool=True, 
                  cmap: str="viridis", 
+                 clim: tuple[float, float]|None=None,
                  border_color: None|str=None, 
                  border_width: int=5,
                  surface_color: str="white",
                  surface_alpha: float=1.0,
+                 sharpen: bool=True,
+                 style: str="matte",
+                 projection: str="parallel",
+                 zoom: float=1.3,
                  distance: float=400.0, 
+                 titles: bool=True,
                  size : list[int]|None=None,
                  labelsize : int=18,
                  colorbar: None|str="bottom",
                  colorbar_label : str|None=None,
                  interactive : bool=True,
                  fname : str|None=None,
-                 transparent : bool=False):
+                 transparent : bool=False,
+                 scale: int=1,
+                 crop: bool=False,
+                 return_array: bool=False):
     """
     Plot cortical hemispheres with optional parcel border overlays.
 
@@ -435,6 +566,9 @@ def surface_plot(node_values : np.ndarray|None=None,
         - "very_inflated"
         - "super_inflated"
         - "sphere"
+    anatomical_extent : bool
+        Fit inflated surfaces to the anatomical (midthickness_mni) size and position, default True.
+        The raw inflated surfaces are ~1.4x larger and centred on the midline.
     view_names : tuple containing one or multiple strings
         Views to render per hemisphere. Options are:  
         - "lateral"
@@ -449,6 +583,9 @@ def surface_plot(node_values : np.ndarray|None=None,
         If True (default), fill subplots column-wise, else fill row-wise.
     cmap : str
         Colormap for node values.
+    clim : tuple or None
+        Colour limits (min, max). Default is the data range. For integer maps (e.g. network ids) pass
+        the full id range, e.g. ``clim=(1, 7)``, so that a map containing a single id keeps its colour.
     border_color : str or None
         Border color. If None, no border overlay is added.
     border_mode : {"lines", "mask"}
@@ -465,8 +602,20 @@ def surface_plot(node_values : np.ndarray|None=None,
     surface_alpha : float
         Opacity of that surface (0-1). Below 1 the data parcels are drawn as a separate opaque actor on
         top of the translucent surface (depth peeling), so parcels on the far side shine through.
+    sharpen : bool
+        Subdivide the surface and smooth the parcel borders (default True). Otherwise the borders
+        follow the 32k vertices and look jagged.
+    style : {"matte", "default", "glossy", "flat"}
+        Lighting preset. "matte" (default) is soft without highlights, "default" is pyvista's lighting.
+    projection : {"parallel", "perspective"}
+        "parallel" (default) fits every panel to the hemisphere without perspective distortion.
+        "perspective" places the camera at ``distance``.
+    zoom : float
+        Zoom factor for the parallel projection (> 1 zooms in).
     distance : float
-        Camera distance.
+        Camera distance (perspective projection only).
+    titles : bool
+        Write "<hemisphere> <view>" into every panel (default True). Set False for clean panels.
     size : tuple[int, int] or None
         Plotter window size.
     colorbar : {"bottom", "right", None}
@@ -483,6 +632,18 @@ def surface_plot(node_values : np.ndarray|None=None,
     transparent : bool
         Save the plot with a transparent background. Raster formats only, as the vectorised
         export has no transparency support. Default is False.
+    scale : int
+        Resolution multiplier for saved and returned raster images.
+    crop : bool
+        Crop saved and returned raster images to their content.
+    return_array : bool
+        Return the rendered image as an RGB(A) uint8 array instead of showing it, e.g. to compose
+        several panels in matplotlib.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        The image when ``return_array=True``, else None.
     """
     # Input validation / normalization
     if node_values is None:
@@ -498,7 +659,7 @@ def surface_plot(node_values : np.ndarray|None=None,
             raise ValueError(f"vertex_labels must have length 64984. Got {vertex_labels.size}.")
 
     # Get surface meshes and desired views
-    meshes = _get_surface(surface=surface)  # get the surface mesh(es)
+    meshes = _get_surface(surface=surface, anatomical_extent=anatomical_extent)  # get the surface mesh(es)
     hemi_order = [hemi] if hemi in ("left", "right") else ["left", "right"] # which hemispheres to plot
     panels = [(h, v) for h in hemi_order for v in view_names]  # list of (hemisphere, view) pairs
     
@@ -529,26 +690,31 @@ def surface_plot(node_values : np.ndarray|None=None,
     if colwise:
         ncols = int(math.ceil(n / nrows)) # guarantee enough columns
     
-    axis_idx = {"x": 0, "y": 1, "z": 2}
-    
+    # Parcel labels per hemisphere, optionally on a subdivided mesh with smoothed borders
+    hemi_labels = {}
+    if vertex_labels is not None:
+        hemi_labels = {"left": np.asarray(vertex_labels[:32492]), "right": np.asarray(vertex_labels[32492:])}
+        if sharpen:
+            for h in hemi_order:
+                meshes[h], hemi_labels[h] = _sharpen_parcels_cached(surface, h, meshes[h], hemi_labels[h])
+
     # Build per-vertex arrays for each hemisphere
     scalars = {}
 
     if node_values is not None and vertex_labels is not None:
         def _map_to_vertices(parc):
-            out = np.full(32492, np.nan, dtype=float)
+            out = np.full(parc.size, np.nan, dtype=float)
             mask = (parc > 0) & (parc <= node_values.size)
             out[mask] = node_values[parc[mask] - 1]  # labels are 1-based
             return out
 
-        lh_parc = vertex_labels[:32492]
-        rh_parc = vertex_labels[32492:]
-        scalars["left"] = _map_to_vertices(lh_parc)
-        scalars["right"] = _map_to_vertices(rh_parc)
+        scalars["left"] = _map_to_vertices(hemi_labels["left"])
+        scalars["right"] = _map_to_vertices(hemi_labels["right"])
  
     # Use one shared colour scale across all plotted hemispheres
     vals_list = [scalars[h][~np.isnan(scalars[h])] for h in scalars if h in meshes]
     vals_list = [v for v in vals_list if v.size > 0]
+    user_clim = None if clim is None else (float(clim[0]), float(clim[1]))
     clim = None
     discrete_values = None
     discrete_nlabels = 4
@@ -573,8 +739,10 @@ def surface_plot(node_values : np.ndarray|None=None,
             # Update/lookup reference max ID for this cmap across calls.
             local_max = int(np.max(discrete_values))
             prev_max = _DISCRETE_CMAP_REF_MAX.get(cmap, 0)
-            discrete_ref_max = max(prev_max, local_max)
+            discrete_ref_max = max(prev_max, local_max, int(user_clim[1]) if user_clim else 0)
             _DISCRETE_CMAP_REF_MAX[cmap] = discrete_ref_max
+        if user_clim is not None:
+            clim = user_clim
 
     # Colorbar needs an extra grid slot
     show_shared_colorbar = (node_values is not None) and (clim is not None) and (colorbar is not None)
@@ -619,12 +787,14 @@ def surface_plot(node_values : np.ndarray|None=None,
 
         # Plot the mesh
         pl.subplot(row, col)
-        pl.add_text(f"{h} {v}", font_size=int(labelsize*0.7))
+        if titles:
+            pl.add_text(f"{h} {v}", font_size=int(labelsize*0.7))
         if surface_alpha < 1.0:
             pl.enable_depth_peeling(number_of_peels=12, occlusion_ratio=0.0)
+        shading = _shading(style)
 
         if node_values is None or vertex_labels is None:
-            pl.add_mesh(mesh, color="lightgray", opacity=surface_alpha, smooth_shading=True)
+            pl.add_mesh(mesh, color="lightgray", opacity=surface_alpha, smooth_shading=True, **shading)
             colorbar_mapper = None
         else:
             values = scalars[h].copy()
@@ -636,7 +806,8 @@ def surface_plot(node_values : np.ndarray|None=None,
 
             # Plot data to the surface
             mesh_kwargs = dict(scalars=values, clim=clim, nan_color=surface_color, nan_opacity=1.0,
-                               show_scalar_bar=False, interpolate_before_map=False, smooth_shading=True)
+                               show_scalar_bar=False, interpolate_before_map=False, smooth_shading=True,
+                               **shading)
             
             if discrete_values is not None:
                 # Keep ID->color mapping stable for single-ID subsets.
@@ -647,8 +818,9 @@ def surface_plot(node_values : np.ndarray|None=None,
                     mesh_kwargs["cmap"] = ListedColormap([cmap_ref(v - 1)])
                     mesh_kwargs["clim"] = (float(v) - 0.5, float(v) + 0.5)
                 else:
-                    # Exact number of used categories/colors in the scalar bar.
-                    mesh_kwargs["cmap"] = mpl_cm.get_cmap(cmap, int(discrete_values.size))
+                    # One colour per integer of the colour range (the used categories by default).
+                    n_col = int(round(clim[1] - clim[0])) + 1 if user_clim else int(discrete_values.size)
+                    mesh_kwargs["cmap"] = mpl_cm.get_cmap(cmap, max(n_col, 2))
             else:
                 mesh_kwargs["cmap"] = cmap
 
@@ -661,7 +833,8 @@ def surface_plot(node_values : np.ndarray|None=None,
                 carrier.point_data["values"] = values
                 data_mesh = carrier.extract_cells(np.flatnonzero(is_data)).extract_surface(algorithm="dataset_surface")
                 surf_mesh = carrier.extract_cells(np.flatnonzero(~is_data)).extract_surface(algorithm="dataset_surface")
-                pl.add_mesh(surf_mesh, color=surface_color, opacity=surface_alpha, smooth_shading=True, show_scalar_bar=False)
+                pl.add_mesh(surf_mesh, color=surface_color, opacity=surface_alpha, smooth_shading=True,
+                            show_scalar_bar=False, **shading)
                 mesh_kwargs["scalars"] = "values"
                 actor = pl.add_mesh(data_mesh, **mesh_kwargs)
             else:
@@ -670,15 +843,11 @@ def surface_plot(node_values : np.ndarray|None=None,
 
             # Draw parcel outlines
             if border_color is not None:
-                outline_scalars = vertex_labels[:32492] if h == "left" else vertex_labels[32492:]
-                border_lines = _parcel_border_lines(mesh, outline_scalars)
+                border_lines = _parcel_border_lines(mesh, hemi_labels[h])
                 pl.add_mesh(border_lines, color=border_color, line_width=border_width, 
                             render_lines_as_tubes=True, lighting=True, show_scalar_bar=False)
 
-        # Camera position
-        cam_pos = list(center)
-        cam_pos[axis_idx[axis]] += sign * distance
-        pl.camera_position = [tuple(cam_pos), center, up]
+        _set_camera(pl, center, axis, sign, up, projection, distance, zoom)
 
     # Plot the colorbar
     if show_shared_colorbar and colorbar_mapper is not None:
@@ -698,31 +867,13 @@ def surface_plot(node_values : np.ndarray|None=None,
             add_scalar_bar(title=colorbar_label, mapper=colorbar_mapper, vertical=True, width=0.7, height=0.25,
                            position_x=0.1, position_y=0.33, n_labels=n_labels, fmt=fmt, label_font_size=int(labelsize), title_font_size=int(labelsize*1.2))
 
-    # Show static/interactive figure
-    if interactive:
-        pl.show(auto_close=False)
-    else:
-        if _in_notebook():
-            pl.show(jupyter_backend="static")
-        else:
-            pl.show()
-
-    # Save the figure
-    if fname is not None:
-        if fname.endswith(("svg", "pdf", "eps", "ps")):
-            if transparent:
-                print("Warning: transparent backgrounds are not supported for vectorised output, saving opaque.")
-            pl.save_graphic(fname, raster=False)
-        elif fname.endswith(("png", "jpeg", "jpg", "bmp", "tif", "tiff")):
-            pl.screenshot(fname, transparent_background=transparent)
-    else:
-        pass
-   
-    return pl.close()
+    return _finish_plot(pl, interactive, fname, transparent, scale, crop, return_array)
 
 def subcortical_plot(node_values: np.ndarray | list[float] | None = None,
                      scale: str = "S1",
+                     hemi: str = "both",
                      surface: str | None = "inflated",
+                     anatomical_extent: bool = True,
                      view_names: tuple[str, ...] = ("lateral", "medial"),
                      ncols: int | None = None,
                      colwise: bool = True,
@@ -733,14 +884,21 @@ def subcortical_plot(node_values: np.ndarray | list[float] | None = None,
                      surface_alpha: float = 0.10,
                      smooth_iter: int = 20,
                      smooth_relaxation: float = 0.2,
+                     style: str = "matte",
+                     projection: str = "parallel",
+                     zoom: float = 1.3,
                      distance: float = 600.0,
+                     titles: bool = True,
                      size: list[int] | None = None,
                      labelsize: int = 18,
                      colorbar: None | str = "bottom",
                      colorbar_label: str | None = None,
                      interactive: bool = True,
                      fname: str | None = None,
-                     transparent: bool = False):
+                     transparent: bool = False,
+                     scale_factor: int = 1,
+                     crop: bool = False,
+                     return_array: bool = False):
     """
     Plot Tian subcortical structures for scale ``S1`` to ``S4``.
 
@@ -749,12 +907,23 @@ def subcortical_plot(node_values: np.ndarray | list[float] | None = None,
     The combined atlases place the subcortical parcels in the leading columns, and both the parcels
     and the meshes are ordered by Tian region id, so the i-th value maps to the i-th mesh.
 
+    ``anatomical_extent`` fits an inflated context surface to the anatomical size and position (see
+    ``surface_plot``), so the structures sit inside it where they belong.
+    ``hemi`` ("both", "left", "right") selects the structures and the context hemisphere to show;
+    lateral/medial views then follow that hemisphere. ``style``, ``projection``, ``zoom``, ``titles``,
+    ``scale_factor`` (image resolution), ``crop`` and ``return_array`` work as in ``surface_plot``.
+
     ``transparent=True`` saves the plot with a transparent background. Raster formats only,
     as the vectorised export has no transparency support.
     """
     meshes = _get_subcortical(scale=scale, smooth_iter=smooth_iter, smooth_relaxation=smooth_relaxation)
-    mesh_names = sorted(meshes)
-    n_sub = len(mesh_names)
+    all_names = sorted(meshes)
+    n_sub = len(all_names)
+    if hemi not in ("both", "left", "right"):
+        raise ValueError("hemi must be 'both', 'left' or 'right'.")
+    side_suffix = {"left": "-lh", "right": "-rh"}
+    mesh_names = [m for m in all_names if hemi == "both" or m.endswith(side_suffix[hemi])]
+    value_index = {m: j for j, m in enumerate(all_names)}
 
     values = None
     if node_values is not None:
@@ -811,7 +980,8 @@ def subcortical_plot(node_values: np.ndarray | list[float] | None = None,
     else:
         plot_shape = (panel_nrows, panel_ncols)
 
-    context_meshes = _get_surface(surface=surface) if surface is not None else {}
+    context_meshes = _get_surface(surface=surface, anatomical_extent=anatomical_extent) if surface is not None else {}
+    context_meshes = {k: v for k, v in context_meshes.items() if hemi == "both" or k == hemi}
 
     pv.global_theme.font.family = "times"
     pl = pv.Plotter(shape=plot_shape, window_size=size, title=f"Comet Toolbox Tian {scale} Viewer", border=False,
@@ -826,8 +996,8 @@ def subcortical_plot(node_values: np.ndarray | list[float] | None = None,
         pl.enable_anti_aliasing("msaa")
 
     colorbar_mapper = None
-    axis_idx = {"x": 0, "y": 1, "z": 2}
-    all_centers = [np.asarray(mesh.center) for mesh in meshes.values()]
+    shading = _shading(style)
+    all_centers = [np.asarray(meshes[m].center) for m in mesh_names]
     for mesh in context_meshes.values():
         all_centers.append(np.asarray(mesh.center))
     center = np.mean(np.vstack(all_centers), axis=0) if all_centers else np.zeros(3, dtype=float)
@@ -835,32 +1005,33 @@ def subcortical_plot(node_values: np.ndarray | list[float] | None = None,
     for i, view_name in enumerate(panels):
         row, col = (i % panel_nrows, i // panel_nrows) if colwise else (i // panel_ncols, i % panel_ncols)
         axis, sign, up = base_cams[view_name]
+        if hemi == "right" and view_name in ("lateral", "medial"):
+            sign *= -1
 
         pl.subplot(row, col)
-        pl.add_text(view_name, font_size=int(labelsize * 0.7))
+        if titles:
+            pl.add_text(view_name if hemi == "both" else f"{hemi} {view_name}", font_size=int(labelsize * 0.7))
         if translucent:
             pl.enable_depth_peeling(number_of_peels=12, occlusion_ratio=0.0)
 
         for mesh in context_meshes.values():
             pl.add_mesh(mesh, color=surface_color, opacity=surface_alpha, show_scalar_bar=False,
-                        smooth_shading=True)
+                        smooth_shading=True, **shading)
 
-        for j, name in enumerate(mesh_names):
+        for name in mesh_names:
             mesh = meshes[name]
             if values is None:
                 actor = pl.add_mesh(mesh, color=surface_color, opacity=1.0, show_scalar_bar=False,
-                                    smooth_shading=True)
+                                    smooth_shading=True, **shading)
             else:
-                val = float(values[j])
+                val = float(values[value_index[name]])
                 mesh["Data"] = np.full(mesh.n_points, val, dtype=float)
                 actor = pl.add_mesh(mesh, scalars="Data", cmap=cmap, clim=clim, nan_color=nan_color,
                                     opacity=1.0 if np.isfinite(val) else nan_alpha, show_scalar_bar=False,
-                                    smooth_shading=True)
+                                    smooth_shading=True, **shading)
             colorbar_mapper = actor.mapper
 
-        cam_pos = list(center)
-        cam_pos[axis_idx[axis]] += sign * distance
-        pl.camera_position = [tuple(cam_pos), tuple(center), up]
+        _set_camera(pl, center, axis, sign, up, projection, distance, zoom)
         pl.hide_axes()
 
     if show_shared_colorbar and colorbar_mapper is not None:
@@ -876,25 +1047,9 @@ def subcortical_plot(node_values: np.ndarray | list[float] | None = None,
                            position_x=0.1, position_y=0.33, n_labels=4, fmt="%.3g",
                            label_font_size=int(labelsize), title_font_size=int(labelsize * 1.2))
 
-    if interactive:
-        pl.show(auto_close=False)
-    else:
-        if _in_notebook():
-            pl.show(jupyter_backend="static")
-        else:
-            pl.show()
+    return _finish_plot(pl, interactive, fname, transparent, scale_factor, crop, return_array)
 
-    if fname is not None:
-        if fname.endswith(("svg", "pdf", "eps", "ps")):
-            if transparent:
-                print("Warning: transparent backgrounds are not supported for vectorised output, saving opaque.")
-            pl.save_graphic(fname, raster=False)
-        elif fname.endswith(("png", "jpeg", "jpg", "bmp", "tif", "tiff")):
-            pl.screenshot(fname, transparent_background=transparent)
-
-    return pl.close()
-
-def _get_surface(surface: str = "very_inflated") -> dict[str, pv.PolyData]:
+def _get_surface(surface: str = "very_inflated", anatomical_extent: bool = True) -> dict[str, pv.PolyData]:
     """
     Download (if needed) and load fs_LR 32k cortical surfaces
     from the CBIG template repository and return them as PyVista meshes.
@@ -909,6 +1064,10 @@ def _get_surface(surface: str = "very_inflated") -> dict[str, pv.PolyData]:
         - "very_inflated"
         - "super_inflated"
         - "sphere"
+    anatomical_extent : bool, default=True
+        The inflated surfaces come enlarged (~1.4x) and centred on the midline. If True, each inflated
+        hemisphere is fitted to the bounding box of its midthickness_mni counterpart, so that its size and
+        position stay anatomical relative to the other hemisphere and to subcortical meshes (MNI space).
 
     Returns
     -------
@@ -952,6 +1111,14 @@ def _get_surface(surface: str = "very_inflated") -> dict[str, pv.PolyData]:
 
     vertices, triangles = nib.load(rh_path).agg_data()
     meshes["right"] = pv.make_tri_mesh(vertices, triangles)
+
+    if anatomical_extent and surface in ("inflated", "very_inflated", "super_inflated"):
+        ref = _get_surface("midthickness_mni", anatomical_extent=False)
+        for h, m in meshes.items():
+            b = np.asarray(m.bounds, dtype=float).reshape(3, 2)
+            r = np.asarray(ref[h].bounds, dtype=float).reshape(3, 2)
+            scale = (r[:, 1] - r[:, 0]) / (b[:, 1] - b[:, 0])
+            m.points = (np.asarray(m.points, dtype=float) - b[:, 0]) * scale + r[:, 0]
 
     return meshes
 
