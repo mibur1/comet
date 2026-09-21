@@ -2,7 +2,7 @@
 
     <div style="display: flex; align-items: center;">
         <img src="_static/logo.svg" alt="logo" style="width: 100px; margin-right: 15px;">
-        <h1 style="margin: 0;">Comet: Multiverse analysis for neuroimaging</h1>
+        <h1 style="margin: 0;">The Comet Toolbox: Multiverse analysis for neuroimaging</h1>
     </div>
 
 .. raw:: html
