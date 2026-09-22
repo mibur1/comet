@@ -146,3 +146,22 @@ def test_small_world_propensity_bin(data):
     swp_bin_expected = data['swp_bin']
     swp_bin_actual = graph.small_world_propensity(W_bin)[0]
     assert np.allclose(swp_bin_actual, swp_bin_expected, atol=1e-2)
+
+def test_system_segregation():
+    # test case of the reference implementation (mychan24/system-segregation-and-graph-tools, test/testR.R)
+    m = np.array([[1, 4, 2, 2], [4, 1, 3, 2], [2, 3, 1, 8], [2, 2, 8, 1]], dtype=float)
+    S, W, B = graph.system_segregation(m, [1, 1, 2, 2], return_components=True)
+    assert np.allclose([S, W, B], [0.625, 6.0, 2.25])
+
+    # per system, string labels, single-node system -> NaN, and the pooled value is size-weighted
+    ci = np.array(["a", "a", "a", "b", "b", "c"])
+    G = np.where(ci[:, None] == ci[None, :], 1.0, 0.5)
+    np.fill_diagonal(G, 0)
+    S_sys = graph.system_segregation(G, ci, per_system=True)
+    assert np.allclose(S_sys[:2], [0.5, 0.5]) and np.isnan(S_sys[2])
+    assert np.isclose(graph.system_segregation(G, ci), 0.5)
+
+    # 3D input: one value per slice, scale invariant
+    G3 = np.stack([G, 2 * G], axis=-1)
+    assert np.allclose(graph.system_segregation(G3, ci), [0.5, 0.5])
+    assert graph.system_segregation(G3, ci, per_system=True).shape == (3, 2)

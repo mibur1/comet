@@ -958,6 +958,86 @@ def matching_ind_und(G: np.ndarray) -> np.ndarray:
     else:
         raise ValueError("Input must be a 2D or 3D matrix.")
 
+def system_segregation(G: np.ndarray,
+                       ci: np.ndarray | list,
+                       per_system: bool = False,
+                       return_components: bool = False) -> float | np.ndarray | tuple:
+    """
+    System segregation (Chan et al., 2014).
+
+    The relative difference between the mean connectivity within functional systems and the mean connectivity
+    between systems: (W - B) / W. Higher values indicate that nodes connect more strongly to their own system
+    than to other systems. The systems are a partition fixed in advance (e.g. the Yeo/Schaefer networks), not 
+    one estimated from G. The overall connectivity strength cancels in the ratio.
+
+    Vectorised port of the reference implementation: https://github.com/mychan24/system-segregation-and-graph-tools
+
+    Parameters
+    ----------
+    G : np.ndarray
+        2D (NxN) or 3D (NxNxT) undirected weighted connectivity matrix. The diagonal is ignored.;
+        A warning is raised if G contains negative weights.
+
+    ci : array-like
+        System label of every node (length N, integers or strings).
+
+    per_system : bool, optional
+        If True, one value per system (ordered as `np.unique(ci)`): the mean connectivity within that system
+        against the mean connectivity of its nodes to all other nodes. Default is False (whole network).
+
+    return_components : bool, optional
+        If True, the mean within-system (W) and between-system (B) connectivity are returned as well. Default is False.
+
+    Returns
+    -------
+    S : float or np.ndarray
+        System segregation. 2D G: a float, or an array with one value per system if per_system is True.
+        3D G: an array of T values, or an S x T array if per_system is True.
+
+    W, B : same shape as S
+        Mean within- and between-system connectivity, only if return_components is True.
+
+    References
+    ----------
+    Chan, M. Y., Park, D. C., Savalia, N. K., Petersen, S. E., & Wig, G. S. (2014). Decreased segregation of brain
+    systems across the healthy adult lifespan. PNAS, 111(46), E4997-E5006. DOI: https://doi.org/10.1073/pnas.1415122111
+    """
+    G = np.asarray(G, dtype=float)
+    ci = np.asarray(ci)
+
+    if G.ndim not in (2, 3) or G.shape[0] != G.shape[1]:
+        raise ValueError("Input must be a 2D (NxN) or 3D (NxNxT) matrix.")
+    if ci.ndim != 1 or len(ci) != G.shape[0]:
+        raise ValueError("ci must hold one system label per node.")
+    if np.any(G < 0):
+        warnings.warn("G contains negative weights. Chan et al. (2014) set negative correlations to zero, "
+                      "see handle_negative_weights(G, type='discard').")
+
+    n = G.shape[0]
+    A = (np.moveaxis(G, -1, 0) if G.ndim == 3 else G[None]).copy()     # T x N x N
+    A[:, np.arange(n), np.arange(n)] = 0                               # the diagonal is not an edge
+    P = (ci[:, None] == np.unique(ci)).astype(float)                   # N x S system membership
+    size = P.sum(0)
+
+    if len(size) < 2:
+        raise ValueError("At least two systems are needed.")
+
+    w_sum = np.einsum("tij,is,js->ts", A, P, P, optimize=True)         # edge weight within each system (T x S)
+    b_sum = A.sum(2) @ P - w_sum                                       # edge weight from each system to all other systems
+    w_n, b_n = size * (size - 1), size * (n - size)                    # number of those edges
+
+    if not per_system:
+        w_sum, b_sum, w_n, b_n = w_sum.sum(1), b_sum.sum(1), w_n.sum(), b_n.sum()
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        W, B = w_sum / w_n, b_sum / b_n
+        S = (W - B) / W
+
+    S, W, B = (x[0] if G.ndim == 2 else x.T for x in (S, W, B))       # float / (S,) for 2D, (T,) / (S x T) for 3D
+
+    return (S, W, B) if return_components else S
+
+
 @njit(fastmath=True, cache=True)
 def distance_wei(G: np.ndarray, inv: bool = False) -> np.ndarray:
     """
