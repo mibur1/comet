@@ -764,9 +764,13 @@ def surface_plot(node_values : np.ndarray|None=None,
         plot_shape = (panel_nrows, panel_ncols)
     
     # Plotting
+    if return_array:
+        interactive = False
+
     pv.global_theme.font.family = "times"
     pl = pv.Plotter(shape=plot_shape, window_size=size, title="Comet Toolbox Surface Viewer", border=False, line_smoothing=True,
                     notebook=_in_notebook() and not interactive, off_screen=not interactive, row_weights=row_weights, col_weights=col_weights, groups=groups)
+
     if surface_alpha < 1.0:
         # Translucency needs depth peeling, which needs a non-multisampled framebuffer (so no MSAA)
         pl.ren_win.SetMultiSamples(0)
