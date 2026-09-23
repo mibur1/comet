@@ -24,6 +24,46 @@ def test_handle_negative_weights():
     assert np.all(W_abs >= 0)
     assert np.array_equal(W_disc, W_expected_disc)
 
+def test_fisher_z():
+    x = np.random.randn(100, 10)
+    R = np.corrcoef(x, rowvar=False)
+    Z = graph.fisher_z(R)
+    off = ~np.eye(10, dtype=bool)
+    assert np.allclose(Z[off], np.arctanh(R[off]))
+    assert np.all(np.diag(Z) == 0)
+    assert np.all(np.diag(R) != 0) # input untouched
+
+    R3 = np.stack([R, R], axis=2)
+    assert np.allclose(graph.fisher_z(R3), np.stack([Z, Z], axis=2))
+
+    R_perfect = R.copy()
+    R_perfect[0, 1] = R_perfect[1, 0] = 1.0
+    with pytest.warns(UserWarning):
+        assert np.all(np.isfinite(graph.fisher_z(R_perfect)))
+
+    with pytest.raises(ValueError):
+        graph.fisher_z(R + 1.5)
+
+def test_preprocess(data):
+    W = data['W']
+    W_expected = graph.postproc(graph.threshold(graph.handle_negative_weights(W, type="absolute"), type="density", density=0.4))
+    W_actual = graph.preprocess(W, negative_weights="absolute", threshold_type="density", density=0.4)
+    assert np.array_equal(W_actual, W_expected)
+    assert np.array_equal(graph.preprocess(W, clean=False), W) # all steps off
+
+    x = np.random.randn(100, 10)
+    R = np.stack([np.corrcoef(x, rowvar=False)] * 3, axis=2)
+    R_expected = graph.postproc(graph.invert(graph.normalise(graph.threshold(graph.handle_negative_weights(
+        graph.fisher_z(R), type="discard"), type="absolute", threshold=0.05))))
+    R_actual = graph.preprocess(R, fisher=True, negative_weights="discard", threshold_type="absolute",
+                                threshold_value=0.05, scaling="normalise", distance="invert")
+    assert np.array_equal(R_actual, R_expected)
+
+    with pytest.raises(ValueError):
+        graph.preprocess(W, binary=True, scaling="normalise")
+    with pytest.raises(ValueError):
+        graph.preprocess(W, threshold_type="absolute")
+
 def test_threshold(data):
     W = data['W']
     W_abs_expected = data['W_abs']

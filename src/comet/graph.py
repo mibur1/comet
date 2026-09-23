@@ -48,6 +48,46 @@ def handle_negative_weights(G: np.ndarray,
         raise NotImplementedError("Options are: *absolute* or *discard*")
     return G
 
+def fisher_z(G: np.ndarray,
+             copy: bool = True) -> np.ndarray:
+    """
+    Fisher r-to-z transformation of correlation matrices.
+
+    Applies z = arctanh(r) element-wise. The diagonal (self-correlations of 1, which would map to infinity)
+    is set to 0. Off-diagonal values of +-1 are clipped to +-(1 - 1e-7) to keep the result finite.
+
+    Parameters
+    ----------
+    G : np.ndarray
+        2D (PxP) or 3D (PxPxT) correlation matrix with values in [-1, 1]
+
+    copy : bool, optional
+        if True, a copy of G is returned, otherwise G is modified in place
+        default is True
+
+    Returns
+    -------
+    G : np.ndarray
+        Fisher z-transformed matrix (same shape as input)
+    """
+    if copy:
+        G = G.copy()
+
+    if G.ndim not in (2, 3):
+        raise ValueError("G must be a 2D or 3D array.")
+
+    idx = np.arange(G.shape[0])
+    G[idx, idx, ...] = 0 # the diagonal is not an edge
+
+    if np.nanmax(np.abs(G)) > 1 + 1e-6:
+        raise ValueError("Values outside [-1, 1] found. fisher_z expects correlation coefficients.")
+
+    eps = 1e-7
+    if np.any(np.abs(G) >= 1 - eps):
+        warnings.warn("Correlations of +-1 were clipped to +-(1 - 1e-7) before the transform.")
+
+    return np.arctanh(np.clip(G, -1 + eps, 1 - eps))
+
 def threshold(G: np.ndarray,
               type: Literal["density", "absolute"] = "density",
               threshold: float = None,
@@ -417,7 +457,8 @@ def randomise(G: np.ndarray,
     else:
         raise ValueError("Input must be a 2D or 3D array.")
 
-def regular_matrix(G: np.ndarray, r: int) -> np.ndarray:
+def regular_matrix(G: np.ndarray, 
+                   r: int) -> np.ndarray:
     """
     Create a regular matrix.
 
@@ -513,6 +554,128 @@ def postproc(G: np.ndarray,
         return np.stack([_postproc(G[:, :, t]) for t in range(G.shape[2])], axis=2)
     else:
         raise ValueError("G must be a 2D or 3D array.")
+
+def preprocess(G: np.ndarray,
+               symmetric: bool = False,
+               fisher: bool = False,
+               negative_weights: Literal["keep", "absolute", "discard"] = "keep",
+               threshold_type: Literal["none", "density", "absolute"] = "none",
+               threshold_value: float = None,
+               density: float = 0.2,
+               binary: bool = False,
+               scaling: Literal["none", "normalise", "minmax"] = "none",
+               distance: Literal["none", "invert"] = "none",
+               clean: bool = True,
+               diag: float = 0,
+               copy: bool = True) -> np.ndarray:
+    """
+    Convenience function chaining all graph preprocessing steps in a fixed order:
+
+        symmetrise -> fisher z -> negative weights -> threshold -> binarise -> scaling -> distance -> postproc
+
+    Each step is only applied if its argument is set.
+
+    Parameters
+    ----------
+    G : np.ndarray
+        2D (PxP) or 3D (PxPxT) adjacency/connectivity matrix
+
+    symmetric : bool, optional
+        symmetrise the matrix first (see ``symmetrise``)
+        default is False
+
+    fisher : bool, optional
+        Fisher r-to-z transform (see ``fisher_z``)
+        default is False
+
+    negative_weights : string, optional
+        *keep*, *absolute* or *discard* (see ``handle_negative_weights``)
+        default is *keep*
+
+    threshold_type : string, optional
+        *none*, *density* or *absolute* (see ``threshold``)
+        default is *none*
+
+    threshold_value : float, optional
+        threshold value for absolute thresholding. If ``fisher`` is True, this is in z units, not r.
+        default is None
+
+    density : float, optional
+        proportion of strongest edges kept for density thresholding
+        default is 0.2
+
+    binary : bool, optional
+        binarise the matrix (see ``binarise``)
+        default is False
+
+    scaling : string, optional
+        *none*, *normalise* or *minmax* (see ``normalise`` and ``minmax_scale``)
+        default is *none*
+
+    distance : string, optional
+        *none* or *invert*, converts weights to connection lengths (see ``invert``)
+        default is *none*
+
+    clean : bool, optional
+        run ``postproc`` at the end (symmetry check, removal of NaNs and infinities, set diagonal)
+        default is True
+
+    diag : float, optional
+        diagonal value used by ``postproc``
+        default is 0
+
+    copy : bool, optional
+        if True, a copy of G is returned, otherwise G is modified in place
+        default is True
+
+    Returns
+    -------
+    G : np.ndarray
+        preprocessed adjacency/connectivity matrix (same shape as input)
+    """
+    if copy:
+        G = G.copy()
+
+    if binary and scaling != "none":
+        raise ValueError("Scaling a binarised matrix has no effect. Use either binary or scaling.")
+
+    if symmetric:
+        G = symmetrise(G, copy=False)
+
+    if fisher:
+        G = fisher_z(G, copy=False)
+
+    if negative_weights != "keep":
+        G = handle_negative_weights(G, type=negative_weights, copy=False)
+
+    if threshold_type == "absolute":
+        if threshold_value is None:
+            raise ValueError("threshold_value must be set for absolute thresholding.")
+        G = threshold(G, type="absolute", threshold=threshold_value, copy=False)
+    elif threshold_type == "density":
+        G = threshold(G, type="density", density=density, copy=False)
+    elif threshold_type != "none":
+        raise NotImplementedError("threshold_type must be *none*, *density* or *absolute*")
+
+    if binary:
+        G = binarise(G, copy=False)
+
+    if scaling == "normalise":
+        G = normalise(G, copy=False)
+    elif scaling == "minmax":
+        G = minmax_scale(G, copy=False)
+    elif scaling != "none":
+        raise NotImplementedError("scaling must be *none*, *normalise* or *minmax*")
+
+    if distance == "invert":
+        G = invert(G, copy=False)
+    elif distance != "none":
+        raise NotImplementedError("distance must be *none* or *invert*")
+
+    if clean:
+        G = postproc(G, diag=diag, copy=False)
+
+    return G
 
 
 """

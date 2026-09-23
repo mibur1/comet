@@ -282,6 +282,15 @@ class ParameterOptions:
         "density":              "Density of the network",
         "threshold":            "Connectivity threshold value",
         "diag":                 "Values for the main diagonal",
+        "symmetric":            "Symmetrise the matrix",
+        "fisher":               "Fisher z-transform (correlation matrices only)",
+        "negative_weights":     "Handling of negative weights",
+        "threshold_type":       "Type of thresholding",
+        "threshold_value":      "Threshold value for absolute thresholding (in z units if Fisher z-transformed)",
+        "binary":               "Binarise the matrix",
+        "scaling":              "Scaling of the connectivity values",
+        "distance":             "Convert weights to connection lengths",
+        "clean":                "Post-processing (symmetry check, remove NaN/inf, set diagonal)",
         "avdeg":                "Desired average degree of the backbone",
         "verbose":              "Print out edges while building the spanning tree",
         "d":                    "Damping factor",
@@ -325,6 +334,8 @@ class ParameterOptions:
     }
 
     GRAPH_OPTIONS = {
+        "preprocess":                   "PREP Full pipeline",
+        "fisher_z":                     "PREP Fisher z-transform",
         "handle_negative_weights":      "PREP Negative weights",
         "threshold":                    "PREP Threshold",
         "binarise":                     "PREP Binarise",
@@ -4637,7 +4648,7 @@ class App(QMainWindow):
                     # Float
                     elif param_type == float or param_type == Optional[float]:
                         param_widget = QDoubleSpinBox()
-                        if name == "threshold":
+                        if name in ("threshold", "threshold_value"):
                             param_widget.setValue(0.0)
                         else:
                             param_widget.setValue(param_default)
@@ -5410,7 +5421,7 @@ class App(QMainWindow):
                     # Float
                     elif param_type == float:
                         param_widget = QDoubleSpinBox()
-                        if name == "threshold":
+                        if name in ("threshold", "threshold_value"):
                             param_widget.setValue(0.0)
                         else:
                             param_widget.setValue(param_default)
