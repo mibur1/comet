@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import pickle
 import inspect
 import numpy as np
@@ -149,25 +150,48 @@ def load_testdata(data=None):
     
     return data
 
+# Set by Multiverse.run() for every universe subprocess
+_UNIVERSE_SCRIPT_ENV = "COMET_UNIVERSE_SCRIPT"
+
+def _read_summary_csv(path):
+    """
+    Read a multiverse_summary.csv. Only empty cells and "nan" are missing values (excluded
+    decisions), so that options such as "None" or "NA" stay strings.
+    """
+    return pd.read_csv(path, keep_default_na=False, na_values=["", "nan", "NaN"], encoding="utf-8")
+
+def _file_digest(path):
+    import hashlib
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
 def save_universe_results(data):
     """
-    This saves the results of a universe.
+    Save the results of a universe. Call this once at the end of the multiverse analysis template.
 
-    If it is a single value, it will be saved in the summary .csv file.
-    In any other case the results will be saved in a universe specific .pkl file.
+    The results are saved as scripts/temp/universe_<n>.pkl and combined into
+    results/multiverse_results.pkl once the multiverse has been run. The decisions of the
+    universe (from multiverse_summary.csv) are attached under the key ``"__decisions"``.
 
     Parameters
     ----------
-    data : any
-        Data to save as .pkl file
+    data : dict
+        Results of the universe, e.g. {"measure": value}. Values can be of any picklable type.
     """
 
     if not isinstance(data, dict):
         raise ValueError("Data must be povided as a dictionary.")
 
-    # Identify calling universe and paths
-    caller_stack = inspect.stack()
-    universe_fname = caller_stack[1].filename               # .../multiverse/scripts/universe_#.py
+    # Identify the universe script: set by Multiverse.run(), otherwise the script that was started
+    # directly (python universe_<n>.py), otherwise the caller of this function
+    universe_fname = os.environ.get(_UNIVERSE_SCRIPT_ENV)
+    if not universe_fname:
+        main_file = getattr(sys.modules.get("__main__"), "__file__", None)
+        if main_file and re.search(r'universe_(\d+)\.py$', os.path.basename(main_file)):
+            universe_fname = main_file
+        else:
+            universe_fname = inspect.currentframe().f_back.f_code.co_filename
+    universe_fname = os.path.abspath(universe_fname)        # .../multiverse/scripts/universe_#.py
     scripts_dir     = os.path.dirname(universe_fname)       # .../multiverse/scripts
     multiverse_dir  = os.path.dirname(scripts_dir)          # .../multiverse
 
@@ -178,15 +202,17 @@ def save_universe_results(data):
 
     # Attach decisions from multiverse_summary.csv
     summary_path = os.path.join(multiverse_dir, "multiverse_summary.csv")
-    df = pd.read_csv(summary_path)
+    df = _read_summary_csv(summary_path)
 
     # Match row: Universe column uses 'Universe_#'
     key = f"Universe_{universe_number}".lower()
     row = df.loc[df["Universe"].str.lower() == key]
+    data = dict(data)
     if not row.empty:
-        decisions = row.drop(columns=["Universe"]).iloc[0].to_dict()
-        data = dict(data)
-        data["__decisions"] = decisions
+        data["__decisions"] = row.drop(columns=["Universe"]).iloc[0].to_dict()
+
+    # Identifies the version of the universe script, so that results of an earlier multiverse are not combined
+    data["__script_digest"] = _file_digest(universe_fname)
 
     # Save the data as a .pkl file in scripts/temp
     savedir = os.path.join(scripts_dir, "temp")

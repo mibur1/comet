@@ -1,10 +1,12 @@
 import os
 import re
 import sys
+import ast
 import csv
-import glob
+import json
 import pickle
 import inspect
+import numbers
 import textwrap
 import itertools
 import subprocess
@@ -12,9 +14,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import networkx as nx
+import matplotlib
 from scipy import stats
 from typing import Literal
-from jinja2 import Template
 from tqdm.auto import tqdm
 from matplotlib import transforms
 from collections import defaultdict
@@ -23,9 +25,17 @@ from matplotlib import lines as mlines
 from matplotlib import gridspec as gridspec
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib import patches as mpatches
-from scipy.interpolate import make_interp_spline
+from scipy.interpolate import PchipInterpolator
 from IPython.display import display as ipy_display
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from .utils import _read_summary_csv, _file_digest, _UNIVERSE_SCRIPT_ENV
+
+# {{name}} placeholders in the analysis template
+_PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_]\w*)\s*\}\}")
+_UNIVERSE_FILE = re.compile(r"^universe_(\d+)\.(py|pkl)$")
+
+def _is_nan(x):
+    return isinstance(x, float) and x != x
 
 
 class Multiverse:
@@ -40,7 +50,7 @@ class Multiverse:
         Path to a multiverse directory (only used by the GUI).
     """
     def __init__(self, name="multiverse", path=None):
-        self.name = name.split('/')[-1].split('.')[0]
+        self.name = name.replace("\\", "/").rstrip("/").split("/")[-1].split(".")[0]
         self.num_universes = None
         self.forking_paths = None
 
@@ -50,8 +60,9 @@ class Multiverse:
             self.results_dir = os.path.join(self.multiverse_dir, "results")
             self.script_dir = os.path.join(self.multiverse_dir, "scripts")
         else:
-            # Set the directories based on the calling script
-            calling_script_dir = os.getcwd() if self._in_notebook() else os.path.dirname(os.path.abspath(sys.modules['__main__'].__file__))
+            # Set the directories based on the calling script (the working directory in notebooks and REPLs)
+            main_file = getattr(sys.modules.get("__main__"), "__file__", None)
+            calling_script_dir = os.getcwd() if self._in_notebook() or main_file is None else os.path.dirname(os.path.abspath(main_file))
             self.multiverse_dir = os.path.join(calling_script_dir, self.name)
             self.results_dir = os.path.join(self.multiverse_dir, "results")
             self.script_dir = os.path.join(self.multiverse_dir, "scripts")
@@ -60,14 +71,16 @@ class Multiverse:
         os.makedirs(self.script_dir, exist_ok=True)
 
     # Public methods
-    def create(self, analysis_template, forking_paths, config={}, verbose=False):
+    def create(self, analysis_template, forking_paths, config=None, verbose=False):
         """
         Create the individual universe scripts
 
         Parameters
         ----------
         analysis_template : function
-            Function containing the analysis template
+            Function containing the analysis template. Every ``{{name}}`` placeholder whose name is
+            a key of ``forking_paths`` is replaced by the decision value of the universe; all other
+            text (including other double braces) is kept as is.
 
         forking_paths : dict
             Dictionary containing the forking paths
@@ -76,36 +89,10 @@ class Multiverse:
             Configuration dictionary with optional combination rules
             - order : list of lists specifying the order of decisions
             - exclude : list of list[dict or str] (set listed keys to NaN if conditions match)
-            - remove : list of list[dict or str] (drop universes if conditions match)
+            - remove : list of list[dict] (drop universes if all conditions match)
             - deduplicate : bool (collapse duplicates after exclude/remove; default True)
         """
-
-        # If multiverse directory exists, remove all Python files but keep folders and template
-        if os.path.exists(self.multiverse_dir) and os.path.exists(self.script_dir):
-            for item in os.listdir(self.script_dir):
-                item_path = os.path.join(self.script_dir, item)
-                if os.path.isfile(item_path) and item.endswith(".py") and item != "template.py":
-                    os.remove(item_path)
-        else:
-            os.makedirs(self.multiverse_dir)
-
-        # Ensure the results directory exists
-        if not os.path.exists(self.results_dir):
-            os.makedirs(self.results_dir)
-
-        # Template creation
-        template_code = inspect.getsource(analysis_template)  # Extract the source code
-        template_body = "\n".join(template_code.splitlines()[1:])  # Remove the function definition
-
-        # Determine the indentation level of the first line of the function body and remove it from all lines
-        first_line = template_body.splitlines()[0]
-        indentation_level = len(first_line) - len(first_line.lstrip())
-        adjusted_lines = [line[indentation_level:] if len(line) > indentation_level else line
-                        for line in template_body.splitlines()]
-        adjusted_template_body = "\n".join(adjusted_lines)
-
-        # Create jinja template
-        jinja_template = Template(adjusted_template_body)
+        config = config or {}
 
         # Generate all unique combinations of forking paths
         if not forking_paths:
@@ -113,14 +100,29 @@ class Multiverse:
             return
         keys, values = zip(*forking_paths.items())
 
+        template_body = self._template_body(analysis_template)
+
         # Rules
         all_universes = []
         exclude_rules = config.get("exclude", [])
         removed_rules = config.get("remove", [])
         deduplicate = config.get("deduplicate", True)
 
+        for rule in removed_rules:
+            if isinstance(rule, list) and any(isinstance(c, str) for c in rule):
+                raise ValueError(f"Invalid 'remove' rule {rule}: remove rules only take {{decision: value}} conditions. "
+                                 "A bare string names a decision to set to NaN, which is what 'exclude' rules do.")
+
         def _normalise_value(v):
             return v["name"] if isinstance(v, dict) and "name" in v else v
+
+        def _condition_matches(path_dict, condition):
+            # A list of values matches any of them
+            for key, val in condition.items():
+                actual = path_dict.get(key)
+                if (actual not in val) if isinstance(val, list) else (actual != val):
+                    return False
+            return True
 
         def _apply_exclude_to_universe(universe):
             if not exclude_rules:
@@ -132,12 +134,9 @@ class Multiverse:
                 keys_to_nan = []
                 for condition in rule:
                     if isinstance(condition, dict):
-                        for key, val in condition.items():
-                            actual = path_dict.get(key)
-                            no_match = actual not in val if isinstance(val, list) else actual != val
-                            if no_match:
-                                matches = False
-                                break
+                        if not _condition_matches(path_dict, condition):
+                            matches = False
+                            break
                     elif isinstance(condition, str):
                         keys_to_nan.append(condition)
                     else:
@@ -162,29 +161,35 @@ class Multiverse:
             for rule in ruleset:
                 if not isinstance(rule, list):
                     continue
-                matches = True
-                for condition in rule:
-                    if isinstance(condition, dict):
-                        for key, val in condition.items():
-                            actual = path_dict.get(key)
-                            no_match = actual not in val if isinstance(val, list) else actual != val
-                            if no_match:
-                                matches = False
-                                break
-                    elif isinstance(condition, str):
-                        if condition not in path_dict:
-                            matches = False
-                            break
-                    else:
-                        matches = False
-                        break
-                if matches:
+                if all(isinstance(c, dict) and _condition_matches(path_dict, c) for c in rule):
                     return True, rule
             return False, None
 
+        def _freeze(x):
+            # Hashable signature of a decision value (the full value, not just its display name)
+            if _is_nan(x):
+                return ("NaN",)
+            if isinstance(x, dict):
+                return ("dict",) + tuple(sorted((repr(k), _freeze(v)) for k, v in x.items()))
+            if isinstance(x, (list, tuple)):
+                return (type(x).__name__,) + tuple(_freeze(v) for v in x)
+            try:
+                hash(x)
+                return (type(x).__name__, x)
+            except TypeError:
+                return (type(x).__name__, repr(x))
+
+        def _deduplicate(universes):
+            unique, seen = [], set()
+            for u in universes:
+                sig = tuple(sorted((k, _freeze(v)) for k, v in u))
+                if sig not in seen:
+                    seen.add(sig)
+                    unique.append(u)
+            return unique
+
         # Build universes (apply exclude during creation)
         pre_dedup_count = 0
-        dedup_removed = 0
 
         if config.get("order"):
             for order in config["order"]:
@@ -200,28 +205,11 @@ class Multiverse:
                 pre_dedup_count += len(order_universes)
 
                 # Deduplicate **within this order only**
-                if deduplicate and order_universes:
-                    unique, seen = [], set()
+                if deduplicate:
+                    order_universes = _deduplicate(order_universes)
 
-                    def _canon_sig(d):
-                        def canon(x):
-                            x = _normalise_value(x)
-                            if isinstance(x, float) and (x != x):  # NaN
-                                return ("NaN",)
-                            return x
-                        return tuple(sorted((k, canon(v)) for k, v in d.items()))
-
-                    for u in order_universes:
-                        sig = _canon_sig(dict(u))
-                        if sig not in seen:
-                            seen.add(sig)
-                            unique.append(u)
-                    order_universes = unique
-                    dedup_removed += (len(order_universes) - len(unique))
-
-                # Now append; note we do **not** run a global dedup later
                 all_universes.extend(order_universes)
-        
+
         else:
             for combination in itertools.product(*values):
                 universe = list(zip(keys, combination))
@@ -229,7 +217,10 @@ class Multiverse:
                 all_universes.append(tuple(universe))
 
             pre_dedup_count = len(all_universes)
-            dedup_removed = len(all_universes)
+            if deduplicate:
+                all_universes = _deduplicate(all_universes)
+
+        dedup_removed = pre_dedup_count - len(all_universes)
 
         # Exclusion summary with rule context (post-dedup for accurate counts)
         rule_context_counts = defaultdict(int)
@@ -240,45 +231,29 @@ class Multiverse:
             for c in rule:
                 if isinstance(c, dict):
                     for k, v in c.items():
-                        conds.append((k, v))
-            return tuple(sorted(conds))
+                        conds.append((k, tuple(v) if isinstance(v, list) else v))
+            return tuple(sorted(conds, key=repr))
 
         for u in all_universes:
             u_dict = dict(u)
             path_dict = {k: _normalise_value(v) for k, v in u}
             for rule in exclude_rules:
-                conditions, keys_to_nan = [], []
-                for c in rule:
-                    if isinstance(c, dict):
-                        conditions.append(c)
-                    elif isinstance(c, str):
-                        keys_to_nan.append(c)
-                # match conditions?
-                matches = True
-                for cond in conditions:
-                    for ck, cv in cond.items():
-                        if path_dict.get(ck) != cv:
-                            matches = False
-                            break
-                    if not matches:
-                        break
-                if not matches:
+                conditions = [c for c in rule if isinstance(c, dict)]
+                keys_to_nan = [c for c in rule if isinstance(c, str)]
+                if not all(_condition_matches(path_dict, cond) for cond in conditions):
                     continue
                 # count keys that are actually NaN in this universe
                 cond_sig = _freeze_conditions(rule)
                 for k in keys_to_nan:
-                    if k in u_dict:
-                        val = u_dict[k]
-                        if isinstance(val, float) and (val != val):  # NaN
-                            rule_context_counts[(cond_sig, k)] += 1
+                    if k in u_dict and _is_nan(u_dict[k]):
+                        rule_context_counts[(cond_sig, k)] += 1
 
         if rule_context_counts and verbose:
-            if config:
-                if config.get("order"):
-                    print(f"Total number of universes: {pre_dedup_count} (includes ordering permutations)")
-                else:
-                    print(f"Total number of universes: {pre_dedup_count}")
-            
+            if config.get("order"):
+                print(f"Total number of universes: {pre_dedup_count} (includes ordering permutations)")
+            else:
+                print(f"Total number of universes: {pre_dedup_count}")
+
             if dedup_removed:
                 print(f"Removed {dedup_removed} duplicate universes (set 'deduplicate' to False if you want to keep them)")
 
@@ -311,43 +286,59 @@ class Multiverse:
                         print(f"      {u}")
         else:
             valid_universes = all_universes
-        
+
         # Final number of universes
         if rule_context_counts:
             print(f"\n{len(valid_universes)} universes remain for analysis.")
 
-        # Create Python scripts for each combination
+        # Render the Python script of every universe, and check that it is valid Python before
+        # anything is written, so that a broken template does not replace a working multiverse
+        scripts = []
         for i, combination in enumerate(valid_universes, start=1):
             combination_dict = dict(combination)
 
-            # Smart formatting: only format dicts, pass raw types for strings/numbers
+            # Smart formatting: only format dicts, pass raw types for strings/numbers. Excluded (NaN) decisions become None.
             context = {}
             for key in forking_paths.keys():
                 val = combination_dict.get(key, None)
-                # Map NaN to None for Jinja
-                if isinstance(val, float) and (val != val):
-                    context[key] = None
-                else:
-                    context[key] = self._format_type(val)
+                context[key] = "None" if _is_nan(val) else self._format_type(val)
 
-            rendered_content = jinja_template.render(**context)
+            rendered_content = _PLACEHOLDER.sub(lambda m: context.get(m.group(1), m.group(0)), template_body)
 
             if config.get("order"):
+                ordered = {k: (None if _is_nan(v) else v) for k, v in combination_dict.items()}
                 forking_dict_str = (
                     "# Ordering information was provided. The ordered decisions for this universe are:\n"
-                    f"forking_paths = {combination_dict}\n\n"
+                    f"forking_paths = {ordered!r}\n\n"
                 )
                 rendered_content = forking_dict_str + rendered_content
 
+            try:
+                ast.parse(rendered_content, filename=f"universe_{i}.py")
+            except SyntaxError as e:
+                line = f": {e.text.strip()}" if e.text else ""
+                raise ValueError(f"Universe {i} is not valid Python ({e.msg}, line {e.lineno}{line}). "
+                                 f"Decisions: {combination_dict}") from None
+
+            scripts.append(rendered_content)
+
+        # Replace the universe scripts of a previous version of the multiverse
+        os.makedirs(self.script_dir, exist_ok=True)
+        os.makedirs(self.results_dir, exist_ok=True)
+        for item in os.listdir(self.script_dir):
+            if item.endswith(".py") and _UNIVERSE_FILE.match(item):
+                os.remove(os.path.join(self.script_dir, item))
+
+        for i, rendered_content in enumerate(scripts, start=1):
             save_path = os.path.join(self.script_dir, f"universe_{i}.py")
-            with open(save_path, "w") as file:
+            with open(save_path, "w", encoding="utf-8") as file:
                 file.write(rendered_content)
 
         # Generate CSV file with the decisions of all universes
         self._create_summary(valid_universes, keys)
 
         # Save forking paths
-        with open(f"{self.results_dir}/forking_paths.pkl", "wb") as file:
+        with open(os.path.join(self.results_dir, "forking_paths.pkl"), "wb") as file:
             pickle.dump(forking_paths, file)
 
         # Set some attributes
@@ -363,20 +354,46 @@ class Multiverse:
         Parameters
         ----------
         universe : None, int, list, range
-            Number of the universe to run. Default is None, which runs all universes
+            Number of the universe to run. Default is None, which runs all universes and replaces
+            all previous results. If given, only these universes are run and their results are
+            merged into the existing ones. A range follows Python semantics, e.g. range(2, 4) runs
+            universes 2 and 3.
 
         parallel : int
             Number of universes to run in parallel
-        """
-        # Get all universe scripts
-        scripts = [f for f in sorted(os.listdir(self.script_dir))
-                     if f.endswith(".py") and not f.startswith("template")]
 
-        # Delete previous results (.pkl files)
-        for item in os.listdir(self.results_dir):
-            item_path = os.path.join(self.results_dir, item)
-            if os.path.isfile(item_path) and item_path.endswith('.pkl') and not item_path.endswith('forking_paths.pkl'):
-                os.remove(item_path)
+        combine_results : bool
+            Combine the universe results into a single file (default True). If False, the results
+            stay in scripts/temp and are combined (together with those of earlier runs) by the next
+            run with combine_results=True.
+        """
+        scripts = self._universe_scripts()
+        if not scripts:
+            raise ValueError("No universe scripts found. Please create the multiverse first.")
+
+        if universe is None:
+            universe_numbers = list(scripts)
+        elif isinstance(universe, numbers.Integral):
+            universe_numbers = [int(universe)]
+        elif isinstance(universe, (list, tuple, range)):
+            universe_numbers = [int(u) for u in universe]
+        else:
+            raise ValueError("universe_number should be None, an int, a list, tuple, or a range.")
+
+        missing = [u for u in universe_numbers if u not in scripts]
+        if missing:
+            raise ValueError(f"Universe(s) {missing} do not exist. The multiverse has {len(scripts)} universes.")
+
+        # A full run recomputes every universe, so all previous results are deleted. Results of
+        # the other universes are kept when only some universes are run, to merge into them.
+        if universe is None:
+            for item in os.listdir(self.results_dir):
+                item_path = os.path.join(self.results_dir, item)
+                if os.path.isfile(item_path) and item_path.endswith('.pkl') and not item_path.endswith('forking_paths.pkl'):
+                    os.remove(item_path)
+            if os.path.isfile(os.path.join(self.results_dir, "script_digests.json")):
+                os.remove(os.path.join(self.results_dir, "script_digests.json"))
+            self._clear_temp_results()
 
         # Function for parallel processing
         def execute_script(file):
@@ -387,8 +404,9 @@ class Multiverse:
                 for var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS",
                             "BLIS_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
                     env[var] = "1"
-            subprocess.run([sys.executable, os.path.join(self.script_dir, file)],
-                        check=True, env=env)
+            script_path = os.path.join(self.script_dir, file)
+            env[_UNIVERSE_SCRIPT_ENV] = os.path.abspath(script_path) # tells save_universe_results which universe this is
+            subprocess.run([sys.executable, script_path], check=True, env=env)
 
         def run_parallel(file_list, desc):
             if parallel == 1:
@@ -405,26 +423,13 @@ class Multiverse:
 
         if universe is None:
             print("Starting multiverse analysis for all universes...")
-            run_parallel(scripts, "Performing multiverse analysis:")
         else:
-            # Subset of universes was chosen
-            if isinstance(universe, int):
-                universe_numbers = [universe]
-            elif isinstance(universe, (list, tuple, range)):
-                universe_numbers = list(universe)
-            else:
-                raise ValueError("universe_number should be None, an int, a list, tuple, or a range.")
-
-            selected_universes = [f for f in scripts if any(f.endswith(f"universe_{u}.py") for u in universe_numbers)]
             print(f"Starting analysis for universe(s): {universe_numbers}...")
-            run_parallel(selected_universes, "Performing multiverse analysis:")
+        run_parallel([scripts[u] for u in universe_numbers], "Performing multiverse analysis:")
 
         # Save all results in a single dictionary
         if combine_results:
-            self._combine_results()
-            self.combined_results = True
-        else:
-            self.combined_results = False
+            self._combine_results(merge=universe is not None)
 
         print("The multiverse analysis completed without any errors.")
         return
@@ -435,18 +440,25 @@ class Multiverse:
 
         Parameters
         ----------
-        universe : int, range, or None
-            The universe number(s) to display. Default is None (prints the head)
+        universe : int, list, range, or None
+            The universe number(s) to display. Default is None (all universes).
+            A range follows Python semantics (as in ``run``), e.g. range(2, 4) shows universes 2 and 3.
         """
 
         multiverse_summary = self._read_summary()
 
-        if isinstance(universe, int):
-            multiverse_selection = multiverse_summary.iloc[universe-1]
-        elif isinstance(universe, range):
-            multiverse_selection = multiverse_summary.iloc[universe.start-1:universe.stop]
-        else:
+        if universe is None:
             multiverse_selection = multiverse_summary
+        else:
+            ids = multiverse_summary["Universe"].str.split("_").str[-1].astype(int)
+            if isinstance(universe, numbers.Integral):
+                if not (ids == universe).any():
+                    raise ValueError(f"Universe {universe} does not exist. The multiverse has {len(ids)} universes.")
+                multiverse_selection = multiverse_summary[ids == universe].iloc[0]
+            elif isinstance(universe, (list, tuple, range)):
+                multiverse_selection = multiverse_summary[ids.isin(list(universe))]
+            else:
+                raise ValueError("universe should be None, an int, a list, tuple, or a range.")
 
         if print_df:
             if self._in_notebook():
@@ -520,10 +532,12 @@ class Multiverse:
                     "Multiverse results are not combined. Please specify a universe number."
                 )
 
-            path = f"{self.results_dir}/tmp/universe_{universe}.pkl"
-
-            with open(path, "rb") as file:
-                results = pickle.load(file)
+            results = self._load_temp_result(int(universe))
+            if results is None:
+                raise FileNotFoundError(
+                    f"No current results for universe {universe}. Run it first (results of an "
+                    "earlier version of the multiverse are not used)."
+                )
 
             if as_df:
                 df = pd.DataFrame([results])
@@ -788,25 +802,6 @@ class Multiverse:
         multiverse_values = multiverse_summary[value_columns]
         multiverse_decision = multiverse_summary[decision_columns]
 
-        # Recursive function to add decision nodes and connect them hierarchically.
-        def add_hierarchical_decision_nodes(G, root_node, parameters, level=0, exclude_single=exclude_single):
-            if level >= len(parameters):
-                return G  # No more parameters to process
-
-            decision, options = parameters[level]
-            # Only add the node if there are multiple options or if we are not excluding single-option parameters.
-            if not exclude_single or len(options) > 1:
-                for option in options:
-                    node_name = f"{decision}: {option}"
-                    G.add_node(node_name, level=level + 1, option=option, decision=decision)
-                    G.add_edge(root_node, node_name)
-                    # Recurse to add the next level.
-                    G = add_hierarchical_decision_nodes(G, node_name, parameters, level + 1, exclude_single)
-            else:
-                # If excluding single-option parameters, skip to the next parameter.
-                G = add_hierarchical_decision_nodes(G, root_node, parameters, level + 1, exclude_single)
-            return G
-
         # Map each Value column (ignoring Universe) to its corresponding Decision column.
         # Assumes the order of Value columns (except Universe) matches the order of Decision columns.
         value_to_decision_map = {val: dec for val, dec in zip(value_columns[1:], decision_columns)}
@@ -824,7 +819,20 @@ class Multiverse:
         G = nx.DiGraph()
         root_node = "Start"
         G.add_node(root_node, level=0, label="Start")
-        G = add_hierarchical_decision_nodes(G, root_node, parameters, exclude_single=exclude_single)
+
+        # Every option of a decision connects to every option of the next shown decision. Decisions
+        # without options (or with a single one if exclude_single) are skipped.
+        previous = [root_node]
+        for level, (decision, options) in enumerate(parameters, start=1):
+            if len(options) == 0 or (exclude_single and len(options) == 1):
+                continue
+            current = []
+            for option in options:
+                node_name = f"{decision}: {option}"
+                G.add_node(node_name, level=level, option=option, decision=decision)
+                G.add_edges_from((src, node_name) for src in previous)
+                current.append(node_name)
+            previous = current
 
         # Build the list of node names that correspond to the specified universe.
         values = ["Start"]
@@ -867,9 +875,9 @@ class Multiverse:
         levels = set(nx.get_node_attributes(G, "level").values())
         num_levels = len(levels)
         first_color = "lightgray"
-        colormap = plt.cm.get_cmap(cmap, num_levels)
+        colormap = matplotlib.colormaps.get_cmap(cmap).resampled(num_levels)
         # First level gets a fixed color; subsequent levels are derived from the colormap.
-        colors = [first_color] + [colormap(i / (num_levels - 1)) for i in range(num_levels)]
+        colors = [first_color] + [colormap(i / max(num_levels - 1, 1)) for i in range(num_levels)]
         level_colors = {level: colors[i] for i, level in enumerate(sorted(levels))}
 
         # Draw edges.
@@ -984,18 +992,6 @@ class Multiverse:
                 return str(name_map[qualified])
             return str(name_map.get(lvl, lvl))
 
-        def _extract_decision_order(decisions_obj) -> list[str]:
-            if not isinstance(decisions_obj, dict):
-                return []
-            dec_block = decisions_obj.get("__decisions")
-            d = dec_block if isinstance(dec_block, dict) else decisions_obj
-            order = []
-            i = 1
-            while f"Decision {i}" in d:
-                order.append(str(d[f"Decision {i}"]))
-                i += 1
-            return order
-
         # ------------------------------------------------------------
         # Load df and basic checks
         df = self.get_results(as_df=True).copy()
@@ -1023,7 +1019,7 @@ class Multiverse:
             raise ValueError("Could not extract any decisions from the 'decisions' dicts.")
 
         # decision-group order from stored Decision 1..N
-        decision_order = _extract_decision_order(df.iloc[0]["__decisions"])
+        decision_order = self._extract_decision_order(df.iloc[0]["__decisions"])
         decision_order = [d for d in decision_order if d in dec_df.columns]
         leftovers = [c for c in dec_df.columns if c not in decision_order]
         decision_cols_all = decision_order + leftovers
@@ -1162,7 +1158,7 @@ class Multiverse:
             return centre
 
         num_groups = len(decision_cols)
-        cmap_obj = plt.cm.get_cmap(cmap, num_groups if num_groups > 0 else 1)
+        cmap_obj = matplotlib.colormaps.get_cmap(cmap).resampled(num_groups if num_groups > 0 else 1)
         group_colors = [cmap_obj(i) for i in range(num_groups)]
 
         for group_idx, decision in enumerate(decision_cols):
@@ -1270,8 +1266,9 @@ class Multiverse:
         # CI drawing
         if ci_lower is not None and ci_upper is not None:
             if smooth_ci and len(ci_lower) >= 4:
-                spline_lo = make_interp_spline(x_values, ci_lower.astype(float), k=3)
-                spline_hi = make_interp_spline(x_values, ci_upper.astype(float), k=3)
+                # Monotone cubic interpolation: smooth, but never overshoots the actual bounds
+                spline_lo = PchipInterpolator(x_values, ci_lower.astype(float))
+                spline_hi = PchipInterpolator(x_values, ci_upper.astype(float))
                 x_smooth = np.linspace(x_values.min(), x_values.max(), 500)
                 ax[0].fill_between(x_smooth, spline_lo(x_smooth), spline_hi(x_smooth), color="gray", alpha=0.3)
             else:
@@ -1327,10 +1324,10 @@ class Multiverse:
 
         # Legend for CI
         if ci_lower is not None and ci_upper is not None:
-            if isinstance(ci, int):
-                ci_lab = f"{ci}% CI"
-            elif ci is True:
+            if ci is True: # check before int, as bool is a subclass of int
                 ci_lab = f"{ci_level_default}% CI"
+            elif isinstance(ci, int):
+                ci_lab = f"{ci}% CI"
             else:
                 ci_lab = "CI"
             legend_items.append(mpatches.Patch(facecolor="gray", edgecolor="white", label=ci_lab))
@@ -1544,7 +1541,7 @@ class Multiverse:
         # Options within each decision: keep order-of-appearance (do NOT reverse)
         for d in decisions_list:
             s = df[d].astype("object")
-            cats = list(pd.unique(s))
+            cats = [c for c in pd.unique(s) if pd.notna(c)] # excluded (NaN) decisions are not a level
             df[d] = pd.Categorical(s, categories=cats, ordered=True)
 
         # Average increase labels (mean difference vs reference = first option)
@@ -1796,17 +1793,11 @@ class Multiverse:
 
         Parameters
         ----------
-        csv_path : string
-            Path to save the CSV file
-
         all_universes : list
             List of all universes (combinations of parameters)
 
         keys : list
             List of keys for the CSV file. Used when the order is consistent.
-
-        config : dict
-            Configuration dictionary. Used to check for the 'order' key.
         """
         fieldnames = ['Universe']
         for i in range(len(keys)):
@@ -1815,7 +1806,7 @@ class Multiverse:
 
         # Generate CSV file with the parameters of all universes
         file_path = os.path.join(self.multiverse_dir, "multiverse_summary.csv")
-        with open(file_path, "w", newline='') as csvfile:
+        with open(file_path, "w", newline='', encoding="utf-8") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
 
@@ -1826,6 +1817,8 @@ class Multiverse:
                 for j, (key, value) in enumerate(combination):
                     if isinstance(value, dict):
                         value = value.get('name', '')
+                    elif value is None:
+                        value = "None" # an empty cell is read back as an excluded (NaN) decision
 
                     context[f"Decision {j+1}"] = key
                     context[f"Value {j+1}"] = value
@@ -1842,9 +1835,7 @@ class Multiverse:
         summary : pandas.DataFrame
             Pandas datframe containing the multiverse summary
         """
-        summary_path = os.path.join(self.multiverse_dir, "multiverse_summary.csv")
-
-        return pd.read_csv(summary_path)
+        return _read_summary_csv(os.path.join(self.multiverse_dir, "multiverse_summary.csv"))
 
     def _render_val(self, v):
         """Render decision value. `$...` → literal inject, else double-quoted string."""
@@ -1855,7 +1846,7 @@ class Multiverse:
         if isinstance(v, str):
             if v.startswith("$"):
                 return v[1:]  # literal inject (variable, code, collection, call...)
-            return f"\"{self._escape_double_quotes(v)}\""  # always double-quoted string
+            return json.dumps(v, ensure_ascii=False)  # double-quoted string literal, with quotes/backslashes/newlines escaped
         if isinstance(v, list):
             return "[" + ", ".join(self._render_val(x) for x in v) + "]"
         if isinstance(v, tuple):
@@ -1908,36 +1899,128 @@ class Multiverse:
             return self._handle_dict(value)
         return self._render_val(value)
 
-    def _escape_double_quotes(self, s: str) -> str:
-        # Keep things robust if the literal happens to contain quotes/backslashes
-        return s.replace("\\", "\\\\").replace('"', '\\"')
+    def _template_body(self, analysis_template):
+        """
+        Internal function: Source code of the template function body, without the signature and
+        dedented to module level.
+        """
+        lines = inspect.getsource(analysis_template).splitlines()
+        source = textwrap.dedent("\n".join(lines))
+        try:
+            func = ast.parse(source).body[0]
+            start = func.body[0].lineno - 1
+            # keep blank lines and comments between the signature and the first statement
+            while start - 1 >= func.lineno:
+                previous = lines[start - 1].strip()
+                if previous and not previous.startswith("#"):
+                    break
+                start -= 1
+        except (SyntaxError, IndexError, AttributeError):
+            start = 1 # placeholders that are not valid Python (e.g. "import {{module}}"): assume a one-line signature
+        body = lines[start:]
 
-    def _combine_results(self):
+        # Remove the indentation of the first statement from all lines
+        first = next((line for line in body if line.strip()), "")
+        indent = first[:len(first) - len(first.lstrip())]
+        return "\n".join(line[len(indent):] if line.startswith(indent) else line for line in body)
+
+    def _universe_scripts(self):
         """
-        Internal function: Combines the results in a single dictionary and saves it as a pickle file
+        Internal function: {universe number: script file name} of the current universe scripts.
         """
-        file_name = "multiverse_results.pkl"
-        file_paths = glob.glob(os.path.join(self.script_dir, "temp", "universe_*.pkl"))
-        
-        if not file_paths:
+        found = {}
+        for item in os.listdir(self.script_dir):
+            m = _UNIVERSE_FILE.match(item)
+            if m and m.group(2) == "py":
+                found[int(m.group(1))] = item
+        return dict(sorted(found.items()))
+
+    def _load_temp_result(self, universe):
+        """
+        Internal function: Load the uncombined result of a universe from scripts/temp.
+        Returns None if there is none, or if it was produced by a different version of the
+        universe script (e.g. before the multiverse was re-created with other forking paths).
+        """
+        script = os.path.join(self.script_dir, f"universe_{universe}.py")
+        path = os.path.join(self.script_dir, "temp", f"universe_{universe}.pkl")
+        if not (os.path.isfile(script) and os.path.isfile(path)):
+            return None
+
+        with open(path, "rb") as file:
+            result = pickle.load(file)
+
+        digest = result.pop("__script_digest", None) if isinstance(result, dict) else None
+        if digest is not None and digest != _file_digest(script):
+            return None
+        return result
+
+    def _clear_temp_results(self):
+        """
+        Internal function: Delete all uncombined universe results (and scripts/temp if it is then empty).
+        """
+        temp_dir = os.path.join(self.script_dir, "temp")
+        if not os.path.isdir(temp_dir):
             return
-        
-        combined_results = {}
-        
-        for file_path in sorted(file_paths):
-            universe_key = os.path.splitext(os.path.basename(file_path))[0]
-            with open(file_path, 'rb') as f:
-                result_dict = pickle.load(f)
-            combined_results[universe_key] = result_dict
-        
-        # Save combined results file
-        with open(os.path.join(self.results_dir, file_name), 'wb') as f:
-            pickle.dump(combined_results, f)
+        for item in os.listdir(temp_dir):
+            m = _UNIVERSE_FILE.match(item)
+            if m and m.group(2) == "pkl":
+                os.remove(os.path.join(temp_dir, item))
+        if not os.listdir(temp_dir):
+            os.rmdir(temp_dir)
+
+    def _combine_results(self, merge=False):
+        """
+        Internal function: Combines the results in a single dictionary and saves it as a pickle file.
+        Only results produced by the current universe scripts are used.
+
+        With merge=True, the new results are merged into the existing combined results. Existing
+        results are only kept if they were produced by the current version of their universe script,
+        which is checked against the script digests saved next to the combined results.
+        """
+        results_path = os.path.join(self.results_dir, "multiverse_results.pkl")
+        digests_path = os.path.join(self.results_dir, "script_digests.json")
+        current = {n: _file_digest(os.path.join(self.script_dir, f)) for n, f in self._universe_scripts().items()}
+
+        combined_results, digests, n_ignored = {}, {}, 0
+
+        if merge and os.path.isfile(results_path):
+            with open(results_path, "rb") as f:
+                previous = pickle.load(f)
+            previous_digests = {}
+            if os.path.isfile(digests_path):
+                with open(digests_path, encoding="utf-8") as f:
+                    previous_digests = json.load(f)
+            for key, result in previous.items():
+                n = int(key.split("_")[1])
+                if n in current and previous_digests.get(str(n)) == current[n]:
+                    combined_results[n] = result
+                    digests[n] = current[n]
+                else:
+                    n_ignored += 1
+
+        temp_dir = os.path.join(self.script_dir, "temp")
+        if os.path.isdir(temp_dir):
+            n_files = sum(1 for item in os.listdir(temp_dir) if item.endswith(".pkl") and _UNIVERSE_FILE.match(item))
+            n_loaded = 0
+            for n in current:
+                result = self._load_temp_result(n)
+                if result is not None:
+                    combined_results[n] = result
+                    digests[n] = current[n]
+                    n_loaded += 1
+            n_ignored += n_files - n_loaded
+
+        if n_ignored:
+            print(f"Ignored {n_ignored} result(s) from an earlier version of the multiverse.")
+
+        if combined_results:
+            with open(results_path, 'wb') as f:
+                pickle.dump({f"universe_{n}": combined_results[n] for n in sorted(combined_results)}, f)
+            with open(digests_path, "w", encoding="utf-8") as f:
+                json.dump({str(n): digests[n] for n in sorted(digests)}, f, indent=1)
 
         # Delete individual results files and folder
-        for file_path in file_paths:
-            os.remove(file_path)
-        os.rmdir(os.path.join(self.script_dir, "temp"))
+        self._clear_temp_results()
 
         return
 
@@ -1959,7 +2042,7 @@ class Multiverse:
     def _flatten_decisions(self, dec_block):
         """
         Convert {'Decision 1': 'X', 'Value 1': Y, ...} into {'X': 'Y', ...}.
-        Values are stringified for categorical plotting.
+        Values are stringified for categorical plotting; excluded (NaN) decisions stay NaN.
         """
         if not isinstance(dec_block, dict):
             return {}
@@ -1972,7 +2055,8 @@ class Multiverse:
 
             idx = m.group(1)
             value_key = f"Value {idx}"
-            out[str(v)] = str(dec_block.get(value_key, "NA"))
+            value = dec_block.get(value_key, np.nan)
+            out[str(v)] = np.nan if pd.isna(value) else str(value)
 
         return out
 
@@ -2000,58 +2084,6 @@ class Multiverse:
             order.append(str(d[f"Decision {i}"]))
             i += 1
         return order
-
-    def _load_and_prepare_data(self, measure=None):
-        """
-        Internal function: Load and prepare the data for the specification curve plotting.
-
-        Parameters
-        ----------
-        measure : str
-            Name of the measure to plot.
-
-        Returns
-        -------
-        sorted_universes : list
-            List of tuples (data, summary_row) sorted by the mean value of the measure.
-        forking_paths : dict
-            Dictionary containing the forking paths.
-        """
-        # Load the summary CSV.
-        summary_path = os.path.join(self.multiverse_dir, "multiverse_summary.csv")
-        multiverse_summary = pd.read_csv(summary_path)
-
-        # Load the forking paths.
-        with open(os.path.join(self.results_dir, "forking_paths.pkl"), "rb") as file:
-            forking_paths = pickle.load(file)
-
-        # Load the combined results dictionary.
-        combined_results_path = os.path.join(self.results_dir, "multiverse_results.pkl")
-        if not os.path.exists(combined_results_path):
-            raise ValueError("Results file not found. Please run the multiverse analysis first.")
-
-        with open(combined_results_path, "rb") as file:
-            combined_results = pickle.load(file)
-
-        # Extract the specified measure for each universe.
-        universe_data = {}
-        for universe, result_dict in combined_results.items():
-            if measure not in result_dict:
-                raise ValueError(f"Measure '{measure}' not found in results for {universe}.")
-            universe_data[universe] = result_dict[measure]
-
-        # Build a list of tuples pairing each universe's measure data with its summary row.
-        universes_with_summary = []
-        for universe, data in universe_data.items():
-            # Ensure matching is case-insensitive.
-            summary_row = multiverse_summary[multiverse_summary['Universe'].str.lower() == universe.lower()]
-            if not summary_row.empty:
-                universes_with_summary.append((data, summary_row.iloc[0]))
-
-        # Sort the universes by the mean of the measure values.
-        sorted_universes = sorted(universes_with_summary, key=lambda x: np.mean(x[0]))
-
-        return sorted_universes, forking_paths
 
     def _in_notebook(self):
         """
@@ -2206,6 +2238,7 @@ class Multiverse:
         Build a numeric design matrix from the decision columns (prefixed '__' by expand_dec).
 
         Booleans -> 0/1, numeric -> kept (ratio scale), strings -> one-hot (drop-first).
+        Excluded (NaN) decisions are missing values (NaN in every column of that decision).
         Returns (matrix, col_types, col_names) where col_types is one of binary/numeric/categorical
         per column and col_names labels each column (decision name, or "<decision>_<level>" dummy).
         """
@@ -2226,13 +2259,15 @@ class Multiverse:
                 col_types.append("numeric")
                 col_names.append(c)
             else:
-                col_str = series.astype(str)
-                if set(col_str.unique()) <= {"True", "False"}:
+                missing = series.isna()
+                col_str = series.where(missing, series.astype(str))
+                if set(col_str[~missing].unique()) <= {"True", "False"}:
                     parts.append(col_str.map({"True": 1, "False": 0}).to_frame())
                     col_types.append("binary")
                     col_names.append(c)
                 else:
-                    dummies = pd.get_dummies(col_str, prefix=c, drop_first=True)
+                    dummies = pd.get_dummies(col_str, prefix=c, drop_first=True, dummy_na=False).astype(float)
+                    dummies[missing] = np.nan
                     parts.append(dummies)
                     col_types.extend(["categorical"] * dummies.shape[1])
                     col_names.extend(list(dummies.columns))
@@ -2242,18 +2277,24 @@ class Multiverse:
 
     def _gower_distance(self, Q: np.ndarray, col_types: list) -> np.ndarray:
         """
-        Gower distance matrix: Hamming for binary/categorical, normalised L1 for numeric.
+        Gower distance matrix: Hamming for binary/categorical, normalised L1 for numeric, averaged
+        over the columns. A column where either universe has a missing (NaN) value is left out of
+        that pair's average (Gower, 1971).
         """
         n = len(Q)
         dist = np.zeros((n, n))
+        n_valid = np.zeros((n, n))
         for k, ctype in enumerate(col_types):
+            valid = ~np.isnan(Q[:, None, k]) & ~np.isnan(Q[None, :, k])
             if ctype in ("binary", "categorical"):
-                dist += (Q[:, None, k] != Q[None, :, k]).astype(float)
+                d = (Q[:, None, k] != Q[None, :, k]).astype(float)
             else:
-                rng = Q[:, k].max() - Q[:, k].min()
-                if rng > 0:
-                    dist += np.abs(Q[:, None, k] - Q[None, :, k]) / rng
-        return dist
+                rng = np.nanmax(Q[:, k]) - np.nanmin(Q[:, k])
+                d = np.abs(Q[:, None, k] - Q[None, :, k]) / rng if rng > 0 else np.zeros((n, n))
+            dist += np.where(valid, d, 0.0)
+            n_valid += valid
+        with np.errstate(invalid="ignore", divide="ignore"):
+            return np.where(n_valid > 0, dist / n_valid, 0.0)
 
     def _gini(self, w: np.ndarray) -> float:
         """
@@ -2284,4 +2325,13 @@ def load_multiverse(path=None):
         raise ValueError("The specified path does not seem to contain a valid multiverse.")
 
     name = path.rstrip("/") # Remove trailing slash if present
-    return Multiverse(name=name, path=path)
+    mverse = Multiverse(name=name, path=path)
+
+    # Restore the attributes set by create()
+    mverse.num_universes = len(mverse._read_summary())
+    forking_paths_file = os.path.join(mverse.results_dir, "forking_paths.pkl")
+    if os.path.isfile(forking_paths_file):
+        with open(forking_paths_file, "rb") as file:
+            mverse.forking_paths = pickle.load(file)
+
+    return mverse

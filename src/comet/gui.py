@@ -6109,8 +6109,8 @@ class App(QMainWindow):
             with open(results_file, 'rb') as file:
                 universe_data = pickle.load(file)
 
-            variable_names = list(universe_data[next(iter(universe_data))].keys()) # keys of the first universe
-            variable_names.remove("decisions") # Remove the decisions key as it is internal
+            # keys of the first universe, without internal keys such as "__decisions"
+            variable_names = [k for k in universe_data[next(iter(universe_data))] if not k.startswith("__")]
             self.measureInput.clear()
             self.measureInput.addItems(variable_names)
             self.plotSpecificationCurve()        

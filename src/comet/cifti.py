@@ -7,7 +7,7 @@ import importlib_resources
 from pathlib import Path
 from typing import Any, cast
 from scipy.io import loadmat
-from matplotlib import cm as mpl_cm
+import matplotlib
 from matplotlib.colors import ListedColormap
 
 nib.imageglobals.logger.setLevel(40)
@@ -818,13 +818,13 @@ def surface_plot(node_values : np.ndarray|None=None,
                 if int(discrete_values.size) == 1:
                     v = int(round(float(discrete_values[0])))
                     n_ref = max(int(discrete_ref_max) if discrete_ref_max is not None else v, v, 2)
-                    cmap_ref = mpl_cm.get_cmap(cmap, n_ref)
+                    cmap_ref = matplotlib.colormaps.get_cmap(cmap).resampled(n_ref)
                     mesh_kwargs["cmap"] = ListedColormap([cmap_ref(v - 1)])
                     mesh_kwargs["clim"] = (float(v) - 0.5, float(v) + 0.5)
                 else:
                     # One colour per integer of the colour range (the used categories by default).
                     n_col = int(round(clim[1] - clim[0])) + 1 if user_clim else int(discrete_values.size)
-                    mesh_kwargs["cmap"] = mpl_cm.get_cmap(cmap, max(n_col, 2))
+                    mesh_kwargs["cmap"] = matplotlib.colormaps.get_cmap(cmap).resampled(max(n_col, 2))
             else:
                 mesh_kwargs["cmap"] = cmap
 
