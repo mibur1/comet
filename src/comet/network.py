@@ -18,7 +18,7 @@ class NestedSpectralPartition():
     type : str, default 'static'
         Type of connectivity data. Options:
             'static': first dim in 3D data is subjects
-            'dynamic: first dim in 3D data or second in 4D data is time
+            'dynamic': last dim is time, i.e. (N,N,T) or (S,N,N,T)
     negative_values : str, default 'zero'
         How to handle negative connectivity values. Options:
             'zero': set negative values to zero
@@ -35,7 +35,7 @@ class NestedSpectralPartition():
     
     H_int      : global integration component,
     H_seg      : hierarchical segregation component,
-    H_bal      : balance indicator (H_int - H_int),
+    H_bal      : balance indicator (H_int - H_seg),
     
     M_levels   : array of module counts M_i for each level,
     H_levels   : array of H_i for each eigenmode/level,
@@ -46,8 +46,8 @@ class NestedSpectralPartition():
     assignments: module assignments at each level,
     
     H_int_cal  : calibrated global integration component,
-    H_int_cal  : calibrated hierarchical segregation component,
-    H_bal_cal  : calibrated balance indicator (H_int_cal - H_int_cal)
+    H_seg_cal  : calibrated hierarchical segregation component,
+    H_bal_cal  : calibrated balance indicator (H_int_cal - H_seg_cal)
     """
     def __init__(self, C=None, type="static", negative_values="zero"):
         # Figure out data dimensions and set inital attributes
@@ -55,40 +55,45 @@ class NestedSpectralPartition():
         self.neg_val:   str = negative_values
         self.type:      str = type
         
-        # Data dimensions
-        if self.type == "static":
-            self.S:         int = self.C.shape[0] if self.C.ndim == 3 else 1
-            self.T:         int = 1
-            self.N:         int = self.C.shape[-1]
-        elif self.type == "dynamic":
-            self.S:         int = self.C.shape[0] if self.C.ndim >= 3 else 1
-            self.T:         int = self.C.shape[-1]
-            self.N:         int = self.C.shape[-2]
-        else:
-            raise ValueError("Error: type must be 'static' or 'dynamic'")
-
         # Perform inital checks
         if self.neg_val not in ["zero", "abs"]:
             raise ValueError("Error: negative_values must be 'zero' or 'abs'")
-        if self.C.ndim not in [2, 3, 4]:
-            raise ValueError("Error: C must be 2D, 3D, or 4D array or list of 2D, 3D arrays")
-        if (self.T > 1 and (self.C.shape[-2] != self.C.shape[-3])) or (self.T == 1 and (self.C.shape[-1] != self.C.shape[-2])):
-            print(self.C.shape)
-            print(self.T, self.C.shape[-2], self.C.shape[-3], self.C.shape[-1], self.C.shape[-2])
+
+        # Bring the data into a canonical shape: (S, N, N) for static, (S, N, N, T) for dynamic
+        if self.type == "static":
+            if self.C.ndim == 2:
+                self.C = self.C[np.newaxis]
+            elif self.C.ndim != 3:
+                raise ValueError("Error: static C must be a (N,N) or (S,N,N) array. Did you forget to set 'type'?")
+            self.S:         int = self.C.shape[0]
+            self.T:         int = 1
+        elif self.type == "dynamic":
+            if self.C.ndim == 3:
+                self.C = self.C[np.newaxis]
+            elif self.C.ndim != 4:
+                raise ValueError("Error: dynamic C must be a (N,N,T) or (S,N,N,T) array. Did you forget to set 'type'?")
+            self.S:         int = self.C.shape[0]
+            self.T:         int = self.C.shape[-1]
+        else:
+            raise ValueError("Error: type must be 'static' or 'dynamic'")
+
+        self.N:             int = self.C.shape[1]
+        if self.C.shape[1] != self.C.shape[2]:
             raise ValueError("Error: connectivity matrices must be square. Did you forget to set 'type'?")
-        
+
         if type =="dynamic":
             print(f"NSP (dynamic) initialized with {self.S} subject(s), {self.T} time point(s), and {self.N} nodes.")
         elif type == "static":
             print(f"NSP (static) initialized with {self.S} subject(s) and {self.N} nodes.")
 
         # Empty attributes for results
-        shape1 = self.S if self.S == 1 else (self.S, self.T)
-        shape2 = (self.S, self.N) if self.T == 1 else (self.S, self.N, self.T)
-        shape3 = (self.S, self.N, self.N) if self.T == 1 else (self.S, self.N, self.N, self.T)
-        
+        dynamic = self.type == "dynamic"
+        shape1 = (self.S, self.T) if dynamic else (self.S,)
+        shape2 = (self.S, self.N, self.T) if dynamic else (self.S, self.N)
+        shape3 = (self.S, self.N, self.N, self.T) if dynamic else (self.S, self.N, self.N)
+
         self.H_int:        np.ndarray = np.full(shape1, np.nan)
-        self.H_int:       np.ndarray = np.full(shape1, np.nan)
+        self.H_seg:       np.ndarray = np.full(shape1, np.nan)
         self.H_bal:         np.ndarray = np.full(shape1, np.nan)
         
         self.H_int_cal:    np.ndarray = np.full(shape2, np.nan)
@@ -136,7 +141,7 @@ class NestedSpectralPartition():
 
         elif self.type == "static":
             for s in tqdm(range(self.S), desc="Subjects"):
-                C = self.C[s, :, :] if self.C.ndim == 3 else self.C
+                C = self.C[s]
                 (H_int, H_seg, H_bal,
                  M_levels, H_levels, p_levels,
                  eigvals, eigvals_sq, eigvecs, assignments) = self._estimate_single(C)

@@ -3,7 +3,6 @@ import re
 import sys
 import csv
 import glob
-import shutil
 import pickle
 import inspect
 import textwrap
@@ -2277,14 +2276,12 @@ def load_multiverse(path=None):
         A full/relative path to an existing multiverse folder
         
     """
-    if path is not None:
-        name = path.rstrip("/") # Remove trailing slash if present
-        mverse = Multiverse(name=name, path=path) # Create the Multiverse object for the given path
-    else:
+    if path is None:
         raise ValueError("Please provide a name/path to a multiverse directory.")
-    
-    if not os.path.exists(mverse.multiverse_dir + "/multiverse_summary.csv"):
-        shutil.rmtree(mverse.multiverse_dir) # clean up created directory
+
+    # Validate before constructing, as the constructor creates results/ and scripts/ inside the path
+    if not os.path.isfile(os.path.join(path, "multiverse_summary.csv")):
         raise ValueError("The specified path does not seem to contain a valid multiverse.")
 
-    return mverse
+    name = path.rstrip("/") # Remove trailing slash if present
+    return Multiverse(name=name, path=path)
