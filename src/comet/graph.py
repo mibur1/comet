@@ -1510,6 +1510,56 @@ def degrees_und(G: np.ndarray) -> np.ndarray:
     else:
         raise ValueError("Input must be a 2D or 3D matrix.")
 
+def strengths_und(G: np.ndarray,
+                  sign: bool = False,
+                  normalise: bool = False) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
+    """
+    This is a wrapper function for the `strengths_und()` and `strengths_und_sign()` functions
+    of the bctpy toolbox: https://github.com/aestrivex/bctpy, vectorised over the third dimension.
+
+    Node strength is the sum of the weights of the links connected to the node (the weighted degree).
+
+    Parameters
+    ----------
+    G : np.ndarray
+        2D (NxN) or 3D (NxN x T) undirected weighted connectivity matrix.
+
+    sign : bool, optional
+        If True, the strengths of the positive and of the negative weights are returned separately and the
+        diagonal is ignored (as in `strengths_und_sign`). Default is False: the sum of all weights, diagonal
+        included (as in `strengths_und`), so set the diagonal to 0 first if it should not count.
+
+    normalise : bool, optional
+        If True, the strength is divided by N - 1, the number of possible links of a node, and the diagonal
+        is ignored. The result is the mean weight per possible link (absent or discarded links count as 0).
+        This differs from the mean weight per existing link, which is `strengths_und(G) / degrees_und(G)`.
+        Default is False. Not part of bctpy.
+
+    Returns
+    -------
+    np.ndarray or tuple[np.ndarray, np.ndarray]
+        Node strength vector, or (Spos, Sneg) if sign is True.
+        If G is 2D, each has shape (N,). If G is 3D, each has shape (N, T).
+    """
+
+    if G.ndim not in (2, 3):
+        raise ValueError("Input must be a 2D or 3D matrix.")
+
+    n = G.shape[0]
+    if sign or normalise:
+        G = G.copy()
+        G[np.arange(n), np.arange(n), ...] = 0
+
+    if sign:
+        S = np.sum(G * (G > 0), axis=0), np.sum(G * (G < 0), axis=0)
+    else:
+        S = np.sum(G, axis=0)
+
+    if normalise:
+        S = tuple(s / (n - 1) for s in S) if sign else S / (n - 1)
+
+    return S
+
 def density_und(G: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     This is a wrapper function for the `density_und()` function

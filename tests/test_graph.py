@@ -205,3 +205,22 @@ def test_system_segregation():
     G3 = np.stack([G, 2 * G], axis=-1)
     assert np.allclose(graph.system_segregation(G3, ci), [0.5, 0.5])
     assert graph.system_segregation(G3, ci, per_system=True).shape == (3, 2)
+
+def test_strengths_und():
+    import bct
+    W = np.random.uniform(-1, 1, (10, 10))
+    W = (W + W.T) / 2
+    assert np.allclose(graph.strengths_und(W), bct.strengths_und(W))
+    Spos, Sneg = graph.strengths_und(W, sign=True)
+    assert np.allclose(Spos, bct.strengths_und_sign(W)[0]) and np.allclose(Sneg, bct.strengths_und_sign(W)[1])
+
+    # 3D input: one column per slice
+    W3 = np.stack([W, 2 * W], axis=-1)
+    assert np.allclose(graph.strengths_und(W3)[:, 1], 2 * bct.strengths_und(W))
+    assert graph.strengths_und(W3, sign=True)[0].shape == (10, 2)
+
+    # normalise: mean weight per possible link, diagonal ignored
+    W0 = W.copy()
+    np.fill_diagonal(W0, 0)
+    assert np.allclose(graph.strengths_und(W, normalise=True), W0.sum(axis=0) / 9)
+    assert np.allclose(graph.strengths_und(W, sign=True, normalise=True)[0], Spos / 9)
